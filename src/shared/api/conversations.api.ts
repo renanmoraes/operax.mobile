@@ -1,0 +1,111 @@
+import { api } from './client';
+
+export type ApiConversation = {
+  id: string;
+  status?: string;
+  channel?: string;
+  contact_id?: string;
+  current_queue_id?: string | null;
+  current_queue_name?: string | null;
+  assigned_user_id?: string | null;
+  assigned_user_name?: string | null;
+  unread_count?: number;
+  last_customer_message_at?: string | null;
+  service_window_expires_at?: string | null;
+  contact?: {
+    id?: string;
+    name?: string | null;
+    phone_e164?: string | null;
+  };
+  preview?: string | null;
+  last_message_preview?: string | null;
+};
+
+export type ApiMessage = {
+  id: string;
+  direction?: 'inbound' | 'outbound' | string;
+  type?: string;
+  body?: string | null;
+  caption?: string | null;
+  status?: string;
+  created_at?: string;
+  media_id?: string | null;
+};
+
+export async function listConversations(params?: Record<string, unknown>) {
+  const { data } = await api.get('/api/conversations', { params });
+  return data as { data: ApiConversation[]; total: number; page: number; limit: number };
+}
+
+export async function getMyHistory(params?: Record<string, unknown>) {
+  const { data } = await api.get('/api/conversations/my-history', { params });
+  return data as { data: ApiConversation[]; total: number };
+}
+
+export async function getConversation(id: string) {
+  const { data } = await api.get(`/api/conversations/${id}`);
+  return data as ApiConversation;
+}
+
+export async function getConversationMessages(id: string, limit = 50) {
+  const { data } = await api.get(`/api/conversations/${id}/messages`, {
+    params: { limit },
+  });
+  // API pode devolver { messages } ou array
+  if (Array.isArray(data)) return { messages: data as ApiMessage[], hasMore: false };
+  return data as { messages: ApiMessage[]; hasMore?: boolean };
+}
+
+export async function markConversationRead(id: string) {
+  await api.post(`/api/conversations/${id}/read`);
+}
+
+export async function sendTextMessage(id: string, body: string) {
+  const { data } = await api.post(`/api/conversations/${id}/messages`, {
+    type: 'text',
+    body,
+  });
+  return data;
+}
+
+export async function claimConversation(id: string) {
+  const { data } = await api.post(`/api/conversations/${id}/claim`);
+  return data;
+}
+
+export async function releaseConversation(id: string) {
+  await api.post(`/api/conversations/${id}/release`);
+}
+
+export async function transferConversation(id: string, target_user_id: string) {
+  const { data } = await api.post(`/api/conversations/${id}/transfer`, { target_user_id });
+  return data;
+}
+
+export async function transferConversationToQueue(id: string, target_queue_id: string) {
+  const { data } = await api.post(`/api/conversations/${id}/transfer-queue`, { target_queue_id });
+  return data;
+}
+
+export async function closeConversation(id: string) {
+  const { data } = await api.patch(`/api/conversations/${id}/close`, {});
+  return data;
+}
+
+export async function sendMediaMessage(
+  conversationId: string,
+  file: { uri: string; name: string; type: string },
+  caption?: string,
+) {
+  const form = new FormData();
+  form.append('file', {
+    uri: file.uri,
+    name: file.name,
+    type: file.type,
+  } as unknown as Blob);
+  if (caption) form.append('caption', caption);
+  const { data } = await api.post(`/api/conversations/${conversationId}/messages/media`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+}
