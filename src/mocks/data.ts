@@ -131,6 +131,19 @@ export const contacts: Contact[] = [
     leadScore: 88,
     notes: 'Interessada em plano anual.',
   },
+  { id: 'c4', name: 'Fernanda Rocha', phone: '+55 11 95555-4004', email: 'fernanda@email.com', tags: ['paciente', 'convênio'], leadScore: 64, notes: 'Convênio Unimed. Retorno a cada 3 meses.' },
+  { id: 'c5', name: 'Paulo Nunes', phone: '+55 11 94444-5005', tags: ['paciente'], leadScore: 51, notes: 'Bradesco Saúde.' },
+  { id: 'c6', name: 'Lívia Torres', phone: '+55 11 93333-6006', tags: ['novo', 'particular'], leadScore: 39, notes: 'Primeira consulta marcada pelo app.' },
+  { id: 'c7', name: 'Bruno Lima', phone: '+55 11 92222-7007', email: 'bruno@email.com', tags: ['paciente', 'academia'], leadScore: 70, notes: 'Treina na academia parceira.' },
+  { id: 'c8', name: 'Dr. Ricardo Alves', phone: '+55 11 91111-8008', tags: ['parceiro'], leadScore: 90, notes: 'Médico parceiro, encaminha pacientes.' },
+];
+
+/** Equipe do demo para marcar com @ no chat interno. */
+export const teamUsers = [
+  { id: 'u2', name: 'Juliana Costa', email: 'juliana@clinica.exemplo' },
+  { id: 'u3', name: 'Dr. Ricardo Alves', email: 'ricardo@clinica.exemplo' },
+  { id: 'u4', name: 'Pedro Lima', email: 'pedro@clinica.exemplo' },
+  { id: 'u5', name: 'Camila Rocha', email: 'camila@clinica.exemplo' },
 ];
 
 export const conversations: Conversation[] = [

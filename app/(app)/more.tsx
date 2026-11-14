@@ -9,6 +9,7 @@ import { initialsOf } from '@/src/features/inbox/ConversationCard';
 import { TeamChatCard } from '@/src/features/team-chat/TeamChatCard';
 
 const WORK: { label: string; hint: string; href: string; icon: IconName }[] = [
+  { label: 'Pacientes', hint: 'Pacientes e clientes da empresa', href: '/pacientes', icon: 'people-outline' },
   { label: 'Kanban', hint: 'Pipeline comercial', href: '/kanban', icon: 'grid-outline' },
   { label: 'Histórico', hint: 'Atendimentos encerrados', href: '/history', icon: 'time-outline' },
   { label: 'Respostas rápidas', hint: 'Atalhos de mensagem', href: '/quick-replies', icon: 'flash-outline' },
