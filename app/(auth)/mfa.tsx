@@ -24,7 +24,7 @@ export default function MfaScreen() {
             setLoading(true);
             try {
               await verifyMfa(code || '000000');
-              router.replace('/(app)/inbox');
+              router.replace('/');
             } catch {
               /* error */
             } finally {

@@ -74,12 +74,34 @@ export function detailsFromApi(b: ApiBooking): BookingDetails {
  * Ações que fazem sentido em cada situação (como no web): pedido aguardando → aprovar/recusar;
  * confirmado → dar entrada, falta e cancelar. Encerrados não têm ação.
  */
+/**
+ * Status do backend → os nomes que a agenda do app usa. O banco grava `approved`, `pending_approval`,
+ * `canceled`… e as telas (cores, rótulos, ações) trabalham com confirmed/pending/cancelled.
+ */
+export function normalizeBookingStatus(status: string): string {
+  const s = status.toLowerCase();
+  if (s === 'approved' || s === 'confirmado' || s === 'scheduled') return 'confirmed';
+  if (s === 'pending_approval' || s === 'pendente' || s === 'requested' || s === 'reschedule_pending_manual') return 'pending';
+  if (s === 'canceled' || s === 'cancelado' || s === 'late_cancelled') return 'cancelled';
+  if (s === 'completed') return 'done';
+  return s;
+}
+
 export function actionsFor(status: string): BookingAction[] {
   const s = status.toLowerCase();
   if (s === 'pending' || s === 'pendente' || s === 'requested') return ['approve', 'reject'];
   if (s === 'confirmed' || s === 'confirmado' || s === 'scheduled') return ['check_in', 'no_show', 'cancel'];
   return [];
 }
+
+/** Permissão de cada ação (mesmas regras das rotas de agendamento no backend). */
+export const ACTION_PERM = {
+  approve: 'bookingApprove',
+  reject: 'bookingApprove',
+  check_in: 'bookingCreate',
+  no_show: 'bookingCancel',
+  cancel: 'bookingCancel',
+} as const satisfies Record<BookingAction, 'bookingApprove' | 'bookingCreate' | 'bookingCancel'>;
 
 export const ACTION_LABEL: Record<BookingAction, string> = {
   approve: 'Aprovar pedido',

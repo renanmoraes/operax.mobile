@@ -3,6 +3,7 @@ import { isAxiosError } from 'axios';
 import { Alert } from 'react-native';
 import * as api from './clientApi';
 import { clientDataMode } from './dataMode';
+import { useAuth } from '@/src/features/auth/AuthContext';
 import type { ChatMessage, OutgoingAttachment } from './types';
 
 const keys = {
@@ -14,6 +15,32 @@ const keys = {
 
 export function useCompanies(opts?: { enabled?: boolean }) {
   return useQuery({ queryKey: keys.companies, queryFn: api.fetchCompanies, enabled: opts?.enabled ?? true });
+}
+
+export type ClientCapabilities = { scheduling: boolean; chat: boolean; training: boolean };
+
+/**
+ * O que a empresa ativa liberou no portal (agenda, chat, treino). É o "controle de permissão" do
+ * lado do cliente: o que a empresa não liberou nem aparece. Enquanto carrega, treino fica escondido
+ * (para a aba não aparecer e sumir em seguida).
+ */
+export function useClientCapabilities(): ClientCapabilities & { loaded: boolean } {
+  const { user } = useAuth();
+  const { data: companies } = useCompanies();
+  const client = user?.kind === 'client' ? user : null;
+  const active = client?.memberships.find((m) => m.tenant_id === client.active_tenant_id);
+  const company = companies?.find((c) => (active?.tenant_slug ? c.slug === active.tenant_slug : c.name === active?.tenant_name));
+  if (!company) return { scheduling: true, chat: true, training: false, loaded: !!companies };
+  return { ...company.capabilities, loaded: true };
+}
+
+/** Endereço (slug) da empresa ativa, para abrir o chat dela. */
+export function useActiveCompanySlug(): string {
+  const { user } = useAuth();
+  const { data: companies } = useCompanies();
+  const client = user?.kind === 'client' ? user : null;
+  const active = client?.memberships.find((m) => m.tenant_id === client.active_tenant_id);
+  return active?.tenant_slug ?? companies?.find((c) => c.name === active?.tenant_name)?.slug ?? companies?.[0]?.slug ?? 'empresa';
 }
 
 export function useBookings() {

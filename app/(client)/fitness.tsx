@@ -30,9 +30,11 @@ import { useProviders } from '@/src/features/fitness/connections';
 import { ProviderMark, providerDisplayName } from '@/src/features/fitness/brands';
 import { useCheckins, useFitnessSummary, useWeek, useWorkout } from '@/src/features/fitness/useFitness';
 import { formatKg, weekdayShort } from '@/src/shared/format';
+import { useActiveCompanySlug } from '@/src/features/client/useClientData';
 
 export default function ClientFitnessScreen() {
   const insets = useSafeAreaInsets();
+  const slug = useActiveCompanySlug();
   const { data: week } = useWeek();
   const { data: summary } = useFitnessSummary();
   const { data: providers } = useProviders();
@@ -178,7 +180,7 @@ export default function ClientFitnessScreen() {
               <Text style={styles.coachName}>Carlos Mendes</Text>
               <Muted style={{ marginTop: 2 }}>Semana 3 de 8 do plano</Muted>
             </View>
-            <IconButton icon="chatbubble-outline" tone="soft" size={46} accessibilityLabel="Conversar com Carlos" onPress={() => router.push('/cliente/chat/move-studio')} />
+            <IconButton icon="chatbubble-outline" tone="soft" size={46} accessibilityLabel="Conversar com Carlos" onPress={() => router.push(`/cliente/chat/${slug}`)} />
           </Card>
         </Rise>
 

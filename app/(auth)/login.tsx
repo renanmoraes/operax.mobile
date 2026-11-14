@@ -36,7 +36,7 @@ export default function LoginScreen() {
               setLoading(true);
               try {
                 const next = await login(email.trim(), password, companyCode.trim());
-                router.replace(next === 'mfa' ? '/(auth)/mfa' : '/(app)/inbox');
+                router.replace(next === 'mfa' ? '/(auth)/mfa' : '/');
               } catch {
                 /* error state */
               } finally {
@@ -50,7 +50,7 @@ export default function LoginScreen() {
               variant="ghost"
               onPress={() => {
                 enterDemo();
-                router.replace('/(app)/inbox');
+                router.replace('/');
               }}
             />
           ) : null}

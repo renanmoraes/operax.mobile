@@ -11,8 +11,17 @@ import { getMyHistory } from '@/src/shared/api/conversations.api';
 import { mapApiConversation } from '@/src/features/inbox/mapConversation';
 import { ConversationCard } from '@/src/features/inbox/ConversationCard';
 import { SkeletonList } from '@/src/design-system/Skeleton';
+import { RequirePermission } from '@/src/features/auth/useCan';
 
-export default function HistoryScreen() {
+export default function HistoryScreenGuarded() {
+  return (
+    <RequirePermission need="history" title="Histórico">
+      <HistoryScreen />
+    </RequirePermission>
+  );
+}
+
+function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const { mode, user } = useAuth();
 

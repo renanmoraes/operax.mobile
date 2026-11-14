@@ -7,7 +7,7 @@ import { Button, Card, Chip, HeroCard, IconTile, Muted, Rise, Screen, ScreenHead
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { BookingCard, bookingHref } from '@/src/features/client/BookingCard';
-import { useBookings, useCompanies } from '@/src/features/client/useClientData';
+import { useBookings, useCompanies , useActiveCompanySlug, useClientCapabilities } from '@/src/features/client/useClientData';
 import type { ClientBooking } from '@/src/features/client/types';
 import { addDays, formatHour, isoDate, monthFull, sameDay, startOfDay, startOfWeek, weekdayFull, weekdayShort } from '@/src/shared/format';
 
@@ -112,6 +112,8 @@ function DayStrip({ selected, onSelect, items }: { selected: Date; onSelect: (d:
 
 export default function ClientAgendaScreen() {
   const insets = useSafeAreaInsets();
+  const slug = useActiveCompanySlug();
+  const caps = useClientCapabilities();
   const { data: all } = useBookings();
   const { data: companies } = useCompanies();
   const [view, setView] = useState<View_>('planilha');
@@ -132,7 +134,7 @@ export default function ClientAgendaScreen() {
       <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom }} showsVerticalScrollIndicator={false}>
         <ScreenHeader
           title="Agenda"
-          right={<Button label="Pedir horário" icon="add" compact onPress={() => router.push('/cliente/chat/move-studio?pedido=1')} />}
+          right={caps.chat ? <Button label="Pedir horário" icon="add" compact onPress={() => router.push(`/cliente/chat/${slug}?pedido=1`)} /> : undefined}
         />
         <View style={{ paddingHorizontal: 20 }}>
           <Segmented

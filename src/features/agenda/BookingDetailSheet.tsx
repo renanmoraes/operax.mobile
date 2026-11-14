@@ -6,7 +6,8 @@ import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Button, IconName, PressableScale } from '@/src/design-system/ui';
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
 import type { BookingAction } from '@/src/shared/api/bookings.api';
-import { ACTION_LABEL, actionsFor, BookingDetails, phoneLabel } from './bookingDetails';
+import { ACTION_LABEL, ACTION_PERM, actionsFor, BookingDetails, phoneLabel } from './bookingDetails';
+import { useCan } from '@/src/features/auth/useCan';
 import { clockLabel } from './timeline';
 
 const STATUS: Record<string, { label: string; bg: string; fg: string }> = {
@@ -45,9 +46,10 @@ export function BookingDetailSheet({
   onAction: (action: BookingAction, opts?: { payment_type?: 'private' }) => void;
 }) {
   const [confirming, setConfirming] = useState<BookingAction | null>(null);
+  const can = useCan();
   if (!details) return null;
   const st = STATUS[details.status] ?? { label: details.status, bg: colors.primaryWash, fg: colors.primaryDeep };
-  const actions = actionsFor(details.status);
+  const actions = actionsFor(details.status).filter((a) => can(ACTION_PERM[a]));
   const minutes = endMin - startMin;
   const phone = phoneLabel(details.phone);
   const digits = details.phone?.replace(/\D/g, '') ?? '';
@@ -128,7 +130,7 @@ export function BookingDetailSheet({
         {details.series ? <Alert tone="info" title="Série recorrente" body={details.series} /> : null}
         {details.rescheduleReason ? <Alert tone="info" title="Último reagendamento" body={details.rescheduleReason} /> : null}
 
-        {details.contactId ? (
+        {details.contactId && can('contacts') ? (
           <Button
             label="Ver contato e conversas"
             variant="secondary"

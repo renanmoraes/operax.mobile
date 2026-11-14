@@ -1,4 +1,4 @@
-import { actionsFor, detailsFromApi, paymentSummary, phoneLabel, reminderLabel } from '../bookingDetails';
+import { actionsFor, detailsFromApi, normalizeBookingStatus, paymentSummary, phoneLabel, reminderLabel } from '../bookingDetails';
 
 describe('ficha do agendamento', () => {
   it('resume particular e convênio como no web', () => {
@@ -50,5 +50,15 @@ describe('ficha do agendamento', () => {
     expect(actionsFor('pending')).toEqual(['approve', 'reject']);
     expect(actionsFor('confirmed')).toEqual(['check_in', 'no_show', 'cancel']);
     expect(actionsFor('completed')).toEqual([]);
+  });
+});
+
+describe('status do backend', () => {
+  it('approved e pending_approval viram os status da agenda (e as ações aparecem)', () => {
+    expect(normalizeBookingStatus('approved')).toBe('confirmed');
+    expect(normalizeBookingStatus('pending_approval')).toBe('pending');
+    expect(normalizeBookingStatus('canceled')).toBe('cancelled');
+    expect(actionsFor(normalizeBookingStatus('approved'))).toEqual(['check_in', 'no_show', 'cancel']);
+    expect(actionsFor(normalizeBookingStatus('pending_approval'))).toEqual(['approve', 'reject']);
   });
 });

@@ -39,13 +39,24 @@ import { QuickRepliesSheet } from '@/src/features/conversation-actions/QuickRepl
 import { PixData, sendPixMessage } from '@/src/shared/api/conversation-actions.api';
 import * as ImagePicker from 'expo-image-picker';
 import { SkeletonList } from '@/src/design-system/Skeleton';
+import { RequirePermission, useCan } from '@/src/features/auth/useCan';
+import type { PermKey } from '@/src/features/auth/permissions';
 
 type Sheet = 'actions' | 'attach' | 'transfer' | 'quick' | 'pix' | 'booking' | null;
 
-export default function ConversationScreen() {
+export default function ConversationScreenGuarded() {
+  return (
+    <RequirePermission need="inbox" title="Atendimento">
+      <ConversationScreen />
+    </RequirePermission>
+  );
+}
+
+function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { mode, user } = useAuth();
+  const can = useCan();
   const qc = useQueryClient();
   const [draft, setDraft] = useState('');
   const inputRef = useRef<TextInputInstance>(null);
@@ -207,8 +218,12 @@ export default function ConversationScreen() {
     }
   };
 
-  const canCompose = conversation.within24h && ownership === 'mine';
+  // Perfil sem permissão de enviar: conversa só para leitura (o campo de mensagem nem aparece).
+  const canSend = can('sendMessage');
+  const canCompose = canSend && conversation.within24h && ownership === 'mine';
   const composeBlock = !conversation.within24h ? 'Fora da janela de 24 h: use uma mensagem ativa' : ownership !== 'mine' ? 'Assuma o atendimento para enviar' : undefined;
+  const ownershipActions = { claim: can('claim'), release: can('release'), transfer: can('transfer'), close: can('close') };
+  const hasOwnershipAction = Object.values(ownershipActions).some(Boolean) || (!!conversation.contactId && can('contacts'));
 
   const sendPix = async (pix: PixData & { save?: boolean }) => {
     if (mode === 'mock') {
@@ -236,23 +251,25 @@ export default function ConversationScreen() {
     fn();
   };
 
-  const actions: ConversationAction[] = [
-    { key: 'media', label: 'Foto e vídeo', icon: 'images', tone: 'media', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('image')) },
-    { key: 'camera', label: 'Câmera', icon: 'camera', tone: 'camera', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('camera')) },
-    { key: 'document', label: 'Documento', icon: 'document', tone: 'document', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('document')) },
-    { key: 'pix', label: 'Chave Pix', icon: 'diamond', tone: 'pix', blockedReason: composeBlock, onPress: guarded(() => switchSheet('pix')) },
-    { key: 'booking', label: 'Agendar horário', icon: 'calendar', tone: 'booking', onPress: () => switchSheet('booking') },
+  const allActions: (ConversationAction & { perm: PermKey })[] = [
+    { key: 'media', label: 'Foto e vídeo', icon: 'images', tone: 'media', perm: 'sendMedia', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('image')) },
+    { key: 'camera', label: 'Câmera', icon: 'camera', tone: 'camera', perm: 'sendMedia', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('camera')) },
+    { key: 'document', label: 'Documento', icon: 'document', tone: 'document', perm: 'sendMedia', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('document')) },
+    { key: 'pix', label: 'Chave Pix', icon: 'diamond', tone: 'pix', perm: 'sendMessage', blockedReason: composeBlock, onPress: guarded(() => switchSheet('pix')) },
+    { key: 'booking', label: 'Agendar horário', icon: 'calendar', tone: 'booking', perm: 'bookingCreate', onPress: () => switchSheet('booking') },
     {
       key: 'template',
       label: 'Mensagem ativa',
       icon: 'document-text',
       tone: 'template',
+      perm: 'templates',
       onPress: () => {
         setSheet(null);
         router.push({ pathname: '/templates', params: { conversationId: id } });
       },
     },
   ];
+  const actions: ConversationAction[] = allActions.filter((a) => can(a.perm));
 
   const appendLocal = (m: Omit<Message, 'id' | 'conversationId' | 'direction' | 'at' | 'status'>) =>
     setLocalMsgs((prev) => [
@@ -315,13 +332,14 @@ export default function ConversationScreen() {
             </View>
           </View>
         </Pressable>
-        <IconButton icon="ellipsis-horizontal" accessibilityLabel="Ações do atendimento" onPress={() => setSheet('actions')} />
+        {hasOwnershipAction ? <IconButton icon="ellipsis-horizontal" accessibilityLabel="Ações do atendimento" onPress={() => setSheet('actions')} /> : null}
       </View>
 
       {!conversation.within24h ? (
         <View style={styles.windowBanner}>
           <Ionicons name="time-outline" size={18} color={colors.warnText} />
           <Text style={styles.windowText}>Fora da janela de 24 h. Responda com um template aprovado.</Text>
+          {can('templates') ? (
           <Pressable
             onPress={() => router.push({ pathname: '/templates', params: { conversationId: id } })}
             accessibilityRole="button"
@@ -329,10 +347,11 @@ export default function ConversationScreen() {
           >
             <Text style={styles.link}>Templates</Text>
           </Pressable>
+          ) : null}
         </View>
       ) : null}
 
-      {ownership === 'queue' ? (
+      {ownership === 'queue' && ownershipActions.claim && canSend ? (
         <View style={styles.claimBanner}>
           <IconTile icon="hand-left-outline" size={38} />
           <Text style={styles.claimText}>Este contato está na fila. Assuma para responder.</Text>
@@ -394,12 +413,18 @@ export default function ConversationScreen() {
         />
       ) : null}
 
-      {voice.recording ? (
+      {!canSend ? (
+        <View style={[styles.readOnly, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <Ionicons name="eye-outline" size={18} color={colors.textSoft} />
+          <Text style={styles.readOnlyText}>Somente leitura: seu perfil no Operax não envia mensagens.</Text>
+        </View>
+      ) : voice.recording ? (
         <View style={[styles.composer, { paddingHorizontal: 0, paddingTop: 0 }]}>
           <RecordingBar elapsedS={voice.elapsedS} levels={voice.levels} onCancel={() => void voice.cancel()} onSend={() => void sendVoice()} bottomInset={Math.max(insets.bottom, 12)} />
         </View>
       ) : (
         <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+          {actions.length ? (
           <Pressable
             onPress={() => setSheet('attach')}
             style={styles.attachBtn}
@@ -408,6 +433,8 @@ export default function ConversationScreen() {
           >
             <Ionicons name="add" size={24} color={colors.primary} />
           </Pressable>
+          ) : null}
+          {can('quickReplies') ? (
           <Pressable
             onPress={() => setSheet('quick')}
             style={styles.qrBtn}
@@ -416,6 +443,7 @@ export default function ConversationScreen() {
           >
             <Ionicons name="flash-outline" size={20} color={colors.primary} />
           </Pressable>
+          ) : null}
           <ChatInput
             inputRef={inputRef}
             value={draft}
@@ -423,7 +451,7 @@ export default function ConversationScreen() {
             placeholder={!conversation.within24h ? 'Use um template' : ownership !== 'mine' ? 'Assuma para responder' : 'Mensagem…'}
             editable={canCompose}
           />
-          {draft.trim() || !canCompose ? (
+          {draft.trim() || !canCompose || !can('sendMedia') ? (
             <Pressable
               onPress={() => {
                 if (!draft.trim() || !canCompose) return;
@@ -449,11 +477,11 @@ export default function ConversationScreen() {
       <Toast toast={toast} />
 
       <BottomSheet visible={sheet === 'actions'} onClose={() => setSheet(null)} title="Posse e atendimento">
-        <Button label="Assumir" onPress={() => runAction('claim')} />
-        <Button label="Liberar para a fila" variant="secondary" onPress={() => runAction('release')} />
-        <Button label="Transferir…" variant="secondary" onPress={() => setSheet('transfer')} />
-        <Button label="Encerrar" variant="danger" onPress={() => runAction('close')} />
-        {conversation.contactId ? (
+        {ownershipActions.claim ? <Button label="Assumir" onPress={() => runAction('claim')} /> : null}
+        {ownershipActions.release ? <Button label="Liberar para a fila" variant="secondary" onPress={() => runAction('release')} /> : null}
+        {ownershipActions.transfer ? <Button label="Transferir…" variant="secondary" onPress={() => setSheet('transfer')} /> : null}
+        {ownershipActions.close ? <Button label="Encerrar" variant="danger" onPress={() => runAction('close')} /> : null}
+        {conversation.contactId && can('contacts') ? (
           <Button
             label="Ver contato"
             variant="ghost"
@@ -552,6 +580,8 @@ const styles = StyleSheet.create({
     gap: 12,
     ...shadows.card,
   },
+  readOnly: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingTop: 14, backgroundColor: '#fff', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  readOnlyText: { flex: 1, fontFamily: typography.fontFamilyMedium, fontSize: 13.5, lineHeight: 19, color: colors.textSoft },
   claimText: { flex: 1, fontFamily: typography.fontFamilyMedium, fontSize: 13.5, lineHeight: 19, color: colors.textSoft },
   link: { color: colors.warnText, fontFamily: typography.fontFamilyBold, fontSize: 13, textDecorationLine: 'underline' },
   bubble: { maxWidth: '82%', borderRadius: BUBBLE_RADIUS, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 7 },

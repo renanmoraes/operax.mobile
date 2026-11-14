@@ -8,8 +8,17 @@ import { listQuickReplies } from '@/src/shared/api/quick-replies.api';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { quickReplies as mockQuickReplies } from '@/src/mocks/data';
 import { SkeletonList } from '@/src/design-system/Skeleton';
+import { RequirePermission } from '@/src/features/auth/useCan';
 
-export default function QuickRepliesScreen() {
+export default function QuickRepliesScreenGuarded() {
+  return (
+    <RequirePermission need="quickReplies" title="Respostas rápidas">
+      <QuickRepliesScreen />
+    </RequirePermission>
+  );
+}
+
+function QuickRepliesScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId?: string }>();
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();

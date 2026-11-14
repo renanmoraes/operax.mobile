@@ -12,6 +12,7 @@ import { initialsOf } from '@/src/features/inbox/ConversationCard';
 import { phoneLabel } from '@/src/features/agenda/bookingDetails';
 import { contacts as mockContacts } from '@/src/mocks/data';
 import { listContacts } from '@/src/shared/api/contacts.api';
+import { RequirePermission } from '@/src/features/auth/useCan';
 
 type Person = { id: string; name: string; phone: string | null; email: string | null; tags: string[] };
 
@@ -22,7 +23,15 @@ const fold = (s: string) =>
     .toLowerCase();
 
 /** Pacientes e clientes da empresa: busca, lista em ordem alfabética e acesso à ficha. */
-export default function PatientsScreen() {
+export default function PatientsScreenGuarded() {
+  return (
+    <RequirePermission need="contacts" title="Pacientes">
+      <PatientsScreen />
+    </RequirePermission>
+  );
+}
+
+function PatientsScreen() {
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();
   const [search, setSearch] = useState('');

@@ -17,10 +17,10 @@ describe('resolveAuthRoute', () => {
     );
   });
 
-  it('staff autenticado vai pro shell (inbox)', () => {
-    expect(resolveAuthRoute({ phase: 'staff', authenticated: true, needsMfa: false })).toBe(
-      '/(app)/inbox',
-    );
+  it('staff autenticado abre na primeira aba que o perfil permite', () => {
+    expect(resolveAuthRoute({ phase: 'staff', authenticated: true, needsMfa: false, permissions: ['*'] })).toBe('/(app)/inbox');
+    expect(resolveAuthRoute({ phase: 'staff', authenticated: true, needsMfa: false, permissions: ['scheduling:read_all'] })).toBe('/(app)/agenda');
+    expect(resolveAuthRoute({ phase: 'staff', authenticated: true, needsMfa: false, permissions: [] })).toBe('/(app)/notifications');
   });
 
   it('cliente sem sessão vai pro login de cliente', () => {

@@ -5,14 +5,13 @@ import { GlassTabBar } from '@/src/design-system/GlassTabBar';
 import { TAB_TRANSITION } from '@/src/design-system/tabTransition';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { QueueDrawerProvider } from '@/src/features/queue/QueueDrawerContext';
-import { hasPermission } from '@/src/features/auth/permissions';
+import { hasPermission, PERMS, type PermissionNeed } from '@/src/features/auth/permissions';
 import { useTeamChat } from '@/src/features/team-chat/TeamChatContext';
 
-// Nenhuma aba exige permissão ainda — é só o mecanismo. Specs futuras preenchem
-// isto conforme admin/atendente precisarem ver coisas diferentes.
-const TAB_PERMISSIONS: Record<string, string | undefined> = {
-  'inbox/index': undefined,
-  agenda: undefined,
+// Mesmas permissões do menu do Operax web: sem elas a aba nem aparece.
+const TAB_PERMISSIONS: Record<string, PermissionNeed | undefined> = {
+  'inbox/index': PERMS.inbox,
+  agenda: PERMS.agenda,
   notifications: undefined,
   more: undefined,
 };

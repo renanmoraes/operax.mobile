@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { Backdrop, Button, IconButton, Muted } from '@/src/design-system/ui';
-import { colors, radii, shadows, text } from '@/src/design-system/tokens';
+import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { AudioBubble } from '@/src/features/chat/AudioBubble';
 import { ChatInput, focusAtEnd } from '@/src/features/chat/ChatInput';
@@ -29,14 +29,26 @@ import { MentionItem, MentionSuggestions } from '@/src/features/team-chat/Mentio
 import { phoneLabel } from '@/src/features/agenda/bookingDetails';
 import { contacts as mockContacts, teamUsers } from '@/src/mocks/data';
 import { SkeletonList } from '@/src/design-system/Skeleton';
+import { RequirePermission, useCan } from '@/src/features/auth/useCan';
 
 const PAGE = 60;
 
 /** Conversa do chat interno (grupo ou direta) com texto, foto, PDF e áudio. */
-export default function TeamChatConversationScreen() {
+export default function TeamChatConversationScreenGuarded() {
+  return (
+    <RequirePermission need="teamChat" title="Chat da equipe">
+      <TeamChatConversationScreen />
+    </RequirePermission>
+  );
+}
+
+function TeamChatConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { mode, user } = useAuth();
+  const can = useCan();
+  const canSend = can('teamChatSend');
+  const canMedia = can('teamChatMedia');
   const { channels, setOpenChannel, markRead } = useTeamChat();
   const qc = useQueryClient();
   const live = mode === 'live';
@@ -331,17 +343,24 @@ export default function TeamChatConversationScreen() {
         <MentionSuggestions kind={picker.kind} query={pickQuery} items={suggestions} loading={usersQ.isFetching || contactsQ.isFetching} onPick={pickMention} />
       ) : null}
 
-      {voice.recording ? (
+      {!canSend ? (
+        <View style={[styles.readOnly, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <Ionicons name="eye-outline" size={18} color={colors.textSoft} />
+          <Text style={styles.readOnlyText}>Somente leitura: seu perfil no Operax não envia mensagens no chat da equipe.</Text>
+        </View>
+      ) : voice.recording ? (
         <View style={[styles.composer, { paddingHorizontal: 0, paddingTop: 0 }]}>
           <RecordingBar elapsedS={voice.elapsedS} levels={voice.levels} onCancel={() => void voice.cancel()} onSend={() => void sendVoice()} bottomInset={Math.max(insets.bottom, 12)} />
         </View>
       ) : (
         <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-          <Pressable onPress={() => setAttachOpen(true)} style={styles.attachBtn} accessibilityRole="button" accessibilityLabel="Anexar foto ou documento">
-            <Ionicons name="add" size={24} color={colors.primary} />
-          </Pressable>
+          {canMedia ? (
+            <Pressable onPress={() => setAttachOpen(true)} style={styles.attachBtn} accessibilityRole="button" accessibilityLabel="Anexar foto ou documento">
+              <Ionicons name="add" size={24} color={colors.primary} />
+            </Pressable>
+          ) : null}
           <ChatInput inputRef={inputRef} value={draft} onChangeText={setDraft} placeholder={isGroup ? `Mensagem para ${channel?.title ?? 'o grupo'}` : 'Mensagem…'} />
-          {draft.trim() ? (
+          {draft.trim() || !canMedia ? (
             <Pressable onPress={sendText} disabled={sendMut.isPending} style={[styles.send, sendMut.isPending && { opacity: 0.6 }]} accessibilityRole="button" accessibilityLabel="Enviar" accessibilityState={{ disabled: sendMut.isPending }}>
               <Ionicons name="send" size={18} color="#fff" />
             </Pressable>
@@ -362,6 +381,8 @@ export default function TeamChatConversationScreen() {
 }
 
 const styles = StyleSheet.create({
+  readOnly: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingTop: 14, backgroundColor: '#fff', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  readOnlyText: { flex: 1, fontFamily: typography.fontFamilyMedium, fontSize: 13.5, lineHeight: 19, color: colors.textSoft },
   root: { flex: 1, backgroundColor: colors.pageBg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.pageBg },
   topBar: {

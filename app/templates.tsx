@@ -9,8 +9,17 @@ import { listTemplates, sendTemplateMessage } from '@/src/shared/api/templates.a
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { templates as mockTemplates } from '@/src/mocks/data';
 import { SkeletonList } from '@/src/design-system/Skeleton';
+import { RequirePermission } from '@/src/features/auth/useCan';
 
-export default function TemplatesScreen() {
+export default function TemplatesScreenGuarded() {
+  return (
+    <RequirePermission need="templates" title="Templates">
+      <TemplatesScreen />
+    </RequirePermission>
+  );
+}
+
+function TemplatesScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId?: string }>();
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();

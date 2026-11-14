@@ -10,10 +10,19 @@ import { getPipeline, listPipelines, listStageCards, moveCard } from '@/src/shar
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
 import { kanbanCards, kanbanStages } from '@/src/mocks/data';
+import { RequirePermission } from '@/src/features/auth/useCan';
 
 const STAGE_DOTS = [colors.warn, colors.primary, '#8c99b0', colors.success];
 
-export default function KanbanScreen() {
+export default function KanbanScreenGuarded() {
+  return (
+    <RequirePermission need="kanban" title="Kanban">
+      <KanbanScreen />
+    </RequirePermission>
+  );
+}
+
+function KanbanScreen() {
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();
   const qc = useQueryClient();

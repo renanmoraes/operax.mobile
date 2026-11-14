@@ -9,7 +9,7 @@ import { Avatar, Badge, Body, Button, Card, Chip, EmptyState, Glow, IconButton, 
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { flattenWorkout } from '@/src/features/fitness/flatten';
 import { useLoadHistory, useWorkout } from '@/src/features/fitness/useFitness';
-import { useSendChat } from '@/src/features/client/useClientData';
+import { useSendChat , useActiveCompanySlug } from '@/src/features/client/useClientData';
 import { formatKg } from '@/src/shared/format';
 
 function LoadChart({ values }: { values: number[] }) {
@@ -38,7 +38,8 @@ export default function ExerciseDetailScreen() {
   const LOAD_HISTORY = useLoadHistory();
   const row = workout ? flattenWorkout(workout).find((r) => r.exerciseId === id) : undefined;
   const snap = row?.snapshot ?? workout?.exercise_snapshots.find((s) => s.id === id);
-  const send = useSendChat('move-studio');
+  const slug = useActiveCompanySlug();
+  const send = useSendChat(slug);
   const [requested, setRequested] = useState(false);
 
   if (!snap && isLoading) return <Screen><Loading label="Carregando o exercício" /></Screen>;
@@ -164,7 +165,7 @@ export default function ExerciseDetailScreen() {
               setRequested(true);
             }}
           />
-          <Button label="Tirar dúvida" icon="chatbubble-outline" style={{ flex: 1 }} onPress={() => router.push('/cliente/chat/move-studio')} />
+          <Button label="Tirar dúvida" icon="chatbubble-outline" style={{ flex: 1 }} onPress={() => router.push(`/cliente/chat/${slug}`)} />
         </View>
       </View>
     </Screen>

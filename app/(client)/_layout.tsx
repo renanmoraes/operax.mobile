@@ -4,13 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { TAB_TRANSITION } from '@/src/design-system/tabTransition';
 import { GlassTabBar } from '@/src/design-system/GlassTabBar';
 import { useAuth } from '@/src/features/auth/AuthContext';
-import { useClientUnread } from '@/src/features/client/useClientData';
+import { useClientCapabilities, useClientUnread } from '@/src/features/client/useClientData';
 import { hasSeenClientOnboarding } from '@/src/features/permissions/permissions';
 import { useFlushResultsQueue } from '@/src/features/fitness/useFitness';
 
 export default function ClientLayout() {
   const { isAuthenticated, user } = useAuth();
   const unread = useClientUnread();
+  // Abas seguem o que a empresa liberou no portal (sem treino liberado, não existe aba Treino).
+  const caps = useClientCapabilities();
   useFlushResultsQueue();
   const [onboarded, setOnboarded] = useState<boolean | null>(null);
   useEffect(() => {
@@ -42,6 +44,7 @@ export default function ClientLayout() {
         name="agenda"
         options={{
           title: 'Agenda',
+          href: caps.scheduling ? undefined : null,
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={size} color={color as string} />
           ),
@@ -51,6 +54,7 @@ export default function ClientLayout() {
         name="fitness"
         options={{
           title: 'Treino',
+          href: caps.training ? undefined : null,
           tabBarIcon: ({ color, size }) => <Ionicons name="barbell-outline" size={size} color={color as string} />,
         }}
       />
@@ -58,6 +62,7 @@ export default function ClientLayout() {
         name="conversas"
         options={{
           title: 'Conversas',
+          href: caps.chat ? undefined : null,
           tabBarBadge: unread > 0 ? unread : undefined,
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={size} color={color as string} />

@@ -83,6 +83,8 @@ const DEMO_USER: StaffUser = {
   name: 'Ana Atendente',
   email: 'ana@clinica.exemplo',
   role_code: 'agent',
+  // Demonstração mostra o app inteiro.
+  permissions: ['*'],
 };
 
 const DEMO_CLIENT_USER: ClientUser = {

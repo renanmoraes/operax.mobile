@@ -9,19 +9,29 @@ import { DayEvent, DayTimeline } from '@/src/features/agenda/DayTimeline';
 import { toMinutes } from '@/src/features/agenda/timeline';
 import { ApiBooking, BookingAction, listBookings, runBookingAction } from '@/src/shared/api/bookings.api';
 import { BookingDetailSheet } from '@/src/features/agenda/BookingDetailSheet';
-import { detailsFromApi, STATUS_AFTER } from '@/src/features/agenda/bookingDetails';
+import { detailsFromApi, normalizeBookingStatus, STATUS_AFTER } from '@/src/features/agenda/bookingDetails';
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { agendaDetails, agendaEvents } from '@/src/mocks/data';
-import { longDate } from '@/src/shared/format';
+import { longDate, isoDate } from '@/src/shared/format';
 import { SkeletonList } from '@/src/design-system/Skeleton';
+import { RequirePermission } from '@/src/features/auth/useCan';
 
+/**
+ * Mesmo formato do Operax web: o backend recebe o dia (`yyyy-MM-dd`) nos dois limites
+ * (mandar data e hora no `to` quebra a consulta). Pede de ontem a amanhã para cobrir o fuso
+ * e o app fica só com o que cai hoje no horário local.
+ */
 function dayBounds() {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  return { from: start.toISOString(), to: end.toISOString() };
+  const end = new Date(start.getTime() + 86_400_000);
+  return {
+    from: isoDate(new Date(start.getTime() - 86_400_000)),
+    to: isoDate(end),
+    startMs: start.getTime(),
+    endMs: end.getTime(),
+  };
 }
 
 const STATUS_TONE: Record<string, DayEvent['tone']> = {
@@ -47,7 +57,15 @@ const STATUS_LABEL: Record<string, string> = {
   rejected: 'Recusado',
 };
 
-export default function AgendaScreen() {
+export default function AgendaScreenGuarded() {
+  return (
+    <RequirePermission need="agenda" title="Agenda">
+      <AgendaScreen />
+    </RequirePermission>
+  );
+}
+
+function AgendaScreen() {
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();
   const bounds = dayBounds();
@@ -70,7 +88,10 @@ export default function AgendaScreen() {
     const base =
       mode === 'live'
         ? query.data && query.data.ok
-          ? query.data.items
+          ? query.data.items.filter((b) => {
+              const t = new Date(b.starts_at).getTime();
+              return t >= bounds.startMs && t < bounds.endMs;
+            })
           : []
         : agendaEvents.map((e) => ({
             id: e.id,
@@ -82,8 +103,8 @@ export default function AgendaScreen() {
             location_name: e.location,
             ...(agendaDetails[e.id] as Partial<ApiBooking>),
           }));
-    return base.map((b) => (statusOverride[b.id] ? { ...b, status: statusOverride[b.id] } : b));
-  }, [mode, query.data, statusOverride]);
+    return base.map((b) => ({ ...b, status: normalizeBookingStatus(statusOverride[b.id] ?? b.status) }));
+  }, [mode, query.data, statusOverride, bounds.startMs, bounds.endMs]);
 
   if (mode === 'live' && query.data && query.data.ok === false) {
     return (

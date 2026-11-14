@@ -33,8 +33,9 @@ export function useFlushResultsQueue() {
 
 const root = ['fitness'] as const;
 
-export const useWeek = () => useQuery({ queryKey: [...root, 'week'], queryFn: api.fetchWeek });
-export const useFitnessSummary = () => useQuery({ queryKey: [...root, 'summary'], queryFn: api.fetchSummary });
+/** `enabled: false` quando a empresa não liberou o treino (nem pede a rota, que responderia sem acesso). */
+export const useWeek = (opts?: { enabled?: boolean }) => useQuery({ queryKey: [...root, 'week'], queryFn: api.fetchWeek, enabled: opts?.enabled ?? true });
+export const useFitnessSummary = (opts?: { enabled?: boolean }) => useQuery({ queryKey: [...root, 'summary'], queryFn: api.fetchSummary, enabled: opts?.enabled ?? true });
 export const useHistory = () => useQuery({ queryKey: [...root, 'history'], queryFn: api.fetchHistory });
 export const useEvolution = () => useQuery({ queryKey: [...root, 'evolution'], queryFn: api.fetchEvolution });
 export const useCheckins = () => useQuery({ queryKey: [...root, 'checkins'], queryFn: api.fetchCheckins });

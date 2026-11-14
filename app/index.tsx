@@ -29,7 +29,7 @@ export default function Index() {
   if (role === 'staff') {
     return (
       <Redirect
-        href={resolveAuthRoute({ phase: 'staff', authenticated: isAuthenticated, needsMfa })}
+        href={resolveAuthRoute({ phase: 'staff', authenticated: isAuthenticated, needsMfa, permissions: user?.kind === 'staff' ? user.permissions : undefined })}
       />
     );
   }

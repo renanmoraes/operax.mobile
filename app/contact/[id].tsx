@@ -8,8 +8,17 @@ import { getContact } from '@/src/shared/api/contacts.api';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { getContact as getMockContact } from '@/src/mocks/data';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
+import { RequirePermission } from '@/src/features/auth/useCan';
 
-export default function ContactScreen() {
+export default function ContactScreenGuarded() {
+  return (
+    <RequirePermission need="contacts" title="Contato">
+      <ContactScreen />
+    </RequirePermission>
+  );
+}
+
+function ContactScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();

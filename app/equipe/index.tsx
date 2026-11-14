@@ -8,13 +8,22 @@ import { colors, radii, shadows, text, typography } from '@/src/design-system/to
 import { ChannelRow } from '@/src/features/team-chat/parts';
 import { useTeamChat } from '@/src/features/team-chat/TeamChatContext';
 import { SkeletonList } from '@/src/design-system/Skeleton';
+import { RequirePermission } from '@/src/features/auth/useCan';
 
 type Filter = 'all' | 'unread' | 'group' | 'dm';
 
 const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 /** Chat interno: grupos e conversas diretas com a equipe, como no Operax web. */
-export default function TeamChatListScreen() {
+export default function TeamChatListScreenGuarded() {
+  return (
+    <RequirePermission need="teamChat" title="Chat da equipe">
+      <TeamChatListScreen />
+    </RequirePermission>
+  );
+}
+
+function TeamChatListScreen() {
   const insets = useSafeAreaInsets();
   const { channels, unread, loading, refresh } = useTeamChat();
   const [filter, setFilter] = useState<Filter>('all');

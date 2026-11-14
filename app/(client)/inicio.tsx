@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +22,7 @@ import {
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
-import { canUndoBookingAnswer, useBookings, useChats, useCompanies, useConfirmBooking, useUnconfirmBooking } from '@/src/features/client/useClientData';
+import { canUndoBookingAnswer, useBookings, useChats, useClientCapabilities, useCompanies, useConfirmBooking, useUnconfirmBooking } from '@/src/features/client/useClientData';
 import { useFitnessSummary, useWeek } from '@/src/features/fitness/useFitness';
 import { formatDuration, formatHour, greeting, longDate, minutesUntilLabel } from '@/src/shared/format';
 import { useNow } from '@/src/shared/useNow';
@@ -42,8 +42,10 @@ export default function ClientHomeScreen() {
   const { user } = useAuth();
   const { data: bookings } = useBookings();
   const { data: chats } = useChats();
-  const { data: week } = useWeek();
-  const { data: summary } = useFitnessSummary();
+  // Só mostra o que a empresa liberou no portal (sem treino liberado, nada de treino aqui).
+  const caps = useClientCapabilities();
+  const { data: week } = useWeek({ enabled: caps.training });
+  const { data: summary } = useFitnessSummary({ enabled: caps.training });
   const { data: companies } = useCompanies();
   const confirm = useConfirmBooking();
   const unconfirm = useUnconfirmBooking();
@@ -80,7 +82,7 @@ export default function ClientHomeScreen() {
           <Display style={{ marginTop: 4 }}>{`${greeting()}, ${firstName}`}</Display>
         </Rise>
 
-        {next ? (
+        {caps.scheduling && next ? (
           <Rise index={2} style={{ marginTop: 18 }}>
             <HeroCard>
               <View style={styles.rowBetween}>
@@ -92,7 +94,13 @@ export default function ClientHomeScreen() {
                 <Avatar initials={(next.provider_name ?? '').split(' ').map((w) => w[0]).slice(0, 2).join('')} size={30} />
                 <Text style={styles.heroWhoText}>{`${formatHour(next.starts_at)} · ${formatDuration((new Date(next.ends_at).getTime() - new Date(next.starts_at).getTime()) / 1000)} · com ${next.provider_name}`}</Text>
               </View>
-              {next.status === 'pending' ? (
+              {next.status === 'pending' && next.can_confirm === false ? (
+                <Pressable onPress={() => router.push(`/cliente/compromisso/${next.id}`)} accessibilityRole="button" style={styles.confirmed}>
+                  <Ionicons name="time-outline" size={20} color={colors.warnText} />
+                  <Text style={[styles.confirmedText, { color: colors.warnText }]}>Aguardando a empresa confirmar</Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                </Pressable>
+              ) : next.status === 'pending' ? (
                 <View style={styles.heroActions}>
                   <Button label="Confirmar presença" icon="checkmark" loading={confirm.isPending} onPress={() => confirm.mutate(next.id)} style={{ flex: 1, minHeight: 50 }} />
                   <IconButton icon="chevron-forward" size={50} accessibilityLabel="Ver detalhes do compromisso" onPress={() => router.push(`/cliente/compromisso/${next.id}`)} />
@@ -108,6 +116,7 @@ export default function ClientHomeScreen() {
           </Rise>
         ) : null}
 
+        {caps.training ? (
         <View style={styles.grid}>
           <Rise index={3} style={{ flex: 1 }}>
             <Card onPress={() => (todayWorkout ? router.push(`/cliente/treino/${todayWorkout.id}`) : router.navigate('/(client)/fitness'))} accessibilityLabel="Treino de hoje" style={styles.tile}>
@@ -153,8 +162,9 @@ export default function ClientHomeScreen() {
             </Card>
           </Rise>
         </View>
+        ) : null}
 
-        {chat && lastTeam ? (
+        {caps.chat && chat && lastTeam ? (
           <Rise index={5} style={{ marginTop: 12 }}>
             <Card onPress={() => router.push(`/cliente/chat/${chat.tenant_slug}`)} accessibilityLabel={`Mensagem da equipe ${chat.tenant_name}`}>
               <View style={styles.rowBetween}>
@@ -181,10 +191,14 @@ export default function ClientHomeScreen() {
         ) : null}
 
         <Rise index={6} style={styles.shortcuts}>
-          <Shortcut icon="calendar-outline" label="Pedir horário" onPress={() => router.push('/cliente/chat/move-studio?pedido=1')} />
-          <Shortcut icon="images-outline" label="Evolução" onPress={() => router.push('/cliente/evolucao')} />
-          <Shortcut icon="stats-chart-outline" label="Histórico" onPress={() => router.push('/cliente/historico')} />
-          <Shortcut icon="ribbon-outline" label="Conquistas" onPress={() => router.push('/cliente/conquistas')} />
+          {caps.chat ? <Shortcut icon="calendar-outline" label="Pedir horário" onPress={() => router.push(`/cliente/chat/${tenant?.tenant_slug ?? companies?.find((c) => c.name === tenant?.tenant_name)?.slug ?? 'empresa'}?pedido=1`)} /> : null}
+          {caps.training ? (
+            <>
+              <Shortcut icon="images-outline" label="Evolução" onPress={() => router.push('/cliente/evolucao')} />
+              <Shortcut icon="stats-chart-outline" label="Histórico" onPress={() => router.push('/cliente/historico')} />
+              <Shortcut icon="ribbon-outline" label="Conquistas" onPress={() => router.push('/cliente/conquistas')} />
+            </>
+          ) : null}
         </Rise>
       </ScrollView>
     </Screen>

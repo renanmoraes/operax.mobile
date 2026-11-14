@@ -20,6 +20,7 @@ import { initialsOf } from '@/src/features/inbox/ConversationCard';
 import { colors, radii, shadows, spacing, text, typography, zIndex } from '@/src/design-system/tokens';
 import type { Conversation } from '@/src/mocks/data';
 import { useQueueDrawer } from './QueueDrawerContext';
+import { useCan } from '@/src/features/auth/useCan';
 
 const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.86, 360);
 
@@ -36,6 +37,7 @@ type Props = {
 };
 
 export function QueueDrawer({ items, claimingId, onClaim }: Props) {
+  const canClaim = useCan()('claim');
   const { visible, close } = useQueueDrawer();
   const insets = useSafeAreaInsets();
   const progress = useSharedValue(0);
@@ -103,13 +105,15 @@ export function QueueDrawer({ items, claimingId, onClaim }: Props) {
                 </View>
                 <View style={styles.itemFoot}>
                   <Badge label={`${item.queue} · ${channelLabel[item.channel] ?? item.channel}`} />
-                  <Button
-                    label="Assumir"
-                    compact
-                    loading={claimingId === item.id}
-                    disabled={claimingId === item.id}
-                    onPress={() => onClaim(item.id)}
-                  />
+                  {canClaim ? (
+                    <Button
+                      label="Assumir"
+                      compact
+                      loading={claimingId === item.id}
+                      disabled={claimingId === item.id}
+                      onPress={() => onClaim(item.id)}
+                    />
+                  ) : null}
                 </View>
               </Card>
             )}

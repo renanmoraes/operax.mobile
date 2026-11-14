@@ -7,13 +7,15 @@ import { colors, text, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
 import { TeamChatCard } from '@/src/features/team-chat/TeamChatCard';
+import { useCan } from '@/src/features/auth/useCan';
+import type { PermKey } from '@/src/features/auth/permissions';
 
-const WORK: { label: string; hint: string; href: string; icon: IconName }[] = [
-  { label: 'Pacientes', hint: 'Pacientes e clientes da empresa', href: '/pacientes', icon: 'people-outline' },
-  { label: 'Kanban', hint: 'Pipeline comercial', href: '/kanban', icon: 'grid-outline' },
-  { label: 'Histórico', hint: 'Atendimentos encerrados', href: '/history', icon: 'time-outline' },
-  { label: 'Respostas rápidas', hint: 'Atalhos de mensagem', href: '/quick-replies', icon: 'flash-outline' },
-  { label: 'Templates Meta', hint: 'Fora da janela de 24 h', href: '/templates', icon: 'document-text-outline' },
+const WORK: { label: string; hint: string; href: string; icon: IconName; perm: PermKey }[] = [
+  { label: 'Pacientes', hint: 'Pacientes e clientes da empresa', href: '/pacientes', icon: 'people-outline', perm: 'contacts' },
+  { label: 'Kanban', hint: 'Pipeline comercial', href: '/kanban', icon: 'grid-outline', perm: 'kanban' },
+  { label: 'Histórico', hint: 'Atendimentos encerrados', href: '/history', icon: 'time-outline', perm: 'history' },
+  { label: 'Respostas rápidas', hint: 'Atalhos de mensagem', href: '/quick-replies', icon: 'flash-outline', perm: 'quickReplies' },
+  { label: 'Templates Meta', hint: 'Fora da janela de 24 h', href: '/templates', icon: 'document-text-outline', perm: 'templates' },
 ];
 
 const ACCOUNT: { label: string; hint: string; href: string; icon: IconName }[] = [
@@ -24,6 +26,8 @@ const ACCOUNT: { label: string; hint: string; href: string; icon: IconName }[] =
 export default function MoreScreen() {
   const insets = useSafeAreaInsets();
   const { user, mode } = useAuth();
+  const can = useCan();
+  const work = WORK.filter((item) => can(item.perm));
 
   return (
     <Screen>
@@ -42,18 +46,26 @@ export default function MoreScreen() {
               </View>
             </HeroCard>
           </Rise>
-          <Muted style={styles.groupLabel}>Equipe</Muted>
-          <Rise index={1}>
-            <TeamChatCard onPress={() => router.push('/equipe')} />
-          </Rise>
-          <Muted style={styles.groupLabel}>Trabalho</Muted>
-          <Rise index={2}>
-            <SettingsGroup>
-              {WORK.map((item, i) => (
-                <SettingsRow key={item.href} icon={item.icon} title={item.label} subtitle={item.hint} onPress={() => router.push(item.href as never)} last={i === WORK.length - 1} />
-              ))}
-            </SettingsGroup>
-          </Rise>
+          {can('teamChat') ? (
+            <>
+              <Muted style={styles.groupLabel}>Equipe</Muted>
+              <Rise index={1}>
+                <TeamChatCard onPress={() => router.push('/equipe')} />
+              </Rise>
+            </>
+          ) : null}
+          {work.length ? (
+            <>
+              <Muted style={styles.groupLabel}>Trabalho</Muted>
+              <Rise index={2}>
+                <SettingsGroup>
+                  {work.map((item, i) => (
+                    <SettingsRow key={item.href} icon={item.icon} title={item.label} subtitle={item.hint} onPress={() => router.push(item.href as never)} last={i === work.length - 1} />
+                  ))}
+                </SettingsGroup>
+              </Rise>
+            </>
+          ) : null}
           <Muted style={styles.groupLabel}>Conta</Muted>
           <Rise index={3}>
             <SettingsGroup>
