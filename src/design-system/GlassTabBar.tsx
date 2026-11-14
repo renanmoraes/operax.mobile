@@ -21,13 +21,13 @@ const GAP = 8;
  */
 const SMOOTH = Easing.bezier(0.45, 0, 0.15, 1);
 // Microanimação pequena e no lugar: roda mesmo com "Reduzir movimento" (o Reanimated pularia direto para o fim).
-const OPEN = { duration: 900, easing: SMOOTH, reduceMotion: ReduceMotion.Never };
-const CLOSE = { duration: 460, easing: SMOOTH, reduceMotion: ReduceMotion.Never };
+const OPEN = { duration: 560, easing: SMOOTH, reduceMotion: ReduceMotion.Never };
+const CLOSE = { duration: 320, easing: SMOOTH, reduceMotion: ReduceMotion.Never };
 const easeOut = Easing.bezier(...motion.easeOut);
 
 /**
  * Um item da barra. Ao ficar ativo, um círculo azul surge atrás do ícone (que fica branco)
- * e a pílula vai se esticando devagar (~0,9 s), descobrindo o nome pela borda. Ao sair,
+ * e a pílula vai se esticando (~0,56 s), descobrindo o nome pela borda. Ao sair,
  * faz o caminho inverso mais depressa, e pode ser interrompido no meio.
  */
 function TabItem({

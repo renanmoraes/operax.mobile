@@ -25,7 +25,7 @@ const easeOut = Easing.bezier(...motion.easeOut);
 const SEGMENT_PAD = 4;
 /** Mola sem quique (amortecimento crítico): desliza macio e para direto no lugar. */
 // Microanimação pequena e no lugar: roda mesmo com "Reduzir movimento" (o Reanimated pularia direto para o fim).
-const SEGMENT_SPRING = { damping: 24, stiffness: 140, mass: 1, overshootClamping: true, reduceMotion: ReduceMotion.Never };
+const SEGMENT_SPRING = { damping: 28, stiffness: 220, mass: 1, overshootClamping: true, reduceMotion: ReduceMotion.Never };
 
 /** Fundo em degradê suave (azul + ciano) que fica atrás de toda tela. */
 export function Backdrop({ variant = 'default' }: { variant?: 'default' | 'mirror' | 'chat' }) {
