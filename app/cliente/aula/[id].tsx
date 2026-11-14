@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar, Badge, Button, Card, EmptyState, IconTile, Muted, Rise, Screen } from '@/src/design-system/ui';
@@ -10,6 +10,8 @@ import { useBooking, useClassAction } from '@/src/features/client/useClientData'
 import { formatClock, formatHour } from '@/src/shared/format';
 
 const ROSTER = ['LS', 'JP', 'RC', 'TM', 'GA', 'BF', 'DN', 'KO', 'VE', 'HL', 'AM', 'PS'];
+const SEATS_PER_ROW = 6;
+const SEAT_GAP = 10;
 
 export default function ClassDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -17,6 +19,10 @@ export default function ClassDetailScreen() {
   const { data: b } = useBooking(id);
   const action = useClassAction();
   const [now, setNow] = useState(Date.now());
+  // Tamanho da vaga pela largura real do cartão: círculos iguais em qualquer celular.
+  const [gridW, setGridW] = useState(0);
+  const seatSize = gridW ? Math.floor((gridW - SEAT_GAP * (SEATS_PER_ROW - 1)) / SEATS_PER_ROW) : 0;
+  const onGrid = (e: LayoutChangeEvent) => setGridW(Math.floor(e.nativeEvent.layout.width));
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -74,21 +80,23 @@ export default function ClassDetailScreen() {
                 <Text style={styles.cardTitle}>Turma</Text>
                 <Muted>{`${enrolled} de ${capacity} inscritos`}</Muted>
               </View>
-              <View style={styles.seats} accessible accessibilityLabel={`${enrolled} de ${capacity} inscritos`}>
+              <View style={styles.seats} onLayout={onGrid} accessible accessibilityLabel={`${enrolled} de ${capacity} inscritos`}>
                 {Array.from({ length: capacity }, (_, i) => {
                   const mine = (offer && i === enrolled) || (accepted && i === enrolled - 1);
                   const filled = i < enrolled && !mine;
                   return (
-                    <View key={i} style={[styles.seat, filled ? styles.seatFilled : mine ? styles.seatMine : styles.seatFree]}>
-                      <Text style={[styles.seatText, { color: filled ? '#fff' : colors.primaryDeep }]}>{filled ? ROSTER[i] : mine ? (accepted ? 'Eu' : 'Você') : ''}</Text>
+                    <View key={i} style={[styles.seat, { width: seatSize, height: seatSize, borderRadius: seatSize / 2, opacity: seatSize ? 1 : 0 }, filled ? styles.seatFilled : mine ? styles.seatMine : styles.seatFree]}>
+                      <Text style={[styles.seatText, { color: filled ? '#fff' : colors.primaryDeep }]} numberOfLines={1}>
+                        {filled ? ROSTER[i] : mine ? (accepted ? 'Eu' : 'Você') : ''}
+                      </Text>
                     </View>
                   );
                 })}
               </View>
               <View style={styles.legend}>
                 <Legend color={colors.primary} label="Inscritos" />
-                <Legend color={colors.primaryTint} border label="Sua vaga" />
-                <Legend color="#f0f2f5" label="Livre" />
+                <Legend color={colors.primaryTint} border={colors.primary} label="Sua vaga" />
+                <Legend color="#f0f2f5" border="#c9d1de" dashed label="Livre" />
               </View>
             </Card>
           </Rise>
@@ -129,10 +137,10 @@ export default function ClassDetailScreen() {
   );
 }
 
-function Legend({ color, label, border }: { color: string; label: string; border?: boolean }) {
+function Legend({ color, label, border, dashed }: { color: string; label: string; border?: string; dashed?: boolean }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-      <View style={{ width: 12, height: 12, borderRadius: 4, backgroundColor: color, borderWidth: border ? 1.5 : 0, borderColor: colors.primary }} />
+      <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: color, borderWidth: border ? 1.5 : 0, borderColor: border, borderStyle: dashed ? 'dashed' : 'solid' }} />
       <Muted style={{ fontSize: 12 }}>{label}</Muted>
     </View>
   );
@@ -142,13 +150,13 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardTitle: { fontFamily: typography.fontFamilyBold, fontSize: 15.5, color: colors.text },
   banner: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 18, borderRadius: radii.xl },
-  seats: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
-  seat: { width: '14.4%', aspectRatio: 1, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center' },
+  seats: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: SEAT_GAP, marginTop: 16 },
+  seat: { alignItems: 'center', justifyContent: 'center' },
   seatFilled: { backgroundColor: colors.primary },
   seatMine: { backgroundColor: colors.primaryTint, borderWidth: 1.5, borderColor: colors.primary },
-  seatFree: { backgroundColor: '#f0f2f5', borderWidth: 1.5, borderColor: '#c9d1de' },
-  seatText: { fontFamily: typography.fontFamilyBold, fontSize: 11 },
-  legend: { flexDirection: 'row', gap: 14, marginTop: 14 },
+  seatFree: { backgroundColor: '#f0f2f5', borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#c9d1de' },
+  seatText: { fontFamily: typography.fontFamilyBold, fontSize: 12, lineHeight: 15, textAlign: 'center', includeFontPadding: false },
+  legend: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 16 },
   bring: { fontFamily: typography.fontFamily, fontSize: 14, color: colors.text },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 16, gap: 10, backgroundColor: 'rgba(244,247,252,0.94)' },
 });

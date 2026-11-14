@@ -518,7 +518,9 @@ export function Badge({ label, tone = 'neutral', icon }: { label: string; tone?:
   return (
     <View style={[styles.badge, { backgroundColor: c.bg }]}>
       {icon ? <Ionicons name={icon} size={12} color={c.fg} /> : null}
-      <Text style={[styles.badgeText, { color: c.fg }]}>{label}</Text>
+      <Text style={[styles.badgeText, { color: c.fg }]} numberOfLines={1}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -1209,7 +1211,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     minHeight: 60,
   },
-  topSide: { width: 52 },
+  // mínimo de 52 (botão de voltar); cresce se o conteúdo for maior, sem quebrar nem cortar
+  topSide: { minWidth: 52, flexShrink: 0 },
   topTitle: {
     flex: 1,
     textAlign: 'center',
