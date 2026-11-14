@@ -30,7 +30,7 @@ export default function CancelBookingScreen() {
         <View style={[styles.done, { paddingTop: insets.top + 80, paddingBottom: insets.bottom + 24 }]}>
           <Rise style={{ alignItems: 'center' }}>
             <IconTile icon="calendar-clear-outline" size={72} tone="neutral" />
-            <Display style={{ marginTop: 18, fontSize: 26, textAlign: 'center' }}>{`${b.service_name} cancelado`}</Display>
+            <Display style={{ marginTop: 18, textAlign: 'center' }}>{`${b.service_name} cancelado`}</Display>
             <Muted style={{ marginTop: 8, textAlign: 'center', fontSize: 15, lineHeight: 22 }}>
               {rebook
                 ? `Avisamos ${b.provider_name?.split(' ')[0]} e abrimos o chat com o pedido de um novo horário já escrito.`
@@ -49,11 +49,9 @@ export default function CancelBookingScreen() {
 
   return (
     <Screen backdrop="mirror">
-      <View style={{ paddingTop: insets.top }}>
-        <TopBar onBack={() => router.back()} />
-      </View>
+      <TopBar safe onBack={() => router.back()} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24 }} keyboardShouldPersistTaps="handled">
-        <Display style={{ fontSize: 26, lineHeight: 30 }}>{`Cancelar ${b.service_name?.toLowerCase()}?`}</Display>
+        <Display>{`Cancelar ${b.service_name?.toLowerCase()}?`}</Display>
         <Muted style={{ marginTop: 6, fontSize: 14 }}>{`${weekdayShort(start)} ${start.getDate()} · ${formatHour(b.starts_at)} · com ${b.provider_name}`}</Muted>
 
         {late ? (

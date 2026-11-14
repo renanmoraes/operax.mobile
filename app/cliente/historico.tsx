@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, Card, Muted, ProgressBar, Rise, Screen, SectionHeader, StatTile, TopBar } from '@/src/design-system/ui';
-import { colors, radii, typography } from '@/src/design-system/tokens';
+import { colors, numbers, radii, typography } from '@/src/design-system/tokens';
 import { workoutForWeekday } from '@/src/features/fitness/mockData';
 import { useFitnessSummary, useHistory } from '@/src/features/fitness/useFitness';
 import { formatDuration, isoDate, monthFull, weekdayShort } from '@/src/shared/format';
@@ -36,9 +36,7 @@ export default function FitnessHistoryScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: insets.top }}>
-        <TopBar title="Histórico" onBack={() => router.back()} />
-      </View>
+      <TopBar safe title="Histórico" onBack={() => router.back()} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32 }}>
         <Rise style={{ flexDirection: 'row', gap: 8 }}>
           <StatTile value={String(summary?.streak ?? '–')} label="dias seguidos" accent />
@@ -156,6 +154,6 @@ const styles = StyleSheet.create({
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 14 },
   groupName: { fontFamily: typography.fontFamilySemiBold, fontSize: 13, color: colors.text },
   entry: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 14 },
-  entryDay: { fontFamily: typography.fontFamilyHeavy, fontSize: 20, color: colors.text },
+  entryDay: { ...numbers.md, color: colors.text },
   entryTitle: { fontFamily: typography.fontFamilyBold, fontSize: 14.5, color: colors.text },
 });

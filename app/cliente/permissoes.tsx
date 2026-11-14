@@ -2,11 +2,12 @@ import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, Button, Card, Display, IconName, IconTile, Muted, Rise, Screen } from '@/src/design-system/ui';
-import { colors, spacing, typography } from '@/src/design-system/tokens';
+import { colors, spacing, text } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { markClientOnboardingSeen, openSystemSettings, PermissionKey, usePermissions } from '@/src/features/permissions/permissions';
 import type { PermissionState } from '@/src/features/permissions/permissionState';
 import { useProviders } from '@/src/features/fitness/connections';
+import { providerDisplayName } from '@/src/features/fitness/brands';
 
 function StatusAction({
   state,
@@ -58,7 +59,7 @@ export default function ClientPermissionsScreen() {
   const keys: PermissionKey[] = ['notifications', 'camera', 'photos'];
   const { states, request } = usePermissions(keys, mode === 'live');
   const { data: providers } = useProviders();
-  const connected = providers?.filter((p) => p.connected).map((p) => p.label) ?? [];
+  const connected = providers?.filter((p) => p.connected).map((p) => providerDisplayName(p.id, p.label)) ?? [];
 
   const finish = async () => {
     await markClientOnboardingSeen();
@@ -78,7 +79,7 @@ export default function ClientPermissionsScreen() {
     <Screen backdrop="mirror">
       <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + spacing.xl }]}>
         <Rise>
-          <Display style={{ fontSize: 32, lineHeight: 36 }}>Deixe o app do seu jeito</Display>
+          <Display style={{ fontSize: 28, lineHeight: 33 }}>Deixe o app do seu jeito</Display>
         </Rise>
         <Rise index={1}>
           <Muted style={styles.sub}>Ative só o que fizer sentido para você. Dá para mudar depois no perfil.</Muted>
@@ -96,7 +97,7 @@ export default function ClientPermissionsScreen() {
             index={3}
             icon="watch-outline"
             title="Relógio e apps de treino"
-            body="Conecte Garmin, Strava ou Polar e seus treinos chegam sozinhos, com tempo, distância e batimentos."
+            body="Conecte Garmin Connect™, Strava ou Polar e seus treinos chegam sozinhos, com tempo, distância e batimentos."
             action={
               connected.length ? (
                 <Button label={`${connected.join(', ')} conectado`} variant="soft" compact icon="checkmark" onPress={() => router.push('/cliente/relogios')} />
@@ -138,7 +139,7 @@ const styles = StyleSheet.create({
   sub: { marginTop: 10, fontSize: 15, lineHeight: 22 },
   card: { padding: 18, gap: 14 },
   cardTop: { flexDirection: 'row', gap: 14 },
-  cardTitle: { fontFamily: typography.fontFamilyBold, fontSize: 16, color: colors.text },
+  cardTitle: { ...text.section, color: colors.text },
   cardBody: { marginTop: 4, fontSize: 13.5, lineHeight: 19.5 },
   cardAction: { alignItems: 'flex-start', paddingLeft: 60 },
 });

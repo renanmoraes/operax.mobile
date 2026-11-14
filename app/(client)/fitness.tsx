@@ -24,10 +24,11 @@ import {
   SectionHeader,
 } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
-import { colors, gradients, radii, shadows, typography } from '@/src/design-system/tokens';
+import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { flattenWorkout } from '@/src/features/fitness/flatten';
 import { WORKOUTS } from '@/src/features/fitness/mockData';
 import { useProviders } from '@/src/features/fitness/connections';
+import { ProviderMark, providerDisplayName } from '@/src/features/fitness/brands';
 import { useCheckins, useFitnessSummary, useWeek } from '@/src/features/fitness/useFitness';
 import { formatKg, weekdayShort } from '@/src/shared/format';
 
@@ -71,9 +72,9 @@ export default function ClientFitnessScreen() {
           <HeroCard style={{ padding: 20 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
               <ProgressRing progress={done / goal} accessibilityLabel={`Meta semanal: ${done} de ${goal} treinos`}>
-                <Num style={{ fontSize: 28 }}>
+                <Num size="lg">
                   {done}
-                  <Text style={{ fontSize: 16, color: colors.textMuted }}>{`/${goal}`}</Text>
+                  <Text style={[numbers.sm, { color: colors.textMuted }]}>{`/${goal}`}</Text>
                 </Num>
                 <Muted style={{ fontSize: 11.5, marginTop: 2 }}>treinos</Muted>
               </ProgressRing>
@@ -85,12 +86,12 @@ export default function ClientFitnessScreen() {
                 <View style={{ flexDirection: 'row', gap: 16 }}>
                   <View>
                     <Muted style={{ fontSize: 12 }}>Nível</Muted>
-                    <Num style={{ fontSize: 17, marginTop: 2 }}>{summary?.level.level ?? '–'}</Num>
+                    <Num size="sm" style={{ marginTop: 2 }}>{summary?.level.level ?? '–'}</Num>
                   </View>
                   <View style={{ width: 1, backgroundColor: colors.track }} />
                   <View>
                     <Muted style={{ fontSize: 12 }}>Consistência</Muted>
-                    <Num style={{ fontSize: 17, marginTop: 2, color: colors.primary }}>{`${summary?.consistency ?? '–'}%`}</Num>
+                    <Num size="sm" style={{ marginTop: 2, color: colors.primary }}>{`${summary?.consistency ?? '–'}%`}</Num>
                   </View>
                 </View>
               </View>
@@ -202,10 +203,10 @@ export default function ClientFitnessScreen() {
 
         <Rise index={6} style={{ marginTop: 12 }}>
           <Card onPress={() => router.push('/cliente/relogios')} accessibilityLabel="Relógios e apps" style={styles.coach}>
-            <IconTile icon="watch-outline" size={46} tone={connected.length ? 'brand' : 'soft'} />
+            {connected[0] ? <ProviderMark id={connected[0].id} label={connected[0].label} size={46} /> : <IconTile icon="watch-outline" size={46} tone="soft" />}
             <View style={{ flex: 1 }}>
               <Text style={styles.coachName}>Relógios e apps</Text>
-              <Muted style={{ marginTop: 2 }}>{connected.length ? `${connected.map((p) => p.label).join(', ')} conectado` : 'Conecte Garmin, Strava ou Polar'}</Muted>
+              <Muted style={{ marginTop: 2 }}>{connected.length ? `${connected.map((p) => providerDisplayName(p.id, p.label)).join(', ')} conectado` : 'Conecte Garmin Connect™, Strava ou Polar'}</Muted>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </Card>
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   streak: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.warnSoft },
   streakText: { fontFamily: typography.fontFamilyBold, fontSize: 14, color: colors.warn },
-  heroLine: { marginTop: 3, fontFamily: typography.fontFamilyBold, fontSize: 16, lineHeight: 20, color: colors.text },
+  heroLine: { marginTop: 3, ...text.section, color: colors.text },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   memory: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16, borderRadius: radii.lg },
   memoryText: { flex: 1, fontFamily: typography.fontFamily, fontSize: 13.5, color: colors.text, lineHeight: 19 },
@@ -229,9 +230,9 @@ const styles = StyleSheet.create({
   dayOn: { backgroundColor: colors.primary, ...shadows.button },
   dayOff: { backgroundColor: 'rgba(255,255,255,0.88)' },
   dayWd: { fontFamily: typography.fontFamilySemiBold, fontSize: 11.5, color: colors.textMuted },
-  dayNum: { fontFamily: typography.fontFamilyHeavy, fontSize: 16, color: colors.text },
+  dayNum: { ...numbers.sm, color: colors.text },
   dayMark: { width: 6, height: 6, borderRadius: 3, marginTop: 3 },
-  dayTitle: { marginTop: 14, fontFamily: typography.fontFamilyHeavy, fontSize: 21, letterSpacing: -0.5, color: colors.text },
+  dayTitle: { marginTop: 14, ...text.title, color: colors.text },
   daySub: { marginTop: 6, fontSize: 13.5, lineHeight: 20 },
   coach: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 },
   coachName: { marginTop: 2, fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text },

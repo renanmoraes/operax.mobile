@@ -46,7 +46,7 @@ export function AuthShell({
             </Rise>
           ) : null}
           <Rise index={1} style={{ marginTop: showLogo ? 22 : 36 }}>
-            <Display style={{ fontSize: 32, lineHeight: 36 }}>{title}</Display>
+            <Display style={{ fontSize: 28, lineHeight: 33 }}>{title}</Display>
           </Rise>
           {subtitle ? (
             <Rise index={2}>

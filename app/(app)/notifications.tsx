@@ -62,12 +62,11 @@ export default function NotificationsScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: insets.top }}>
-        <ScreenHeader
-          title="Avisos"
-          right={<IconButton icon="options-outline" accessibilityLabel="Preferências de notificação" onPress={() => router.push('/notification-prefs')} />}
-        />
-      </View>
+      <ScreenHeader
+        safe
+        title="Avisos"
+        right={<IconButton icon="options-outline" accessibilityLabel="Preferências de notificação" onPress={() => router.push('/notification-prefs')} />}
+      />
       <FlatList
         data={data}
         keyExtractor={(item) => item.id}

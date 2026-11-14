@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Circle, Defs, LinearGradient as SvgLinear, Path, Polyline, Stop } from 'react-native-svg';
 import { Badge, Card, IconButton, Muted, Num, Rise, Screen, TopBar } from '@/src/design-system/ui';
-import { colors, radii, shadows, typography } from '@/src/design-system/tokens';
+import { colors, numbers, radii, shadows, typography } from '@/src/design-system/tokens';
 import { useAddCheckin, useCheckins } from '@/src/features/fitness/useFitness';
 import type { BodyCheckin } from '@/src/features/fitness/types';
 import { formatKg, isoDate, monthShort } from '@/src/shared/format';
@@ -81,9 +81,7 @@ export default function BodyEvolutionScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: insets.top }}>
-        <TopBar title="Evolução corporal" onBack={() => router.back()} right={<IconButton icon="add" tone="primary" accessibilityLabel="Adicionar foto de evolução" onPress={() => void addPhoto()} />} />
-      </View>
+      <TopBar safe title="Evolução corporal" onBack={() => router.back()} right={<IconButton icon="add" tone="primary" accessibilityLabel="Adicionar foto de evolução" onPress={() => void addPhoto()} />} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32 }}>
         <Rise>
           <View
@@ -148,7 +146,7 @@ export default function BodyEvolutionScreen() {
           ].map(([label, value, unit, d]) => (
             <Card key={label} style={styles.measure}>
               <Muted style={{ fontSize: 12.5 }}>{label}</Muted>
-              <Num style={{ fontSize: 24, marginTop: 6 }}>
+              <Num size="md" style={{ marginTop: 6 }}>
                 {value}
                 <Text style={{ fontSize: 13, color: colors.textMuted }}>{` ${unit}`}</Text>
               </Num>
@@ -206,7 +204,7 @@ const styles = StyleSheet.create({
   pickOn: { backgroundColor: colors.primary, ...shadows.button },
   pickOff: { backgroundColor: 'rgba(255,255,255,0.88)' },
   pickDate: { fontFamily: typography.fontFamilySemiBold, fontSize: 11.5, color: colors.textMuted },
-  pickKg: { fontFamily: typography.fontFamilyHeavy, fontSize: 15, color: colors.text },
+  pickKg: { ...numbers.sm, color: colors.text },
   measures: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
   measure: { width: '48%', flexGrow: 1, padding: 16 },
   rowBetween: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },

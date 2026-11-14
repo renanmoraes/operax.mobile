@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Glow, Rise, TopBar } from '@/src/design-system/ui';
-import { colors, gradients, shadows, typography } from '@/src/design-system/tokens';
+import { colors, gradients, shadows, text, typography } from '@/src/design-system/tokens';
 
 /** Topo das telas de detalhe: faixa clara em degradê com cantos inferiores arredondados. */
 export function DetailHero({
@@ -49,5 +49,5 @@ const styles = StyleSheet.create({
   wrap: { borderBottomLeftRadius: 40, borderBottomRightRadius: 40, overflow: 'hidden', ...shadows.hero },
   body: { paddingHorizontal: 20, paddingBottom: 26, paddingTop: 6 },
   eyebrow: { fontFamily: typography.fontFamilySemiBold, fontSize: 13, color: colors.textMuted },
-  title: { marginTop: 6, fontFamily: typography.fontFamilyHeavy, fontSize: 30, lineHeight: 34, letterSpacing: -0.9, color: colors.text },
+  title: { marginTop: 6, ...text.display, color: colors.text },
 });

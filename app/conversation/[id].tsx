@@ -3,7 +3,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -12,8 +11,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Avatar, Backdrop, Badge, Body, Button, IconButton, IconTile, Muted } from '@/src/design-system/ui';
-import { colors, radii, shadows, typography, zIndex } from '@/src/design-system/tokens';
+import { Avatar, Backdrop, Badge, Button, IconButton, IconTile, Muted } from '@/src/design-system/ui';
+import { BottomSheet } from '@/src/design-system/BottomSheet';
+import { Toast, useToast } from '@/src/design-system/Toast';
+import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
 import { getConversation as getMockConv, getMessages as getMockMessages } from '@/src/mocks/data';
 import { useAuth } from '@/src/features/auth/AuthContext';
@@ -41,7 +42,7 @@ export default function ConversationScreen() {
   const qc = useQueryClient();
   const [draft, setDraft] = useState('');
   const [sheet, setSheet] = useState<Sheet>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const { toast, show } = useToast(1800);
 
   const mockConv = getMockConv(id);
   const mockThread = useMemo(() => getMockMessages(id), [id]);
@@ -85,10 +86,7 @@ export default function ConversationScreen() {
     if (conversation?.ownership) setOwnership(conversation.ownership);
   }, [conversation?.ownership]);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 1800);
-  };
+  const showToast = (msg: string) => show(msg, msg.startsWith('Falha') ? 'error' : 'success');
 
   const sendMut = useMutation({
     mutationFn: async (text: string) => sendTextMessage(id, text),
@@ -289,66 +287,42 @@ export default function ConversationScreen() {
         </Pressable>
       </View>
 
-      {toast ? (
-        <View style={styles.toast} accessibilityLiveRegion="polite">
-          <Ionicons
-            name={toast.startsWith('Falha') ? 'alert-circle' : 'checkmark-circle'}
-            size={18}
-            color={toast.startsWith('Falha') ? colors.danger : colors.success}
-          />
-          <Text style={{ color: colors.text, fontFamily: typography.fontFamilySemiBold, fontSize: 14 }}>{toast}</Text>
-        </View>
-      ) : null}
+      <Toast toast={toast} />
 
-      <Modal visible={sheet === 'actions'} transparent animationType="slide" onRequestClose={() => setSheet(null)}>
-        <Pressable style={styles.overlay} onPress={() => setSheet(null)} />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
-          <View style={styles.handle} />
-          <Body style={styles.sheetTitle}>Posse e atendimento</Body>
-          <Button label="Assumir" onPress={() => runAction('claim')} />
-          <Button label="Liberar para a fila" variant="secondary" onPress={() => runAction('release')} />
-          <Button label="Transferir…" variant="secondary" onPress={() => setSheet('transfer')} />
-          <Button label="Encerrar" variant="danger" onPress={() => runAction('close')} />
-          {conversation.contactId ? (
-            <Button
-              label="Ver contato"
-              variant="ghost"
-              onPress={() => {
-                setSheet(null);
-                router.push(`/contact/${conversation.contactId}`);
-              }}
-            />
-          ) : null}
-        </View>
-      </Modal>
-
-      <Modal visible={sheet === 'transfer'} transparent animationType="slide" onRequestClose={() => setSheet(null)}>
-        <Pressable style={styles.overlay} onPress={() => setSheet(null)} />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
-          <View style={styles.handle} />
-          <Body style={styles.sheetTitle}>Transferir</Body>
-          <Muted>No mobile, libere para a fila ou use o web para escolher atendente.</Muted>
-          <Button label="Liberar para a fila" onPress={() => runAction('release')} />
-        </View>
-      </Modal>
-
-      <Modal visible={sheet === 'attach'} transparent animationType="slide" onRequestClose={() => setSheet(null)}>
-        <Pressable style={styles.overlay} onPress={() => setSheet(null)} />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
-          <View style={styles.handle} />
-          <Body style={styles.sheetTitle}>Anexar mídia</Body>
-          <Button label="Foto / Vídeo" variant="secondary" onPress={() => pickAndSend('image')} />
-          <Button label="Documento" variant="secondary" onPress={() => pickAndSend('document')} />
+      <BottomSheet visible={sheet === 'actions'} onClose={() => setSheet(null)} title="Posse e atendimento">
+        <Button label="Assumir" onPress={() => runAction('claim')} />
+        <Button label="Liberar para a fila" variant="secondary" onPress={() => runAction('release')} />
+        <Button label="Transferir…" variant="secondary" onPress={() => setSheet('transfer')} />
+        <Button label="Encerrar" variant="danger" onPress={() => runAction('close')} />
+        {conversation.contactId ? (
           <Button
-            label="Áudio (em breve)"
+            label="Ver contato"
             variant="ghost"
             onPress={() => {
               setSheet(null);
-              showToast('Áudio na próxima versão');
+              router.push(`/contact/${conversation.contactId}`);
             }}
           />
-        </View>
-      </Modal>
+        ) : null}
+      </BottomSheet>
+
+      <BottomSheet visible={sheet === 'transfer'} onClose={() => setSheet(null)} title="Transferir">
+        <Muted>No mobile, libere para a fila ou use o web para escolher atendente.</Muted>
+        <Button label="Liberar para a fila" onPress={() => runAction('release')} />
+      </BottomSheet>
+
+      <BottomSheet visible={sheet === 'attach'} onClose={() => setSheet(null)} title="Anexar mídia">
+        <Button label="Foto / Vídeo" variant="secondary" onPress={() => pickAndSend('image')} />
+        <Button label="Documento" variant="secondary" onPress={() => pickAndSend('document')} />
+        <Button
+          label="Áudio (em breve)"
+          variant="ghost"
+          onPress={() => {
+            setSheet(null);
+            show('Áudio na próxima versão', 'info');
+          }}
+        />
+      </BottomSheet>
     </View>
   );
 }
@@ -377,7 +351,7 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   contactBlock: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 0 },
-  contactName: { fontFamily: typography.fontFamilyBold, fontSize: 16, color: colors.text, letterSpacing: -0.2 },
+  contactName: { ...text.section, color: colors.text },
   statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#9aa6bd' },
   windowBanner: {
     marginHorizontal: 16,
@@ -460,31 +434,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.button,
-  },
-  overlay: { flex: 1, backgroundColor: colors.overlay },
-  sheet: {
-    backgroundColor: colors.cardBg,
-    borderTopLeftRadius: radii.sheet,
-    borderTopRightRadius: radii.sheet,
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    gap: 10,
-    zIndex: zIndex.sheet,
-  },
-  handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: colors.track, marginBottom: 8 },
-  sheetTitle: { fontFamily: typography.fontFamilyHeavy, marginBottom: 4, fontSize: 19, letterSpacing: -0.3, color: colors.text },
-  toast: {
-    position: 'absolute',
-    bottom: 104,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.cardBg,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    borderRadius: 999,
-    zIndex: zIndex.toast,
-    ...shadows.hero,
   },
 });

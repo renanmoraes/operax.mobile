@@ -91,14 +91,13 @@ export default function InboxScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: insets.top }}>
-        <ScreenHeader
-          title="Atendimento"
-          onMenuPress={open}
-          menuBadge={queue.length}
-          right={<Badge label={mode === 'live' ? (query.isFetching ? 'Atualizando…' : 'Online') : 'Demo'} tone={mode === 'live' ? 'success' : 'primary'} />}
-        />
-      </View>
+      <ScreenHeader
+        safe
+        title="Atendimento"
+        onMenuPress={open}
+        menuBadge={queue.length}
+        right={<Badge label={mode === 'live' ? (query.isFetching ? 'Atualizando…' : 'Online') : 'Demo'} tone={mode === 'live' ? 'success' : 'primary'} />}
+      />
       <View style={styles.stats}>
         <StatTile value={String(queue.length)} label="na fila" accent />
         <StatTile value={String(active.length)} label="com você" />

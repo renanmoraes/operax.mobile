@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Badge, Card, HeroCard, IconTile, Muted } from '@/src/design-system/ui';
-import { colors, typography } from '@/src/design-system/tokens';
+import { colors, text, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { AuthShell } from '@/src/features/auth/AuthShell';
 import { useCompanies } from '@/src/features/client/useClientData';
@@ -85,7 +85,7 @@ export default function ClientTenantSelectScreen() {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  name: { fontFamily: typography.fontFamilyBold, fontSize: 17, color: colors.text },
+  name: { ...text.section, color: colors.text },
   caps: { flexDirection: 'row', gap: 6, marginTop: 16 },
   cap: { height: 30, paddingHorizontal: 11, borderRadius: 999, backgroundColor: 'rgba(240,242,245,0.9)', justifyContent: 'center' },
   capText: { fontFamily: typography.fontFamilyMedium, fontSize: 12, color: colors.textSoft },

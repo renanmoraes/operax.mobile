@@ -1,3 +1,4 @@
+import type { TextStyle } from 'react-native';
 export const colors = {
   pageBg: '#f4f7fc',
   cardBg: '#ffffff',
@@ -68,14 +69,49 @@ export const typography = {
   fontFamilyMedium: 'Inter_500Medium',
   fontFamilySemiBold: 'Inter_600SemiBold',
   fontFamilyBold: 'Inter_700Bold',
-  fontFamilyHeavy: 'Inter_800ExtraBold',
-  display: 30,
-  title: 22,
-  section: 17,
-  body: 15,
-  caption: 13,
-  label: 12,
+  /** Títulos. 700 em vez de 800: mais leve e atual. */
+  fontFamilyDisplay: 'Inter_700Bold',
+  display: 26,
+  headline: 21,
+  title: 18,
+  section: 15.5,
+  body: 14.5,
+  callout: 13.5,
+  caption: 12.5,
+  label: 11.5,
 } as const;
+
+/**
+ * Papéis de texto. As telas usam estes papéis em vez de tamanho solto,
+ * assim um ajuste aqui muda o app inteiro.
+ */
+export const text = {
+  display: { fontFamily: typography.fontFamilyDisplay, fontSize: typography.display, lineHeight: 31, letterSpacing: -0.7 },
+  headline: { fontFamily: typography.fontFamilyDisplay, fontSize: typography.headline, lineHeight: 26, letterSpacing: -0.5 },
+  title: { fontFamily: typography.fontFamilyDisplay, fontSize: typography.title, lineHeight: 23, letterSpacing: -0.35 },
+  section: { fontFamily: typography.fontFamilyBold, fontSize: typography.section, lineHeight: 20, letterSpacing: -0.2 },
+  bodyStrong: { fontFamily: typography.fontFamilySemiBold, fontSize: typography.body, lineHeight: 20 },
+  body: { fontFamily: typography.fontFamily, fontSize: typography.body, lineHeight: 20 },
+  callout: { fontFamily: typography.fontFamily, fontSize: typography.callout, lineHeight: 19 },
+  calloutStrong: { fontFamily: typography.fontFamilySemiBold, fontSize: typography.callout, lineHeight: 19 },
+  caption: { fontFamily: typography.fontFamily, fontSize: typography.caption, lineHeight: 17 },
+  captionStrong: { fontFamily: typography.fontFamilySemiBold, fontSize: typography.caption, lineHeight: 17 },
+  label: { fontFamily: typography.fontFamilySemiBold, fontSize: typography.label, lineHeight: 15, letterSpacing: 0.1 },
+} as const;
+
+const TABULAR: TextStyle['fontVariant'] = ['tabular-nums'];
+
+/** Números: semibold com dígitos tabulares, para não pularem quando mudam. */
+export const numbers = {
+  xl: { fontFamily: typography.fontFamilySemiBold, fontSize: 30, lineHeight: 34, letterSpacing: -1, fontVariant: TABULAR },
+  lg: { fontFamily: typography.fontFamilySemiBold, fontSize: 24, lineHeight: 28, letterSpacing: -0.7, fontVariant: TABULAR },
+  md: { fontFamily: typography.fontFamilySemiBold, fontSize: 19, lineHeight: 23, letterSpacing: -0.4, fontVariant: TABULAR },
+  sm: { fontFamily: typography.fontFamilySemiBold, fontSize: 15, lineHeight: 19, letterSpacing: -0.2, fontVariant: TABULAR },
+  xs: { fontFamily: typography.fontFamilySemiBold, fontSize: 13, lineHeight: 16, letterSpacing: 0, fontVariant: TABULAR },
+} as const;
+
+export type NumberSize = keyof typeof numbers;
+export type TextRole = keyof typeof text;
 
 export const shadows = {
   card: {

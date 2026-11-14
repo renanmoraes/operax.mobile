@@ -20,7 +20,7 @@ import {
   Screen,
 } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
-import { colors, gradients, radii, shadows, typography } from '@/src/design-system/tokens';
+import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { useBookings, useChats, useCompanies, useConfirmBooking, useUnconfirmBooking } from '@/src/features/client/useClientData';
 import { useFitnessSummary, useWeek } from '@/src/features/fitness/useFitness';
@@ -134,7 +134,7 @@ export default function ClientHomeScreen() {
                 <Muted style={{ fontFamily: typography.fontFamilySemiBold, fontSize: 12 }}>Sequência</Muted>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginTop: 14 }}>
-                <Num style={{ fontSize: 30, lineHeight: 32 }}>{summary?.streak ?? '–'}</Num>
+                <Num size="lg">{summary?.streak ?? '–'}</Num>
                 <Muted style={{ fontSize: 15, marginBottom: 3 }}>dias</Muted>
               </View>
               <Muted style={{ marginTop: 6 }}>{`Recorde: ${summary?.bestStreak ?? '–'} dias`}</Muted>
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   tenantName: { fontFamily: typography.fontFamilySemiBold, fontSize: 14, color: colors.text },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heroLabel: { fontFamily: typography.fontFamilySemiBold, fontSize: 13, color: colors.textMuted },
-  heroTitle: { marginTop: 14, fontFamily: typography.fontFamilyHeavy, fontSize: 24, letterSpacing: -0.6, color: colors.text },
+  heroTitle: { marginTop: 14, ...text.headline, color: colors.text },
   heroWho: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
   heroWhoText: { flex: 1, fontFamily: typography.fontFamily, fontSize: 14, color: colors.textSoft },
   heroActions: { flexDirection: 'row', gap: 10, marginTop: 18 },
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   confirmedText: { flex: 1, fontFamily: typography.fontFamilyBold, fontSize: 14, color: colors.success },
   grid: { flexDirection: 'row', gap: 12, marginTop: 12 },
   tile: { minHeight: 180, borderRadius: radii.xl },
-  tileTitle: { marginTop: 14, fontFamily: typography.fontFamilyBold, fontSize: 16, color: colors.text, letterSpacing: -0.2 },
+  tileTitle: { marginTop: 14, ...text.section, color: colors.text },
   startPill: { marginTop: 'auto', alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.primary },
   startPillText: { color: '#fff', fontFamily: typography.fontFamilySemiBold, fontSize: 13 },
   dots: { marginTop: 'auto', paddingTop: 12, flexDirection: 'row', justifyContent: 'space-between' },

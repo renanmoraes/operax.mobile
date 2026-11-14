@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, HeroCard, IconName, Muted, Num, PressableScale, ProgressBar, Rise, Screen, SectionHeader, Segmented, TopBar } from '@/src/design-system/ui';
-import { colors, gradients, radii, shadows, typography } from '@/src/design-system/tokens';
+import { BottomSheet } from '@/src/design-system/BottomSheet';
+import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { useFitnessSummary } from '@/src/features/fitness/useFitness';
 
 type Badge_ = { id: string; name: string; icon: IconName; unlocked: boolean; sub: string; desc: string };
@@ -37,16 +38,14 @@ export default function AchievementsScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: insets.top }}>
-        <TopBar title="Nível e conquistas" onBack={() => router.back()} />
-      </View>
+      <TopBar safe title="Nível e conquistas" onBack={() => router.back()} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32 }}>
         <Rise>
           <HeroCard>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
               <LinearGradient colors={gradients.brand} style={styles.level}>
                 <Text style={styles.levelLabel}>NÍVEL</Text>
-                <Num style={{ fontSize: 30, color: '#fff', lineHeight: 32 }}>{s.level.level}</Num>
+                <Num size="lg" style={{ color: '#fff' }}>{s.level.level}</Num>
               </LinearGradient>
               <View style={{ flex: 1 }}>
                 <Text style={styles.levelName}>{s.level.label}</Text>
@@ -63,7 +62,7 @@ export default function AchievementsScreen() {
                 ['+30', 'por recorde'],
               ].map(([v, l]) => (
                 <View key={l} style={styles.rule}>
-                  <Num style={{ fontSize: 15, color: colors.primary }}>{v}</Num>
+                  <Num size="sm" style={{ color: colors.primary }}>{v}</Num>
                   <Muted style={{ fontSize: 11.5, marginTop: 2 }}>{l}</Muted>
                 </View>
               ))}
@@ -77,7 +76,7 @@ export default function AchievementsScreen() {
           onChange={setFilter}
           options={[
             { key: 'todas', label: 'Todas' },
-            { key: 'abertas', label: 'Desbloqueadas' },
+            { key: 'abertas', label: 'Ganhas' },
             { key: 'fechadas', label: 'A conquistar' },
           ]}
         />
@@ -102,30 +101,28 @@ export default function AchievementsScreen() {
         </View>
       </ScrollView>
 
-      {open ? (
-        <View style={StyleSheet.absoluteFill}>
-          <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: colors.overlay }]} onPress={() => setOpen(null)} accessibilityLabel="Fechar detalhe" />
-          <View style={[styles.sheet, { paddingBottom: insets.bottom + 28 }]} accessibilityViewIsModal>
-            <View style={styles.grabber} />
-            {open.unlocked ? (
-              <LinearGradient colors={gradients.brand} style={styles.bigMedal}>
-                <Ionicons name={open.icon} size={40} color="#fff" />
-              </LinearGradient>
-            ) : (
-              <View style={[styles.bigMedal, { backgroundColor: '#f0f2f5' }]}>
-                <Ionicons name="lock-closed-outline" size={36} color={colors.textMuted} />
+      <BottomSheet visible={!!open} onClose={() => setOpen(null)} closeLabel="Fechar detalhe" contentStyle={{ alignItems: 'center', gap: 0 }}>
+        {open ? (
+          <>
+              {open.unlocked ? (
+                <LinearGradient colors={gradients.brand} style={styles.bigMedal}>
+                  <Ionicons name={open.icon} size={40} color="#fff" />
+                </LinearGradient>
+              ) : (
+                <View style={[styles.bigMedal, { backgroundColor: '#f0f2f5' }]}>
+                  <Ionicons name="lock-closed-outline" size={36} color={colors.textMuted} />
+                </View>
+              )}
+              <Text style={styles.sheetTitle}>{open.name}</Text>
+              <Muted style={styles.sheetDesc}>{open.desc}</Muted>
+              <Text style={styles.sheetSub}>{open.unlocked ? 'Desbloqueada' : `Progresso: ${open.sub}`}</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 20, alignSelf: 'stretch' }}>
+                <Button label="Fechar" variant="secondary" onPress={() => setOpen(null)} style={{ flex: 1 }} />
+                {open.unlocked ? <Button label="Compartilhar" style={{ flex: 1 }} onPress={() => void Share.share({ message: `Desbloqueei "${open.name}" no Move Studio.` })} /> : null}
               </View>
-            )}
-            <Text style={styles.sheetTitle}>{open.name}</Text>
-            <Muted style={styles.sheetDesc}>{open.desc}</Muted>
-            <Text style={styles.sheetSub}>{open.unlocked ? 'Desbloqueada' : `Progresso: ${open.sub}`}</Text>
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
-              <Button label="Fechar" variant="secondary" onPress={() => setOpen(null)} style={{ flex: 1 }} />
-              {open.unlocked ? <Button label="Compartilhar" style={{ flex: 1 }} onPress={() => void Share.share({ message: `Desbloqueei "${open.name}" no Move Studio.` })} /> : null}
-            </View>
-          </View>
-        </View>
-      ) : null}
+          </>
+        ) : null}
+      </BottomSheet>
     </Screen>
   );
 }
@@ -133,7 +130,7 @@ export default function AchievementsScreen() {
 const styles = StyleSheet.create({
   level: { width: 76, height: 76, borderRadius: 26, alignItems: 'center', justifyContent: 'center', ...shadows.button },
   levelLabel: { color: 'rgba(255,255,255,0.85)', fontFamily: typography.fontFamilyBold, fontSize: 11 },
-  levelName: { fontFamily: typography.fontFamilyHeavy, fontSize: 22, letterSpacing: -0.5, color: colors.text },
+  levelName: { ...text.title, color: colors.text },
   rules: { flexDirection: 'row', gap: 8, marginTop: 16 },
   rule: { flex: 1, padding: 10, borderRadius: radii.md + 4, backgroundColor: 'rgba(255,255,255,0.85)', ...shadows.card },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12, marginHorizontal: -5 },
@@ -141,10 +138,8 @@ const styles = StyleSheet.create({
   cell: { alignItems: 'center', gap: 8, paddingTop: 16, paddingBottom: 14, paddingHorizontal: 8, borderRadius: radii.xl - 4, backgroundColor: '#fff', ...shadows.card },
   medal: { width: 58, height: 58, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
   cellName: { fontFamily: typography.fontFamilyBold, fontSize: 12.5, lineHeight: 16, textAlign: 'center', color: colors.text },
-  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', paddingHorizontal: 24, paddingTop: 12, backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, ...shadows.hero },
-  grabber: { width: 40, height: 5, borderRadius: 3, backgroundColor: colors.border },
   bigMedal: { marginTop: 20, width: 96, height: 96, borderRadius: 34, alignItems: 'center', justifyContent: 'center' },
-  sheetTitle: { marginTop: 16, fontFamily: typography.fontFamilyHeavy, fontSize: 22, letterSpacing: -0.4, color: colors.text, textAlign: 'center' },
+  sheetTitle: { marginTop: 16, ...text.title, color: colors.text, textAlign: 'center' },
   sheetDesc: { marginTop: 6, fontSize: 14.5, lineHeight: 21, textAlign: 'center' },
   sheetSub: { marginTop: 10, fontFamily: typography.fontFamilySemiBold, fontSize: 13, color: colors.primary },
 });

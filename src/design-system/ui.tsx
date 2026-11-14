@@ -12,6 +12,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
@@ -21,7 +22,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle, Defs, RadialGradient, Rect, Stop, LinearGradient as SvgLinear } from 'react-native-svg';
-import { colors, gradients, motion, radii, shadows, spacing, typography } from './tokens';
+import { colors, gradients, motion, NumberSize, numbers, radii, shadows, spacing, text, TextRole, typography } from './tokens';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -264,20 +265,22 @@ export function Body({
   );
 }
 
-/** Número grande com dígitos tabulares. */
+/** Número com dígitos tabulares. Tamanhos: xs 13 · sm 15 · md 19 · lg 24 · xl 30. */
 export function Num({
   children,
+  size = 'md',
   style,
   accessibilityLabel,
   accessibilityLiveRegion,
 }: {
   children: ReactNode;
+  size?: NumberSize;
   style?: StyleProp<TextStyle>;
   accessibilityLabel?: string;
   accessibilityLiveRegion?: 'none' | 'polite' | 'assertive';
 }) {
   return (
-    <Text style={[styles.num, style]} accessibilityLabel={accessibilityLabel} accessibilityLiveRegion={accessibilityLiveRegion}>
+    <Text style={[numbers[size], styles.num, style]} accessibilityLabel={accessibilityLabel} accessibilityLiveRegion={accessibilityLiveRegion}>
       {children}
     </Text>
   );
@@ -285,6 +288,37 @@ export function Num({
 
 export function Label({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) {
   return <Text style={[styles.label, style]}>{children}</Text>;
+}
+
+const TONE_COLOR = {
+  default: colors.text,
+  soft: colors.textSoft,
+  muted: colors.textMuted,
+  primary: colors.primary,
+  inverse: '#fff',
+} as const;
+
+/** Texto por papel da escala (display, headline, title, section, body, callout, caption, label). */
+export function T({
+  role = 'body',
+  tone = 'default',
+  children,
+  style,
+  numberOfLines,
+  header,
+}: {
+  role?: TextRole;
+  tone?: keyof typeof TONE_COLOR;
+  children: ReactNode;
+  style?: StyleProp<TextStyle>;
+  numberOfLines?: number;
+  header?: boolean;
+}) {
+  return (
+    <Text style={[text[role], { color: TONE_COLOR[tone] }, style]} numberOfLines={numberOfLines} accessibilityRole={header ? 'header' : undefined}>
+      {children}
+    </Text>
+  );
 }
 
 export function SectionHeader({
@@ -555,7 +589,7 @@ export function IconTile({
   const inner = icon ? (
     <Ionicons name={icon} size={Math.round(size * 0.48)} color={fg} />
   ) : (
-    <Text style={{ fontFamily: typography.fontFamilyHeavy, fontSize: Math.round(size * 0.32), color: fg }}>{initials}</Text>
+    <Text style={{ fontFamily: typography.fontFamilyBold, fontSize: Math.round(size * 0.32), color: fg }}>{initials}</Text>
   );
   if (tone === 'brand') {
     return (
@@ -581,8 +615,37 @@ export function StatTile({
 }) {
   return (
     <View style={[styles.stat, style]}>
-      <Num style={[{ fontSize: 22 }, accent && { color: colors.primary }]}>{value}</Num>
-      <Muted style={{ marginTop: 2, fontSize: 12 }}>{label}</Muted>
+      <Num size="md" style={accent && { color: colors.primary }}>{value}</Num>
+      <Muted style={{ marginTop: 2 }}>{label}</Muted>
+    </View>
+  );
+}
+
+export type StatItem = { value: string | number; label: string; accent?: boolean };
+
+/** Fileira de números com legenda (treinos, séries, carga…). */
+export function StatStrip({
+  items,
+  align = 'start',
+  style,
+}: {
+  items: StatItem[];
+  align?: 'start' | 'center';
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[styles.statStrip, style]}>
+      {items.map((it) => (
+        <View
+          key={it.label}
+          style={[styles.statCell, align === 'center' && { alignItems: 'center' }]}
+          accessible
+          accessibilityLabel={`${it.value} ${it.label}`}
+        >
+          <Num size="md" style={it.accent && { color: colors.primary }}>{it.value}</Num>
+          <Muted style={{ marginTop: 2 }}>{it.label}</Muted>
+        </View>
+      ))}
     </View>
   );
 }
@@ -658,8 +721,8 @@ export function EmptyState({
   return (
     <View style={styles.empty}>
       {icon ? <IconTile icon={icon} size={56} /> : null}
-      <Text style={[styles.title, { fontSize: 18, textAlign: 'center' }]}>{title}</Text>
-      {subtitle ? <Muted style={{ textAlign: 'center', fontSize: 14, lineHeight: 20 }}>{subtitle}</Muted> : null}
+      <Text style={[styles.title, { textAlign: 'center' }]}>{title}</Text>
+      {subtitle ? <T role="callout" tone="muted" style={{ textAlign: 'center' }}>{subtitle}</T> : null}
       {actionLabel && onAction ? (
         <Button label={actionLabel} onPress={onAction} style={{ marginTop: spacing.md, alignSelf: 'stretch' }} />
       ) : null}
@@ -682,6 +745,7 @@ export function ScreenHeader({
   menuBadge = 0,
   right,
   onBack,
+  safe,
 }: {
   title: string;
   subtitle?: string;
@@ -689,10 +753,13 @@ export function ScreenHeader({
   menuBadge?: number;
   right?: ReactNode;
   onBack?: () => void;
+  /** Soma a área segura do topo (notch). Use quando o cabeçalho é o primeiro item da tela. */
+  safe?: boolean;
 }) {
   const badgeLabel = menuBadge > 9 ? '9+' : String(menuBadge);
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, safe && { paddingTop: insets.top + styles.header.paddingTop }]}>
       <View style={styles.headerLeft}>
         {onBack ? <IconButton icon="chevron-back" onPress={onBack} accessibilityLabel="Voltar" /> : null}
         {onMenuPress ? (
@@ -714,7 +781,7 @@ export function ScreenHeader({
         ) : null}
         <View style={{ flexShrink: 1 }}>
           <Display style={styles.headerTitle}>{title}</Display>
-          {subtitle ? <Muted style={{ fontSize: 13.5, marginTop: 2 }}>{subtitle}</Muted> : null}
+          {subtitle ? <T role="callout" tone="muted" style={{ marginTop: 2 }}>{subtitle}</T> : null}
         </View>
       </View>
       {right ? <View style={styles.headerRight}>{right}</View> : null}
@@ -728,14 +795,18 @@ export function TopBar({
   onBack,
   right,
   tone = 'light',
+  safe,
 }: {
   title?: string;
   onBack?: () => void;
   right?: ReactNode;
   tone?: 'light' | 'glass';
+  /** Soma a área segura do topo. */
+  safe?: boolean;
 }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.topBar}>
+    <View style={[styles.topBar, safe && { marginTop: insets.top }]}>
       <View style={styles.topSide}>
         {onBack ? <IconButton icon="chevron-back" onPress={onBack} accessibilityLabel="Voltar" tone={tone} /> : null}
       </View>
@@ -905,41 +976,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#eef3ff',
     ...shadows.hero,
   },
-  display: {
-    fontFamily: typography.fontFamilyHeavy,
-    fontSize: typography.display,
-    color: colors.text,
-    letterSpacing: -0.9,
-    lineHeight: 34,
-  },
-  title: {
-    fontFamily: typography.fontFamilyHeavy,
-    fontSize: typography.title,
-    color: colors.text,
-    letterSpacing: -0.5,
-  },
-  body: {
-    fontFamily: typography.fontFamily,
-    fontSize: typography.body,
-    color: colors.text,
-    lineHeight: 21,
-  },
-  muted: {
-    fontFamily: typography.fontFamily,
-    fontSize: typography.caption,
-    color: colors.textMuted,
-  },
-  num: {
-    fontFamily: typography.fontFamilyHeavy,
-    color: colors.text,
-    fontVariant: ['tabular-nums'],
-    letterSpacing: -0.5,
-  },
-  label: {
-    fontFamily: typography.fontFamilySemiBold,
-    fontSize: typography.caption,
-    color: colors.textMuted,
-  },
+  display: { ...text.display, color: colors.text },
+  title: { ...text.title, color: colors.text },
+  body: { ...text.body, color: colors.text },
+  muted: { ...text.caption, color: colors.textMuted },
+  num: { color: colors.text },
+  statStrip: { flexDirection: 'row', gap: 8 },
+  statCell: { flex: 1, paddingVertical: 12, paddingHorizontal: 12, borderRadius: radii.lg - 2, backgroundColor: 'rgba(255,255,255,0.88)', ...shadows.card },
+  label: { ...text.captionStrong, color: colors.textMuted },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -947,12 +991,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl - 2,
     marginBottom: spacing.md,
   },
-  section: {
-    fontFamily: typography.fontFamilyBold,
-    fontSize: typography.section,
-    color: colors.text,
-    letterSpacing: -0.2,
-  },
+  section: { ...text.section, color: colors.text },
   sectionAction: {
     fontFamily: typography.fontFamilySemiBold,
     fontSize: 13.5,

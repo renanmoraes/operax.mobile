@@ -4,8 +4,8 @@ import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Body, Button, Card, Field, Glow, IconButton, IconName, Muted, Num, Rise, Screen } from '@/src/design-system/ui';
-import { colors, gradients, radii, shadows, typography } from '@/src/design-system/tokens';
+import { Body, Button, Card, Field, Glow, IconButton, IconName, Muted, Rise, Screen, StatStrip } from '@/src/design-system/ui';
+import { colors, gradients, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { flattenWorkout, totalSets } from '@/src/features/fitness/flatten';
 import { LOAD_HISTORY, WORKOUTS } from '@/src/features/fitness/mockData';
 import { enqueue, loadQueue, newIdempotencyKey, saveQueue } from '@/src/features/fitness/resultsQueue';
@@ -90,16 +90,14 @@ export default function WorkoutDoneScreen() {
             <Muted style={styles.sub}>{`${workout.title} · ${setsDone} de ${totalSets(rows)} séries`}</Muted>
           </Rise>
           <Rise index={3} style={styles.stats}>
-            {[
-              [formatClock(session?.elapsed ?? 0), 'tempo'],
-              [volume.toLocaleString('pt-BR'), 'kg de volume'],
-              [`${setsDone}/${totalSets(rows)}`, 'séries'],
-            ].map(([v, l]) => (
-              <View key={l} style={styles.stat}>
-                <Num style={{ fontSize: 21 }}>{v}</Num>
-                <Muted style={{ fontSize: 12, marginTop: 3 }}>{l}</Muted>
-              </View>
-            ))}
+            <StatStrip
+              align="center"
+              items={[
+                { value: formatClock(session?.elapsed ?? 0), label: 'tempo' },
+                { value: volume.toLocaleString('pt-BR'), label: 'kg de volume' },
+                { value: `${setsDone}/${totalSets(rows)}`, label: 'séries' },
+              ]}
+            />
           </Rise>
         </View>
 
@@ -204,15 +202,14 @@ export default function WorkoutDoneScreen() {
 const styles = StyleSheet.create({
   hero: { paddingBottom: 28, borderBottomLeftRadius: 40, borderBottomRightRadius: 40, overflow: 'hidden', ...shadows.hero },
   trophy: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center', ...shadows.button },
-  title: { marginTop: 18, textAlign: 'center', fontFamily: typography.fontFamilyHeavy, fontSize: 28, letterSpacing: -0.9, color: colors.text },
+  title: { marginTop: 18, textAlign: 'center', ...text.display, color: colors.text },
   sub: { marginTop: 6, textAlign: 'center', fontSize: 14.5 },
-  stats: { flexDirection: 'row', gap: 8, marginTop: 22, paddingHorizontal: 20 },
-  stat: { flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: radii.lg, backgroundColor: 'rgba(255,255,255,0.85)', ...shadows.card },
+  stats: { marginTop: 22, paddingHorizontal: 20 },
   cardTitle: { fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text },
   rowBetween: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   record: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, paddingVertical: 12, paddingHorizontal: 14, borderRadius: radii.md + 4, backgroundColor: colors.primarySoft },
   recordName: { flex: 1, fontFamily: typography.fontFamilySemiBold, fontSize: 14, color: colors.text },
-  recordValue: { fontFamily: typography.fontFamilyHeavy, fontSize: 14, color: colors.primaryDeep, fontVariant: ['tabular-nums'] },
+  recordValue: { ...numbers.xs, color: colors.primaryDeep },
   bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, height: 120, marginTop: 14 },
   bar: { width: '100%', borderRadius: 10 },
   barLabel: { fontFamily: typography.fontFamily, fontSize: 11.5, color: colors.textMuted },
@@ -225,7 +222,7 @@ const styles = StyleSheet.create({
   effortText: { fontFamily: typography.fontFamilyBold, fontSize: 14, color: colors.textSoft },
   share: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14 },
   story: { width: 62, height: 96, borderRadius: 14, padding: 8, justifyContent: 'flex-end' },
-  storyTime: { color: '#fff', fontFamily: typography.fontFamilyHeavy, fontSize: 12 },
+  storyTime: { color: '#fff', fontFamily: typography.fontFamilyBold, fontSize: 12 },
   storyHandle: { color: '#dce6ff', fontFamily: typography.fontFamily, fontSize: 8 },
   queued: { fontSize: 13.5, color: colors.warnText, textAlign: 'center' },
 });

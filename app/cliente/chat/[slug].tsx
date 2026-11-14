@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,7 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Body, Button, Card, IconButton, IconName, IconTile, Muted, PressableScale, Screen } from '@/src/design-system/ui';
-import { colors, gradients, radii, shadows, typography } from '@/src/design-system/tokens';
+import { BottomSheet } from '@/src/design-system/BottomSheet';
+import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { ChatBubble } from '@/src/features/client/ChatBubble';
 import { useBooking, useChat, useCompanies, useMarkChatRead, useSendChat } from '@/src/features/client/useClientData';
 import type { OutgoingAttachment } from '@/src/features/client/types';
@@ -176,20 +177,14 @@ export default function ClientChatScreen() {
           <IconButton icon="send" tone="primary" size={48} accessibilityLabel="Enviar" onPress={() => void sendText()} />
         </View>
 
-        {sheet ? (
-          <View style={StyleSheet.absoluteFill}>
-            <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: colors.overlay }]} onPress={() => setSheet(false)} accessibilityLabel="Fechar anexos" />
-            <View style={[styles.sheet, { paddingBottom: insets.bottom + 24 }]}>
-              <View style={styles.grabber} />
-              <View style={styles.attachRow}>
-                {Platform.OS !== 'web' ? <AttachOption icon="camera-outline" label="Câmera" tone="primary" onPress={() => void pickCamera()} /> : null}
-                <AttachOption icon="images-outline" label="Fotos e vídeos" tone="soft" onPress={() => void pickGallery()} />
-                <AttachOption icon="document-text-outline" label="Documento" tone="neutral" onPress={() => void pickDocument()} />
-              </View>
-              <Muted style={{ textAlign: 'center', marginTop: 16 }}>Fotos, vídeos e PDFs vão direto para a equipe.</Muted>
-            </View>
+        <BottomSheet visible={sheet} onClose={() => setSheet(false)} closeLabel="Fechar anexos" title="Enviar para a equipe">
+          <View style={styles.attachRow}>
+            {Platform.OS !== 'web' ? <AttachOption icon="camera-outline" label="Câmera" tone="primary" onPress={() => void pickCamera()} /> : null}
+            <AttachOption icon="images-outline" label="Fotos e vídeos" tone="soft" onPress={() => void pickGallery()} />
+            <AttachOption icon="document-text-outline" label="Documento" tone="neutral" onPress={() => void pickDocument()} />
           </View>
-        ) : null}
+          <Muted style={{ textAlign: 'center', marginTop: 16 }}>Fotos, vídeos e PDFs vão direto para a equipe.</Muted>
+        </BottomSheet>
 
         {draft ? (
           <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.pageBg }]}>
@@ -233,7 +228,7 @@ export default function ClientChatScreen() {
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingBottom: 14, backgroundColor: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28, ...shadows.card, zIndex: 2 },
-  headerTitle: { fontFamily: typography.fontFamilyBold, fontSize: 16, color: colors.text },
+  headerTitle: { ...text.section, color: colors.text },
   info: { marginHorizontal: 16, marginTop: 10 },
   infoTitle: { fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text, textAlign: 'center' },
   messages: { padding: 16, gap: 10 },
@@ -246,8 +241,6 @@ const styles = StyleSheet.create({
   plus: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#f0f2f5', alignItems: 'center', justifyContent: 'center' },
   input: { flex: 1, minHeight: 48, maxHeight: 120, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 24, backgroundColor: '#f0f2f5', justifyContent: 'center' },
   inputText: { fontFamily: typography.fontFamily, fontSize: 16, color: colors.text, padding: 0 },
-  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 12, backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, ...shadows.hero },
-  grabber: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: colors.border },
   attachRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 18 },
   attachOpt: { alignItems: 'center', gap: 8, width: 96 },
   attachLabel: { fontFamily: typography.fontFamilySemiBold, fontSize: 12.5, color: colors.text, textAlign: 'center' },

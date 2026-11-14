@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar, Badge, Card, HeroCard, IconTile, Loading, Muted, Rise, Screen, ScreenHeader, SettingsGroup, SettingsRow, EmptyState } from '@/src/design-system/ui';
-import { colors, typography } from '@/src/design-system/tokens';
+import { colors, text, typography } from '@/src/design-system/tokens';
 import { getContact } from '@/src/shared/api/contacts.api';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { getContact as getMockContact } from '@/src/mocks/data';
@@ -23,9 +23,7 @@ export default function ContactScreen() {
   const contact = mode === 'live' ? query.data : mock;
 
   const header = (
-    <View style={{ paddingTop: insets.top }}>
-      <ScreenHeader title="Contato" onBack={() => router.back()} />
-    </View>
+    <ScreenHeader safe title="Contato" onBack={() => router.back()} />
   );
 
   if (!contact) {
@@ -91,7 +89,7 @@ export default function ContactScreen() {
 }
 
 const styles = StyleSheet.create({
-  name: { fontFamily: typography.fontFamilyHeavy, fontSize: 22, letterSpacing: -0.4, color: colors.text, textAlign: 'center' },
+  name: { ...text.title, color: colors.text, textAlign: 'center' },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
   section: { fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text },
 });

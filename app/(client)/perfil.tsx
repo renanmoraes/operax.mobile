@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Avatar, Button, HeroCard, IconTile, Muted, Num, PressableScale, Rise, Screen, SectionHeader, SettingsGroup, SettingsRow } from '@/src/design-system/ui';
+import { Avatar, Button, HeroCard, IconTile, Muted, PressableScale, Rise, Screen, SectionHeader, SettingsGroup, SettingsRow, StatStrip } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
-import { colors, radii, shadows, typography } from '@/src/design-system/tokens';
+import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { useCompanies } from '@/src/features/client/useClientData';
 import { useProviders } from '@/src/features/fitness/connections';
+import { providerDisplayName } from '@/src/features/fitness/brands';
 import { useFitnessSummary } from '@/src/features/fitness/useFitness';
 import { usePermissions } from '@/src/features/permissions/permissions';
 
@@ -21,7 +22,7 @@ export default function ClientPerfilScreen() {
   const memberships = client?.memberships ?? [];
   const secondaryLine = client?.email || client?.phone || '—';
   const initials = (client?.name ?? 'C').split(' ').map((w) => w[0]).slice(0, 2).join('');
-  const connected = providers?.filter((p) => p.connected).map((p) => p.label) ?? [];
+  const connected = providers?.filter((p) => p.connected).map((p) => providerDisplayName(p.id, p.label)) ?? [];
   const notif = states.notifications;
 
   return (
@@ -37,18 +38,14 @@ export default function ClientPerfilScreen() {
               </View>
             </View>
             {summary ? (
-              <View style={styles.stats}>
-                {[
-                  [String(summary.totalSessions), 'treinos'],
-                  [String(summary.level.level), 'nível'],
-                  [String(summary.streak), 'dias seguidos'],
-                ].map(([v, l], i) => (
-                  <View key={l} style={styles.stat}>
-                    <Num style={[{ fontSize: 19 }, i === 2 && { color: colors.primary }]}>{v}</Num>
-                    <Muted style={{ fontSize: 12, marginTop: 2 }}>{l}</Muted>
-                  </View>
-                ))}
-              </View>
+              <StatStrip
+                style={styles.stats}
+                items={[
+                  { value: summary.totalSessions, label: 'treinos' },
+                  { value: summary.level.level, label: 'nível' },
+                  { value: summary.streak, label: 'dias seguidos', accent: true },
+                ]}
+              />
             ) : null}
           </HeroCard>
         </Rise>
@@ -97,7 +94,7 @@ export default function ClientPerfilScreen() {
             <SettingsRow
               icon="watch-outline"
               title="Relógios e apps"
-              subtitle={connected.length ? `${connected.join(', ')} conectado` : 'Garmin, Strava e Polar'}
+              subtitle={connected.length ? `${connected.join(', ')} conectado` : 'Garmin Connect™, Strava e Polar'}
               subtitleTone={connected.length ? 'success' : undefined}
               onPress={() => router.push('/cliente/relogios')}
             />
@@ -115,9 +112,8 @@ export default function ClientPerfilScreen() {
 }
 
 const styles = StyleSheet.create({
-  name: { fontFamily: typography.fontFamilyHeavy, fontSize: 21, letterSpacing: -0.4, color: colors.text },
-  stats: { flexDirection: 'row', gap: 8, marginTop: 18 },
-  stat: { flex: 1, padding: 12, borderRadius: radii.lg - 2, backgroundColor: 'rgba(255,255,255,0.85)', ...shadows.card },
+  name: { ...text.title, color: colors.text },
+  stats: { marginTop: 18 },
   companies: { flexDirection: 'row', gap: 10 },
   company: { flex: 1, padding: 14, gap: 6, borderRadius: radii.xl - 4, backgroundColor: '#fff', ...shadows.card },
   companyActive: { borderWidth: 2, borderColor: colors.primary },

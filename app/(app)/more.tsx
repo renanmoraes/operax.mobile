@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar, Badge, HeroCard, IconName, Muted, Rise, Screen, ScreenHeader, SettingsGroup, SettingsRow } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
-import { colors, typography } from '@/src/design-system/tokens';
+import { colors, text, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
 
@@ -63,6 +63,6 @@ export default function MoreScreen() {
 }
 
 const styles = StyleSheet.create({
-  name: { fontFamily: typography.fontFamilyHeavy, fontSize: 19, letterSpacing: -0.3, color: colors.text },
+  name: { ...text.title, color: colors.text },
   groupLabel: { marginTop: 22, marginBottom: 10, fontFamily: typography.fontFamilySemiBold },
 });

@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Body, Button, Card, HeroCard, IconTile, Muted, Rise, Screen, TopBar } from '@/src/design-system/ui';
-import { colors, typography } from '@/src/design-system/tokens';
+import { colors, text } from '@/src/design-system/tokens';
 
 /** Assinatura da agenda no calendário do celular (GET me/calendar-link no portal). */
 export default function CalendarSubscribeScreen() {
@@ -17,9 +17,7 @@ export default function CalendarSubscribeScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: insets.top }}>
-        <TopBar title="Agenda no celular" onBack={() => router.back()} />
-      </View>
+      <TopBar safe title="Agenda no celular" onBack={() => router.back()} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32, gap: 12 }}>
         <Rise>
           <HeroCard>
@@ -46,5 +44,5 @@ export default function CalendarSubscribeScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { marginTop: 14, fontFamily: typography.fontFamilyHeavy, fontSize: 22, letterSpacing: -0.5, color: colors.text },
+  title: { marginTop: 14, ...text.title, color: colors.text },
 });

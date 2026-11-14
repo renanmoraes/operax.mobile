@@ -5,8 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
-import { Avatar, Badge, Body, Button, Card, Chip, EmptyState, Glow, IconButton, Muted, Num, Rise, Screen } from '@/src/design-system/ui';
-import { colors, gradients, radii, shadows, typography } from '@/src/design-system/tokens';
+import { Avatar, Badge, Body, Button, Card, Chip, EmptyState, Glow, IconButton, Rise, Screen, StatStrip } from '@/src/design-system/ui';
+import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { flattenWorkout } from '@/src/features/fitness/flatten';
 import { LOAD_HISTORY, WORKOUTS } from '@/src/features/fitness/mockData';
 import { useSendChat } from '@/src/features/client/useClientData';
@@ -84,16 +84,13 @@ export default function ExerciseDetailScreen() {
 
           {row ? (
             <Rise index={2} style={styles.facts}>
-              {[
-                [`${row.sets.length} × ${row.reps}`, 'séries'],
-                [row.tag === 'Drop set' ? row.loadLabel : `${formatKg(row.kg)} kg`, 'carga'],
-                [`${row.restSeconds} s`, 'descanso'],
-              ].map(([v, l]) => (
-                <View key={l} style={styles.fact}>
-                  <Num style={{ fontSize: 19 }}>{v}</Num>
-                  <Muted style={{ fontSize: 12, marginTop: 2 }}>{l}</Muted>
-                </View>
-              ))}
+              <StatStrip
+                items={[
+                  { value: `${row.sets.length} × ${row.reps}`, label: 'séries' },
+                  { value: row.tag === 'Drop set' ? row.loadLabel : `${formatKg(row.kg)} kg`, label: 'carga' },
+                  { value: `${row.restSeconds} s`, label: 'descanso' },
+                ]}
+              />
             </Rise>
           ) : null}
 
@@ -180,14 +177,13 @@ const styles = StyleSheet.create({
   play: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 10, borderColor: 'rgba(255,255,255,0.25)' },
   mediaFoot: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingBottom: 18 },
   mediaFootText: { color: '#eef3ff', fontFamily: typography.fontFamily, fontSize: 13 },
-  title: { marginTop: 20, fontFamily: typography.fontFamilyHeavy, fontSize: 28, lineHeight: 32, letterSpacing: -0.9, color: colors.text },
+  title: { marginTop: 20, ...text.display, color: colors.text },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
-  facts: { flexDirection: 'row', gap: 8, marginTop: 16 },
-  fact: { flex: 1, padding: 14, borderRadius: radii.lg, backgroundColor: '#fff', ...shadows.card },
+  facts: { marginTop: 16 },
   cardTitle: { fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text },
   step: { flexDirection: 'row', gap: 12, marginTop: 14 },
   stepNum: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  stepNumText: { fontFamily: typography.fontFamilyHeavy, fontSize: 13, color: colors.primaryDeep },
+  stepNumText: { fontFamily: typography.fontFamilyBold, fontSize: 13, color: colors.primaryDeep },
   tip: { flexDirection: 'row', gap: 10, marginTop: 16, padding: 14, borderRadius: radii.md + 4, backgroundColor: colors.warnSoft },
   rowBetween: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
   delta: { fontFamily: typography.fontFamilyBold, fontSize: 12.5, color: colors.primary },

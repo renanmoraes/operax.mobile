@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { FlatList, RefreshControl, View } from 'react-native';
+import { FlatList, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState, Loading, Screen, ScreenHeader } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
@@ -36,9 +36,7 @@ export default function HistoryScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: insets.top }}>
-        <ScreenHeader title="Histórico" subtitle="Atendimentos encerrados" onBack={() => router.back()} />
-      </View>
+      <ScreenHeader safe title="Histórico" subtitle="Atendimentos encerrados" onBack={() => router.back()} />
       {mode === 'live' && query.isLoading ? (
         <Loading />
       ) : (

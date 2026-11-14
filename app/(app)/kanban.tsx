@@ -88,9 +88,7 @@ export default function KanbanScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: insets.top }}>
-        <ScreenHeader title="Kanban" subtitle={mode === 'live' ? pipelineQuery.data?.name || 'Funil' : 'Funil de demonstração'} onBack={() => router.back()} />
-      </View>
+      <ScreenHeader safe title="Kanban" subtitle={mode === 'live' ? pipelineQuery.data?.name || 'Funil' : 'Funil de demonstração'} onBack={() => router.back()} />
       {mode === 'live' && (pipelinesQuery.data?.length ?? 0) > 1 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingBottom: 8 }}>
           {pipelinesQuery.data!.map((p) => (

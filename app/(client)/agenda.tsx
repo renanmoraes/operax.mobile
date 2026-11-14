@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Card, Chip, HeroCard, IconTile, Muted, Rise, Screen, ScreenHeader, Segmented } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
-import { colors, radii, shadows, typography } from '@/src/design-system/tokens';
+import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { BookingCard, bookingHref } from '@/src/features/client/BookingCard';
 import { useBookings, useCompanies } from '@/src/features/client/useClientData';
 import type { ClientBooking } from '@/src/features/client/types';
@@ -236,19 +236,19 @@ const styles = StyleSheet.create({
   stripOn: { backgroundColor: colors.primary, ...shadows.button },
   stripOff: { backgroundColor: 'rgba(255,255,255,0.88)' },
   stripWd: { fontFamily: typography.fontFamilySemiBold, fontSize: 11.5, color: colors.textMuted },
-  stripNum: { fontFamily: typography.fontFamilyHeavy, fontSize: 16, color: colors.text },
+  stripNum: { ...numbers.sm, color: colors.text },
   stripDot: { width: 6, height: 6, borderRadius: 3, marginTop: 3 },
   dayTitle: { marginTop: 18, marginBottom: 10, fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text },
   emptyTitle: { fontFamily: typography.fontFamilySemiBold, fontSize: 14.5, color: colors.text },
   weekRow: { flexDirection: 'row', gap: 12, paddingVertical: 12 },
   weekBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderSoft },
   weekWd: { fontFamily: typography.fontFamilySemiBold, fontSize: 11.5, color: colors.textMuted },
-  weekNum: { fontFamily: typography.fontFamilyHeavy, fontSize: 18, color: colors.text },
+  weekNum: { ...numbers.sm, color: colors.text },
   weekItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: radii.md },
-  weekTime: { fontFamily: typography.fontFamilyHeavy, fontSize: 13, fontVariant: ['tabular-nums'] },
+  weekTime: { ...numbers.xs },
   weekTitle: { flex: 1, fontFamily: typography.fontFamilySemiBold, fontSize: 13.5, color: colors.text },
   monthHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  monthTitle: { fontFamily: typography.fontFamilyBold, fontSize: 16, color: colors.text },
+  monthTitle: { ...text.section, color: colors.text },
   monthGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
   monthWd: { width: `${100 / 7}%`, textAlign: 'center', fontFamily: typography.fontFamilySemiBold, fontSize: 11.5, color: colors.textMuted, marginBottom: 6 },
   monthCell: { width: `${100 / 7}%`, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radii.md, gap: 3 },

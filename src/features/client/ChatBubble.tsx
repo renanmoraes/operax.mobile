@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   durationText: { color: '#fff', fontFamily: typography.fontFamilySemiBold, fontSize: 11.5 },
   doc: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 6, width: 246 },
   pdf: { width: 44, height: 52, borderRadius: 12, backgroundColor: '#fee2e2', alignItems: 'center', justifyContent: 'center' },
-  pdfText: { fontFamily: typography.fontFamilyHeavy, fontSize: 10, color: colors.dangerText },
+  pdfText: { fontFamily: typography.fontFamilyBold, fontSize: 10, color: colors.dangerText },
   docName: { fontFamily: typography.fontFamilyBold, fontSize: 13.5, color: colors.text },
   docMeta: { marginTop: 2, fontFamily: typography.fontFamily, fontSize: 12, color: colors.textMuted },
   docBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#f0f2f5', alignItems: 'center', justifyContent: 'center' },

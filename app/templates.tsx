@@ -43,9 +43,7 @@ export default function TemplatesScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: insets.top }}>
-        <ScreenHeader title="Templates Meta" subtitle="Fora da janela de 24 h, só aprovados" onBack={() => router.back()} />
-      </View>
+      <ScreenHeader safe title="Templates Meta" subtitle="Fora da janela de 24 h, só aprovados" onBack={() => router.back()} />
       {toast ? (
         <View style={{ alignSelf: 'center', marginBottom: 8 }}>
           <Badge label={toast} tone={toast.startsWith('Falha') ? 'danger' : 'success'} />

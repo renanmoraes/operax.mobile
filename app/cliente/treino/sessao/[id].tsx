@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,7 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import Svg, { Circle, Polyline } from 'react-native-svg';
 import { IconButton, Muted, Num, PressableScale, ProgressRing, Screen } from '@/src/design-system/ui';
-import { colors, gradients, radii, shadows, typography } from '@/src/design-system/tokens';
+import { Toast, useToast } from '@/src/design-system/Toast';
+import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { flattenWorkout } from '@/src/features/fitness/flatten';
 import { LOAD_HISTORY, WORKOUTS } from '@/src/features/fitness/mockData';
 import { clearDraft, loadDraft, saveDraft, setFinishedSession, SetLog } from '@/src/features/fitness/sessionStore';
@@ -21,7 +22,7 @@ function Stepper({ label, value, unit, onMinus, onPlus }: { label: string; value
         <PressableScale onPress={onMinus} accessibilityRole="button" accessibilityLabel={`Diminuir ${label.toLowerCase()}`} scaleTo={0.9} style={styles.stepBtn}>
           <Ionicons name="remove" size={22} color={colors.primary} />
         </PressableScale>
-        <Num style={{ fontSize: 26 }} accessibilityLiveRegion="polite">
+        <Num size="lg" accessibilityLiveRegion="polite">
           {value}
           {unit ? <Text style={{ fontSize: 13, color: colors.textMuted }}>{` ${unit}`}</Text> : null}
         </Num>
@@ -63,8 +64,7 @@ export default function WorkoutSessionScreen() {
   const [rest, setRest] = useState(0);
   const [restTotal, setRestTotal] = useState(60);
   const [voice, setVoice] = useState(true);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { toast, show } = useToast(2600);
 
   const row = rows[idx];
   const done = logs[idx] ?? [];
@@ -100,14 +100,11 @@ export default function WorkoutSessionScreen() {
   }, [paused]);
 
   useEffect(() => () => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    Speech.stop();
+    void Speech.stop();
   }, []);
 
   function say(text: string) {
-    setToast(text);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2600);
+    show(text, 'info', 'volume-high-outline');
     if (voice) Speech.speak(text, { language: 'pt-BR' });
   }
 
@@ -151,7 +148,7 @@ export default function WorkoutSessionScreen() {
         <IconButton icon="close" accessibilityLabel="Sair do treino (seu progresso fica salvo)" onPress={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Muted style={{ fontSize: 12.5 }}>{workout.title}</Muted>
-          <Num style={{ fontSize: 20, marginTop: 2 }} accessibilityLabel={`Tempo de treino ${formatClock(elapsed)}`}>{formatClock(elapsed)}</Num>
+          <Num size="md" style={{ marginTop: 2 }} accessibilityLabel={`Tempo de treino ${formatClock(elapsed)}`}>{formatClock(elapsed)}</Num>
         </View>
         <PressableScale
           onPress={() => setVoice((v) => !v)}
@@ -221,7 +218,7 @@ export default function WorkoutSessionScreen() {
         {resting ? (
           <View style={styles.restCard}>
             <ProgressRing size={132} stroke={10} progress={rest / restTotal} accessibilityLabel={`Descanso: ${rest} segundos`}>
-              <Num style={{ fontSize: 36 }}>{rest}</Num>
+              <Num size="xl">{rest}</Num>
               <Muted style={{ fontSize: 12 }}>segundos</Muted>
             </ProgressRing>
             <View style={{ flex: 1 }}>
@@ -281,12 +278,7 @@ export default function WorkoutSessionScreen() {
         </View>
       </View>
 
-      {toast ? (
-        <View style={[styles.toast, { top: insets.top + 72 }]} accessibilityLiveRegion="polite">
-          <Ionicons name="volume-high-outline" size={16} color={colors.primary} />
-          <Text style={styles.toastText}>{toast}</Text>
-        </View>
-      ) : null}
+      <Toast toast={toast} top={insets.top + 72} />
     </Screen>
   );
 }
@@ -307,7 +299,7 @@ const styles = StyleSheet.create({
   mediaBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 44, paddingLeft: 6, paddingRight: 16, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.2)' },
   mediaPlay: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   mediaText: { color: '#fff', fontFamily: typography.fontFamilySemiBold, fontSize: 13.5 },
-  name: { marginTop: 16, fontFamily: typography.fontFamilyHeavy, fontSize: 23, letterSpacing: -0.6, color: colors.text },
+  name: { marginTop: 16, ...text.headline, color: colors.text },
   pills: { flexDirection: 'row', gap: 8, marginTop: 14 },
   pill: { flex: 1, minWidth: 0, paddingVertical: 9, paddingHorizontal: 10, borderRadius: radii.md + 4 },
   pillDone: { backgroundColor: colors.primaryTint },
@@ -322,7 +314,7 @@ const styles = StyleSheet.create({
   lastCard: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 10, paddingVertical: 12, paddingHorizontal: 14, borderRadius: radii.lg, backgroundColor: 'rgba(255,255,255,0.88)' },
   lastValue: { marginTop: 2, fontFamily: typography.fontFamilyBold, fontSize: 14, color: colors.text, fontVariant: ['tabular-nums'] },
   restCard: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 14, padding: 18, borderRadius: radii.xl, backgroundColor: 'rgba(255,255,255,0.88)', ...shadows.card },
-  restTitle: { fontFamily: typography.fontFamilyHeavy, fontSize: 17, color: colors.text },
+  restTitle: { ...text.section, color: colors.text },
   more: { marginTop: 12, alignSelf: 'flex-start', height: 40, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.primaryWash, justifyContent: 'center' },
   moreText: { fontFamily: typography.fontFamilySemiBold, fontSize: 13.5, color: colors.primary },
   doneCard: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 14, padding: 18, borderRadius: radii.xl },
@@ -333,6 +325,4 @@ const styles = StyleSheet.create({
   controls: { flexDirection: 'row', gap: 8, marginTop: 10 },
   control: { flex: 1, height: 52, borderRadius: radii.lg - 2, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', gap: 3 },
   controlText: { fontFamily: typography.fontFamilySemiBold, fontSize: 12, color: colors.text },
-  toast: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8, height: 40, paddingHorizontal: 16, borderRadius: 999, backgroundColor: '#fff', ...shadows.hero },
-  toastText: { fontFamily: typography.fontFamilySemiBold, fontSize: 13.5, color: colors.text },
 });

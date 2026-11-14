@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Badge, Button, Card, Muted } from '@/src/design-system/ui';
-import { colors, radii, typography } from '@/src/design-system/tokens';
+import { colors, numbers, radii, text, typography } from '@/src/design-system/tokens';
 import { formatHour } from '@/src/shared/format';
 import type { ClientBooking } from './types';
 import { useConfirmBooking } from './useClientData';
@@ -67,8 +67,8 @@ export function BookingCard({ booking: b }: { booking: ClientBooking }) {
 const styles = StyleSheet.create({
   top: { flexDirection: 'row', gap: 14 },
   time: { width: 58, borderRadius: radii.md + 4, paddingVertical: 10, alignItems: 'center' },
-  timeMain: { fontFamily: typography.fontFamilyHeavy, fontSize: 16, fontVariant: ['tabular-nums'] },
+  timeMain: { ...numbers.sm },
   timeEnd: { marginTop: 1, fontFamily: typography.fontFamily, fontSize: 11.5, fontVariant: ['tabular-nums'] },
-  title: { marginTop: 3, fontFamily: typography.fontFamilyBold, fontSize: 16, color: colors.text, letterSpacing: -0.2 },
+  title: { marginTop: 3, ...text.section, color: colors.text },
   bottom: { marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
 });

@@ -3,7 +3,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, Card, EmptyState, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
-import { colors, radii, typography } from '@/src/design-system/tokens';
+import { colors, numbers, radii, typography } from '@/src/design-system/tokens';
 import { listBookings } from '@/src/shared/api/bookings.api';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { agendaEvents } from '@/src/mocks/data';
@@ -51,9 +51,7 @@ export default function AgendaScreen() {
   });
 
   const header = (
-    <View style={{ paddingTop: insets.top }}>
-      <ScreenHeader title="Agenda" subtitle={`Hoje, ${longDate(new Date()).toLowerCase()}`} right={<Badge label={mode === 'live' ? 'Ao vivo' : 'Demo'} tone="primary" />} />
-    </View>
+    <ScreenHeader safe title="Agenda" subtitle={`Hoje, ${longDate(new Date()).toLowerCase()}`} right={<Badge label={mode === 'live' ? 'Ao vivo' : 'Demo'} tone="primary" />} />
   );
 
   if (mode === 'live' && query.data && query.data.ok === false) {
@@ -124,7 +122,7 @@ export default function AgendaScreen() {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   timeCol: { width: 52, paddingTop: 16 },
-  time: { fontFamily: typography.fontFamilyHeavy, fontSize: 14, color: colors.text, fontVariant: ['tabular-nums'] },
+  time: { ...numbers.xs, color: colors.text },
   card: { flex: 1, padding: 16, borderRadius: radii.lg + 2 },
   cardWarn: { borderWidth: 1.5, borderColor: colors.warn },
   title: { fontFamily: typography.fontFamilyBold, fontSize: 15.5, color: colors.text },

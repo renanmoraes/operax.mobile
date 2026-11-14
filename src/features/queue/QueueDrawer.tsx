@@ -17,7 +17,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar, Badge, Button, Card, EmptyState, IconButton, Muted } from '@/src/design-system/ui';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
-import { colors, radii, shadows, spacing, typography, zIndex } from '@/src/design-system/tokens';
+import { colors, radii, shadows, spacing, text, typography, zIndex } from '@/src/design-system/tokens';
 import type { Conversation } from '@/src/mocks/data';
 import { useQueueDrawer } from './QueueDrawerContext';
 
@@ -147,12 +147,7 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     gap: 12,
   },
-  title: {
-    fontFamily: typography.fontFamilyHeavy,
-    fontSize: 26,
-    color: colors.text,
-    letterSpacing: -0.6,
-  },
+  title: { ...text.display, color: colors.text },
   list: { paddingHorizontal: 16, gap: 10, paddingBottom: spacing.md },
   item: { padding: 14, gap: 12 },
   itemFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },

@@ -22,13 +22,12 @@ export default function QuickRepliesScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingTop: insets.top }}>
-        <ScreenHeader
-          title="Respostas rápidas"
-          subtitle={conversationId ? 'Toque para voltar à conversa' : 'Atalhos de mensagem da equipe'}
-          onBack={() => router.back()}
-        />
-      </View>
+      <ScreenHeader
+        safe
+        title="Respostas rápidas"
+        subtitle={conversationId ? 'Toque para voltar à conversa' : 'Atalhos de mensagem da equipe'}
+        onBack={() => router.back()}
+      />
       {mode === 'live' && query.isLoading ? (
         <Loading />
       ) : (

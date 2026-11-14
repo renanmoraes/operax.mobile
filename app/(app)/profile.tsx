@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar, Badge, Button, Card, HeroCard, IconTile, Muted, Rise, Screen, ScreenHeader, SettingsGroup, SettingsRow } from '@/src/design-system/ui';
-import { colors, typography } from '@/src/design-system/tokens';
+import { colors, text, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
 import { openSystemSettings, usePermissions } from '@/src/features/permissions/permissions';
@@ -84,6 +84,6 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  name: { fontFamily: typography.fontFamilyHeavy, fontSize: 20, letterSpacing: -0.4, color: colors.text },
+  name: { ...text.title, color: colors.text },
   cardTitle: { fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text },
 });
