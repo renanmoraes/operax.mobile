@@ -58,3 +58,20 @@ export async function clearTokens(): Promise<void> {
   await deleteItem(ACCESS_KEY);
   await deleteItem(REFRESH_KEY);
 }
+
+const ROLE_KEY = 'operax_role';
+
+export type SavedRole = 'staff' | 'client';
+
+export async function getSavedRole(): Promise<SavedRole | null> {
+  const value = await getItem(ROLE_KEY);
+  return value === 'staff' || value === 'client' ? value : null;
+}
+
+export async function setSavedRole(role: SavedRole): Promise<void> {
+  await setItem(ROLE_KEY, role);
+}
+
+export async function clearSavedRole(): Promise<void> {
+  await deleteItem(ROLE_KEY);
+}
