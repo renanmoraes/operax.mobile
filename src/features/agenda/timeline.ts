@@ -33,15 +33,64 @@ export function hourRange(events: TimelineEvent[], now: number, base: [number, n
   return [Math.max(0, start), Math.min(24, end)];
 }
 
-export function yFor(min: number, startHour: number): number {
-  return ((min - startHour * 60) / 60) * HOUR_H;
+/**
+ * Escala do tempo do dia (minutos → altura em px). Começa linear (HOUR_H por hora) e, onde um
+ * compromisso precisa de mais altura para mostrar o texto inteiro, estica só aquele trecho do
+ * dia. A grade de horas e a linha da hora atual usam a mesma escala, então tudo continua alinhado.
+ */
+export type TimeAxis = { mins: number[]; ys: number[] };
+
+export function buildAxis(
+  events: { startMin: number; endMin: number; need?: number }[],
+  startHour: number,
+  endHour: number,
+  hourH = HOUR_H,
+): TimeAxis {
+  const lo = startHour * 60;
+  const hi = endHour * 60;
+  const clamp = (m: number) => Math.max(lo, Math.min(hi, m));
+  const set = new Set<number>();
+  for (let h = startHour; h <= endHour; h++) set.add(h * 60);
+  for (const e of events) {
+    set.add(clamp(e.startMin));
+    set.add(clamp(e.endMin));
+  }
+  const mins = [...set].sort((a, b) => a - b);
+  const seg = mins.slice(1).map((m, i) => ((m - mins[i]) * hourH) / 60);
+  for (const e of [...events].sort((a, b) => a.startMin - b.startMin)) {
+    if (!e.need) continue;
+    const i0 = mins.indexOf(clamp(e.startMin));
+    const i1 = mins.indexOf(clamp(e.endMin));
+    let have = 0;
+    for (let i = i0; i < i1; i++) have += seg[i];
+    if (have > 0 && have < e.need) {
+      const k = e.need / have;
+      for (let i = i0; i < i1; i++) seg[i] *= k;
+    }
+  }
+  const ys = [0];
+  for (const h of seg) ys.push(ys[ys.length - 1] + h);
+  return { mins, ys };
+}
+
+/** Altura (px) de um minuto do dia na escala; entre os pontos conhecidos, interpola em linha reta. */
+export function yAt(axis: TimeAxis, min: number): number {
+  const { mins, ys } = axis;
+  if (min <= mins[0]) return ys[0];
+  for (let i = 1; i < mins.length; i++) {
+    if (min <= mins[i]) {
+      const t = (min - mins[i - 1]) / (mins[i] - mins[i - 1] || 1);
+      return ys[i - 1] + t * (ys[i] - ys[i - 1]);
+    }
+  }
+  return ys[ys.length - 1];
 }
 
 /**
  * Compromissos que se cruzam dividem a largura em colunas (como no calendário do iPhone).
  * Cada grupo de sobreposição recebe o mesmo número de colunas.
  */
-export function layoutEvents<T extends TimelineEvent>(events: T[], startHour: number): PlacedEvent<T>[] {
+export function layoutEvents<T extends TimelineEvent>(events: T[], axis: TimeAxis): PlacedEvent<T>[] {
   const sorted = [...events].sort((a, b) => a.startMin - b.startMin || b.endMin - a.endMin);
   const out: PlacedEvent<T>[] = [];
   let group: PlacedEvent<T>[] = [];
@@ -64,8 +113,8 @@ export function layoutEvents<T extends TimelineEvent>(events: T[], startHour: nu
       laneEnds.push(e.endMin);
     } else laneEnds[lane] = e.endMin;
     groupEnd = Math.max(groupEnd, e.endMin);
-    const top = yFor(e.startMin, startHour);
-    const height = Math.max(MIN_EVENT_H, yFor(e.endMin, startHour) - top - 3);
+    const top = yAt(axis, e.startMin);
+    const height = Math.max(MIN_EVENT_H, yAt(axis, e.endMin) - top - 3);
     group.push({ ...e, top, height, lane, lanes: 1 });
   }
   if (group.length) flush();

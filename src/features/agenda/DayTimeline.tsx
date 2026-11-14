@@ -4,7 +4,7 @@ import { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent, ScrollView,
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { PressableScale } from '@/src/design-system/ui';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
-import { clockLabel, HOUR_H, hourRange, layoutEvents, nowMinutes, relativeLabel, yFor } from './timeline';
+import { buildAxis, clockLabel, hourRange, layoutEvents, nowMinutes, relativeLabel, yAt } from './timeline';
 
 export type DayEvent = {
   id: string;
@@ -18,6 +18,7 @@ export type DayEvent = {
 };
 
 const HOURS_COL = 56;
+const CARD_PAD_V = 7;
 const TICK_MS = 15_000;
 /** Depois de rolar com o dedo, a agenda espera isso antes de voltar a seguir o relógio. */
 const MANUAL_HOLD_MS = 45_000;
@@ -52,15 +53,25 @@ export function DayTimeline({ events, bottomInset, header }: { events: DayEvent[
     return () => clearInterval(t);
   }, []);
 
+  // Altura que o texto de cada cartão precisa (medida na tela); a escala do dia abre espaço para ela.
+  const [needs, setNeeds] = useState<Record<string, number>>({});
+  const reportNeed = useCallback((id: string, h: number) => {
+    setNeeds((prev) => (Math.abs((prev[id] ?? 0) - h) < 1 ? prev : { ...prev, [id]: h }));
+  }, []);
+
   const [startHour, endHour] = useMemo(() => hourRange(events, now), [events, now]);
-  const placed = useMemo(() => layoutEvents(events, startHour), [events, startHour]);
-  const gridH = (endHour - startHour) * HOUR_H;
-  const nowY = yFor(now, startHour);
+  const axis = useMemo(
+    () => buildAxis(events.map((e) => ({ ...e, need: needs[e.id] ? needs[e.id] + CARD_PAD_V * 2 + 3 : 0 })), startHour, endHour),
+    [events, needs, startHour, endHour],
+  );
+  const placed = useMemo(() => layoutEvents(events, axis), [events, axis]);
+  const gridH = yAt(axis, endHour * 60);
+  const nowY = yAt(axis, now);
 
   // A linha desliza até a nova posição em vez de pular a cada atualização.
   const lineY = useSharedValue(nowY);
   useEffect(() => {
-    lineY.value = reduced ? nowY : withTiming(nowY, { duration: 1200, easing: Easing.bezier(0.45, 0, 0.15, 1) });
+    lineY.set(reduced ? nowY : withTiming(nowY, { duration: 1200, easing: Easing.bezier(0.45, 0, 0.15, 1) }));
   }, [nowY, reduced, lineY]);
   const lineStyle = useAnimatedStyle(() => ({ transform: [{ translateY: lineY.value }] }));
 
@@ -108,7 +119,7 @@ export function DayTimeline({ events, bottomInset, header }: { events: DayEvent[
         <View onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}>{header}</View>
         <View style={[styles.grid, { height: gridH + 16 }]}>
           {Array.from({ length: endHour - startHour + 1 }, (_, i) => (
-            <View key={i} style={[styles.hourRow, { top: i * HOUR_H }]} pointerEvents="none">
+            <View key={i} style={[styles.hourRow, { top: yAt(axis, (startHour + i) * 60) }]} pointerEvents="none">
               <Text style={[styles.hourLabel, Math.abs(startHour * 60 + i * 60 - now) < 14 && { opacity: 0 }]}>{clockLabel((startHour + i) * 60)}</Text>
               <View style={styles.hourLine} />
             </View>
@@ -121,7 +132,6 @@ export function DayTimeline({ events, bottomInset, header }: { events: DayEvent[
                   const past = ev.endMin <= now;
                   const rel = relativeLabel(ev.startMin, ev.endMin, now);
                   const w = gridW / ev.lanes;
-                  const compact = ev.height < 70 || ev.lanes > 1;
                   return (
                     <PressableScale
                       key={ev.id}
@@ -135,48 +145,26 @@ export function DayTimeline({ events, bottomInset, header }: { events: DayEvent[
                       ]}
                     >
                       <View style={[styles.stripe, { backgroundColor: tone.stripe }]} />
-                      {ev.height < 62 ? (
-                        // Curto (até ~40 min): hora e título numa linha só, centralizados.
-                        <View style={[styles.cardBody, styles.cardTop, { justifyContent: 'center' }]}>
-                          <Text style={styles.cardTime}>{clockLabel(ev.startMin)}</Text>
-                          <Text style={[styles.cardTitle, { marginTop: 0, flex: 1 }]} numberOfLines={1}>
-                            {ev.title}
-                            <Text style={styles.cardPersonInline}>{` · ${ev.person}`}</Text>
-                          </Text>
-                          {rel ? (
-                            <View style={[styles.rel, { marginLeft: 0 }, rel === 'Agora' && { backgroundColor: colors.primary }]}>
-                              <Text style={[styles.relText, rel === 'Agora' && { color: '#fff' }]}>{rel}</Text>
-                            </View>
-                          ) : null}
-                        </View>
-                      ) : (
-                        <View style={styles.cardBody}>
+                      <View style={styles.cardBody}>
+                        {/* Texto sempre inteiro (quebra linha, nunca corta); a altura medida volta para a escala do dia. */}
+                        <View onLayout={(e) => reportNeed(ev.id, e.nativeEvent.layout.height)}>
                           <View style={styles.cardTop}>
-                            <Text style={styles.cardTime}>{`${clockLabel(ev.startMin)}–${clockLabel(ev.endMin)}`}</Text>
+                            <Text style={[styles.cardTime, { flexShrink: 1 }]}>{`${clockLabel(ev.startMin)}–${clockLabel(ev.endMin)}`}</Text>
                             {rel ? (
                               <View style={[styles.rel, rel === 'Agora' && { backgroundColor: colors.primary }]}>
                                 <Text style={[styles.relText, rel === 'Agora' && { color: '#fff' }]}>{rel}</Text>
                               </View>
                             ) : null}
                           </View>
-                          <Text style={styles.cardTitle} numberOfLines={compact ? 1 : 2}>
-                            {ev.title}
-                            {compact ? <Text style={styles.cardPersonInline}>{` · ${ev.person}`}</Text> : null}
-                          </Text>
-                          {!compact ? (
-                            <>
-                              <Text style={styles.cardPerson} numberOfLines={1}>
-                                {ev.location ? `${ev.person} · ${ev.location}` : ev.person}
-                              </Text>
-                              {ev.height >= 110 ? (
-                                <View style={[styles.status, { backgroundColor: tone.soft }]}>
-                                  <Text style={[styles.statusText, { color: tone.text }]}>{ev.statusLabel}</Text>
-                                </View>
-                              ) : null}
-                            </>
-                          ) : null}
+                          <Text style={styles.cardTitle}>{ev.title}</Text>
+                          <Text style={styles.cardPerson}>{ev.location ? `${ev.person} · ${ev.location}` : ev.person}</Text>
                         </View>
-                      )}
+                        {ev.height - (needs[ev.id] ?? ev.height) >= 40 ? (
+                          <View style={[styles.status, { backgroundColor: tone.soft }]}>
+                            <Text style={[styles.statusText, { color: tone.text }]}>{ev.statusLabel}</Text>
+                          </View>
+                        ) : null}
+                      </View>
                     </PressableScale>
                   );
                 })
@@ -222,13 +210,12 @@ const styles = StyleSheet.create({
   card: { position: 'absolute', flexDirection: 'row', borderRadius: 14, overflow: 'hidden', ...shadows.card },
   cardNow: { borderWidth: 1.5, borderColor: colors.primary },
   stripe: { width: 4 },
-  cardBody: { flex: 1, minWidth: 0, paddingHorizontal: 10, paddingVertical: 7 },
+  cardBody: { flex: 1, minWidth: 0, paddingHorizontal: 10, paddingVertical: CARD_PAD_V },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   cardTime: { ...text.label, color: colors.textMuted, fontVariant: ['tabular-nums'] },
   rel: { marginLeft: 'auto', paddingHorizontal: 7, height: 18, borderRadius: 9, backgroundColor: colors.primaryWash, justifyContent: 'center' },
   relText: { fontFamily: typography.fontFamilyBold, fontSize: 10.5, color: colors.primary },
   cardTitle: { ...text.calloutStrong, color: colors.text, marginTop: 2 },
-  cardPersonInline: { fontFamily: typography.fontFamily, color: colors.textSoft },
   cardPerson: { ...text.caption, color: colors.textSoft, marginTop: 1 },
   status: { alignSelf: 'flex-start', marginTop: 8, paddingHorizontal: 9, height: 22, borderRadius: 11, justifyContent: 'center' },
   statusText: { fontFamily: typography.fontFamilySemiBold, fontSize: 11.5 },
