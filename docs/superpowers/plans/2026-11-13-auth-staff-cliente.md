@@ -370,16 +370,15 @@ export async function getClientMeApi(): Promise<ClientUser> {
   return asClientUser(data);
 }
 
-export async function switchClientTenantApi(input: {
-  tenant_id: string;
-}): Promise<ClientTokenBundle> {
+export async function switchClientTenantApi(input: { tenant_id: string }): Promise<void> {
   const { data } = await api.post('/api/auth/client/switch-tenant', input);
   if (data?.access_token && data?.refresh_token) {
     await setTokens(data.access_token, data.refresh_token);
   }
-  return { ...data, user: asClientUser(data.user) } as ClientTokenBundle;
 }
 ```
+
+Nota: a spec (seção 5.2) define `switch-tenant` devolvendo só os tokens novos, sem `user` — por isso essa função não tenta montar um `ClientUser` a partir da resposta (não tem campos suficientes). Quem chama busca o usuário atualizado com `getClientMeApi()` depois (ver `switchTenant` na Task 6), que já passa por `asClientUser`.
 
 Os endpoints `/api/auth/client/*` são os propostos na seção 5.2/7 da spec — ainda não existem no backend. Rodar contra a API real vai dar 404 até lá; o modo demo (Task 6) é o que permite testar a UI sem isso.
 
@@ -993,8 +992,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser((prev) => (prev?.kind === 'client' ? { ...prev, active_tenant_id: tenantId } : prev));
           return;
         }
-        const result = await switchClientTenantApi({ tenant_id: tenantId });
-        setUser(result.user);
+        await switchClientTenantApi({ tenant_id: tenantId });
+        const me = await getClientMeApi();
+        setUser(me);
         disconnectSocket();
         await connectSocket();
       },
@@ -1216,7 +1216,7 @@ const styles = StyleSheet.create({
 
 - [ ] **Step 2: Adicionar o link "Não é você?" no login de staff**
 
-A spec (seção 4, "Trocar de perfil") pede o mesmo link nos dois logins. Em `app/(auth)/login.tsx`, importe `useAuth` já é feito; adicione `clearRole` à desestruturação (`const { login, enterDemo, error, clearError, clearRole } = useAuth();`) e, depois do `Button` "Entrar direto (demo)" (ou depois do `Button` "Entrar", se `ALLOW_MOCK` for falso), adicione:
+A spec (seção 4, "Trocar de perfil") pede o mesmo link nos dois logins. Em `app/(auth)/login.tsx`, `useAuth` já está importado — só adicione `clearRole` à desestruturação existente (`const { login, enterDemo, error, clearError, clearRole } = useAuth();`) e, depois do `Button` "Entrar direto (demo)" (ou depois do `Button` "Entrar", se `ALLOW_MOCK` for falso), adicione:
 
 ```tsx
 <Pressable onPress={() => clearRole().then(() => router.replace('/(auth)/role-select'))}>
@@ -1814,6 +1814,7 @@ export default function ClientPerfilScreen() {
           {memberships.map((m) => (
             <Pressable
               key={m.tenant_id}
+              disabled={m.tenant_id === activeTenantId}
               onPress={() => switchTenant(m.tenant_id).catch(() => {})}
               style={styles.row}
             >
