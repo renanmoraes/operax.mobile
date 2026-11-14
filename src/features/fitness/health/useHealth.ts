@@ -18,8 +18,9 @@ async function loadState(): Promise<HealthState> {
   const raw = await getItem(CONNECTED_KEY);
   if (!raw) return { connected: false, lastSyncAt: null, workouts: [] };
   try {
-    const saved = JSON.parse(raw) as { lastSyncAt: string | null };
-    return { connected: true, lastSyncAt: saved.lastSyncAt, workouts: [] };
+    // Os treinos da última sincronização ficam guardados: reabrir a tela não zera a lista.
+    const saved = JSON.parse(raw) as { lastSyncAt: string | null; workouts?: HealthWorkout[] };
+    return { connected: true, lastSyncAt: saved.lastSyncAt, workouts: Array.isArray(saved.workouts) ? saved.workouts : [] };
   } catch {
     return { connected: false, lastSyncAt: null, workouts: [] };
   }
@@ -36,7 +37,7 @@ export function useHealthState() {
 async function syncNow(): Promise<HealthState> {
   const workouts = await readRecentWorkouts(30);
   const lastSyncAt = new Date().toISOString();
-  await setItem(CONNECTED_KEY, JSON.stringify({ lastSyncAt }));
+  await setItem(CONNECTED_KEY, JSON.stringify({ lastSyncAt, workouts }));
   return { connected: true, lastSyncAt, workouts };
 }
 

@@ -1,4 +1,4 @@
-import { adherenceStreak, levelFromXp, xpFrom } from '../derive';
+import { adherenceStreak, levelFromXp, xpFrom, mergeResultIntoHistory } from '../derive';
 
 describe('adherenceStreak', () => {
   it('conta dias seguidos cumprindo o plano, descanso conta', () => {
@@ -30,5 +30,23 @@ describe('nível', () => {
     expect(l.level).toBe(7);
     expect(l.current).toBeLessThan(l.next);
     expect(l.label).toBe('Intermediário');
+  });
+});
+
+describe('treino salvo entra no histórico', () => {
+  const base = { workout_id: 'w-a', workout_title: 'Treino A', executed_on: '2026-11-14', created_at: '2026-11-14T10:00:00Z', effort: 8 };
+  const sets = (n: number) => ({ kind: 'sets' as const, sets: Array.from({ length: n }, (_, i) => ({ item: 0, set: i, done: true, load_kg: 20, reps: 10 })) });
+
+  it('cria a entrada do dia com séries e volume', () => {
+    const h = mergeResultIntoHistory([], { ...base, data: sets(3) });
+    expect(h).toHaveLength(1);
+    expect(h[0]).toMatchObject({ date: '2026-11-14', title: 'Treino A', sets_done: 3, volume_kg: 600, effort: 8 });
+  });
+
+  it('soma outro bloco do mesmo treino no mesmo dia sem duplicar', () => {
+    const once = mergeResultIntoHistory([], { ...base, data: sets(3) });
+    const twice = mergeResultIntoHistory(once, { ...base, data: sets(2), effort: 9 });
+    expect(twice).toHaveLength(1);
+    expect(twice[0]).toMatchObject({ sets_done: 5, volume_kg: 1000, effort: 9 });
   });
 });

@@ -1,3 +1,5 @@
+import type { FitnessHistoryEntry, FitnessResultView } from './types';
+
 /**
  * Regras calculadas no app: o portal não tem rota de consistência/streak nem de gamificação
  * para o cliente (só a visão da equipe), então derivamos de semana + histórico.
@@ -44,4 +46,43 @@ export function levelFromXp(xp: number) {
   }
   const label = LABELS.reduce((acc, [min, name]) => (level >= min ? name : acc), LABELS[0][1]);
   return { level, current: xp - floor, next: need, label };
+}
+
+/**
+ * Coloca um treino salvo no histórico (que alimenta Histórico, Evolução e o resumo).
+ * Vários blocos do mesmo treino no mesmo dia viram uma entrada só, somando séries e volume.
+ */
+export function mergeResultIntoHistory(
+  history: FitnessHistoryEntry[],
+  result: Pick<FitnessResultView, 'workout_id' | 'workout_title' | 'executed_on' | 'created_at' | 'data' | 'effort'>,
+): FitnessHistoryEntry[] {
+  const sets = result.data.kind === 'sets' ? result.data.sets.filter((s) => s.done) : [];
+  const volume = sets.reduce((sum, s) => sum + (s.load_kg ?? 0) * (s.reps ?? 0), 0);
+  const id = `res-${result.workout_id}-${result.executed_on}`;
+  const existing = history.find((e) => e.id === id);
+  if (existing) {
+    const merged: FitnessHistoryEntry = {
+      ...existing,
+      sets_done: (existing.sets_done ?? 0) + sets.length,
+      volume_kg: (existing.volume_kg ?? 0) + volume,
+      effort: result.effort ?? existing.effort,
+    };
+    return history.map((e) => (e.id === id ? merged : e));
+  }
+  const entry: FitnessHistoryEntry = {
+    id,
+    kind: 'prescribed',
+    date: result.executed_on,
+    started_at: result.created_at,
+    title: result.workout_title,
+    modality: 'strength',
+    duration_seconds: null,
+    distance_meters: null,
+    avg_hr: null,
+    effort: result.effort ?? null,
+    volume_kg: volume || undefined,
+    sets_done: sets.length || undefined,
+    sources: [{ origin: 'portal', label: 'App' }],
+  };
+  return [entry, ...history];
 }

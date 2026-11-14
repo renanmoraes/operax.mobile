@@ -1,5 +1,5 @@
 import { addDays, isoDate, startOfDay, startOfWeek } from '@/src/shared/format';
-import { adherenceStreak, DayState, levelFromXp, xpFrom } from './derive';
+import { adherenceStreak, DayState, levelFromXp, mergeResultIntoHistory, xpFrom } from './derive';
 import { buildCheckins, buildHistory, LOAD_HISTORY, WORKOUTS, workoutForWeekday } from './mockData';
 import type { BodyCheckin, FitnessEvolution, FitnessHistoryEntry, FitnessResultView, FitnessWorkoutView, RecordResultBody, WeekView } from './types';
 
@@ -120,6 +120,8 @@ export async function recordResult(body: RecordResultBody): Promise<{ result: Fi
     created_at: new Date().toISOString(),
   };
   results.set(body.idempotency_key, result);
+  // O treino salvo passa a contar no Histórico, na Evolução e no resumo (só na primeira vez).
+  history = mergeResultIntoHistory(getHistory(), result);
   return { result, duplicate: false };
 }
 
