@@ -3,7 +3,11 @@
 **Data:** 2026-11-13
 **Status:** desenhado em conversa, aguardando revisão do dono
 **Stack:** Expo SDK 57 · React Native · Expo Router · TypeScript
-**Sub-spec de:** revival do Operax Mobile (3 frentes: conversas/staff, portal do cliente, fitness/wearables + esta, a base de auth)
+**Sub-spec de:** revival do Operax Mobile. Frentes combinadas:
+- Conversas/staff (já existe, religar na API real)
+- Portal do cliente (agenda/serviços)
+- Fitness/wearables
+- **Esta spec:** a base de auth que as três anteriores dependem
 
 ---
 
@@ -30,7 +34,7 @@ Esta spec cobre só a base: autenticação, seleção/troca de papel e de empres
 
 ## 3. Modelo de papéis e navegação
 
-Tela inicial com dois botões: **"Sou da equipe"** / **"Sou cliente"**. A escolha é persistida no device até logout explícito com troca de papel; logout normal mantém o papel salvo e volta direto pra tela de login daquele papel.
+Tela inicial com dois botões: **"Sou da equipe"** / **"Sou cliente"**. A escolha é persistida no `SecureStore` (mesmo módulo já usado pros tokens, por simplicidade — não é dado sensível) até logout explícito com troca de papel; logout normal mantém o papel salvo e volta direto pra tela de login daquele papel. `logout()` continua limpando a flag de demo (`writeDemoFlag(false)`) como hoje, sem tocar no papel salvo.
 
 - **Sou da equipe** → fluxo atual (`company_code` + email/senha + MFA), sem mudança de telas. Shell `(app)` passa a filtrar tabs/ações por `user.permissions` em vez de mostrar tudo pra qualquer staff.
 - **Sou cliente** → fluxo novo (seção 4). Shell novo `(client)`, com tabs placeholder (Agenda, Conversas, Fitness, Perfil) até as specs de conteúdo chegarem.
@@ -38,6 +42,8 @@ Tela inicial com dois botões: **"Sou da equipe"** / **"Sou cliente"**. A escolh
 **Isolamento multi-tenant do cliente:** a conta do cliente guarda só a *lista de vínculos* (quais empresas, com portal habilitado). Cada chamada de API sempre viaja escopada a **um** tenant ativo por vez (ver seção 5) — nunca mistura dados de duas empresas na mesma tela. É o mesmo padrão de "trocar de workspace" comum em produtos B2B2C; não compromete a separação por tenant que já existe hoje pro staff.
 
 **Gate de portal:** o endpoint de login/me do cliente devolve só os vínculos com o módulo de portal habilitado no plano do tenant (mesmo conceito do gate que já existe pra Agenda/Scheduling, citado em `docs/12-api-gaps.md`). Zero vínculos válidos → login bloqueado com mensagem clara, sem entrar no app. Um vínculo → entra direto nele. Mais de um → seletor de empresa ativa.
+
+**Sessão e paridade com o staff:** cliente usa a mesma política de sessão única (`sid`) que o staff já tem hoje (ADR-002) — login novo em outro device revoga o anterior; não é um app "sempre logado em vários aparelhos". Login/troca de empresa do cliente também disparam `connectSocket()` e `registerDevicePushToken()`, igual já acontece no login do staff; como a troca de empresa reemite o token (seção 5.2), o socket precisa reconectar com o token novo nesse momento.
 
 ## 4. Telas e máquina de estado do login
 
@@ -73,7 +79,13 @@ booting
 - Senha → campo de senha normal, botão Entrar.
 - Código → botão "Enviar código" leva pro `client-otp.tsx` (campo de 6 dígitos + "reenviar" com cooldown de 30–60s, visual análogo ao `mfa.tsx` atual).
 
-**Depois de autenticado como cliente:** a resposta já traz a lista de empresas com portal habilitado. 0 → mensagem bloqueante na própria tela. 1 → seta como ativa, vai direto pro shell cliente. 2+ → `client-tenant-select.tsx` (lista simples, escolhe, vai pro shell).
+**Depois de autenticado como cliente, escopo do token por caso** (ver shapes em 5.2):
+
+- **0 vínculos válidos:** o backend não emite tokens — a resposta é só o status de bloqueio. Nada pra guardar, nada pra limpar; a tela de login mostra a mensagem e permanece.
+- **1 vínculo válido:** o backend já emite os tokens **escopados a esse tenant** (`active_tenant_id` já vem preenchido) — vai direto pro shell cliente, sem chamar `switch-tenant`.
+- **2+ vínculos válidos:** o backend emite tokens **de identidade, sem tenant ativo** (`active_tenant_id: null`). Esses tokens já são guardados no `SecureStore` normalmente, mas só servem pra duas coisas: chamar `GET /client/me` e `POST /client/switch-tenant`. Qualquer endpoint tenant-scoped (agenda, conversas, fitness) rejeita um token sem tenant ativo — não é um problema desta spec resolver no backend, só documentar que o app não tenta chamar nada tenant-scoped nesse estado. Usuário escolhe em `client-tenant-select.tsx` → `switch-tenant` reemite os tokens já escopados → shell cliente.
+
+**Boot com sessão já salva:** no boot, se `role === 'client'` e há token salvo, chama `GET /client/me` (equivalente ao `getMeApi` do staff). Se vier com `active_tenant_id` preenchido → `client_authenticated`, vai pro shell. Se vier `active_tenant_id: null` e `memberships.length > 1` → `client_tenant_pending`, mostra `client-tenant-select.tsx` de novo (cobre o caso do app ser matado antes de escolher a empresa). `active_tenant_id` nulo com só 1 membership não deveria acontecer (o login já teria escopado); se acontecer, trata como `client_tenant_pending` também, por segurança.
 
 **Trocar de perfil:** link discreto "Não é você? Entrar como [equipe/cliente]" no rodapé de `login.tsx` e `client-login.tsx` — limpa o role salvo e volta pro `role-select.tsx`.
 
@@ -94,12 +106,14 @@ type ClientUser = {
   kind: 'client';
   id: string; name: string;
   email?: string; phone?: string;
-  active_tenant_id: string;
+  active_tenant_id: string | null;  // null = autenticado, mas sem empresa ativa (caso 2+ vínculos, ainda não escolheu)
   memberships: { tenant_id: string; tenant_name: string }[]; // só os com portal habilitado
 };
 
 type AuthUser = StaffUser | ClientUser;
 ```
+
+Modo demo (`enterDemo`, hoje `DEMO_USER`) continua existindo só pro lado staff; o objeto mock passa a incluir `kind: 'staff'` pra satisfazer a union — nenhuma mudança de comportamento, só o campo novo.
 
 ### 5.2 Endpoints novos (propostos — ver seção 7)
 
@@ -109,6 +123,15 @@ POST /api/auth/client/otp/request    { identifier }
 POST /api/auth/client/otp/verify     { identifier, code }
 GET  /api/auth/client/me
 POST /api/auth/client/switch-tenant  { tenant_id } → novo access_token/refresh_token
+```
+
+`login` e `otp/verify` devolvem um de três formatos (mesmo espírito do `LoginResult` que já existe pro staff em `auth.api.ts`, com `mfa_required`/`mfa_setup_required`):
+
+```ts
+type ClientLoginResult =
+  | { status: 'no_portal_access' }                         // 0 vínculos — sem tokens
+  | { user: ClientUser; access_token: string; refresh_token: string }; // 1 vínculo: active_tenant_id já setado
+                                                              // 2+ vínculos: active_tenant_id null, token só serve pra /me e /switch-tenant
 ```
 
 `switch-tenant` reemite os tokens já escopados à empresa escolhida (em vez de um header dinâmico por request). Mantém o padrão atual de "token = 1 contexto" — nenhuma outra chamada de API do lado cliente precisa saber que houve troca; só o token guardado no `SecureStore` muda, igual já acontece num login normal. `refresh` e `logout` continuam os mesmos endpoints de hoje, agnósticos a staff/cliente.
@@ -123,14 +146,14 @@ POST /api/auth/client/switch-tenant  { tenant_id } → novo access_token/refresh
 **Erros:**
 - Credencial inválida (staff ou cliente): mensagem inline, igual já funciona em `login.tsx`.
 - OTP errado/expirado: mensagem inline no `client-otp.tsx`; reenvio com cooldown.
-- `switch-tenant` falha (ex. sessão expira no meio): cai no mesmo tratamento de 401 que já existe em `client.ts` — limpa tokens, `index.tsx` redireciona pro login do papel salvo.
+- `switch-tenant` falha com 401 (ex. sessão expira no meio): **não** entra em `isAuthRoute` — é uma chamada autenticada normal, então passa pelo fluxo padrão do interceptor (tenta `refresh`, repete a chamada; se o refresh também falhar, `clearTokens()` e `index.tsx` redireciona pro login do papel salvo). Mesmo comportamento que qualquer outra chamada tenant-scoped já tem hoje — nenhuma lógica nova.
 - Sessão revogada em outro device: já funciona hoje (`clearTokens()` → `isAuthenticated=false` → redirect); como o `role` salvo é independente do token, cai automaticamente na tela de login certa (staff ou cliente) sem lógica nova.
-- Ajuste necessário em `src/shared/api/client.ts`: incluir `/api/auth/client/login`, `/api/auth/client/otp/` e `/api/auth/client/switch-tenant` na lista `isAuthRoute`, pra não entrarem no retry-loop automático de refresh.
+- Ajuste necessário em `src/shared/api/client.ts`: incluir **apenas** `/api/auth/client/login` e `/api/auth/client/otp/` na lista `isAuthRoute` (são chamadas pré-autenticação, sem Bearer válido ainda — mesmo tratamento que `/api/auth/login` e `/api/auth/mfa/` já têm). `switch-tenant` e `/client/me` ficam **fora** dessa lista, porque são chamadas autenticadas que precisam do retry de refresh.
 
 **Testes** (lógica pura, sem renderizar UI — padrão já usado em `src/features/*/__tests__`):
-- Resolver de rota: `role` + estado de auth → qual tela, isolado de componente.
-- Filtro de memberships: 0 → bloqueia / 1 → auto-seleciona / 2+ → mostra seletor.
-- `isAuthRoute` do `client.ts` cobrindo as rotas novas (mesmo padrão de `client.headers.test.ts`).
+- Resolver de rota: `role` + estado de auth (incluindo boot com `active_tenant_id: null`) → qual tela, isolado de componente.
+- Filtro de memberships: 0 → bloqueia / 1 → auto-seleciona, token já escopado / 2+ → mostra seletor, token sem tenant ativo.
+- `isAuthRoute` do `client.ts` cobrindo as rotas novas — confirmando que `switch-tenant` e `/client/me` **não** entram nessa lista (mesmo padrão de `client.headers.test.ts`).
 
 ## 7. Pendências / dependências de backend a confirmar
 
