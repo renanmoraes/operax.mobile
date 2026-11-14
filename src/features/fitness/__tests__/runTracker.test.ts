@@ -1,4 +1,4 @@
-import { addPoint, averagePace, currentPace, decimateTrack, emptyRun, formatPace, haversine, resumeAt, type GpsPoint } from '../runTracker';
+import { addPoint, averagePace, currentPace, decimateTrack, defaultTitle, emptyRun, formatPace, haversine, kmSplits, resumeAt, type GpsPoint, type Track } from '../runTracker';
 
 const t0 = 1_700_000_000_000;
 // ~0,0001° de latitude ≈ 11,1 m
@@ -44,11 +44,51 @@ describe('gravação de corrida com GPS', () => {
     expect(s.distanceM).toBe(before);
   });
 
-  it('trilha para o servidor fica entre 3 e 1500 pontos', () => {
-    const big = { t: Array.from({ length: 5000 }, (_, i) => i), dist: Array.from({ length: 5000 }, (_, i) => i * 3) };
+  it('trilha para o servidor fica entre 3 e 1500 pontos, com o GPS alinhado', () => {
+    const n = 5000;
+    const big: Track = { t: Array.from({ length: n }, (_, i) => i), dist: Array.from({ length: n }, (_, i) => i * 3), lat: Array.from({ length: n }, (_, i) => i / 1e4), lon: Array.from({ length: n }, (_, i) => -i / 1e4), alt: Array.from({ length: n }, () => null) };
     const d = decimateTrack(big)!;
     expect(d.t.length).toBeLessThanOrEqual(1500);
     expect(d.t[0]).toBe(0);
-    expect(decimateTrack({ t: [0, 1], dist: [0, 2] })).toBeUndefined();
+    expect([d.lat.length, d.lon.length, d.alt.length]).toEqual([d.t.length, d.t.length, d.t.length]);
+    const k = 700;
+    expect(d.lat[k]).toBeCloseTo(d.t[k] / 1e4, 8);
+    expect(d.lon[k]).toBeCloseTo(-d.t[k] / 1e4, 8);
+    expect(decimateTrack({ t: [0, 1], dist: [0, 2], lat: [0, 0], lon: [0, 0], alt: [null, null] })).toBeUndefined();
+  });
+
+  it('a trilha guarda o caminho de cada ponto', () => {
+    let s = emptyRun();
+    for (let i = 0; i <= 3; i++) s = addPoint(s, pt(i, { altitude: 850 + i }), t0);
+    expect(s.track.lat).toEqual([-19.9, -19.8999, -19.8998, -19.8997]);
+    expect(s.track.lon).toEqual([-43.9, -43.9, -43.9, -43.9]);
+    expect(s.track.alt).toEqual([850, 851, 852, 853]);
+  });
+
+  it('parciais por quilômetro, no tempo em movimento', () => {
+    let s = emptyRun();
+    // 11,1 m a cada 4 s: 1 km em ~360 s; 200 pontos ≈ 2,22 km
+    for (let i = 0; i <= 200; i++) s = addPoint(s, pt(i), t0);
+    const sp = kmSplits(s);
+    expect(sp.map((x) => x.km)).toEqual([1, 2, 3]);
+    expect(sp[0].seconds).toBeGreaterThanOrEqual(358);
+    expect(sp[0].seconds).toBeLessThanOrEqual(362);
+    expect(sp[1].seconds).toBeGreaterThanOrEqual(358);
+    expect(sp[2].partial).toBeGreaterThan(200);
+    expect(kmSplits(emptyRun())).toEqual([]);
+  });
+
+  it('pausa não entra na parcial', () => {
+    let s = emptyRun();
+    for (let i = 0; i <= 50; i++) s = addPoint(s, pt(i), t0);
+    s = resumeAt(s);
+    // volta 10 minutos depois, do mesmo ponto
+    for (let i = 50; i <= 120; i++) s = addPoint(s, pt(i, { at: t0 + 600_000 + i * 4000 }), t0);
+    expect(kmSplits(s)[0].seconds).toBeLessThanOrEqual(366);
+  });
+
+  it('título padrão pela hora da largada', () => {
+    expect(defaultTitle('Corrida', new Date(2026, 10, 14, 6, 30))).toBe('Corrida da manhã');
+    expect(defaultTitle('Pedalada', new Date(2026, 10, 14, 19, 0))).toBe('Pedalada da noite');
   });
 });

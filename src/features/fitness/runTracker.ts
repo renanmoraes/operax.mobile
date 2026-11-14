@@ -27,13 +27,17 @@ export type RunState = {
   last: GpsPoint | null;
   /** Último ponto usado para a altitude (suavização). */
   altRef: number | null;
-  /** Trilha para o servidor: segundos desde o início × metros acumulados. */
-  track: { t: number[]; dist: number[] };
+  /** Trilha para o servidor: segundos desde o início × metros acumulados, e o caminho (latitude, longitude, altitude). */
+  track: Track;
+  /** Tempo em movimento (ms) ao fechar cada quilômetro: as parciais da gravação. */
+  kmMarks: number[];
   /** Janela recente para o ritmo atual. */
   recent: { at: number; distanceM: number }[];
   /** Pontos descartados por imprecisão ou salto (para diagnóstico). */
   rejected: number;
 };
+
+export type Track = { t: number[]; dist: number[]; lat: number[]; lon: number[]; alt: (number | null)[] };
 
 export const MAX_ACCURACY_M = 25;
 const ALT_STEP_M = 3;
@@ -47,7 +51,8 @@ export const emptyRun = (): RunState => ({
   altitudeM: null,
   last: null,
   altRef: null,
-  track: { t: [], dist: [] },
+  track: { t: [], dist: [], lat: [], lon: [], alt: [] },
+  kmMarks: [],
   recent: [],
   rejected: 0,
 });
@@ -70,7 +75,7 @@ export function addPoint(state: RunState, p: GpsPoint, startedAt: number, sport:
   if (p.accuracy != null && p.accuracy > MAX_ACCURACY_M) return { ...state, rejected: state.rejected + 1 };
   const maxSpeed = sport === 'bike' ? 30 : 12; // m/s (108 km/h e 43 km/h): acima disso é salto do GPS
   if (!state.last) {
-    return { ...state, last: p, altitudeM: p.altitude ?? state.altitudeM, altRef: p.altitude ?? state.altRef, track: pushTrack(state.track, p.at, startedAt, state.distanceM) };
+    return { ...state, last: p, altitudeM: p.altitude ?? state.altitudeM, altRef: p.altitude ?? state.altRef, track: pushTrack(state.track, p, startedAt, state.distanceM) };
   }
   const dt = (p.at - state.last.at) / 1000;
   if (dt <= 0) return state;
@@ -90,9 +95,17 @@ export function addPoint(state: RunState, p: GpsPoint, startedAt: number, sport:
   }
   const speed = p.speed != null && p.speed >= 0 ? p.speed : implied;
   const recent = [...state.recent, { at: p.at, distanceM }].filter((r) => p.at - r.at <= RECENT_WINDOW_MS);
+  const movingMs = state.movingMs + dt * 1000;
+  // Fechou um ou mais quilômetros neste trecho: o tempo de cada um sai da interpolação dentro do trecho.
+  let kmMarks = state.kmMarks;
+  for (let k = kmMarks.length + 1; moved > 0 && k * 1000 <= distanceM; k++) {
+    const f = (k * 1000 - state.distanceM) / moved;
+    kmMarks = [...kmMarks, state.movingMs + f * dt * 1000];
+  }
   return {
     ...state,
-    movingMs: state.movingMs + dt * 1000,
+    movingMs,
+    kmMarks,
     distanceM,
     elevationGainM,
     altRef,
@@ -100,8 +113,19 @@ export function addPoint(state: RunState, p: GpsPoint, startedAt: number, sport:
     maxSpeedMs: Math.max(state.maxSpeedMs, Math.min(speed, maxSpeed)),
     last: p,
     recent,
-    track: pushTrack(state.track, p.at, startedAt, distanceM),
+    track: pushTrack(state.track, p, startedAt, distanceM),
   };
+}
+
+/** Parcial de cada quilômetro fechado (s), mais o trecho em andamento quando passa de 50 m. */
+export function kmSplits(state: RunState): { km: number; seconds: number; partial?: number }[] {
+  const out: { km: number; seconds: number; partial?: number }[] = state.kmMarks.map((ms, i) => ({ km: i + 1, seconds: Math.round((ms - (state.kmMarks[i - 1] ?? 0)) / 1000) }));
+  const rest = state.distanceM - state.kmMarks.length * 1000;
+  if (rest >= 50) {
+    const s = (state.movingMs - (state.kmMarks[state.kmMarks.length - 1] ?? 0)) / 1000;
+    out.push({ km: state.kmMarks.length + 1, seconds: Math.round(s), partial: Math.round(rest) });
+  }
+  return out;
 }
 
 /** Depois de uma pausa: o primeiro ponto só reposiciona (o deslocamento parado não vira distância). */
@@ -109,12 +133,18 @@ export function resumeAt(state: RunState): RunState {
   return { ...state, last: null, recent: [] };
 }
 
-function pushTrack(track: RunState['track'], at: number, startedAt: number, dist: number) {
-  const t = Math.max(0, Math.round((at - startedAt) / 1000));
+function pushTrack(track: Track, p: GpsPoint, startedAt: number, dist: number): Track {
+  const t = Math.max(0, Math.round((p.at - startedAt) / 1000));
   const lastT = track.t[track.t.length - 1];
   const lastD = track.dist[track.dist.length - 1];
   if (lastT != null && (t <= lastT || dist < lastD)) return track;
-  return { t: [...track.t, t], dist: [...track.dist, Math.round(dist * 10) / 10] };
+  return {
+    t: [...track.t, t],
+    dist: [...track.dist, Math.round(dist * 10) / 10],
+    lat: [...track.lat, Math.round(p.lat * 1e6) / 1e6],
+    lon: [...track.lon, Math.round(p.lng * 1e6) / 1e6],
+    alt: [...track.alt, p.altitude == null ? null : Math.round(p.altitude * 10) / 10],
+  };
 }
 
 /** Ritmo atual (s/km) pelos últimos 30 s; `null` parado ou sem dados. */
@@ -143,19 +173,28 @@ export function formatKm(m: number): string {
   return (m / 1000).toFixed(2).replace('.', ',');
 }
 
-/** Trilha para o servidor: 3 a 1500 pontos (o backend recusa fora disso). */
-export function decimateTrack(track: RunState['track'], max = 1500): RunState['track'] | undefined {
+/** Trilha para o servidor: 3 a 1500 pontos (o backend recusa fora disso), com as colunas do GPS alinhadas. */
+export function decimateTrack(track: Track, max = 1500): Track | undefined {
   const n = track.t.length;
   if (n < 3) return undefined;
   if (n <= max) return track;
   const step = (n - 1) / (max - 1);
-  const t: number[] = [];
-  const dist: number[] = [];
+  const out: Track = { t: [], dist: [], lat: [], lon: [], alt: [] };
   for (let i = 0; i < max; i++) {
     const k = Math.round(i * step);
-    if (t.length && track.t[k] <= t[t.length - 1]) continue;
-    t.push(track.t[k]);
-    dist.push(track.dist[k]);
+    if (out.t.length && track.t[k] <= out.t[out.t.length - 1]) continue;
+    out.t.push(track.t[k]);
+    out.dist.push(track.dist[k]);
+    out.lat.push(track.lat[k]);
+    out.lon.push(track.lon[k]);
+    out.alt.push(track.alt[k] ?? null);
   }
-  return t.length >= 3 ? { t, dist } : undefined;
+  return out.t.length >= 3 ? out : undefined;
+}
+
+/** Título padrão do treino livre pela hora da largada: "Corrida da manhã", "Pedalada da noite". */
+export function defaultTitle(sportLabel: string, at: Date): string {
+  const h = at.getHours();
+  const part = h < 5 ? 'da madrugada' : h < 12 ? 'da manhã' : h < 18 ? 'da tarde' : 'da noite';
+  return `${sportLabel} ${part}`;
 }

@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { openSqlite } from './openSqlite';
 
 /**
  * Banco local do app (SQLite, `operax.db`), que vem junto com o app e funciona sem internet.
@@ -24,8 +25,8 @@ let dbPromise: Promise<SQLiteDatabase | null> | null = null;
 async function open(): Promise<SQLiteDatabase | null> {
   if (Platform.OS === 'web') return null;
   try {
-    const SQLite = await import('expo-sqlite');
-    const db = await SQLite.openDatabaseAsync('operax.db');
+    const db = await openSqlite();
+    if (!db) return null;
     await migrate(db);
     return db;
   } catch {

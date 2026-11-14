@@ -1,5 +1,5 @@
 import { getItem, setItem } from '@/src/shared/storage';
-import type { RecordResultBody } from './types';
+import type { FreeActivityBody, RecordResultBody } from './types';
 
 /**
  * Fila offline de resultados, igual à do portal (lib/offline-results.ts): sem rede (status 0)
@@ -7,15 +7,18 @@ import type { RecordResultBody } from './types';
  * mesma idempotency_key, então nunca duplica.
  */
 
-export type QueueSender = (body: RecordResultBody) => Promise<{ ok: true } | { ok: false; status: number }>;
+type Keyed = { idempotency_key: string };
+export type QueueSender<T extends Keyed = RecordResultBody> = (body: T) => Promise<{ ok: true } | { ok: false; status: number }>;
 
 const KEY = 'operax_fitness_results_queue';
+/** Treinos livres gravados sem internet (mesmas regras da fila de resultados). */
+const ACTIVITIES_KEY = 'operax_fitness_activities_queue';
 
-export function enqueue(queue: RecordResultBody[], body: RecordResultBody): RecordResultBody[] {
+export function enqueue<T extends Keyed>(queue: T[], body: T): T[] {
   return queue.some((b) => b.idempotency_key === body.idempotency_key) ? queue : [...queue, body];
 }
 
-export async function flushQueue(queue: RecordResultBody[], send: QueueSender): Promise<RecordResultBody[]> {
+export async function flushQueue<T extends Keyed>(queue: T[], send: QueueSender<T>): Promise<T[]> {
   const rest = [...queue];
   while (rest.length) {
     const res = await send(rest[0]);
@@ -38,6 +41,18 @@ export async function loadQueue(): Promise<RecordResultBody[]> {
 
 export async function saveQueue(queue: RecordResultBody[]) {
   await setItem(KEY, JSON.stringify(queue));
+}
+
+export async function loadActivityQueue(): Promise<FreeActivityBody[]> {
+  try {
+    return JSON.parse((await getItem(ACTIVITIES_KEY)) ?? '[]') as FreeActivityBody[];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveActivityQueue(queue: FreeActivityBody[]) {
+  await setItem(ACTIVITIES_KEY, JSON.stringify(queue));
 }
 
 export function newIdempotencyKey() {

@@ -4,7 +4,7 @@ import { addDays, isoDate, startOfDay, startOfWeek } from '@/src/shared/format';
 import { clientDataMode } from '@/src/features/client/dataMode';
 import { adherenceStreak, bestAdherenceStreak, DayState, levelFromXp, mergeResultIntoHistory, xpFrom } from './derive';
 import { buildCheckins, buildHistory, LOAD_HISTORY, WORKOUTS, workoutForWeekday } from './mockData';
-import type { BodyCheckin, FitnessEvolution, FitnessHistoryEntry, FitnessResultView, FitnessWorkoutView, RecordResultBody, WeekView } from './types';
+import type { ActivityDetail, BodyCheckin, FitnessEvolution, FitnessHistoryEntry, FitnessResultView, FitnessWorkoutView, FreeActivityBody, RecordResultBody, WeekView } from './types';
 
 /**
  * Treino do cliente: `/api/public/portal/fitness/*` com o login real; no modo demonstração,
@@ -134,6 +134,43 @@ export async function fetchEvolution(): Promise<FitnessEvolution> {
     return { exercise_id: id, name: snap.name, points, record: { load_kg: best, reps: 10, date: points[loads.lastIndexOf(best)].date } };
   });
   return { strength, weekly, total_sessions: 74 + h.filter((e) => e.date >= isoDate(start)).length, weekly_goal: 5 };
+}
+
+/** Demonstração: o caminho de cada treino livre gravado nesta sessão do app, para o detalhe do histórico. */
+const demoDetails = new Map<string, ActivityDetail>();
+
+/** POST /activities — treino livre gravado no app (sem ficha). Idempotente por `idempotency_key`. */
+export async function recordFreeActivity(body: FreeActivityBody): Promise<{ ok: true }> {
+  if (live()) return (await api.post(`${F}/activities`, body)).data as { ok: true };
+  await tick();
+  const id = `s:demo-${body.idempotency_key}`;
+  if (getHistory().some((e) => e.id === id)) return { ok: true };
+  const tr = body.recording?.track;
+  history = [
+    {
+      id, kind: 'free', date: isoDate(new Date(body.started_at)), started_at: body.started_at, title: body.title ?? 'Treino livre', modality: body.sport,
+      duration_seconds: body.seconds, distance_meters: body.distance_m ?? null, avg_hr: null, effort: body.effort ?? null,
+      sources: [{ origin: 'celular', label: 'Celular' }], feeling: body.feeling ?? null, notes: body.notes ?? null, session_id: id,
+    },
+    ...getHistory(),
+  ];
+  const route = tr?.lat && tr.lon ? tr.lat.map((la, i) => [la, tr.lon![i]] as [number, number]) : undefined;
+  demoDetails.set(id, {
+    sport: body.sport, route, rate_unit: body.sport === 'bike' ? 'kmh' : 'min_km', seconds: body.seconds,
+    summary: { avg_hr: null, max_hr: null, elevation_gain_m: body.elevation_gain_m ?? null, avg_cadence: null, avg_power: null },
+    splits: [], split_basis: null,
+  });
+  return { ok: true };
+}
+
+/** GET /history/entry/detail — `null` quando o treino não tem gravação (lançado à mão, musculação). */
+export async function fetchActivityDetail(id: string): Promise<ActivityDetail | null> {
+  if (live()) {
+    const data = (await api.get(`${F}/history/entry/detail`, { params: { id } })).data as ActivityDetail | { empty: true };
+    return 'empty' in data ? null : data;
+  }
+  await tick();
+  return demoDetails.get(id) ?? null;
 }
 
 /** POST /results — idempotente por `idempotency_key`. */

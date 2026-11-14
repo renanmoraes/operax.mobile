@@ -151,8 +151,8 @@ export interface RecordResultBody {
   effort?: number;
   feeling?: FitnessFeeling;
   idempotency_key: string;
-  /** Gravação do celular (corrida/bike com GPS): início e trilha tempo × distância. */
-  recording?: { started_at: string; track?: { t: number[]; dist: number[] } };
+  /** Gravação do celular (corrida/bike com GPS): início e trilha tempo × distância, com o caminho. */
+  recording?: { started_at: string; track?: RecordingTrack };
 }
 
 export interface FitnessResultView {
@@ -171,6 +171,38 @@ export interface FitnessResultView {
 
 export type FitnessHistoryOrigin = 'portal' | 'equipe' | 'garmin' | 'strava' | 'polar' | 'celular';
 
+/** Trilha da gravação: segundos desde a largada, metros acumulados e, com GPS, o caminho (latitude, longitude, altitude). */
+export type RecordingTrack = { t: number[]; dist: number[]; lat?: number[]; lon?: number[]; alt?: (number | null)[] };
+
+/** Esportes do treino livre (o backend aceita os mesmos). */
+export type FreeSport = 'run' | 'walk' | 'bike' | 'strength' | 'swim' | 'other';
+
+/** POST /fitness/activities — treino livre gravado no app, idempotente pela chave. */
+export interface FreeActivityBody {
+  sport: FreeSport;
+  started_at: string;
+  seconds: number;
+  distance_m?: number;
+  elevation_gain_m?: number;
+  title?: string;
+  feeling?: FitnessFeeling;
+  effort?: number;
+  notes?: string;
+  idempotency_key: string;
+  recording?: { track?: RecordingTrack };
+}
+
+/** GET /history/entry/detail — o caminho, as parciais e o resumo da sessão gravada. */
+export interface ActivityDetail {
+  sport: string | null;
+  route?: [number, number][];
+  rate_unit: 'min_km' | 'min_100m' | 'min_500m' | 'kmh';
+  seconds: number;
+  summary: { avg_hr: number | null; max_hr: number | null; elevation_gain_m: number | null; avg_cadence: number | null; avg_power: number | null };
+  splits: { index: number; seconds: number; distance_m: number | null; rate: number | null; avg_hr: number | null }[];
+  split_basis: 'laps' | 'distance' | null;
+}
+
 export interface FitnessHistoryEntry {
   id: string;
   kind: 'prescribed' | 'free';
@@ -186,6 +218,10 @@ export interface FitnessHistoryEntry {
   sets_done?: number;
   record?: boolean;
   sources: { origin: FitnessHistoryOrigin; label: string; device?: string | null }[];
+  /** Treino livre do app: como o aluno disse que foi e o que anotou. */
+  feeling?: FitnessFeeling | null;
+  notes?: string | null;
+  session_id?: string | null;
 }
 
 export interface FitnessHistory {

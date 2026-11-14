@@ -507,7 +507,8 @@ export function Field({
           accessibilityLabel={label}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          style={[styles.input, multiline && { textAlignVertical: 'top' }]}
+          // Multilinha: o campo ocupa a caixa inteira, para o toque em qualquer ponto abrir o teclado.
+          style={[styles.input, multiline && { textAlignVertical: 'top', minHeight: 68, alignSelf: 'stretch' }]}
         />
       </View>
     </View>

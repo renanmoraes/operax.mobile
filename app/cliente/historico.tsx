@@ -114,13 +114,14 @@ export default function FitnessHistoryScreen() {
             const d = new Date(`${e.date}T12:00:00`);
             const watch = e.sources.find((s) => s.origin !== 'portal');
             return (
-              <Card key={e.id} style={styles.entry}>
+              <Card key={e.id} style={styles.entry} onPress={() => router.push(`/cliente/atividade/${encodeURIComponent(e.id)}`)} accessibilityLabel={`${e.title}. Ver detalhes`}>
                 <View style={{ width: 46, alignItems: 'center' }}>
                   <Muted style={{ fontFamily: typography.fontFamilySemiBold, fontSize: 11.5 }}>{weekdayShort(d)}</Muted>
                   <Text style={styles.entryDay}>{d.getDate()}</Text>
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.entryTitle} numberOfLines={1}>{e.title}</Text>
+                  {e.distance_meters ? <Text style={styles.entryDist}>{`${(e.distance_meters / 1000).toFixed(2).replace('.', ',')} km`}</Text> : null}
                   <Muted style={{ marginTop: 3 }} numberOfLines={1}>
                     {[formatDuration(e.duration_seconds), e.sets_done ? `${e.sets_done} séries` : null, e.volume_kg ? `${e.volume_kg.toLocaleString('pt-BR')} kg` : null, watch ? watch.label : null].filter(Boolean).join(' · ')}
                   </Muted>
@@ -162,4 +163,5 @@ const styles = StyleSheet.create({
   entry: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 14 },
   entryDay: { ...numbers.md, color: colors.text },
   entryTitle: { fontFamily: typography.fontFamilyBold, fontSize: 14.5, color: colors.text },
+  entryDist: { marginTop: 2, fontFamily: typography.fontFamilySemiBold, fontSize: 13, color: colors.primary, fontVariant: ['tabular-nums'] },
 });

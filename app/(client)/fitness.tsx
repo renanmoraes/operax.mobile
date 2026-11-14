@@ -111,6 +111,23 @@ export default function ClientFitnessScreen() {
           </HeroCard>
         </Rise>
 
+        {caps.training ? (
+          <Rise index={1} style={{ marginTop: 12 }}>
+            <PressableScale onPress={() => router.push('/cliente/treinar')} accessibilityRole="button" accessibilityLabel="Treinar agora: gravar treino do plano ou livre" style={styles.cta}>
+              <LinearGradient colors={['#1e4ed8', '#163db0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+              <Glow size={240} opacity={0.5} style={{ right: -70, top: -110 }} />
+              <View style={styles.ctaPlay}>
+                <Ionicons name="play" size={22} color={colors.primary} style={{ marginLeft: 3 }} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.ctaTitle}>Treinar agora</Text>
+                <Text style={styles.ctaSub}>Corrida, caminhada, bike, musculação…</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.85)" />
+            </PressableScale>
+          </Rise>
+        ) : null}
+
         {summary ? (
           <Rise index={1} style={{ marginTop: 12 }}>
             <Card style={styles.memory}>
@@ -234,6 +251,10 @@ const styles = StyleSheet.create({
   streakText: { fontFamily: typography.fontFamilyBold, fontSize: 14, color: colors.warn },
   heroLine: { marginTop: 3, ...text.section, color: colors.text },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cta: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: radii.xl, overflow: 'hidden', ...shadows.hero },
+  ctaPlay: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  ctaTitle: { ...text.section, color: '#fff' },
+  ctaSub: { marginTop: 2, fontFamily: typography.fontFamilyMedium, fontSize: 12.5, color: 'rgba(255,255,255,0.8)' },
   memory: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16, borderRadius: radii.lg },
   memoryText: { flex: 1, fontFamily: typography.fontFamily, fontSize: 13.5, color: colors.text, lineHeight: 19 },
   days: { flexDirection: 'row', gap: 6 },

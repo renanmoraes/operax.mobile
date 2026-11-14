@@ -2,8 +2,12 @@ import { useEffect, useMemo } from 'react';
 import { AppState } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from './fitnessApi';
-import { flushQueue, loadQueue, saveQueue } from './resultsQueue';
-import type { BodyCheckin, RecordResultBody } from './types';
+import { flushQueue, loadActivityQueue, loadQueue, saveActivityQueue, saveQueue } from './resultsQueue';
+import type { BodyCheckin, FreeActivityBody, RecordResultBody } from './types';
+import { isAxiosError } from 'axios';
+
+/** Status HTTP para a fila: 4xx descarta (o servidor recusou ou já tem), sem resposta ou 5xx tenta depois. */
+const statusOf = (e: unknown) => (isAxiosError(e) ? (e.response?.status ?? 0) : 0);
 
 /** Reenvia resultados guardados sem conexão ao abrir o app e quando ele volta ao primeiro plano. */
 export function useFlushResultsQueue() {
@@ -11,7 +15,8 @@ export function useFlushResultsQueue() {
   useEffect(() => {
     const run = async () => {
       const queue = await loadQueue();
-      if (!queue.length) return;
+      const acts = await loadActivityQueue();
+      if (!queue.length && !acts.length) return;
       const rest = await flushQueue(queue, async (body) => {
         try {
           await api.recordResult(body);
@@ -20,8 +25,17 @@ export function useFlushResultsQueue() {
           return { ok: false, status: 0 };
         }
       });
+      const restActs = await flushQueue<FreeActivityBody>(acts, async (body) => {
+        try {
+          await api.recordFreeActivity(body);
+          return { ok: true };
+        } catch (e) {
+          return { ok: false, status: statusOf(e) };
+        }
+      });
       await saveQueue(rest);
-      if (rest.length < queue.length) void qc.invalidateQueries({ queryKey: root });
+      await saveActivityQueue(restActs);
+      if (rest.length < queue.length || restActs.length < acts.length) void qc.invalidateQueries({ queryKey: root });
     };
     void run();
     const sub = AppState.addEventListener('change', (s) => {
@@ -38,6 +52,18 @@ export const useWeek = (opts?: { enabled?: boolean }) => useQuery({ queryKey: [.
 export const useFitnessSummary = (opts?: { enabled?: boolean }) => useQuery({ queryKey: [...root, 'summary'], queryFn: api.fetchSummary, enabled: opts?.enabled ?? true });
 export const useHistory = () => useQuery({ queryKey: [...root, 'history'], queryFn: api.fetchHistory });
 export const useEvolution = () => useQuery({ queryKey: [...root, 'evolution'], queryFn: api.fetchEvolution });
+/** Caminho, parciais e resumo de um treino do histórico (só existe quando a sessão tem gravação). */
+export const useActivityDetail = (id: string | undefined) =>
+  useQuery({ queryKey: [...root, 'detail', id], queryFn: () => api.fetchActivityDetail(id!), enabled: !!id });
+
+export function useRecordFreeActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: FreeActivityBody) => api.recordFreeActivity(body),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: root }),
+  });
+}
+
 export const useCheckins = () => useQuery({ queryKey: [...root, 'checkins'], queryFn: api.fetchCheckins });
 
 /** Cargas por exercício (mais antiga → mais recente), da Evolução: alimenta "última vez" e recordes. */

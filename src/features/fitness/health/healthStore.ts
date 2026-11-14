@@ -22,7 +22,8 @@ export type HealthAvailability =
 
 export const HEALTH_PLATFORM: 'ios' | 'android' | null = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : null;
 
-const isExpoGo = () => Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+// Há Expo Go que diz `bare` no executionEnvironment; a config do Expo Go só existe dentro dele.
+const isExpoGo = () => Constants.executionEnvironment === ExecutionEnvironment.StoreClient || Constants.expoGoConfig != null;
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 type HealthKitModule = typeof import('@kingstinct/react-native-healthkit');
