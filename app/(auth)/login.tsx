@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Body, Button, Field, Muted } from '@/src/design-system/ui';
 import { colors, radii, spacing } from '@/src/design-system/tokens';
@@ -10,7 +10,7 @@ import { ALLOW_MOCK, API_URL } from '@/src/shared/config';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { login, enterDemo, error, clearError } = useAuth();
+  const { login, enterDemo, error, clearError, clearRole } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [companyCode, setCompanyCode] = useState('OPRX');
@@ -90,6 +90,12 @@ export default function LoginScreen() {
               }}
             />
           ) : null}
+
+          <Pressable onPress={() => clearRole().then(() => router.replace('/(auth)/role-select'))}>
+            <Muted style={{ textAlign: 'center', marginTop: spacing.sm }}>
+              Não é você? Entrar como cliente
+            </Muted>
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
