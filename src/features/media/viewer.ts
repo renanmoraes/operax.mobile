@@ -1,6 +1,6 @@
 import { Asset } from 'expo-asset';
 import { router } from 'expo-router';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import { cacheDirectory, downloadAsync } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
@@ -44,3 +44,29 @@ export async function shareFile(uri: string, kind: ViewerKind, title?: string) {
     dialogTitle: title,
   });
 }
+
+/** É PDF? Pelo nome do arquivo ou pelo link. */
+export function isPdf(name?: string, uri?: string): boolean {
+  const re = /\.pdf($|[?#])/i;
+  return re.test(name ?? '') || re.test(uri ?? '');
+}
+
+/**
+ * Abre um documento: PDF no visualizador do app; os outros (Word, planilha…) não dá para
+ * desenhar aqui, então vão para "Abrir com…" do celular (ou nova aba, no navegador).
+ */
+export async function openDocument(uri: string, name: string): Promise<void> {
+  if (isPdf(name, uri)) {
+    openViewer({ kind: 'pdf', uri, title: name });
+    return;
+  }
+  if (Platform.OS === 'web') {
+    globalThis.open?.(uri, '_blank');
+    return;
+  }
+  const clean = name.replace(/[^\p{L}\p{N}._ -]+/gu, '').trim() || 'arquivo';
+  const local = uri.startsWith('file:') ? uri : (await downloadAsync(uri, `${cacheDirectory}${Date.now()}-${clean}`)).uri;
+  if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(local, { dialogTitle: name });
+  else await Linking.openURL(local);
+}
+

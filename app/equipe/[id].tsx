@@ -4,7 +4,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ReactNode, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Toast, useToast } from '@/src/design-system/Toast';
@@ -15,7 +15,7 @@ import { AudioBubble } from '@/src/features/chat/AudioBubble';
 import { ChatInput } from '@/src/features/chat/ChatInput';
 import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, TextWithMeta } from '@/src/features/chat/MessageParts';
 import { MicButton, RecordingBar, useVoiceRecorder } from '@/src/features/chat/VoiceRecorder';
-import { assetUri, openViewer } from '@/src/features/media/viewer';
+import { assetUri, openDocument, openViewer } from '@/src/features/media/viewer';
 import { demoTeamChat } from '@/src/features/team-chat/demoStore';
 import { firstName, mapApiMessage, TeamMessage, toneFor } from '@/src/features/team-chat/model';
 import { TeamAvatar } from '@/src/features/team-chat/parts';
@@ -163,7 +163,7 @@ export default function TeamChatConversationScreen() {
       const uri = fileUri(item);
       const media: ChatMediaData = item.type === 'document' ? { kind: 'document', name: item.fileName || 'Documento', uri, sizeBytes: item.sizeBytes } : { kind: item.type, uri };
       const onOpen = uri
-        ? () => (item.type === 'image' ? openViewer({ kind: 'image', uri, title: `Foto de ${item.mine ? 'você' : firstName(item.senderName)}` }) : item.type === 'document' ? openViewer({ kind: 'pdf', uri, title: item.fileName }) : undefined)
+        ? () => (item.type === 'image' ? openViewer({ kind: 'image', uri, title: `Foto de ${item.mine ? 'você' : firstName(item.senderName)}` }) : item.type === 'document' ? void openDocument(uri, item.fileName || 'documento') : undefined)
         : undefined;
       bubble = <MediaBubble media={media} caption={item.body || undefined} at={item.at} mine={item.mine} onOpen={onOpen} />;
     } else if (item.type === 'audio') {
@@ -186,7 +186,8 @@ export default function TeamChatConversationScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    // O campo de mensagem sobe junto com o teclado do iPhone (sem esconder o texto e o enviar).
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Backdrop variant="chat" />
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <IconButton icon="chevron-back" accessibilityLabel="Voltar" onPress={() => router.back()} />
@@ -241,7 +242,7 @@ export default function TeamChatConversationScreen() {
         <Button label="Foto da galeria" variant="secondary" onPress={() => void pick('image')} />
         <Button label="Documento ou PDF" variant="secondary" onPress={() => void pick('document')} />
       </BottomSheet>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

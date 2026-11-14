@@ -2,14 +2,7 @@ import { ComponentProps, ReactNode, useEffect, useState } from 'react';
 import { LayoutChangeEvent, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { BlurView } from 'expo-blur';
-import Animated, {
-  Easing,
-  interpolate,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { Easing, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, motion, shadows, typography } from './tokens';
 
@@ -42,9 +35,12 @@ function TabItem({
   badge,
   renderIcon,
   onPress,
+  maxWidth,
 }: {
   focused: boolean;
   label: string;
+  /** Espaço máximo que a aba aberta pode ocupar (telas estreitas). Se o nome não couber inteiro, fica só o ícone. */
+  maxWidth?: number;
   /** `true` mostra um ponto; um número mostra o contador (some quando a aba está aberta). */
   badge: boolean | number;
   renderIcon: (color: string) => ReactNode;
@@ -59,7 +55,10 @@ function TabItem({
     p.set(reduced ? (focused ? 1 : 0) : withTiming(focused ? 1 : 0, focused ? OPEN : CLOSE));
   }, [focused, reduced, p]);
 
-  const expanded = PAD_LEFT + ICON + GAP + labelW + PAD_RIGHT;
+  const full = PAD_LEFT + ICON + GAP + labelW + PAD_RIGHT;
+  // Nunca corta o nome: se não cabe inteiro, a pílula fica redonda só com o ícone.
+  const fits = maxWidth == null || full <= maxWidth;
+  const expanded = fits ? full : COLLAPSED;
 
   const container = useAnimatedStyle(() => ({
     // primeiro o círculo azul surge atrás do ícone; só então a pílula começa a esticar
@@ -70,13 +69,17 @@ function TabItem({
     opacity: interpolate(p.value, [0, 0.16], [0, 1], 'clamp'),
     transform: [{ scale: interpolate(p.value, [0, 0.2], [0.86, 1], 'clamp') }],
   }));
-  const content = useAnimatedStyle(() => ({
-    // centralizado quando fechado; alinhado à esquerda (com respiro) quando aberto
-    transform: [{ translateX: interpolate(p.value, [0, 1], [(COLLAPSED - ICON) / 2, PAD_LEFT]) }],
-  }));
+  const content = useAnimatedStyle(() =>
+    !fits
+      ? { transform: [{ translateX: (COLLAPSED - ICON) / 2 }] }
+      : {
+          // centralizado quando fechado; alinhado à esquerda (com respiro) quando aberto
+          transform: [{ translateX: interpolate(p.value, [0, 1], [(COLLAPSED - ICON) / 2, PAD_LEFT]) }],
+        },
+  );
   const labelStyle = useAnimatedStyle(() => ({
     // o nome é descoberto pela borda da pílula enquanto ela cresce, ganhando cor aos poucos
-    opacity: interpolate(p.value, [0.28, 0.92], [0, 1], 'clamp'),
+    opacity: fits ? interpolate(p.value, [0.28, 0.92], [0, 1], 'clamp') : 0,
     transform: [{ translateX: interpolate(p.value, [0.14, 1], [-4, 0], 'clamp') }],
   }));
   const iconOn = useAnimatedStyle(() => ({ opacity: interpolate(p.value, [0, 0.18], [0, 1], 'clamp') }));
@@ -95,7 +98,13 @@ function TabItem({
       onPressOut={() => press.set(withTiming(1, { duration: motion.pressMs, easing: easeOut }))}
       accessibilityRole="tab"
       accessibilityState={{ selected: focused }}
-      accessibilityLabel={typeof badge === 'number' && badge > 0 ? `${label}, ${badge} ${badge === 1 ? 'mensagem nova' : 'mensagens novas'}` : badge ? `${label}, novas mensagens` : label}
+      accessibilityLabel={
+        typeof badge === 'number' && badge > 0
+          ? `${label}, ${badge} ${badge === 1 ? 'mensagem nova' : 'mensagens novas'}`
+          : badge
+            ? `${label}, novas mensagens`
+            : label
+      }
       style={{ flexShrink: 0 }}
     >
       <Animated.View style={[styles.item, container]}>
@@ -130,14 +139,17 @@ function TabItem({
 /** Navegação inferior em pílula de vidro flutuante; o item ativo abre numa pílula azul com rótulo. */
 export function GlassTabBar({ state, descriptors, emitter, navigateToTab }: TabBarProps) {
   const insets = useSafeAreaInsets();
+  const [barW, setBarW] = useState(0);
   const visible = state.routes.filter((route) => {
     const style = descriptors[route.key].options.tabBarItemStyle as { display?: string } | undefined;
     return style?.display !== 'none';
   });
+  // Espaço que sobra para a aba aberta depois das fechadas (padding 8 + borda 1 de cada lado, e um respiro entre elas).
+  const maxOpen = barW ? barW - 18 - (visible.length - 1) * (COLLAPSED + 2) : undefined;
 
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) + 8 }]}>
-      <View style={styles.bar}>
+      <View style={styles.bar} onLayout={(e) => setBarW(e.nativeEvent.layout.width)}>
         {Platform.OS === 'web' ? (
           <View style={[StyleSheet.absoluteFill, styles.webGlass]} />
         ) : (
@@ -160,6 +172,7 @@ export function GlassTabBar({ state, descriptors, emitter, navigateToTab }: TabB
               badge={typeof options.tabBarBadge === 'number' ? options.tabBarBadge : options.tabBarBadge != null}
               renderIcon={(color) => options.tabBarIcon?.({ focused, color, size: ICON })}
               onPress={onPress}
+              maxWidth={maxOpen}
             />
           );
         })}

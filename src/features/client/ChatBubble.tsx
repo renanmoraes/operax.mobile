@@ -4,7 +4,7 @@ import { colors, radii, text, typography } from '@/src/design-system/tokens';
 import { formatHour } from '@/src/shared/format';
 import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, MessageMeta, TextWithMeta } from '@/src/features/chat/MessageParts';
 import { AudioBubble } from '@/src/features/chat/AudioBubble';
-import { assetUri, openViewer } from '@/src/features/media/viewer';
+import { assetUri, openDocument, openViewer } from '@/src/features/media/viewer';
 import type { ChatAttachment, ChatMessage } from './types';
 
 /** Endereço do arquivo: o link real ou, no demo, o arquivo embutido no app. */
@@ -28,7 +28,8 @@ export function ChatBubble({ m }: { m: ChatMessage }) {
   const open = () => {
     if (!uri || !m.attachment) return;
     if (m.attachment.kind === 'image') openViewer({ kind: 'image', uri, title: m.author_name ? `Foto de ${m.author_name}` : 'Sua foto' });
-    else if (m.attachment.kind === 'document') openViewer({ kind: 'pdf', uri, title: m.attachment.name });
+    // Só PDF abre no visualizador; Word, planilha e outros vão para "Abrir com…" do celular.
+    else if (m.attachment.kind === 'document') void openDocument(uri, m.attachment.name);
     else void Linking.openURL(uri);
   };
 
