@@ -1,0 +1,39 @@
+import type { ReactNode } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { Badge, Button, Card, IconName, IconTile, Muted, Rise } from '@/src/design-system/ui';
+import { colors, text } from '@/src/design-system/tokens';
+import { openSystemSettings } from './permissions';
+import type { PermissionState } from './permissionState';
+
+/** Botão de cada permissão: liberar, já ativa, ou abrir os ajustes do sistema quando foi negada. */
+export function StatusAction({ state, onRequest, grantLabel }: { state: PermissionState | undefined; onRequest: () => void; grantLabel: string }) {
+  if (state === 'granted') return <Badge label="Ativado" tone="success" icon="checkmark" />;
+  if (state === 'unavailable') return <Badge label="No app do celular" tone="neutral" />;
+  if (state === 'blocked') return <Button label="Abrir ajustes" variant="soft" compact onPress={openSystemSettings} />;
+  return <Button label={grantLabel} compact onPress={onRequest} />;
+}
+
+export function PermissionCard({ icon, title, body, action, index }: { icon: IconName; title: string; body: string; action: ReactNode; index: number }) {
+  return (
+    <Rise index={index}>
+      <Card style={styles.card}>
+        <View style={styles.cardTop}>
+          <IconTile icon={icon} size={46} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>{title}</Text>
+            <Muted style={styles.cardBody}>{body}</Muted>
+          </View>
+        </View>
+        <View style={styles.cardAction}>{action}</View>
+      </Card>
+    </Rise>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: { padding: 18, gap: 14 },
+  cardTop: { flexDirection: 'row', gap: 14 },
+  cardTitle: { ...text.section, color: colors.text },
+  cardBody: { marginTop: 4, fontSize: 13.5, lineHeight: 19.5 },
+  cardAction: { alignItems: 'flex-start', paddingLeft: 60 },
+});

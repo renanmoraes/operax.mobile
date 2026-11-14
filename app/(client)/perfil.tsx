@@ -11,6 +11,7 @@ import { useProviders } from '@/src/features/fitness/connections';
 import { providerDisplayName } from '@/src/features/fitness/brands';
 import { useFitnessSummary } from '@/src/features/fitness/useFitness';
 import { usePermissions } from '@/src/features/permissions/permissions';
+import { appVersionLabel } from '@/src/shared/updates/appVersion';
 
 export default function ClientPerfilScreen() {
   const insets = useSafeAreaInsets();
@@ -110,6 +111,7 @@ export default function ClientPerfilScreen() {
         <Rise index={3} style={{ marginTop: 16 }}>
           <Button label="Sair desta conta" variant="ghost" onPress={() => void logout().then(() => router.replace('/'))} style={{ minHeight: 48 }} />
         </Rise>
+        <Muted style={{ textAlign: 'center', fontSize: 12, marginTop: 10 }}>{appVersionLabel()}</Muted>
       </ScrollView>
     </Screen>
   );

@@ -4,10 +4,12 @@ import * as Application from 'expo-application';
 import * as Battery from 'expo-battery';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import { documentDirectory, readAsStringAsync, writeAsStringAsync } from 'expo-file-system/legacy';
+import * as Location from 'expo-location';
 import * as Network from 'expo-network';
 import { API_URL, MOBILE_CLIENT_HEADER } from '@/src/shared/config';
 import { getAccessToken, getSavedRole } from '@/src/shared/api/token-store';
+import { addBreadcrumb, bumpErrorAttempts, insertError, markErrorsSent, pendingErrors, recentBreadcrumbs, type Breadcrumb } from '@/src/shared/db/localDb';
+import * as Updates from 'expo-updates';
 
 /**
  * Erros do app → servidor (`POST /api/mobile/logs`, gravado em `system_logs` com origem `mobile`).
@@ -16,33 +18,21 @@ import { getAccessToken, getSavedRole } from '@/src/shared/api/token-store';
  * falhou por servidor ou rede). Cada erro leva o retrato do aparelho naquele momento — modelo,
  * sistema, versão do app, rede, bateria, tela atual e as últimas telas — para dar para entender
  * a reclamação do usuário. Nunca vai conteúdo de mensagem, dado de paciente nem corpo de requisição.
- * Localização fica de fora: pedir GPS só para log não passa na revisão das lojas e é dado sensível.
+ * Leva também a última localização conhecida (só se a pessoa liberou a localização, que o app pede
+ * para os treinos com GPS) e as últimas ações: telas, toques em botões e chamadas à API.
  *
- * Fica numa fila no aparelho (sobrevive a sem internet e a fechar o app) e é enviado de tempo em tempo.
+ * Fica no banco local (SQLite) — sobrevive a sem internet e a fechar o app — e é enviado de tempo em tempo.
  */
 
 export type ErrorLevel = 'error' | 'warn';
 
-type Entry = {
-  level: ErrorLevel;
-  message: string;
-  trace?: string;
-  context?: string;
-  occurred_at: string;
-  meta: Record<string, unknown>;
-};
-
-const QUEUE_MAX = 100;
 const BATCH = 50;
 const FLUSH_EVERY_MS = 60_000;
-const FILE = documentDirectory ? `${documentDirectory}operax-error-queue.json` : null;
-const WEB_KEY = 'operax_error_queue';
 
-let queue: Entry[] = [];
-let loaded = false;
 let flushing = false;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let installed = false;
+let hasPending = false;
 
 /** Últimas telas visitadas (só o caminho), para saber o que a pessoa fez antes do erro. */
 const routes: string[] = [];
@@ -52,33 +42,32 @@ export function trackRoute(pathname: string): void {
   if (!pathname || routes[routes.length - 1] === pathname) return;
   routes.push(pathname);
   if (routes.length > 12) routes.shift();
+  void addBreadcrumb({ at: new Date().toISOString(), kind: 'screen', label: pathname });
+}
+
+/** Ação da pessoa (toque num botão, envio de formulário): entra na trilha que acompanha o erro. */
+export function trackAction(label: string, data?: Breadcrumb['data'], kind: Breadcrumb['kind'] = 'tap'): void {
+  if (!label) return;
+  void addBreadcrumb({ at: new Date().toISOString(), kind, label: `${routes[routes.length - 1] ?? ''} · ${label}`, ...(data ? { data } : {}) });
+}
+
+/** Última posição conhecida (sem ligar o GPS), só com a permissão já dada. */
+async function lastLocation(): Promise<Record<string, unknown> | null> {
+  try {
+    const perm = await Location.getForegroundPermissionsAsync();
+    if (!perm.granted) return null;
+    const p = await Location.getLastKnownPositionAsync({ maxAge: 30 * 60_000 });
+    if (!p) return null;
+    const r4 = (n: number) => Math.round(n * 10_000) / 10_000;
+    return { lat: r4(p.coords.latitude), lng: r4(p.coords.longitude), accuracy_m: p.coords.accuracy != null ? Math.round(p.coords.accuracy) : null, altitude_m: p.coords.altitude != null ? Math.round(p.coords.altitude) : null, at: new Date(p.timestamp).toISOString() };
+  } catch {
+    return null;
+  }
 }
 
 /** Quem está usando (o servidor confere pelo token; isto é só para leitura do log). */
 export function setReporterSession(next: typeof session): void {
   session = next;
-}
-
-async function load(): Promise<void> {
-  if (loaded) return;
-  loaded = true;
-  try {
-    const raw = Platform.OS === 'web' ? globalThis.localStorage?.getItem(WEB_KEY) : FILE ? await readAsStringAsync(FILE) : null;
-    const saved = raw ? (JSON.parse(raw) as Entry[]) : [];
-    queue = [...saved, ...queue].slice(-QUEUE_MAX);
-  } catch {
-    // arquivo ainda não existe ou corrompido: começa vazio
-  }
-}
-
-async function persist(): Promise<void> {
-  try {
-    const raw = JSON.stringify(queue);
-    if (Platform.OS === 'web') globalThis.localStorage?.setItem(WEB_KEY, raw);
-    else if (FILE) await writeAsStringAsync(FILE, raw);
-  } catch {
-    // sem espaço: o erro ainda segue na memória
-  }
 }
 
 /** Retrato do aparelho agora. Cada leitura falha sozinha sem derrubar as outras. */
@@ -104,6 +93,8 @@ export async function deviceSnapshot(): Promise<Record<string, unknown>> {
       native_version: Application.nativeApplicationVersion ?? null,
       build: Application.nativeBuildVersion ?? null,
       runtime: Constants.executionEnvironment ?? null, // storeClient = Expo Go, standalone = app da loja
+      update_id: Updates.isEnabled ? Updates.updateId : null,
+      channel: Updates.isEnabled ? Updates.channel : null,
       dev: __DEV__,
     },
     device: {
@@ -154,17 +145,16 @@ export async function reportError(
   try {
     const { message, trace } = describe(error);
     if (isDuplicate(`${opts.context}|${message}`)) return;
-    await load();
-    queue.push({
+    const [snapshot, location, breadcrumbs] = await Promise.all([deviceSnapshot(), lastLocation(), recentBreadcrumbs(25)]);
+    await insertError({
+      created_at: new Date().toISOString(),
       level: opts.level ?? 'error',
       message,
-      trace,
-      context: opts.context?.slice(0, 56),
-      occurred_at: new Date().toISOString(),
-      meta: { ...(await deviceSnapshot()), ...(opts.extra ?? {}) },
+      trace: trace ?? null,
+      context: opts.context?.slice(0, 56) ?? null,
+      meta: { ...snapshot, location, breadcrumbs, ...(opts.extra ?? {}) },
     });
-    if (queue.length > QUEUE_MAX) queue = queue.slice(-QUEUE_MAX);
-    await persist();
+    hasPending = true;
     scheduleFlush(3_000);
   } catch {
     // engolido de propósito
@@ -184,21 +174,28 @@ export async function flushErrors(): Promise<void> {
   if (flushing) return;
   flushing = true;
   try {
-    await load();
-    while (queue.length) {
-      const batch = queue.slice(0, BATCH);
+    for (;;) {
+      const rows = await pendingErrors(BATCH);
+      hasPending = rows.length > 0;
+      if (!rows.length) break;
       const role = (await getSavedRole()) ?? undefined;
       const token = role ? await getAccessToken(role) : null;
-      await axios.post(
-        `${API_URL}/api/mobile/logs`,
-        { entries: batch },
-        {
-          timeout: 15_000,
-          headers: { 'X-Client': MOBILE_CLIENT_HEADER, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        },
-      );
-      queue = queue.slice(batch.length);
-      await persist();
+      const entries = rows.map((r) => ({
+        level: r.level === 'warn' ? 'warn' : 'error',
+        message: r.message,
+        ...(r.trace ? { trace: r.trace } : {}),
+        ...(r.context ? { context: r.context } : {}),
+        occurred_at: r.created_at,
+        meta: { ...(r.meta ? (JSON.parse(r.meta) as Record<string, unknown>) : {}), send_attempts: r.attempts + 1 },
+      }));
+      try {
+        await axios.post(`${API_URL}/api/mobile/logs`, { entries }, { timeout: 15_000, headers: { 'X-Client': MOBILE_CLIENT_HEADER, ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+      } catch {
+        await bumpErrorAttempts(rows.map((r) => r.id));
+        break; // sem internet ou servidor fora: fica para o próximo ciclo
+      }
+      await markErrorsSent(rows.map((r) => r.id));
+      if (rows.length < BATCH) break;
     }
   } catch {
     // tenta de novo no próximo ciclo
@@ -256,7 +253,7 @@ export function installErrorReporter(): void {
   // Envio periódico com o app na frente, e ao sair dele (antes que o sistema suspenda).
   attempt(() => {
     setInterval(() => {
-      if (AppState.currentState === 'active' && queue.length) void flushErrors();
+      if (AppState.currentState === 'active' && hasPending) void flushErrors();
     }, FLUSH_EVERY_MS);
   });
   attempt(() => {

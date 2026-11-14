@@ -9,6 +9,7 @@ import { AccountSwitcher } from '@/src/features/auth/AccountSwitcher';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
 import { openSystemSettings, usePermissions } from '@/src/features/permissions/permissions';
 import { API_URL } from '@/src/shared/config';
+import { appVersionLabel } from '@/src/shared/updates/appVersion';
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -62,6 +63,7 @@ export default function ProfileScreen() {
 
           <Rise index={2}>
             <SettingsGroup>
+              <SettingsRow icon="shield-checkmark-outline" title="Permissões do aparelho" subtitle="Notificações, câmera, fotos e microfone" onPress={() => router.push('/permissoes')} />
               <SettingsRow icon="options-outline" title="Preferências de notificação" onPress={() => router.push('/notification-prefs')} />
               <SettingsRow icon="flash-outline" title="Respostas rápidas" onPress={() => router.push('/quick-replies')} />
               <SettingsRow icon="document-text-outline" title="Templates Meta" onPress={() => router.push('/templates')} last />
@@ -83,6 +85,8 @@ export default function ProfileScreen() {
               }}
             />
           </Rise>
+          {/* Versão instalada e atualização em uso: o suporte pede isto quando algo dá errado. */}
+          <Muted style={{ textAlign: 'center', fontSize: 12 }}>{appVersionLabel()}</Muted>
           {__DEV__ ? <Muted style={{ textAlign: 'center', fontSize: 11 }}>{`API ${API_URL}`}</Muted> : null}
         </View>
       </ScrollView>

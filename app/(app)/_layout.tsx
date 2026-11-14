@@ -9,6 +9,8 @@ import { hasPermission, PERMS, type PermissionNeed } from '@/src/features/auth/p
 import { useTeamChat } from '@/src/features/team-chat/TeamChatContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSocketEvents } from '@/src/shared/realtime/socket';
+import { useEffect, useState } from 'react';
+import { hasSeenStaffOnboarding } from '@/src/features/permissions/permissions';
 
 // Mesmas permissões do menu do Operax web: sem elas a aba nem aparece.
 const TAB_PERMISSIONS: Record<string, PermissionNeed | undefined> = {
@@ -26,7 +28,14 @@ export default function AppLayout() {
   const qc = useQueryClient();
   // Aviso novo chega ao vivo na aba Avisos.
   useSocketEvents({ 'notification.new': () => void qc.invalidateQueries({ queryKey: ['notifications'] }) }, user?.kind === 'staff');
+  // Primeira entrada da equipe: pede as permissões do aparelho (depois ficam em Perfil).
+  const [permsSeen, setPermsSeen] = useState<boolean | null>(null);
+  useEffect(() => {
+    void hasSeenStaffOnboarding().then(setPermsSeen);
+  }, []);
   if (!isAuthenticated || user?.kind !== 'staff') return <Redirect href="/" />;
+  if (permsSeen === null) return null;
+  if (!permsSeen) return <Redirect href="/permissoes?inicio=1" />;
 
   const permissions = user?.kind === 'staff' ? user.permissions : undefined;
   const visible = (tab: keyof typeof TAB_PERMISSIONS) =>

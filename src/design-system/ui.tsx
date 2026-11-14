@@ -19,6 +19,7 @@ import Animated, { Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withD
 import Svg, { Circle, Defs, RadialGradient, Rect, Stop, LinearGradient as SvgLinear } from 'react-native-svg';
 import { OperaxLoader } from './Loader';
 import { colors, gradients, motion, NumberSize, numbers, radii, shadows, spacing, text, TextRole, typography } from './tokens';
+import { trackAction } from '@/src/shared/telemetry/errorReporter';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -131,8 +132,9 @@ export function PressableScale({
   children,
   style,
   scaleTo = motion.pressScale,
+  trackLabel,
   ...rest
-}: PressableProps & { children: ReactNode; style?: StyleProp<ViewStyle>; scaleTo?: number }) {
+}: PressableProps & { children: ReactNode; style?: StyleProp<ViewStyle>; scaleTo?: number; trackLabel?: string }) {
   const scale = useSharedValue(1);
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const flat = (StyleSheet.flatten(style) ?? {}) as Record<string, unknown>;
@@ -148,6 +150,15 @@ export function PressableScale({
   return (
     <Pressable
       {...rest}
+      // Toque entra na trilha de ações que acompanha um erro (nome do botão, nunca o que foi digitado).
+      onPress={
+        rest.onPress
+          ? (e) => {
+              trackAction(trackLabel ?? rest.accessibilityLabel ?? 'toque');
+              rest.onPress?.(e);
+            }
+          : undefined
+      }
       style={outer as ViewStyle}
       onPressIn={(e) => {
         scale.set(withTiming(scaleTo, { duration: motion.pressMs, easing: easeOut, reduceMotion: ReduceMotion.Never }));
@@ -384,6 +395,7 @@ export function Button({
   return (
     <PressableScale
       onPress={onPress}
+      trackLabel={accessibilityLabel ?? label}
       disabled={disabled || loading}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}

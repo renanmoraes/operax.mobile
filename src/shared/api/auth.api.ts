@@ -2,6 +2,7 @@ import { api } from './client';
 import { clearTokens, setTokens } from './token-store';
 import { Platform } from 'react-native';
 import { registerForPushNotificationsAsync } from '@/src/features/notifications/push';
+import { appVersionInfo } from '@/src/shared/updates/appVersion';
 
 export type StaffUser = {
   kind: 'staff';
@@ -106,7 +107,7 @@ export async function registerDevicePushToken(): Promise<void> {
   await api.post('/api/auth/device-tokens', {
     token: result.token,
     platform: Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'unknown',
-    app_version: '0.1.0',
+    app_version: appVersionInfo().version,
   });
 }
 

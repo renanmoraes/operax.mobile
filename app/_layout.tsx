@@ -20,6 +20,9 @@ import { resetClientCache } from '@/src/features/client/clientApi';
 import { colors } from '@/src/design-system/tokens';
 import { installErrorReporter, reportError, setReporterSession, trackRoute } from '@/src/shared/telemetry/errorReporter';
 import { Button } from '@/src/design-system/ui';
+import { useAppUpdates } from '@/src/shared/updates/appVersion';
+import { linkToAppRoute } from '@/src/features/notifications/linkRoute';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -86,6 +89,7 @@ export default function RootLayout() {
             <Stack.Screen name="(app)" options={{ headerShown: false }} />
             <Stack.Screen name="(client)" options={{ headerShown: false }} />
             <Stack.Screen name="cliente" options={{ headerShown: false }} />
+            <Stack.Screen name="permissoes" options={{ headerShown: false }} />
             <Stack.Screen name="conversation/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="contact/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="quick-replies" options={{ headerShown: false, presentation: 'modal' }} />
@@ -100,6 +104,7 @@ export default function RootLayout() {
           <SplashGate />
           <AccountCacheReset />
           <NotificationRouter />
+          <UpdateBanner />
           </TeamChatProvider>
         </AuthProvider>
       </QueryClientProvider>
@@ -121,6 +126,21 @@ function SplashGate() {
  * Notificações: mostra com o app aberto e, ao tocar (com o app aberto, em segundo plano
  * ou fechado), abre a tela do aviso (`data.url`, ex.: o compromisso do lembrete).
  */
+/** Nova versão baixada em segundo plano: avisa e deixa atualizar na hora (senão entra ao reabrir). */
+function UpdateBanner() {
+  const { state, apply } = useAppUpdates();
+  const insets = useSafeAreaInsets();
+  if (state !== 'ready') return null;
+  return (
+    <View pointerEvents="box-none" style={{ position: 'absolute', left: 16, right: 16, top: insets.top + 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 18, backgroundColor: colors.text }}>
+        <Text style={{ flex: 1, color: '#fff', fontFamily: 'Inter_600SemiBold', fontSize: 14 }}>Nova versão do Operax pronta</Text>
+        <Button label="Atualizar" compact onPress={apply} />
+      </View>
+    </View>
+  );
+}
+
 function NotificationRouter() {
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -130,9 +150,11 @@ function NotificationRouter() {
       N.setNotificationHandler({
         handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
       });
-      const open = (data: unknown) => {
-        const url = (data as { url?: unknown } | undefined)?.url;
-        if (typeof url === 'string' && url.startsWith('/')) router.push(url as never);
+      const open = (raw: unknown) => {
+        const data = (raw ?? {}) as Record<string, unknown>;
+        // Lembrete local já traz a tela do app; push do Operax traz o link do web (convertido aqui).
+        const url = typeof data.url === 'string' && data.url.startsWith('/') ? data.url : data.notificationId || data.link ? linkToAppRoute(data.link, data) : null;
+        if (url) router.push(url as never);
       };
       sub = N.addNotificationResponseReceivedListener((r) => open(r.notification.request.content.data));
       // App aberto pelo toque na notificação (estava fechado).

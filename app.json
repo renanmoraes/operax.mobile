@@ -122,6 +122,15 @@
       "router": {}
     },
     "locales": {},
-    "owner": "operaxdigitals-team"
+    "owner": "operaxdigitals-team",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/5dcb948b-9371-4830-8324-29ef9a87e4e3",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }

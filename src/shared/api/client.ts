@@ -2,7 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig, isCancel } from 'axios';
 import { API_URL, MOBILE_CLIENT_HEADER } from '@/src/shared/config';
 import { clearTokens, getAccessToken, getRefreshToken, getSavedRole, SavedRole, setTokens } from './token-store';
 import { refreshSocketAuth } from '@/src/shared/realtime/socket';
-import { reportError } from '@/src/shared/telemetry/errorReporter';
+import { reportError, trackAction } from '@/src/shared/telemetry/errorReporter';
 
 // `axios.create` é o uso documentado da biblioteca; o aviso de import nomeado não se aplica.
 // eslint-disable-next-line import/no-named-as-default-member
@@ -64,8 +64,18 @@ api.interceptors.request.use(async (config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
   config.headers['X-Client'] = MOBILE_CLIENT_HEADER;
+  (config as RetriableConfig & { _t0?: number })._t0 = Date.now();
   return config;
 });
+
+/** Chamada à API entra na trilha de ações (método, rota sem query, status e tempo). */
+function trackApi(config: InternalAxiosRequestConfig | undefined, status: number | string) {
+  if (!config?.url) return;
+  const path = String(config.url).split('?')[0].replace(/^https?:\/\/[^/]+/, '');
+  if (path.includes('/api/mobile/logs')) return;
+  const ms = Date.now() - ((config as { _t0?: number })._t0 ?? Date.now());
+  trackAction(`${String(config.method ?? 'get').toUpperCase()} ${path} → ${status}`, { ms }, 'api');
+}
 
 const AUTH_ROUTE_PATTERNS = [
   '/api/auth/login',
@@ -81,8 +91,12 @@ export function isAuthRoute(url: string): boolean {
 }
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    trackApi(res.config, res.status);
+    return res;
+  },
   async (error: AxiosError) => {
+    trackApi(error.config, error.response?.status ?? error.code ?? 'sem resposta');
     const original = error.config as RetriableConfig | undefined;
     const url = String(original?.url ?? '');
 

@@ -8,7 +8,7 @@ import { registerDevicePushToken } from '@/src/shared/api/auth.api';
 import { getItem, setItem } from '@/src/shared/storage';
 import { PermissionState, SystemPermissionResponse, toPermissionState } from './permissionState';
 
-export type PermissionKey = 'notifications' | 'camera' | 'photos' | 'microphone' | 'health';
+export type PermissionKey = 'notifications' | 'camera' | 'photos' | 'microphone' | 'health' | 'location';
 
 async function readNotifications(): Promise<PermissionState> {
   if (Platform.OS === 'web') return 'unavailable';
@@ -33,6 +33,13 @@ export async function getPermission(key: PermissionKey): Promise<PermissionState
     case 'microphone':
       try {
         return toPermissionState((await getRecordingPermissionsAsync()) as SystemPermissionResponse);
+      } catch {
+        return 'unavailable';
+      }
+    case 'location':
+      try {
+        const Location = await import('expo-location');
+        return toPermissionState((await Location.getForegroundPermissionsAsync()) as SystemPermissionResponse);
       } catch {
         return 'unavailable';
       }
@@ -67,6 +74,13 @@ export async function requestPermission(key: PermissionKey, opts: { live: boolea
     case 'microphone':
       try {
         return toPermissionState((await requestRecordingPermissionsAsync()) as SystemPermissionResponse);
+      } catch {
+        return 'unavailable';
+      }
+    case 'location':
+      try {
+        const Location = await import('expo-location');
+        return toPermissionState((await Location.requestForegroundPermissionsAsync()) as SystemPermissionResponse);
       } catch {
         return 'unavailable';
       }
@@ -120,4 +134,15 @@ export async function hasSeenClientOnboarding() {
 
 export async function markClientOnboardingSeen() {
   await setItem(ONBOARDING_KEY, '1');
+}
+
+const STAFF_ONBOARDING_KEY = 'operax_staff_permissions_seen';
+
+/** Equipe: a tela de permissões aparece uma vez, na primeira entrada (depois fica no Perfil). */
+export async function hasSeenStaffOnboarding() {
+  return (await getItem(STAFF_ONBOARDING_KEY)) === '1';
+}
+
+export async function markStaffOnboardingSeen() {
+  await setItem(STAFF_ONBOARDING_KEY, '1');
 }
