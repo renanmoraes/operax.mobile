@@ -58,13 +58,14 @@ export function buildAxis(
   const mins = [...set].sort((a, b) => a - b);
   const seg = mins.slice(1).map((m, i) => ((m - mins[i]) * hourH) / 60);
   for (const e of [...events].sort((a, b) => a.startMin - b.startMin)) {
-    if (!e.need) continue;
+    // Todo compromisso ganha pelo menos a altura mínima do cartão: curtos seguidos não se sobrepõem.
+    const need = Math.max(e.need ?? 0, MIN_EVENT_H + 3);
     const i0 = mins.indexOf(clamp(e.startMin));
     const i1 = mins.indexOf(clamp(e.endMin));
     let have = 0;
     for (let i = i0; i < i1; i++) have += seg[i];
-    if (have > 0 && have < e.need) {
-      const k = e.need / have;
+    if (have > 0 && have < need) {
+      const k = need / have;
       for (let i = i0; i < i1; i++) seg[i] *= k;
     }
   }

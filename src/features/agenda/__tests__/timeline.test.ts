@@ -35,6 +35,16 @@ describe('linha do tempo da agenda', () => {
     expect(buildAxis([{ id: 'b', startMin: 600, endMin: 660, need: 40 }], 7, 20).ys.at(-1)).toBe(linear.ys.at(-1));
   });
 
+  it('compromissos curtos seguidos não se sobrepõem (altura mínima entra na escala)', () => {
+    const evs = [
+      { id: 'a', startMin: 540, endMin: 555 },
+      { id: 'b', startMin: 555, endMin: 570 },
+    ];
+    const [a, b] = layoutEvents(evs, buildAxis(evs, 7, 20));
+    expect(a.lane).toBe(b.lane);
+    expect(b.top).toBeGreaterThanOrEqual(a.top + a.height);
+  });
+
   it('divide em colunas só quem se sobrepõe', () => {
     const placed = layoutEvents(
       [
