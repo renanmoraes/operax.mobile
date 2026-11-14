@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AppState, Linking, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from 'expo-audio';
+import { getHealthAvailability, requestHealthAccess } from '@/src/features/fitness/health/healthStore';
 import { registerForPushNotificationsAsync } from '@/src/features/notifications/push';
 import { registerDevicePushToken } from '@/src/shared/api/auth.api';
 import { getItem, setItem } from '@/src/shared/storage';
@@ -35,9 +36,11 @@ export async function getPermission(key: PermissionKey): Promise<PermissionState
       } catch {
         return 'unavailable';
       }
-    case 'health':
-      // Apple Saúde / Health Connect dependem de módulo nativo e de uma rota no backend que ainda não existe.
-      return 'unavailable';
+    case 'health': {
+      // A Apple não revela se o acesso de leitura foi dado; "available" vira "undetermined".
+      const a = await getHealthAvailability();
+      return a === 'available' ? 'undetermined' : 'unavailable';
+    }
   }
 }
 
@@ -68,7 +71,8 @@ export async function requestPermission(key: PermissionKey, opts: { live: boolea
         return 'unavailable';
       }
     case 'health':
-      return 'unavailable';
+      if ((await getHealthAvailability()) !== 'available') return 'unavailable';
+      return (await requestHealthAccess()) ? 'granted' : 'denied';
   }
 }
 

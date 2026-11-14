@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, Button, Card, HeroCard, IconTile, Muted, Num, Rise, Screen, SectionHeader, T, TopBar } from '@/src/design-system/ui';
 import { colors, text } from '@/src/design-system/tokens';
@@ -10,6 +10,7 @@ import {
   useProviders,
   useSyncProvider,
 } from '@/src/features/fitness/connections';
+import { HealthCard } from '@/src/features/fitness/health/HealthCard';
 import { DataSourceAttribution, GarminAttribution, ProviderMark, providerDisplayName, StravaConnectButton } from '@/src/features/fitness/brands';
 import type { ProviderView } from '@/src/features/fitness/types';
 import { formatDistance, formatDuration, timeAgo } from '@/src/shared/format';
@@ -34,10 +35,12 @@ function ProviderCard({ p }: { p: ProviderView }) {
               <Muted>{`· ${p.last_sync_at ? timeAgo(p.last_sync_at) : 'agora'} · ${p.imported} treinos`}</Muted>
             </View>
           ) : (
-            <Muted style={{ marginTop: 2 }}>{p.state === 'soon' ? 'Chega em breve' : 'Importa treinos automaticamente'}</Muted>
+            <Muted style={{ marginTop: 2 }}>
+              {p.id === 'apple' ? 'Entra pelo Saúde do iPhone, logo abaixo' : p.state === 'soon' ? 'Chega em breve' : 'Importa treinos automaticamente'}
+            </Muted>
           )}
         </View>
-        {p.state === 'soon' ? <Badge label="Em breve" /> : null}
+        {p.state === 'soon' && p.id !== 'apple' ? <Badge label="Em breve" /> : null}
       </View>
       {p.state === 'available' ? (
         p.connected ? (
@@ -60,7 +63,6 @@ export default function WatchConnectionsScreen() {
   const { data: providers } = useProviders();
   const { data: sessions } = useImportedSessions();
   const totalImported = providers?.reduce((n, p) => n + p.imported, 0) ?? 0;
-  const healthName = Platform.OS === 'android' ? 'Health Connect' : 'Apple Saúde';
   const garminDevice = sessions?.flatMap((s) => s.sources).find((src) => src.provider === 'garmin')?.device;
   const garminConnected = providers?.some((p) => p.id === 'garmin' && p.connected);
 
@@ -91,17 +93,8 @@ export default function WatchConnectionsScreen() {
           ))}
         </View>
 
-        <SectionHeader title="Sensores do celular" />
-        <Card style={styles.provider}>
-          <View style={styles.providerTop}>
-            <IconTile icon="heart-outline" size={44} tone="neutral" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.providerName}>{healthName}</Text>
-              <Muted style={{ marginTop: 2 }}>Passos, batimentos e treinos gravados pelo próprio celular.</Muted>
-            </View>
-            <Badge label="Em breve" />
-          </View>
-        </Card>
+        <SectionHeader title="Saúde do celular" />
+        <HealthCard />
 
         {sessions?.length ? (
           <>
