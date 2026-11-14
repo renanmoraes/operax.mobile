@@ -7,11 +7,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { Body, Button, Card, Field, Glow, IconButton, IconName, Muted, Rise, Screen, StatStrip } from '@/src/design-system/ui';
 import { colors, gradients, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { flattenWorkout, totalSets } from '@/src/features/fitness/flatten';
-import { LOAD_HISTORY, WORKOUTS } from '@/src/features/fitness/mockData';
+import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { enqueue, loadQueue, newIdempotencyKey, saveQueue } from '@/src/features/fitness/resultsQueue';
 import { clearFinishedSession, FinishedSession, getFinishedSession, loadFinishedSession } from '@/src/features/fitness/sessionStore';
-import type { FitnessFeeling } from '@/src/features/fitness/types';
-import { useHistory, useRecordResult } from '@/src/features/fitness/useFitness';
+import type { FitnessFeeling, FitnessWorkoutView } from '@/src/features/fitness/types';
+import { useHistory, useLoadHistory, useRecordResult } from '@/src/features/fitness/useFitness';
 import { formatClock, formatKg, isoDate } from '@/src/shared/format';
 
 const FEELINGS: { key: FitnessFeeling; label: string; icon: IconName }[] = [
@@ -23,14 +23,18 @@ const FEELINGS: { key: FitnessFeeling; label: string; icon: IconName }[] = [
 ];
 
 export default function WorkoutDoneScreen() {
-  const insets = useSafeAreaInsets();
   const [session, setSession] = useState<FinishedSession | null>(() => getFinishedSession());
   // App fechado e reaberto nesta tela: recupera o treino terminado gravado no aparelho.
   useEffect(() => {
     if (session) return;
     void loadFinishedSession().then((s) => s && setSession(s));
   }, [session]);
-  const workout = WORKOUTS.find((w) => w.id === session?.workoutId) ?? WORKOUTS[0];
+  return <WorkoutGate id={session?.workoutId}>{(workout) => <WorkoutDone workout={workout} session={session} />}</WorkoutGate>;
+}
+
+function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; session: FinishedSession | null }) {
+  const insets = useSafeAreaInsets();
+  const LOAD_HISTORY = useLoadHistory();
   const rows = useMemo(() => flattenWorkout(workout), [workout]);
   const { data: history } = useHistory();
   const record = useRecordResult();
@@ -192,7 +196,7 @@ export default function WorkoutDoneScreen() {
                     compact
                     icon="share-outline"
                     style={{ marginTop: 10, alignSelf: 'flex-start' }}
-                    onPress={() => void Share.share({ message: `Treino concluído no Move Studio: ${workout.title}, ${formatClock(session?.elapsed ?? 0)} e ${volume.toLocaleString('pt-BR')} kg de volume.` })}
+                    onPress={() => void Share.share({ message: `Treino concluído: ${workout.title}, ${formatClock(session?.elapsed ?? 0)} e ${volume.toLocaleString('pt-BR')} kg de volume.` })}
                   />
                 ) : null}
               </View>

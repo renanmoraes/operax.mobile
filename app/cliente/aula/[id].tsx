@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Avatar, Badge, Button, Card, EmptyState, IconTile, Muted, Rise, Screen } from '@/src/design-system/ui';
 import { colors, radii, typography } from '@/src/design-system/tokens';
 import { DetailHero } from '@/src/features/client/DetailHero';
-import { useBooking, useClassAction } from '@/src/features/client/useClientData';
+import { canUndoBookingAnswer, useBooking, useClassAction } from '@/src/features/client/useClientData';
 import { formatClock, formatHour } from '@/src/shared/format';
 
 const ROSTER = ['LS', 'JP', 'RC', 'TM', 'GA', 'BF', 'DN', 'KO', 'VE', 'HL', 'AM', 'PS'];
@@ -128,7 +128,7 @@ export default function ClassDetailScreen() {
           </>
         ) : (
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Button label="Desfazer" variant="secondary" onPress={() => action.mutate({ id: b.id, action: 'reset' })} style={{ flex: 1 }} />
+            {canUndoBookingAnswer() ? <Button label="Desfazer" variant="secondary" onPress={() => action.mutate({ id: b.id, action: 'reset' })} style={{ flex: 1 }} /> : null}
             <Button label="Voltar à agenda" onPress={() => router.back()} style={{ flex: 1 }} />
           </View>
         )}

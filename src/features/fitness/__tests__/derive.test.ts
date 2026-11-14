@@ -1,4 +1,4 @@
-import { adherenceStreak, levelFromXp, xpFrom, mergeResultIntoHistory } from '../derive';
+import { adherenceStreak, bestAdherenceStreak, levelFromXp, xpFrom, mergeResultIntoHistory } from '../derive';
 
 describe('adherenceStreak', () => {
   it('conta dias seguidos cumprindo o plano, descanso conta', () => {
@@ -48,5 +48,13 @@ describe('treino salvo entra no histórico', () => {
     const twice = mergeResultIntoHistory(once, { ...base, data: sets(2), effort: 9 });
     expect(twice).toHaveLength(1);
     expect(twice[0]).toMatchObject({ sets_done: 5, volume_kg: 1000, effort: 9 });
+  });
+});
+
+describe('maior sequência', () => {
+  it('pega o maior trecho sem falta, contando descanso só junto de treino', () => {
+    expect(bestAdherenceStreak(['done', 'rest', 'done', 'missed', 'done', 'missed'])).toBe(3);
+    expect(bestAdherenceStreak(['rest', 'rest', 'missed'])).toBe(0);
+    expect(bestAdherenceStreak(['missed', 'done', 'done', 'done', 'done'])).toBe(4);
   });
 });

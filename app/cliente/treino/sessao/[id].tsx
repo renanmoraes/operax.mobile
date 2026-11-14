@@ -11,7 +11,9 @@ import { Toast, useToast } from '@/src/design-system/Toast';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { flattenWorkout } from '@/src/features/fitness/flatten';
-import { LOAD_HISTORY, WORKOUTS } from '@/src/features/fitness/mockData';
+import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
+import { useLoadHistory } from '@/src/features/fitness/useFitness';
+import type { FitnessWorkoutView } from '@/src/features/fitness/types';
 import { loadDraft, saveDraft, setFinishedSession, SetLog } from '@/src/features/fitness/sessionStore';
 import { formatClock, formatKg } from '@/src/shared/format';
 
@@ -50,9 +52,13 @@ function Spark({ values }: { values: number[] }) {
 }
 
 export default function WorkoutSessionScreen() {
-  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const workout = WORKOUTS.find((w) => w.id === id) ?? WORKOUTS[0];
+  return <WorkoutGate id={id}>{(workout) => <WorkoutSession workout={workout} />}</WorkoutGate>;
+}
+
+function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
+  const insets = useSafeAreaInsets();
+  const LOAD_HISTORY = useLoadHistory();
   const rows = useMemo(() => flattenWorkout(workout), [workout]);
 
   const [ready, setReady] = useState(false);

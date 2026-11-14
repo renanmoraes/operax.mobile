@@ -1,12 +1,18 @@
+import { isAxiosError } from 'axios';
+import { api } from '@/src/shared/api/client';
 import { addDays, isoDate, startOfDay, startOfWeek } from '@/src/shared/format';
-import { adherenceStreak, DayState, levelFromXp, mergeResultIntoHistory, xpFrom } from './derive';
+import { clientDataMode } from '@/src/features/client/dataMode';
+import { adherenceStreak, bestAdherenceStreak, DayState, levelFromXp, mergeResultIntoHistory, xpFrom } from './derive';
 import { buildCheckins, buildHistory, LOAD_HISTORY, WORKOUTS, workoutForWeekday } from './mockData';
 import type { BodyCheckin, FitnessEvolution, FitnessHistoryEntry, FitnessResultView, FitnessWorkoutView, RecordResultBody, WeekView } from './types';
 
 /**
- * Treino do cliente no formato de `/api/public/portal/fitness/*`. Store em memória até o
- * login mobile de cliente existir; cada função corresponde a uma rota do portal.
+ * Treino do cliente: `/api/public/portal/fitness/*` com o login real; no modo demonstração,
+ * um store em memória com o mesmo formato.
  */
+
+const F = '/api/public/portal/fitness';
+const live = () => clientDataMode() === 'live';
 
 const tick = () => new Promise((r) => setTimeout(r, 120));
 
@@ -27,12 +33,24 @@ function doneToday(workoutId: string) {
 
 /** GET /workouts/:id */
 export async function fetchWorkout(id: string): Promise<FitnessWorkoutView | null> {
+  if (live()) {
+    try {
+      return (await api.get(`${F}/workouts/${id}`)).data as FitnessWorkoutView;
+    } catch (e) {
+      if (isAxiosError(e) && e.response?.status === 404) return null;
+      throw e;
+    }
+  }
   await tick();
   return WORKOUTS.find((w) => w.id === id) ?? null;
 }
 
 /** GET /workouts?date= */
 export async function fetchWorkoutsFor(date: Date): Promise<FitnessWorkoutView[]> {
+  if (live()) {
+    const { data } = await api.get(`${F}/workouts`, { params: { date: isoDate(date) } });
+    return Array.isArray(data) ? (data as FitnessWorkoutView[]) : [];
+  }
   await tick();
   const w = workoutForWeekday(date.getDay());
   return w ? [w] : [];
@@ -40,6 +58,7 @@ export async function fetchWorkoutsFor(date: Date): Promise<FitnessWorkoutView[]
 
 /** GET /week */
 export async function fetchWeek(): Promise<WeekView> {
+  if (live()) return (await api.get(`${F}/week`, { params: { date: todayIso() } })).data as WeekView;
   await tick();
   const today = startOfDay(new Date());
   const start = startOfWeek(today);
@@ -76,13 +95,30 @@ export async function fetchWeek(): Promise<WeekView> {
 }
 
 /** GET /history */
+/** O portal entrega o histórico por mês: junta os `months` mais recentes. */
+async function liveHistory(months: number): Promise<FitnessHistoryEntry[]> {
+  const now = new Date();
+  const keys = Array.from({ length: months }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const pages = await Promise.all(keys.map(async (month) => ((await api.get(`${F}/history`, { params: { month } })).data as { entries?: FitnessHistoryEntry[] }).entries ?? []));
+  const seen = new Set<string>();
+  return pages
+    .flat()
+    .filter((e) => (seen.has(e.id) ? false : (seen.add(e.id), true)))
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
 export async function fetchHistory(): Promise<FitnessHistoryEntry[]> {
+  if (live()) return liveHistory(3);
   await tick();
   return [...getHistory()].sort((a, b) => b.date.localeCompare(a.date));
 }
 
 /** GET /evolution */
 export async function fetchEvolution(): Promise<FitnessEvolution> {
+  if (live()) return (await api.get(`${F}/evolution`)).data as FitnessEvolution;
   await tick();
   const start = startOfWeek(new Date());
   const h = getHistory();
@@ -102,6 +138,7 @@ export async function fetchEvolution(): Promise<FitnessEvolution> {
 
 /** POST /results — idempotente por `idempotency_key`. */
 export async function recordResult(body: RecordResultBody): Promise<{ result: FitnessResultView; duplicate: boolean }> {
+  if (live()) return (await api.post(`${F}/results`, body)).data as { result: FitnessResultView; duplicate: boolean };
   await tick();
   const existing = results.get(body.idempotency_key);
   if (existing) return { result: existing, duplicate: true };
@@ -125,8 +162,42 @@ export async function recordResult(body: RecordResultBody): Promise<{ result: Fi
   return { result, duplicate: false };
 }
 
+/** Com o login real: dias planejados vêm do plano da semana (mesmo dia da semana), o feito vem do histórico. */
+async function liveSummary() {
+  const today = startOfDay(new Date());
+  const [h, week, evo] = await Promise.all([liveHistory(3), fetchWeek(), fetchEvolution()]);
+  const plannedWeekdays = new Set(week.days.filter((d) => d.planned > 0).map((d) => new Date(`${d.date}T12:00:00`).getDay()));
+  const doneDates = new Set(h.map((e) => e.date));
+  const states: DayState[] = [];
+  for (let back = 45; back >= 1; back--) {
+    const d = addDays(today, -back);
+    states.push(doneDates.has(isoDate(d)) ? 'done' : plannedWeekdays.has(d.getDay()) ? 'missed' : 'rest');
+  }
+  const last28 = states.slice(-28);
+  const planned28 = last28.filter((s) => s !== 'rest').length;
+  const done28 = last28.filter((s) => s === 'done').length;
+  const records = h.filter((e) => e.record).length;
+  const monthPrefix = isoDate(today).slice(0, 7);
+  const sessions = evo.total_sessions;
+  const goalWeeks = evo.weekly_goal ? evo.weekly.filter((w) => w.sessions >= evo.weekly_goal!).length : 0;
+  const xp = xpFrom({ sessions, records, goalWeeks });
+  const streak = adherenceStreak(states);
+  return {
+    streak,
+    bestStreak: Math.max(streak, bestAdherenceStreak(states)),
+    consistency: planned28 ? Math.round((done28 / planned28) * 100) : 0,
+    monthCount: h.filter((e) => e.date.startsWith(monthPrefix)).length,
+    totalSessions: sessions,
+    records,
+    level: levelFromXp(xp),
+    xp,
+    dayStates: states,
+  };
+}
+
 /** Resumo calculado no app: sequência, nível, consistência e meta da semana. */
 export async function fetchSummary() {
+  if (live()) return liveSummary();
   await tick();
   const today = startOfDay(new Date());
   const h = getHistory();
@@ -159,11 +230,13 @@ export async function fetchSummary() {
 
 /** Registros corporais — ainda sem rota no portal (avaliações ficam em `/assessments`). */
 export async function fetchCheckins(): Promise<BodyCheckin[]> {
+  if (live()) return []; // sem rota no portal: no login real a lista começa vazia
   await tick();
   return getCheckins();
 }
 
 export async function addCheckin(input: Omit<BodyCheckin, 'id'>) {
+  if (live()) throw new Error('Os registros corporais ainda não são salvos na sua conta. Fale com a equipe para lançar na avaliação.');
   await tick();
   checkins = [...getCheckins(), { ...input, id: `c-${Date.now()}` }];
 }

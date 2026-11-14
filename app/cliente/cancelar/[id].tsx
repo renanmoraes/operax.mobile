@@ -91,8 +91,12 @@ export default function CancelBookingScreen() {
             variant="danger"
             loading={cancel.isPending}
             onPress={async () => {
-              await cancel.mutateAsync({ id: b.id, reason: [REASONS[reason], note].filter(Boolean).join(' — ') });
-              setDone(true);
+              try {
+                await cancel.mutateAsync({ id: b.id, reason: [REASONS[reason], note].filter(Boolean).join(' — ') });
+                setDone(true);
+              } catch {
+                // o aviso com o motivo já aparece (onError da ação)
+              }
             }}
           />
           <Button label="Manter compromisso" variant="secondary" onPress={() => router.back()} />

@@ -3,8 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, Card, Muted, ProgressBar, Rise, Screen, SectionHeader, StatTile, TopBar } from '@/src/design-system/ui';
 import { colors, numbers, radii, typography } from '@/src/design-system/tokens';
-import { workoutForWeekday } from '@/src/features/fitness/mockData';
-import { useFitnessSummary, useHistory } from '@/src/features/fitness/useFitness';
+import { useFitnessSummary, useHistory, usePlannedWeekdays } from '@/src/features/fitness/useFitness';
 import { formatDuration, isoDate, monthFull, weekdayShort } from '@/src/shared/format';
 import { useNow } from '@/src/shared/useNow';
 
@@ -19,6 +18,7 @@ export default function FitnessHistoryScreen() {
   const now = useNow();
   const { data: history } = useHistory();
   const { data: summary } = useFitnessSummary();
+  const plannedWeekdays = usePlannedWeekdays();
   const today = new Date();
   const doneDates = new Set(history?.map((e) => e.date));
   const first = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -64,7 +64,7 @@ export default function FitnessHistoryScreen() {
                 const iso = isoDate(d);
                 const isToday = iso === isoDate(today);
                 const past = d < new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                const planned = !!workoutForWeekday(d.getDay());
+                const planned = plannedWeekdays.has(d.getDay());
                 const state = doneDates.has(iso) ? 'done' : isToday ? 'today' : past && planned ? 'missed' : past ? 'rest' : 'future';
                 return (
                   <View key={iso} style={styles.cell}>

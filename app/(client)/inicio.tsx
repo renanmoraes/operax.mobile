@@ -22,7 +22,7 @@ import {
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
-import { useBookings, useChats, useCompanies, useConfirmBooking, useUnconfirmBooking } from '@/src/features/client/useClientData';
+import { canUndoBookingAnswer, useBookings, useChats, useCompanies, useConfirmBooking, useUnconfirmBooking } from '@/src/features/client/useClientData';
 import { useFitnessSummary, useWeek } from '@/src/features/fitness/useFitness';
 import { formatDuration, formatHour, greeting, longDate, minutesUntilLabel } from '@/src/shared/format';
 import { useNow } from '@/src/shared/useNow';
@@ -101,7 +101,7 @@ export default function ClientHomeScreen() {
                 <View style={styles.confirmed}>
                   <Ionicons name="checkmark-circle-outline" size={20} color={colors.success} />
                   <Text style={styles.confirmedText}>Presença confirmada</Text>
-                  <Button label="Desfazer" variant="ghost" compact onPress={() => unconfirm.mutate(next.id)} />
+                  {canUndoBookingAnswer() ? <Button label="Desfazer" variant="ghost" compact onPress={() => unconfirm.mutate(next.id)} /> : null}
                 </View>
               )}
             </HeroCard>

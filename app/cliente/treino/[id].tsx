@@ -5,17 +5,29 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar, Badge, Button, Card, HeroCard, IconButton, Muted, Num, PressableScale, Rise, Screen, SectionHeader, Segmented, StatStrip, TopBar } from '@/src/design-system/ui';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { estimateMinutes, flattenWorkout, totalSets } from '@/src/features/fitness/flatten';
-import { LOAD_HISTORY, WORKOUTS } from '@/src/features/fitness/mockData';
+import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
+import { useLoadHistory, useMyWorkouts } from '@/src/features/fitness/useFitness';
+import type { FitnessWorkoutView } from '@/src/features/fitness/types';
 import { formatKg, weekdayFull } from '@/src/shared/format';
 import { useNow } from '@/src/shared/useNow';
 
 export default function WorkoutSheetScreen() {
-  const insets = useSafeAreaInsets();
-  const now = useNow();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [current, setCurrent] = useState(id);
+  return (
+    <WorkoutGate id={current} title="Ficha do treino">
+      {(workout) => <WorkoutSheet workout={workout} onSwitch={setCurrent} />}
+    </WorkoutGate>
+  );
+}
+
+function WorkoutSheet({ workout, onSwitch }: { workout: FitnessWorkoutView; onSwitch: (id: string) => void }) {
+  const insets = useSafeAreaInsets();
+  const now = useNow();
   const [pdfNote, setPdfNote] = useState(false);
-  const workout = WORKOUTS.find((w) => w.id === current) ?? WORKOUTS[0];
+  const LOAD_HISTORY = useLoadHistory();
+  const mine = useMyWorkouts();
+  const options = mine.some((w) => w.id === workout.id) ? mine : [{ id: workout.id, title: workout.title }, ...mine];
   const rows = flattenWorkout(workout);
   const today = new Date().getDay();
   const isToday = workout.schedule.weekdays?.includes(today);
@@ -27,11 +39,13 @@ export default function WorkoutSheetScreen() {
       <TopBar safe title="Ficha do treino" onBack={() => router.back()} right={<IconButton icon="download-outline" accessibilityLabel="Baixar ficha em PDF" onPress={() => setPdfNote((v) => !v)} />} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 120 }}>
         {pdfNote ? <Muted style={styles.note}>O PDF da ficha (GET /workouts/:id/pdf) chega quando o treino estiver ligado à sua conta.</Muted> : null}
-        <Segmented
-          value={workout.id}
-          onChange={setCurrent}
-          options={WORKOUTS.map((w) => ({ key: w.id, label: w.title.split('·')[0].trim() }))}
-        />
+        {options.length > 1 ? (
+          <Segmented
+            value={workout.id}
+            onChange={onSwitch}
+            options={options.map((w) => ({ key: w.id, label: w.title.split('·')[0].trim() }))}
+          />
+        ) : null}
 
         <Rise style={{ marginTop: 12 }}>
           <HeroCard>

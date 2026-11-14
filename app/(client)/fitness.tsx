@@ -26,10 +26,9 @@ import {
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { flattenWorkout } from '@/src/features/fitness/flatten';
-import { WORKOUTS } from '@/src/features/fitness/mockData';
 import { useProviders } from '@/src/features/fitness/connections';
 import { ProviderMark, providerDisplayName } from '@/src/features/fitness/brands';
-import { useCheckins, useFitnessSummary, useWeek } from '@/src/features/fitness/useFitness';
+import { useCheckins, useFitnessSummary, useWeek, useWorkout } from '@/src/features/fitness/useFitness';
 import { formatKg, weekdayShort } from '@/src/shared/format';
 
 export default function ClientFitnessScreen() {
@@ -43,7 +42,8 @@ export default function ClientFitnessScreen() {
   const selectedDate = picked ?? week?.today;
   const day = week?.days.find((d) => d.date === selectedDate);
   const item = day?.items?.[0];
-  const workout = item ? WORKOUTS.find((w) => w.id === item.id) : undefined;
+  const { data: fetchedWorkout } = useWorkout(item?.id);
+  const workout = item ? (fetchedWorkout ?? undefined) : undefined;
   const rows = workout ? flattenWorkout(workout) : [];
   const isToday = selectedDate === week?.today;
   const isPast = !!selectedDate && !!week && selectedDate < week.today;

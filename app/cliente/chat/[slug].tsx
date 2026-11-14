@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
@@ -14,6 +15,7 @@ import { ChatInput } from '@/src/features/chat/ChatInput';
 import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { ChatBubble } from '@/src/features/client/ChatBubble';
 import { useBooking, useChat, useCompanies, useMarkChatRead, useSendChat } from '@/src/features/client/useClientData';
+import { clientDataMode } from '@/src/features/client/dataMode';
 import type { OutgoingAttachment } from '@/src/features/client/types';
 import { openSystemSettings } from '@/src/features/permissions/permissions';
 import { formatHour, weekdayShort } from '@/src/shared/format';
@@ -44,6 +46,9 @@ export default function ClientChatScreen() {
   const [permIssue, setPermIssue] = useState<string | null>(null);
   const [withReschedule, setWithReschedule] = useState(!!remarcar);
   const voice = useVoiceRecorder();
+  const [sendError, setSendError] = useState<string | null>(null);
+  // O chat do portal recebe só texto por enquanto (fotos, áudio e arquivos chegam só da equipe).
+  const textOnly = clientDataMode() === 'live';
 
   useEffect(() => {
     if (slug) markRead(slug);
@@ -86,13 +91,18 @@ export default function ClientChatScreen() {
   }
 
   async function sendText() {
-    if (!text.trim() && !withReschedule) return;
-    await send.mutateAsync({
-      text: text.trim(),
-      reschedule: withReschedule && booking ? { booking_id: booking.id, title: booking.service_name ?? 'Compromisso', original_at: booking.starts_at } : undefined,
-    });
-    setText('');
-    setWithReschedule(false);
+    if ((!text.trim() && !withReschedule) || send.isPending) return;
+    setSendError(null);
+    try {
+      await send.mutateAsync({
+        text: text.trim(),
+        reschedule: withReschedule && booking ? { booking_id: booking.id, title: booking.service_name ?? 'Compromisso', original_at: booking.starts_at } : undefined,
+      });
+      setText('');
+      setWithReschedule(false);
+    } catch (e) {
+      setSendError(e instanceof Error && !isAxiosError(e) ? e.message : 'Não foi possível enviar agora. Confira a internet e tente de novo.');
+    }
   }
 
   async function startVoice() {
@@ -129,7 +139,7 @@ export default function ClientChatScreen() {
         {info ? (
           <Card style={styles.info}>
             <Text style={styles.infoTitle}>Conversa direta com a equipe</Text>
-            <Muted style={{ marginTop: 4, lineHeight: 19 }}>Suas mensagens, fotos e documentos vão para a caixa de entrada da empresa, sem passar por número pessoal.</Muted>
+            <Muted style={{ marginTop: 4, lineHeight: 19 }}>{textOnly ? 'Suas mensagens vão para a caixa de entrada da empresa, sem passar por número pessoal.' : 'Suas mensagens, fotos e documentos vão para a caixa de entrada da empresa, sem passar por número pessoal.'}</Muted>
             {chat?.service_hours_text ? <Body style={{ marginTop: 10, fontSize: 13.5 }}>{`Atendimento: ${chat.service_hours_text}`}</Body> : null}
             {chat?.whatsapp_url ? <Button label="Continuar pelo WhatsApp" variant="soft" compact icon="logo-whatsapp" onPress={() => void Linking.openURL(chat.whatsapp_url!)} style={{ marginTop: 12, alignSelf: 'flex-start' }} /> : null}
           </Card>
@@ -158,6 +168,13 @@ export default function ClientChatScreen() {
           </View>
         ) : null}
 
+        {sendError ? (
+          <View style={styles.perm}>
+            <Body style={{ flex: 1, fontSize: 13, color: colors.warnText }}>{sendError}</Body>
+            <IconButton icon="close" size={36} accessibilityLabel="Fechar aviso" onPress={() => setSendError(null)} />
+          </View>
+        ) : null}
+
         {withReschedule && booking ? (
           <View style={styles.rescheduleDraft}>
             <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
@@ -175,11 +192,13 @@ export default function ClientChatScreen() {
           </View>
         ) : (
         <View style={[styles.composer, { paddingBottom: insets.bottom + 10 }]}>
+          {textOnly ? null : (
           <PressableScale onPress={() => setSheet((v) => !v)} accessibilityRole="button" accessibilityLabel="Anexar arquivo" accessibilityState={{ expanded: sheet }} scaleTo={0.92} style={[styles.plus, sheet && { backgroundColor: colors.primary }]}>
             <Ionicons name="add" size={24} color={sheet ? '#fff' : colors.text} style={{ transform: [{ rotate: sheet ? '45deg' : '0deg' }] }} />
           </PressableScale>
+          )}
           <ChatInput value={text} onChangeText={setText} placeholder="Mensagem para a equipe" />
-          {text.trim() || withReschedule ? (
+          {text.trim() || withReschedule || textOnly ? (
             <IconButton icon="send" tone="primary" size={44} accessibilityLabel="Enviar" onPress={() => void sendText()} />
           ) : (
             <MicButton onPress={() => void startVoice()} />

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { AppState } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from './fitnessApi';
@@ -38,6 +38,28 @@ export const useFitnessSummary = () => useQuery({ queryKey: [...root, 'summary']
 export const useHistory = () => useQuery({ queryKey: [...root, 'history'], queryFn: api.fetchHistory });
 export const useEvolution = () => useQuery({ queryKey: [...root, 'evolution'], queryFn: api.fetchEvolution });
 export const useCheckins = () => useQuery({ queryKey: [...root, 'checkins'], queryFn: api.fetchCheckins });
+
+/** Cargas por exercício (mais antiga → mais recente), da Evolução: alimenta "última vez" e recordes. */
+export function useLoadHistory(): Record<string, number[]> {
+  const { data } = useEvolution();
+  return useMemo(() => Object.fromEntries((data?.strength ?? []).map((s) => [s.exercise_id, s.points.map((p) => p.top_load_kg)])), [data]);
+}
+
+/** Treinos da semana (sem repetir), para alternar entre as fichas. */
+export function useMyWorkouts() {
+  const { data } = useWeek();
+  return useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const d of data?.days ?? []) for (const it of d.items ?? []) if (!seen.has(it.id)) seen.set(it.id, it.title);
+    return [...seen].map(([id, title]) => ({ id, title }));
+  }, [data]);
+}
+
+/** Dias da semana (0 = domingo) que têm treino no plano. */
+export function usePlannedWeekdays() {
+  const { data } = useWeek();
+  return useMemo(() => new Set((data?.days ?? []).filter((d) => d.planned > 0).map((d) => new Date(`${d.date}T12:00:00`).getDay())), [data]);
+}
 
 export function useWorkout(id: string | undefined) {
   return useQuery({ queryKey: [...root, 'workout', id], queryFn: () => api.fetchWorkout(id!), enabled: !!id });

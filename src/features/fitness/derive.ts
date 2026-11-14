@@ -21,6 +21,25 @@ export function adherenceStreak(daysOldestToYesterday: DayState[]): number {
   return sawTraining ? streak : 0;
 }
 
+/** Maior sequência no período (mesma regra de `adherenceStreak`, em qualquer trecho). */
+export function bestAdherenceStreak(days: DayState[]): number {
+  let best = 0;
+  let run = 0;
+  let sawTraining = false;
+  for (const s of days) {
+    if (s === 'future') continue;
+    if (s === 'missed') {
+      run = 0;
+      sawTraining = false;
+      continue;
+    }
+    if (s === 'done' || s === 'extra') sawTraining = true;
+    run += 1;
+    if (sawTraining) best = Math.max(best, run);
+  }
+  return best;
+}
+
 export function xpFrom(input: { sessions: number; records: number; goalWeeks: number }) {
   return input.sessions * 50 + input.records * 30 + input.goalWeeks * 120;
 }

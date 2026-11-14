@@ -5,10 +5,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
-import { Avatar, Badge, Body, Button, Card, Chip, EmptyState, Glow, IconButton, Rise, Screen, StatStrip } from '@/src/design-system/ui';
+import { Avatar, Badge, Body, Button, Card, Chip, EmptyState, Glow, IconButton, Loading, Rise, Screen, StatStrip } from '@/src/design-system/ui';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { flattenWorkout } from '@/src/features/fitness/flatten';
-import { LOAD_HISTORY, WORKOUTS } from '@/src/features/fitness/mockData';
+import { useLoadHistory, useWorkout } from '@/src/features/fitness/useFitness';
 import { useSendChat } from '@/src/features/client/useClientData';
 import { formatKg } from '@/src/shared/format';
 
@@ -33,12 +33,15 @@ function LoadChart({ values }: { values: number[] }) {
 export default function ExerciseDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id, treino } = useLocalSearchParams<{ id: string; treino?: string }>();
-  const workout = WORKOUTS.find((w) => w.id === treino) ?? WORKOUTS.find((w) => w.exercise_snapshots.some((s) => s.id === id));
+  const { data: fetched, isLoading } = useWorkout(treino);
+  const workout = fetched ?? undefined;
+  const LOAD_HISTORY = useLoadHistory();
   const row = workout ? flattenWorkout(workout).find((r) => r.exerciseId === id) : undefined;
   const snap = row?.snapshot ?? workout?.exercise_snapshots.find((s) => s.id === id);
   const send = useSendChat('move-studio');
   const [requested, setRequested] = useState(false);
 
+  if (!snap && isLoading) return <Screen><Loading label="Carregando o exercício" /></Screen>;
   if (!snap) return <Screen><EmptyState icon="barbell-outline" title="Exercício não encontrado" actionLabel="Voltar" onAction={() => router.back()} /></Screen>;
 
   const hist = LOAD_HISTORY[snap.id];

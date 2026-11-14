@@ -6,7 +6,7 @@ import { Avatar, Badge, Button, Card, EmptyState, IconButton, IconName, IconTile
 import { colors, radii, shadows, typography } from '@/src/design-system/tokens';
 import { DetailHero } from '@/src/features/client/DetailHero';
 import { bookingKindLabel, bookingPill } from '@/src/features/client/BookingCard';
-import { useBooking, useConfirmBooking, useUnconfirmBooking } from '@/src/features/client/useClientData';
+import { canUndoBookingAnswer, useBooking, useConfirmBooking, useUnconfirmBooking } from '@/src/features/client/useClientData';
 import { useWeek } from '@/src/features/fitness/useFitness';
 import { formatHour, minutesUntilLabel, sameDay, weekdayShort } from '@/src/shared/format';
 import { useNow } from '@/src/shared/useNow';
@@ -78,7 +78,7 @@ export default function BookingDetailScreen() {
               <View style={[styles.statusRow, { backgroundColor: b.status === 'confirmed' ? colors.successSoft : '#f0f2f5' }]}>
                 <Ionicons name={b.status === 'confirmed' ? 'checkmark-circle-outline' : 'information-circle-outline'} size={22} color={b.status === 'confirmed' ? colors.success : colors.textSoft} />
                 <Text style={[styles.statusTitle, { flex: 1, color: b.status === 'confirmed' ? colors.success : colors.textSoft }]}>{pill.label}</Text>
-                {b.status === 'confirmed' && b.can_confirm === false && upcoming ? <Button label="Desfazer" variant="ghost" compact onPress={() => unconfirm.mutate(b.id)} /> : null}
+                {b.status === 'confirmed' && b.can_confirm === false && upcoming && canUndoBookingAnswer() ? <Button label="Desfazer" variant="ghost" compact onPress={() => unconfirm.mutate(b.id)} /> : null}
               </View>
             </Rise>
           )}
