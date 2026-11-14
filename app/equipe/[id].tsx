@@ -22,6 +22,7 @@ import { TeamAvatar } from '@/src/features/team-chat/parts';
 import { useTeamChat } from '@/src/features/team-chat/TeamChatContext';
 import { API_URL } from '@/src/shared/config';
 import { listTeamMessages, sendTeamMedia, sendTeamMessage } from '@/src/shared/api/team-chat.api';
+import { SkeletonList } from '@/src/design-system/Skeleton';
 
 /** Conversa do chat interno (grupo ou direta) com texto, foto, PDF e áudio. */
 export default function TeamChatConversationScreen() {
@@ -209,10 +210,14 @@ export default function TeamChatConversationScreen() {
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16, gap: 4 }}
         renderItem={renderItem}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="chatbubbles-outline" size={28} color={colors.primary} />
-            <Text style={styles.emptyText}>{query.isLoading ? 'Carregando mensagens…' : 'Comece a conversa com a equipe.'}</Text>
-          </View>
+          query.isLoading ? (
+            <SkeletonList variant="bubbles" style={{ padding: 0 }} />
+          ) : (
+            <View style={styles.empty}>
+              <Ionicons name="chatbubbles-outline" size={28} color={colors.primary} />
+              <Text style={styles.emptyText}>Comece a conversa com a equipe.</Text>
+            </View>
+          )
         }
       />
 

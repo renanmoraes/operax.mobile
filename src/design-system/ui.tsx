@@ -14,16 +14,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withDelay,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, RadialGradient, Rect, Stop, LinearGradient as SvgLinear } from 'react-native-svg';
+import { OperaxLoader } from './Loader';
 import { colors, gradients, motion, NumberSize, numbers, radii, shadows, spacing, text, TextRole, typography } from './tokens';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -31,7 +24,8 @@ export type IconName = ComponentProps<typeof Ionicons>['name'];
 const easeOut = Easing.bezier(...motion.easeOut);
 const SEGMENT_PAD = 4;
 /** Mola sem quique (amortecimento crítico): desliza macio e para direto no lugar. */
-const SEGMENT_SPRING = { damping: 24, stiffness: 140, mass: 1, overshootClamping: true };
+// Microanimação pequena e no lugar: roda mesmo com "Reduzir movimento" (o Reanimated pularia direto para o fim).
+const SEGMENT_SPRING = { damping: 24, stiffness: 140, mass: 1, overshootClamping: true, reduceMotion: ReduceMotion.Never };
 
 /** Fundo em degradê suave (azul + ciano) que fica atrás de toda tela. */
 export function Backdrop({ variant = 'default' }: { variant?: 'default' | 'mirror' | 'chat' }) {
@@ -155,11 +149,11 @@ export function PressableScale({
       {...rest}
       style={outer as ViewStyle}
       onPressIn={(e) => {
-        scale.set(withTiming(scaleTo, { duration: motion.pressMs, easing: easeOut }));
+        scale.set(withTiming(scaleTo, { duration: motion.pressMs, easing: easeOut, reduceMotion: ReduceMotion.Never }));
         rest.onPressIn?.(e);
       }}
       onPressOut={(e) => {
-        scale.set(withTiming(1, { duration: motion.pressMs, easing: easeOut }));
+        scale.set(withTiming(1, { duration: motion.pressMs, easing: easeOut, reduceMotion: ReduceMotion.Never }));
         rest.onPressOut?.(e);
       }}
     >
@@ -786,10 +780,11 @@ export function EmptyState({
   );
 }
 
-export function Loading() {
+/** Carregando com a marca Operax (arco girando em volta da marca). */
+export function Loading({ label }: { label?: string } = {}) {
   return (
     <View style={styles.empty}>
-      <ActivityIndicator color={colors.primary} />
+      <OperaxLoader size={52} label={label} />
     </View>
   );
 }
@@ -949,7 +944,6 @@ export function Segmented({
   onChange: (key: string) => void;
   style?: StyleProp<ViewStyle>;
 }) {
-  const reduced = useReducedMotion();
   const [inner, setInner] = useState(0);
   const index = Math.max(0, options.findIndex((o) => o.key === value));
   const segW = inner / Math.max(1, options.length);
@@ -959,8 +953,8 @@ export function Segmented({
   useEffect(() => {
     if (!measured) return;
     const target = index * segW;
-    x.set(reduced ? target : withSpring(target, SEGMENT_SPRING));
-  }, [index, segW, measured, reduced, x]);
+    x.set(withSpring(target, SEGMENT_SPRING));
+  }, [index, segW, measured, x]);
 
   const pill = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   const counter = useAnimatedStyle(() => ({ transform: [{ translateX: -x.value }] }));

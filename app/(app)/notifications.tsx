@@ -9,6 +9,7 @@ import { notifications as mockNotifications } from '@/src/mocks/data';
 import { categoryForType, PUSH_CATEGORIES } from '@/src/features/notifications/catalog';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { listNotifications, markNotificationRead } from '@/src/shared/api/notifications.api';
+import { SkeletonList } from '@/src/design-system/Skeleton';
 
 function formatTime(iso?: string) {
   if (!iso) return '';
@@ -77,9 +78,7 @@ export default function NotificationsScreen() {
         }
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom, gap: 10 }}
         ListEmptyComponent={
-          <Muted style={{ textAlign: 'center', marginTop: 40 }}>
-            {query.isLoading ? 'Carregando…' : 'Nenhum aviso.'}
-          </Muted>
+          query.isLoading ? <SkeletonList variant="conversation" count={5} /> : <Muted style={{ textAlign: 'center', marginTop: 40 }}>Nenhum aviso.</Muted>
         }
         renderItem={({ item }) => {
           const catId = categoryForType(item.type);

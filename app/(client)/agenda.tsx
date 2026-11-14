@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Animated, { Easing, FadeInLeft, FadeInRight, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeInLeft, FadeInRight, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Card, Chip, HeroCard, IconTile, Muted, Rise, Screen, ScreenHeader, Segmented } from '@/src/design-system/ui';
@@ -19,8 +19,9 @@ function dayKey(iso: string) {
 
 const STRIP_GAP = 6;
 // Borda da frente e borda de trás: devagar e com folga entre as duas, para ver a pílula esticar e preencher.
-const EDGE_FAST = { duration: 560, easing: Easing.bezier(0.45, 0, 0.2, 1) };
-const EDGE_SLOW = { duration: 920, easing: Easing.bezier(0.45, 0, 0.2, 1) };
+// Microanimação pequena e no lugar: roda mesmo com "Reduzir movimento" (o Reanimated pularia direto para o fim).
+const EDGE_FAST = { duration: 560, easing: Easing.bezier(0.45, 0, 0.2, 1), reduceMotion: ReduceMotion.Never };
+const EDGE_SLOW = { duration: 920, easing: Easing.bezier(0.45, 0, 0.2, 1), reduceMotion: ReduceMotion.Never };
 
 /**
  * Semana em pílulas. O destaque azul "escorre" de um dia para o outro: a borda que vai na
@@ -28,7 +29,6 @@ const EDGE_SLOW = { duration: 920, easing: Easing.bezier(0.45, 0, 0.2, 1) };
  * preenche o novo. Os números ficam brancos exatamente onde o azul passa (camada recortada).
  */
 function DayStrip({ selected, onSelect, items }: { selected: Date; onSelect: (d: Date) => void; items: ClientBooking[] }) {
-  const reduced = useReducedMotion();
   const start = startOfWeek(new Date());
   const today = startOfDay(new Date());
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
@@ -48,15 +48,10 @@ function DayStrip({ selected, onSelect, items }: { selected: Date; onSelect: (d:
     const r = l + cell;
     const forward = index >= prevIndex.current;
     prevIndex.current = index;
-    if (reduced) {
-      left.set(l);
-      right.set(r);
-      return;
-    }
     // Indo para a direita, a borda direita lidera; indo para a esquerda, a esquerda.
     left.set(withTiming(l, forward ? EDGE_SLOW : EDGE_FAST));
     right.set(withTiming(r, forward ? EDGE_FAST : EDGE_SLOW));
-  }, [index, cell, reduced, left, right]);
+  }, [index, cell, left, right]);
 
   const pill = useAnimatedStyle(() => ({ transform: [{ translateX: left.value }], width: Math.max(0, right.value - left.value) }));
   const counter = useAnimatedStyle(() => ({ transform: [{ translateX: -left.value }] }));
@@ -164,7 +159,7 @@ export default function ClientAgendaScreen() {
               <DayStrip selected={selected} onSelect={setSelected} items={items} />
               <Animated.View
                 key={isoDate(selected)}
-                entering={(dir > 0 ? FadeInRight : FadeInLeft).duration(520)}
+                entering={(dir > 0 ? FadeInRight : FadeInLeft).duration(520).reduceMotion(ReduceMotion.Never)}
               >
                 <Text style={styles.dayTitle}>{`${sameDay(selected, today) ? 'Hoje, ' : ''}${weekdayFull(selected)} ${selected.getDate()}`}</Text>
                 {dayItems.length === 0 ? (

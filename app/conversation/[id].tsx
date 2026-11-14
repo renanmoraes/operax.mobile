@@ -38,6 +38,7 @@ import { PixSheet } from '@/src/features/conversation-actions/PixSheet';
 import { QuickRepliesSheet } from '@/src/features/conversation-actions/QuickRepliesSheet';
 import { PixData, sendPixMessage } from '@/src/shared/api/conversation-actions.api';
 import * as ImagePicker from 'expo-image-picker';
+import { SkeletonList } from '@/src/design-system/Skeleton';
 
 type Sheet = 'actions' | 'attach' | 'transfer' | 'quick' | 'pix' | 'booking' | null;
 
@@ -118,11 +119,20 @@ export default function ConversationScreen() {
   });
 
   if (!conversation) {
+    if (liveQuery.isLoading) {
+      // Carregando: os balões aparecem como esqueleto, no lugar onde a conversa vai surgir.
+      return (
+        <View style={styles.root}>
+          <Backdrop variant="chat" />
+          <SkeletonList variant="bubbles" style={{ paddingTop: insets.top + 80 }} />
+        </View>
+      );
+    }
     return (
       <View style={styles.center}>
         <Backdrop variant="chat" />
-        <Muted>{liveQuery.isLoading ? 'Carregando…' : 'Conversa não encontrada.'}</Muted>
-        {!liveQuery.isLoading ? <Button label="Voltar" variant="soft" compact onPress={() => router.back()} style={{ marginTop: 14 }} /> : null}
+        <Muted>Conversa não encontrada.</Muted>
+        <Button label="Voltar" variant="soft" compact onPress={() => router.back()} style={{ marginTop: 14 }} />
       </View>
     );
   }

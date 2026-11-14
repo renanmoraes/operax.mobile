@@ -2,7 +2,7 @@ import { ComponentProps, ReactNode, useEffect, useState } from 'react';
 import { LayoutChangeEvent, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { BlurView } from 'expo-blur';
-import Animated, { Easing, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, interpolate, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, motion, shadows, typography } from './tokens';
 
@@ -20,8 +20,9 @@ const GAP = 8;
  * esticando devagar, descobrindo o nome pela borda. Fechar é um pouco mais rápido.
  */
 const SMOOTH = Easing.bezier(0.45, 0, 0.15, 1);
-const OPEN = { duration: 900, easing: SMOOTH };
-const CLOSE = { duration: 460, easing: SMOOTH };
+// Microanimação pequena e no lugar: roda mesmo com "Reduzir movimento" (o Reanimated pularia direto para o fim).
+const OPEN = { duration: 900, easing: SMOOTH, reduceMotion: ReduceMotion.Never };
+const CLOSE = { duration: 460, easing: SMOOTH, reduceMotion: ReduceMotion.Never };
 const easeOut = Easing.bezier(...motion.easeOut);
 
 /**
@@ -46,14 +47,13 @@ function TabItem({
   renderIcon: (color: string) => ReactNode;
   onPress: () => void;
 }) {
-  const reduced = useReducedMotion();
   const p = useSharedValue(focused ? 1 : 0);
   const press = useSharedValue(1);
   const [labelW, setLabelW] = useState(0);
 
   useEffect(() => {
-    p.set(reduced ? (focused ? 1 : 0) : withTiming(focused ? 1 : 0, focused ? OPEN : CLOSE));
-  }, [focused, reduced, p]);
+    p.set(withTiming(focused ? 1 : 0, focused ? OPEN : CLOSE));
+  }, [focused, p]);
 
   const full = PAD_LEFT + ICON + GAP + labelW + PAD_RIGHT;
   // Nunca corta o nome: se não cabe inteiro, a pílula fica redonda só com o ícone.
@@ -94,8 +94,8 @@ function TabItem({
   return (
     <Pressable
       onPress={onPress}
-      onPressIn={() => press.set(withTiming(0.96, { duration: motion.pressMs, easing: easeOut }))}
-      onPressOut={() => press.set(withTiming(1, { duration: motion.pressMs, easing: easeOut }))}
+      onPressIn={() => press.set(withTiming(0.96, { duration: motion.pressMs, easing: easeOut, reduceMotion: ReduceMotion.Never }))}
+      onPressOut={() => press.set(withTiming(1, { duration: motion.pressMs, easing: easeOut, reduceMotion: ReduceMotion.Never }))}
       accessibilityRole="tab"
       accessibilityState={{ selected: focused }}
       accessibilityLabel={

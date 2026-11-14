@@ -3,11 +3,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Badge, Card, EmptyState, Loading, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { Badge, Card, EmptyState, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
 import { colors, radii, typography } from '@/src/design-system/tokens';
 import { listTemplates, sendTemplateMessage } from '@/src/shared/api/templates.api';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { templates as mockTemplates } from '@/src/mocks/data';
+import { SkeletonList } from '@/src/design-system/Skeleton';
 
 export default function TemplatesScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId?: string }>();
@@ -50,7 +51,7 @@ export default function TemplatesScreen() {
         </View>
       ) : null}
       {mode === 'live' && query.isLoading ? (
-        <Loading />
+        <SkeletonList variant="contact" count={5} style={{ marginHorizontal: 20, marginTop: 8 }} />
       ) : (
         <FlatList
           data={data}

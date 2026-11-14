@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Badge, EmptyState, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { Badge, EmptyState, Screen, ScreenHeader } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { colors, text, typography } from '@/src/design-system/tokens';
 import { DayEvent, DayTimeline } from '@/src/features/agenda/DayTimeline';
@@ -14,6 +14,7 @@ import { Toast, useToast } from '@/src/design-system/Toast';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { agendaDetails, agendaEvents } from '@/src/mocks/data';
 import { longDate } from '@/src/shared/format';
+import { SkeletonList } from '@/src/design-system/Skeleton';
 
 function dayBounds() {
   const start = new Date();
@@ -123,7 +124,7 @@ export default function AgendaScreen() {
       {query.isLoading && mode === 'live' ? (
         <>
           {header}
-          <Muted style={{ textAlign: 'center', marginTop: 40 }}>Carregando…</Muted>
+          <SkeletonList variant="agenda" count={5} />
         </>
       ) : events.length === 0 ? (
         <>

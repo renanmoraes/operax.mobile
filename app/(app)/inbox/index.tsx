@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Badge, EmptyState, Loading, Screen, ScreenHeader, StatTile } from '@/src/design-system/ui';
+import { Badge, EmptyState, Screen, ScreenHeader, StatTile } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { ConversationCard } from '@/src/features/inbox/ConversationCard';
 import { conversations as mockConversations, type Conversation } from '@/src/mocks/data';
@@ -14,6 +14,7 @@ import { sortForHome } from '@/src/features/inbox/sortConversations';
 import { getSocket } from '@/src/shared/realtime/socket';
 import { useQueueDrawer } from '@/src/features/queue/QueueDrawerContext';
 import { QueueDrawer } from '@/src/features/queue/QueueDrawer';
+import { SkeletonList } from '@/src/design-system/Skeleton';
 
 export default function InboxScreen() {
   const insets = useSafeAreaInsets();
@@ -105,7 +106,7 @@ export default function InboxScreen() {
       </View>
 
       {mode === 'live' && query.isLoading ? (
-        <Loading />
+        <SkeletonList variant="conversation" count={4} style={{ paddingHorizontal: 20, paddingTop: 4 }} />
       ) : (
         <FlatList
           data={active}

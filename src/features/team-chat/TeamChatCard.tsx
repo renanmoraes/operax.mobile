@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { PressableScale } from '@/src/design-system/ui';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { TeamAvatar, UnreadPill } from './parts';
@@ -14,15 +14,14 @@ import { useTeamChat } from './TeamChatContext';
  */
 export function TeamChatCard({ onPress }: { onPress: () => void }) {
   const { channels, unread } = useTeamChat();
-  const reduced = useReducedMotion();
   const withNew = channels.filter((c) => c.unread > 0);
   const latest = [...withNew].sort((a, b) => (b.lastAt ?? '').localeCompare(a.lastAt ?? ''))[0];
   const stack = (withNew.length ? withNew : channels).slice(0, 3);
 
   const bump = useSharedValue(1);
   useEffect(() => {
-    if (unread > 0 && !reduced) bump.value = withSequence(withTiming(1.18, { duration: 120 }), withSpring(1, { damping: 12, stiffness: 260 }));
-  }, [unread, reduced, bump]);
+    if (unread > 0) bump.set(withSequence(withTiming(1.18, { duration: 120, reduceMotion: ReduceMotion.Never }), withSpring(1, { damping: 12, stiffness: 260, reduceMotion: ReduceMotion.Never })));
+  }, [unread, bump]);
   const bumpStyle = useAnimatedStyle(() => ({ transform: [{ scale: bump.value }] }));
 
   const summary = unread > 0

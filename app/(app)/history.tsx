@@ -3,13 +3,14 @@ import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EmptyState, Loading, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { EmptyState, Screen, ScreenHeader } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { conversations as mockConversations } from '@/src/mocks/data';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { getMyHistory } from '@/src/shared/api/conversations.api';
 import { mapApiConversation } from '@/src/features/inbox/mapConversation';
 import { ConversationCard } from '@/src/features/inbox/ConversationCard';
+import { SkeletonList } from '@/src/design-system/Skeleton';
 
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
@@ -38,7 +39,7 @@ export default function HistoryScreen() {
     <Screen>
       <ScreenHeader safe title="Histórico" subtitle="Atendimentos encerrados" onBack={() => router.back()} />
       {mode === 'live' && query.isLoading ? (
-        <Loading />
+        <SkeletonList variant="conversation" count={5} style={{ paddingHorizontal: 20, paddingTop: 4 }} />
       ) : (
         <FlatList
           data={data}

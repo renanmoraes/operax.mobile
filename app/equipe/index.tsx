@@ -3,10 +3,11 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EmptyState, Loading, Rise, Screen, ScreenHeader, Segmented } from '@/src/design-system/ui';
+import { EmptyState, Rise, Screen, ScreenHeader, Segmented } from '@/src/design-system/ui';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { ChannelRow } from '@/src/features/team-chat/parts';
 import { useTeamChat } from '@/src/features/team-chat/TeamChatContext';
+import { SkeletonList } from '@/src/design-system/Skeleton';
 
 type Filter = 'all' | 'unread' | 'group' | 'dm';
 
@@ -85,7 +86,7 @@ export default function TeamChatListScreen() {
 
         <View style={{ paddingHorizontal: 20 }}>
           {loading ? (
-            <Loading />
+            <SkeletonList variant="channel" count={6} style={{ marginTop: 6 }} />
           ) : shown.length === 0 ? (
             <EmptyState
               icon={filter === 'unread' ? 'checkmark-done-outline' : 'chatbubbles-outline'}

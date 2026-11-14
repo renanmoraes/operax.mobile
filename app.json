@@ -55,7 +55,8 @@
         {
           "image": "./assets/brand/operax-mark.png",
           "resizeMode": "contain",
-          "backgroundColor": "#050a14"
+          "backgroundColor": "#050a14",
+          "imageWidth": 112
         }
       ],
       "expo-font",

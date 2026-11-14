@@ -2,11 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Card, EmptyState, IconTile, Loading, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { Card, EmptyState, IconTile, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
 import { colors, typography } from '@/src/design-system/tokens';
 import { listQuickReplies } from '@/src/shared/api/quick-replies.api';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { quickReplies as mockQuickReplies } from '@/src/mocks/data';
+import { SkeletonList } from '@/src/design-system/Skeleton';
 
 export default function QuickRepliesScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId?: string }>();
@@ -29,7 +30,7 @@ export default function QuickRepliesScreen() {
         onBack={() => router.back()}
       />
       {mode === 'live' && query.isLoading ? (
-        <Loading />
+        <SkeletonList variant="contact" count={5} style={{ marginHorizontal: 20, marginTop: 8 }} />
       ) : (
         <FlatList
           data={data}

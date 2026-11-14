@@ -12,7 +12,8 @@ import { useEffect, useState } from 'react';
 import { LogBox, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
-import { AuthProvider } from '@/src/features/auth/AuthContext';
+import { AuthProvider, useAuth } from '@/src/features/auth/AuthContext';
+import { AnimatedSplash } from '@/src/design-system/AnimatedSplash';
 import { IncomingBanner } from '@/src/features/team-chat/IncomingBanner';
 import { TeamChatProvider } from '@/src/features/team-chat/TeamChatContext';
 import { colors } from '@/src/design-system/tokens';
@@ -80,9 +81,16 @@ export default function RootLayout() {
             <Stack.Screen name="visualizar" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade' }} />
           </Stack>
           <IncomingBanner />
+          <SplashGate />
           </TeamChatProvider>
         </AuthProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>
   );
+}
+
+/** Abertura animada: fica na frente até o login ser restaurado (e por um tempo mínimo). */
+function SplashGate() {
+  const { ready } = useAuth();
+  return <AnimatedSplash ready={ready} />;
 }
