@@ -16,6 +16,11 @@
 
 Esta spec já é o recorte "base de auth" dentro da decomposição maior (conversas/staff, portal, fitness, + esta). Não cobre conteúdo de telas nem backend — só auth, seleção de papel/empresa e o casco de navegação. Cabe num plano só: ao final, dá pra compilar, rodar os testes novos, e navegar manualmente por todo o fluxo (staff inalterado; cliente em modo demo, já que os endpoints reais de `/api/auth/client/*` ainda não existem — ver seção 7 da spec).
 
+## Notas gerais (valem pra todo o plano)
+
+- **Typed routes:** `app.json` tem `typedRoutes: true`. Literais de rota novos (`/(client)/agenda`, `/(auth)/client-login` etc.) só tipam certo depois que o Expo Router gera `.expo/types` — isso acontece automaticamente ao rodar `npx expo start` uma vez. Se `npx tsc --noEmit` reclamar de um `href`/`router.replace` antes disso, rode `npx expo start` (pode cancelar depois de subir) e tente de novo; se ainda reclamar, use `as never` no literal, igual já é feito em `app/(app)/more.tsx` e na Task 9 deste plano.
+- **`tsc --noEmit` nem sempre fica limpo task a task:** a Task 3 adiciona `kind` em `StaffUser`/`ClientUser`, mas `AuthContext.tsx` só ganha `kind: 'staff'` no `DEMO_USER` na Task 6 — então rodar `tsc` entre essas duas tasks mostra um erro esperado nesse arquivo (`DEMO_USER` não casa com `AuthUser`). Não é regressão; some ao terminar a Task 6.
+
 ## Mapa de arquivos
 
 ```
@@ -28,6 +33,7 @@ MODIFICAR
   app/(app)/_layout.tsx                filtro por permissão (mecanismo, sem mapear ainda)
   app/(app)/profile.tsx                corrige acesso a role_code pós-union
   app/notification-prefs.tsx           corrige acesso a notification_prefs pós-union
+  app/(auth)/login.tsx                 + link "Entrar como cliente"
   docs/00-produto.md, 03-auth-sessao.md, 07-mapa-telas.md, 08-api-contrato.md, README.md
 
 CRIAR
@@ -384,7 +390,7 @@ const remote = (user?.kind === 'staff' ? user.notification_prefs : undefined) as
 - [ ] **Step 3: Checar tipos**
 
 Run: `npx tsc --noEmit`
-Expected: sem erros relacionados a `AuthUser`/`role_code`/`notification_prefs`. (A Task 6 ainda vai introduzir `DEMO_USER` sem `kind` — se o tsc já reclamar disso agora, é porque `AuthContext.tsx` importa `AuthUser`; normal, resolve na Task 6.)
+Expected: um único erro esperado, em `src/features/auth/AuthContext.tsx`, porque `DEMO_USER` ainda não tem `kind: 'staff'` (ver "Notas gerais" no topo do plano) — resolve na Task 6. Nenhum outro erro relacionado a `AuthUser`/`role_code`/`notification_prefs`.
 
 - [ ] **Step 4: Commit**
 
@@ -686,6 +692,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let alive = true;
+    let savedRole: Role | null = null;
     (async () => {
       try {
         if (readDemoFlag()) {
@@ -698,7 +705,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        let savedRole = await getSavedRole();
+        savedRole = await getSavedRole();
         const token = await getAccessToken();
         if (!token) {
           if (alive) setRole(savedRole);
@@ -736,6 +743,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch {
           /* web/native store pode estar indisponível no boot */
         }
+        // Sessão inválida/expirada: mantém o papel salvo pra cair na tela de
+        // login certa (staff ou cliente), não na escolha de papel de novo.
+        if (alive) setRole(savedRole);
       } finally {
         if (alive) setReady(true);
       }
@@ -888,6 +898,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
 
       switchTenant: async (tenantId) => {
+        if (mode === 'mock') {
+          // Modo demo: não existe backend real pra escopar o token, só troca
+          // a empresa ativa localmente (ver Task 11/12 do plano).
+          setUser((prev) => (prev?.kind === 'client' ? { ...prev, active_tenant_id: tenantId } : prev));
+          return;
+        }
         const result = await switchClientTenantApi({ tenant_id: tenantId });
         setUser(result.user);
         disconnectSocket();
@@ -1022,10 +1038,11 @@ git commit -m "refactor: app/index.tsx usa resolveAuthRoute pra decidir a tela i
 
 ---
 
-### Task 8: Tela `role-select.tsx`
+### Task 8: Tela `role-select.tsx` + link de volta no login de staff
 
 **Files:**
 - Create: `app/(auth)/role-select.tsx`
+- Modify: `app/(auth)/login.tsx`
 
 - [ ] **Step 1: Criar a tela**
 
@@ -1108,16 +1125,30 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 2: Verificar manualmente**
+- [ ] **Step 2: Adicionar o link "Não é você?" no login de staff**
+
+A spec (seção 4, "Trocar de perfil") pede o mesmo link nos dois logins. Em `app/(auth)/login.tsx`, importe `useAuth` já é feito; adicione `clearRole` à desestruturação (`const { login, enterDemo, error, clearError, clearRole } = useAuth();`) e, depois do `Button` "Entrar direto (demo)" (ou depois do `Button` "Entrar", se `ALLOW_MOCK` for falso), adicione:
+
+```tsx
+<Pressable onPress={() => clearRole().then(() => router.replace('/(auth)/role-select'))}>
+  <Muted style={{ textAlign: 'center', marginTop: spacing.sm }}>
+    Não é você? Entrar como cliente
+  </Muted>
+</Pressable>
+```
+
+Isso precisa de `Pressable` importado de `react-native` (adicione ao import existente) — o resto (`Muted`, `spacing`) já está importado nesse arquivo.
+
+- [ ] **Step 3: Verificar manualmente**
 
 Run: `npx expo start --web` (ou `--ios`/`--android`), limpe o storage do app (reinstala ou `expo start -c`) pra cair sem `role` salvo.
-Expected: abre em `role-select`, cada botão navega pro login certo.
+Expected: abre em `role-select`, cada botão navega pro login certo; no login de staff, o link "Não é você?" volta pro `role-select`.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add "app/(auth)/role-select.tsx"
-git commit -m "feat: tela de seleção de papel (equipe/cliente)"
+git add "app/(auth)/role-select.tsx" "app/(auth)/login.tsx"
+git commit -m "feat: tela de seleção de papel + link de troca no login de staff"
 ```
 
 ---
@@ -1168,7 +1199,9 @@ export default function ClientLoginScreen() {
         setBlocked(true);
         return;
       }
-      router.replace('/(auth)/client-tenant-select');
+      // Deixa o index.tsx/resolveAuthRoute decidir: shell direto se já tem
+      // empresa ativa (1 vínculo), seletor se não (2+ vínculos).
+      router.replace('/');
     } catch {
       /* erro já fica em `error` */
     } finally {
@@ -1249,7 +1282,7 @@ export default function ClientLoginScreen() {
               variant="ghost"
               onPress={() => {
                 enterClientDemo();
-                router.replace('/(auth)/client-tenant-select');
+                router.replace('/');
               }}
             />
           ) : null}
@@ -1295,7 +1328,7 @@ const styles = StyleSheet.create({
 - [ ] **Step 2: Verificar manualmente (modo demo)**
 
 Garanta `EXPO_PUBLIC_ALLOW_MOCK=1` no `.env`, rode `npx expo start`, escolha "Sou cliente" na role-select, toque "Entrar direto (demo cliente)".
-Expected: vai pro seletor de empresa (Task 11) com as duas empresas demo.
+Expected: o usuário demo tem 2 empresas e `active_tenant_id: null`, então cai no seletor de empresa (Task 11).
 
 - [ ] **Step 3: Commit**
 
@@ -1385,7 +1418,7 @@ export default function ClientOtpScreen() {
                 setBlocked(true);
                 return;
               }
-              router.replace('/(auth)/client-tenant-select');
+              router.replace('/');
             } catch {
               /* erro já fica em `error` */
             } finally {
@@ -1476,6 +1509,8 @@ export default function ClientTenantSelectScreen() {
               try {
                 await switchTenant(m.tenant_id);
                 router.replace('/(client)/agenda');
+              } catch {
+                /* mantém na tela; sem mensagem dedicada ainda nesta spec */
               } finally {
                 setLoadingId(null);
               }
@@ -1506,7 +1541,7 @@ const styles = StyleSheet.create({
 });
 ```
 
-Nota: em modo demo, `switchTenant` chama `switchClientTenantApi` de verdade (vai falhar contra a API real, endpoint não existe ainda). Pra testar o seletor manualmente de ponta a ponta sem backend, a Task 13 (Perfil) usa o mesmo botão — documentado como limitação conhecida até o backend confirmar o contrato (seção 7 da spec). Não é bloqueante pra esta spec: a tela e a navegação já ficam prontas pra quando o endpoint existir.
+Nota: em modo demo (`mode === 'mock'`), `switchTenant` troca a empresa ativa só localmente, sem chamar a API (ver Task 6) — por isso dá pra testar este seletor de ponta a ponta sem o backend novo existir ainda. Em modo real (`mode === 'live'`), chama `switchClientTenantApi` de verdade; até o endpoint existir no backend (seção 7 da spec), isso fica numa chamada que falha com 404, tratada pelo `catch` acima (mantém na tela).
 
 - [ ] **Step 2: Commit**
 
@@ -1536,7 +1571,10 @@ import { useAuth } from '@/src/features/auth/AuthContext';
 
 export default function ClientLayout() {
   const { isAuthenticated, user } = useAuth();
-  if (!isAuthenticated || user?.kind !== 'client') return <Redirect href="/(auth)/role-select" />;
+  // "/" deixa o index.tsx/resolveAuthRoute decidir pelo papel salvo — depois de
+  // um logout normal, o papel continua 'client', então cai no client-login,
+  // não na escolha de papel de novo.
+  if (!isAuthenticated || user?.kind !== 'client') return <Redirect href="/" />;
   if (user.active_tenant_id == null) return <Redirect href="/(auth)/client-tenant-select" />;
 
   return (
@@ -1722,7 +1760,7 @@ const styles = StyleSheet.create({
 
 - [ ] **Step 4: Verificar manualmente de ponta a ponta (modo demo)**
 
-Com `EXPO_PUBLIC_ALLOW_MOCK=1`: role-select → "Sou cliente" → "Entrar direto (demo cliente)" → seletor de empresa → escolhe uma → cai no shell com as 4 tabs → Perfil mostra a troca de empresa (vai falhar a chamada real de `switchTenant`, mas a navegação e a UI devem renderizar).
+Com `EXPO_PUBLIC_ALLOW_MOCK=1`: role-select → "Sou cliente" → "Entrar direto (demo cliente)" → seletor de empresa → escolhe uma → cai no shell com as 4 tabs → Perfil mostra a troca de empresa funcionando de verdade (modo demo troca localmente, Task 6) → "Sair" volta pro login de cliente (não pro role-select, Task 12 Step 1) → "Entrar como equipe" volta pro role-select.
 
 - [ ] **Step 5: Commit**
 
