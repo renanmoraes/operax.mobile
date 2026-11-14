@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { StyleSheet, TextInput, TextInputContentSizeChangeEvent, View } from 'react-native';
+import { Ref, useState } from 'react';
+import { StyleSheet, TextInput, TextInputContentSizeChangeEvent, TextInputInstance, View } from 'react-native';
 import { colors, typography } from '@/src/design-system/tokens';
 
 const LINE = 21;
@@ -15,12 +15,15 @@ export function ChatInput({
   placeholder,
   editable = true,
   accessibilityLabel = 'Mensagem',
+  inputRef,
 }: {
   value: string;
   onChangeText: (t: string) => void;
   placeholder: string;
   editable?: boolean;
   accessibilityLabel?: string;
+  /** Para devolver o foco e pôr o cursor no fim depois de inserir algo (marcação, atalho). */
+  inputRef?: Ref<TextInputInstance>;
 }) {
   const [measured, setHeight] = useState(LINE);
   // Depois de enviar (campo vazio), volta para uma linha mesmo que o evento de tamanho não venha.
@@ -34,6 +37,7 @@ export function ChatInput({
   return (
     <View style={[styles.wrap, !editable && { opacity: 0.6 }]}>
       <TextInput
+        ref={inputRef}
         value={value}
         onChangeText={onChangeText}
         onContentSizeChange={onSize}
@@ -74,3 +78,12 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
 });
+
+/** Devolve o foco ao campo e coloca o cursor no fim do texto (depois de um setState). */
+export function focusAtEnd(input: TextInputInstance | null, text: string) {
+  setTimeout(() => {
+    input?.focus();
+    input?.setSelection?.(text.length, text.length);
+  }, 0);
+}
+

@@ -50,8 +50,17 @@ export async function listTeamMessages(channelId: string, limit = 60): Promise<A
   return (Array.isArray(data) ? data : data?.data ?? []) as ApiTeamMessage[];
 }
 
-export async function sendTeamMessage(channelId: string, body: string): Promise<ApiTeamMessage> {
-  const { data } = await api.post(`/api/chat/channels/${channelId}/messages`, { body });
+/** `mentions`: ids da equipe marcados com @ (o backend notifica); `contact_refs`: pacientes marcados com #. */
+export async function sendTeamMessage(
+  channelId: string,
+  body: string,
+  extras?: { mentions?: string[]; contact_refs?: { contact_id: string; label: string }[] },
+): Promise<ApiTeamMessage> {
+  const { data } = await api.post(`/api/chat/channels/${channelId}/messages`, {
+    body,
+    ...(extras?.mentions?.length ? { mentions: extras.mentions } : {}),
+    ...(extras?.contact_refs?.length ? { contact_refs: extras.contact_refs } : {}),
+  });
   return data as ApiTeamMessage;
 }
 
@@ -73,3 +82,12 @@ export async function sendTeamMedia(
 export async function markTeamChannelRead(channelId: string): Promise<void> {
   await api.post(`/api/chat/channels/${channelId}/read`);
 }
+
+export type ApiTeamUser = { id: string; name: string; email?: string };
+
+/** Pessoas da equipe para marcar com @ (mesma busca do web). */
+export async function searchTeamUsers(q: string): Promise<ApiTeamUser[]> {
+  const { data } = await api.get('/api/users/search', { params: { q, limit: 8 } });
+  return (Array.isArray(data) ? data : data?.data ?? []) as ApiTeamUser[];
+}
+

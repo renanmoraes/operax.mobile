@@ -1,14 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInputInstance, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar, Backdrop, Button, IconButton, IconTile, Muted } from '@/src/design-system/ui';
 import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, TextWithMeta } from '@/src/features/chat/MessageParts';
 import { RemoteAudioBubble } from '@/src/features/chat/RemoteAudioBubble';
 import { MicButton, RecordingBar, useVoiceRecorder } from '@/src/features/chat/VoiceRecorder';
-import { ChatInput } from '@/src/features/chat/ChatInput';
+import { ChatInput, focusAtEnd } from '@/src/features/chat/ChatInput';
 import { QuickReplySuggestions } from '@/src/features/chat/QuickReplySuggestions';
 import { applyQuickReply, filterQuickReplies, resolveQuickReplyVariables, slashTerm } from '@/src/features/chat/quickReplyMatch';
 import { listQuickReplies } from '@/src/shared/api/quick-replies.api';
@@ -48,6 +48,7 @@ export default function ConversationScreen() {
   const { mode, user } = useAuth();
   const qc = useQueryClient();
   const [draft, setDraft] = useState('');
+  const inputRef = useRef<TextInputInstance>(null);
   const qrTerm = slashTerm(draft);
   const qrQuery = useQuery({
     queryKey: ['quick-replies', 'search', qrTerm],
@@ -385,9 +386,11 @@ export default function ConversationScreen() {
           term={qrTerm}
           items={qrItems}
           loading={qrQuery.isFetching}
-          onPick={(q) =>
-            setDraft((d) => applyQuickReply(d, resolveQuickReplyVariables(q.body, { name: conversation.contactName }, user?.name ?? '')))
-          }
+          onPick={(q) => {
+            const next = applyQuickReply(draft, resolveQuickReplyVariables(q.body, { name: conversation.contactName }, user?.name ?? ''));
+            setDraft(next);
+            focusAtEnd(inputRef.current, next);
+          }}
         />
       ) : null}
 
@@ -414,6 +417,7 @@ export default function ConversationScreen() {
             <Ionicons name="flash-outline" size={20} color={colors.primary} />
           </Pressable>
           <ChatInput
+            inputRef={inputRef}
             value={draft}
             onChangeText={setDraft}
             placeholder={!conversation.within24h ? 'Use um template' : ownership !== 'mine' ? 'Assuma para responder' : 'Mensagem…'}

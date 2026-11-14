@@ -4,7 +4,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ReactNode, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInputInstance, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Toast, useToast } from '@/src/design-system/Toast';
@@ -12,7 +12,7 @@ import { Backdrop, Button, IconButton, Muted } from '@/src/design-system/ui';
 import { colors, radii, shadows, text } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { AudioBubble } from '@/src/features/chat/AudioBubble';
-import { ChatInput } from '@/src/features/chat/ChatInput';
+import { ChatInput, focusAtEnd } from '@/src/features/chat/ChatInput';
 import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, TextWithMeta } from '@/src/features/chat/MessageParts';
 import { MicButton, RecordingBar, useVoiceRecorder } from '@/src/features/chat/VoiceRecorder';
 import { assetUri, openDocument, openViewer } from '@/src/features/media/viewer';
@@ -21,7 +21,12 @@ import { firstName, mapApiMessage, TeamMessage, toneFor } from '@/src/features/t
 import { TeamAvatar } from '@/src/features/team-chat/parts';
 import { useTeamChat } from '@/src/features/team-chat/TeamChatContext';
 import { API_URL } from '@/src/shared/config';
-import { listTeamMessages, sendTeamMedia, sendTeamMessage } from '@/src/shared/api/team-chat.api';
+import { listTeamMessages, searchTeamUsers, sendTeamMedia, sendTeamMessage } from '@/src/shared/api/team-chat.api';
+import { listContacts } from '@/src/shared/api/contacts.api';
+import { applyPick, compactName, ContactRef, detectPicker, MentionUser, mentionsInBody, splitMentions } from '@/src/features/team-chat/mentions';
+import { MentionItem, MentionSuggestions } from '@/src/features/team-chat/MentionSuggestions';
+import { phoneLabel } from '@/src/features/agenda/bookingDetails';
+import { contacts as mockContacts, teamUsers } from '@/src/mocks/data';
 import { SkeletonList } from '@/src/design-system/Skeleton';
 
 /** Conversa do chat interno (grupo ou direta) com texto, foto, PDF e áudio. */
@@ -66,10 +71,49 @@ export default function TeamChatConversationScreen() {
     void qc.invalidateQueries({ queryKey: ['team-chat', 'channels'] });
   };
 
+  // Marcações: "@" busca a equipe (quem é marcado recebe notificação), "#" busca pacientes.
+  const picker = detectPicker(draft);
+  const [pendingUsers, setPendingUsers] = useState<MentionUser[]>([]);
+  const [pendingRefs, setPendingRefs] = useState<ContactRef[]>([]);
+  const pickQuery = picker.kind === 'none' ? '' : picker.query;
+  const usersQ = useQuery({
+    queryKey: ['team-chat', 'mention-users', pickQuery],
+    enabled: live && picker.kind === 'user',
+    queryFn: () => searchTeamUsers(pickQuery),
+    staleTime: 30_000,
+  });
+  const contactsQ = useQuery({
+    queryKey: ['team-chat', 'mention-contacts', pickQuery],
+    enabled: live && picker.kind === 'contact',
+    queryFn: () => listContacts({ search: pickQuery || undefined, limit: 8 }),
+    staleTime: 30_000,
+  });
+  const fold = (v: string) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const suggestions: MentionItem[] =
+    picker.kind === 'user'
+      ? (live ? usersQ.data ?? [] : teamUsers.filter((u) => fold(u.name).includes(fold(pickQuery)))).map((u) => ({ id: u.id, name: u.name, sub: u.email }))
+      : picker.kind === 'contact'
+        ? live
+          ? (contactsQ.data?.items ?? []).map((c) => ({ id: c.id, name: c.name || 'Contato', sub: phoneLabel(c.phone_e164) }))
+          : mockContacts.filter((c) => fold(c.name).includes(fold(pickQuery))).slice(0, 8).map((c) => ({ id: c.id, name: c.name, sub: phoneLabel(c.phone) }))
+        : [];
+
+  const inputRef = useRef<TextInputInstance>(null);
+  const pickMention = (item: MentionItem) => {
+    if (picker.kind === 'none') return;
+    const next = applyPick(draft, picker, item.name);
+    setDraft(next);
+    focusAtEnd(inputRef.current, next);
+    if (picker.kind === 'user') setPendingUsers((prev) => (prev.some((u) => u.id === item.id) ? prev : [...prev, { id: item.id, name: item.name }]));
+    else setPendingRefs((prev) => [...prev.filter((r) => r.contact_id !== item.id), { contact_id: item.id, label: compactName(item.name) }]);
+  };
+
   const sendMut = useMutation({
-    mutationFn: (body: string) => sendTeamMessage(id, body),
+    mutationFn: ({ body, extras }: { body: string; extras: ReturnType<typeof mentionsInBody> }) => sendTeamMessage(id, body, extras),
     onSuccess: () => {
       setDraft('');
+      setPendingUsers([]);
+      setPendingRefs([]);
       refreshLive();
     },
     onError: () => show('Falha ao enviar', 'error'),
@@ -78,12 +122,19 @@ export default function TeamChatConversationScreen() {
   const sendText = () => {
     const body = draft.trim();
     if (!body) return;
+    const extras = mentionsInBody(body, pendingUsers, pendingRefs);
     if (!live) {
       demoTeamChat.send(id, { type: 'text', body });
       setDraft('');
+      setPendingUsers([]);
+      setPendingRefs([]);
+      if (extras.mentions.length) {
+        const names = pendingUsers.filter((u) => extras.mentions.includes(u.id)).map((u) => firstName(u.name));
+        show(`${names.join(', ')} ${names.length === 1 ? 'vai receber' : 'vão receber'} uma notificação`, 'success', 'notifications-outline');
+      }
       return;
     }
-    sendMut.mutate(body);
+    sendMut.mutate({ body, extras });
   };
 
   const pick = async (kind: 'image' | 'document') => {
@@ -173,7 +224,15 @@ export default function TeamChatConversationScreen() {
       bubble = (
         <View style={[styles.bubble, item.mine ? styles.bubbleOut : styles.bubbleIn, !firstOfRun && (item.mine ? { borderTopRightRadius: 8 } : { borderTopLeftRadius: 8 })]}>
           <TextWithMeta at={item.at} mine={item.mine} tone={item.mine ? 'onBubbleMine' : 'onBubbleTheirs'} style={[styles.bubbleText, item.mine && { color: '#fff' }]}>
-            {item.body}
+            {splitMentions(item.body).map((part, i) =>
+              part.kind === 'plain' ? (
+                part.text
+              ) : (
+                <Text key={i} style={[styles.mention, part.kind === 'contact' && styles.mentionContact, item.mine && styles.mentionMine]}>
+                  {part.text}
+                </Text>
+              ),
+            )}
           </TextWithMeta>
         </View>
       );
@@ -221,6 +280,10 @@ export default function TeamChatConversationScreen() {
         }
       />
 
+      {picker.kind !== 'none' && !voice.recording ? (
+        <MentionSuggestions kind={picker.kind} query={pickQuery} items={suggestions} loading={usersQ.isFetching || contactsQ.isFetching} onPick={pickMention} />
+      ) : null}
+
       {voice.recording ? (
         <View style={[styles.composer, { paddingHorizontal: 0, paddingTop: 0 }]}>
           <RecordingBar elapsedS={voice.elapsedS} levels={voice.levels} onCancel={() => void voice.cancel()} onSend={() => void sendVoice()} bottomInset={Math.max(insets.bottom, 12)} />
@@ -230,7 +293,7 @@ export default function TeamChatConversationScreen() {
           <Pressable onPress={() => setAttachOpen(true)} style={styles.attachBtn} accessibilityRole="button" accessibilityLabel="Anexar foto ou documento">
             <Ionicons name="add" size={24} color={colors.primary} />
           </Pressable>
-          <ChatInput value={draft} onChangeText={setDraft} placeholder={isGroup ? `Mensagem para ${channel?.title ?? 'o grupo'}` : 'Mensagem…'} />
+          <ChatInput inputRef={inputRef} value={draft} onChangeText={setDraft} placeholder={isGroup ? `Mensagem para ${channel?.title ?? 'o grupo'}` : 'Mensagem…'} />
           {draft.trim() ? (
             <Pressable onPress={sendText} style={[styles.send, sendMut.isPending && { opacity: 0.6 }]} accessibilityRole="button" accessibilityLabel="Enviar">
               <Ionicons name="send" size={18} color="#fff" />
@@ -274,6 +337,9 @@ const styles = StyleSheet.create({
   bubbleIn: { backgroundColor: colors.cardBg, borderBottomLeftRadius: 8, ...shadows.card },
   bubbleOut: { backgroundColor: colors.primary, borderBottomRightRadius: 8, ...shadows.button },
   bubbleText: { ...text.body, color: colors.text },
+  mention: { fontFamily: 'Inter_600SemiBold', color: colors.primary },
+  mentionContact: { color: '#0f766e' },
+  mentionMine: { color: '#fff', textDecorationLine: 'underline' },
   empty: { alignItems: 'center', gap: 10, paddingTop: 60 },
   emptyText: { ...text.callout, color: colors.textMuted },
   composer: {
