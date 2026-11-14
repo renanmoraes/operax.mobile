@@ -1,19 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Platform,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar, Backdrop, Button, IconButton, IconTile, Muted } from '@/src/design-system/ui';
 import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, TextWithMeta } from '@/src/features/chat/MessageParts';
-import { AudioBubble } from '@/src/features/chat/AudioBubble';
+import { RemoteAudioBubble } from '@/src/features/chat/RemoteAudioBubble';
 import { MicButton, RecordingBar, useVoiceRecorder } from '@/src/features/chat/VoiceRecorder';
 import { ChatInput } from '@/src/features/chat/ChatInput';
 import { QuickReplySuggestions } from '@/src/features/chat/QuickReplySuggestions';
@@ -289,7 +282,8 @@ export default function ConversationScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    // O campo de mensagem sobe junto com o teclado do iPhone (sem esconder o texto e o enviar).
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Backdrop variant="chat" />
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <IconButton icon="chevron-back" accessibilityLabel="Voltar" onPress={() => router.back()} />
@@ -362,7 +356,7 @@ export default function ConversationScreen() {
           if (item.type === 'audio') {
             return (
               <View style={{ alignSelf: out ? 'flex-end' : 'flex-start' }}>
-                <AudioBubble id={item.id} source={item.audioUri ?? null} durationS={item.durationS} at={item.at} mine={out} status={item.status} />
+                <RemoteAudioBubble id={item.id} localUri={item.audioUri} mediaId={item.mediaId} durationS={item.durationS} at={item.at} mine={out} status={item.status} />
               </View>
             );
           }
@@ -499,7 +493,7 @@ export default function ConversationScreen() {
         }}
         onError={(msg) => show(msg, 'error')}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -48,5 +48,6 @@ export function mapApiMessage(m: ApiMessage, conversationId: string): Message {
     at: formatTime(m.created_at),
     status: (m.status as Message['status']) || undefined,
     caption: type !== 'text' && m.caption ? m.caption : undefined,
+    mediaId: m.media_id ?? undefined,
   };
 }

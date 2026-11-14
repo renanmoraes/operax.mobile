@@ -1,4 +1,5 @@
 import { api } from './client';
+import { appendUpload } from './upload';
 
 /** Chat interno da equipe: mesmos endpoints do Operax web (`/api/chat/*`). */
 
@@ -61,7 +62,7 @@ export async function sendTeamMedia(
   caption?: string,
 ): Promise<ApiTeamMessage> {
   const form = new FormData();
-  form.append('file', { uri: file.uri, name: file.name, type: file.type } as unknown as Blob);
+  await appendUpload(form, 'file', file);
   if (caption) form.append('body', caption);
   const { data } = await api.post(`/api/chat/channels/${channelId}/messages/media`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },

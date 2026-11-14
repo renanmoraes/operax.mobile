@@ -28,6 +28,8 @@ export type Message = {
   caption?: string;
   /** Nome do arquivo, quando for documento. */
   fileName?: string;
+  /** Id da mídia no servidor (áudio/foto/documento real); o link assinado é buscado ao tocar/abrir. */
+  mediaId?: string;
   /** Arquivo local do áudio (gravado agora, antes de a API devolver o link). */
   audioUri?: string;
   durationS?: number;

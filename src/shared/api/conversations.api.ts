@@ -1,4 +1,5 @@
 import { api } from './client';
+import { appendUpload } from './upload';
 
 export type ApiConversation = {
   id: string;
@@ -100,11 +101,7 @@ export async function sendMediaMessage(
   caption?: string,
 ) {
   const form = new FormData();
-  form.append('file', {
-    uri: file.uri,
-    name: file.name,
-    type: file.type,
-  } as unknown as Blob);
+  await appendUpload(form, 'file', file);
   if (caption) form.append('caption', caption);
   const { data } = await api.post(`/api/conversations/${conversationId}/messages/media`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
