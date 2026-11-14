@@ -17,8 +17,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle, Defs, RadialGradient, Rect, Stop, LinearGradient as SvgLinear } from 'react-native-svg';
@@ -27,6 +29,9 @@ import { colors, gradients, motion, NumberSize, numbers, radii, shadows, spacing
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
 const easeOut = Easing.bezier(...motion.easeOut);
+const SEGMENT_PAD = 4;
+/** Mola sem quique (amortecimento crítico): desliza macio e para direto no lugar. */
+const SEGMENT_SPRING = { damping: 24, stiffness: 140, mass: 1, overshootClamping: true };
 
 /** Fundo em degradê suave (azul + ciano) que fica atrás de toda tela. */
 export function Backdrop({ variant = 'default' }: { variant?: 'default' | 'mirror' | 'chat' }) {
@@ -928,6 +933,11 @@ export function OwnershipHint({ label }: { label: string }) {
   return <Badge label={label} tone="warn" />;
 }
 
+/**
+ * Seletor em pílula. A pílula azul desliza com mola suave até a opção tocada e o texto
+ * troca de cor exatamente onde ela passa: uma camada de rótulos brancos recortada pela
+ * própria pílula, em vez de cada opção piscar de cor.
+ */
 export function Segmented({
   options,
   value,
@@ -939,8 +949,34 @@ export function Segmented({
   onChange: (key: string) => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  const reduced = useReducedMotion();
+  const [inner, setInner] = useState(0);
+  const index = Math.max(0, options.findIndex((o) => o.key === value));
+  const segW = inner / Math.max(1, options.length);
+  const x = useSharedValue(0);
+  const measured = inner > 0;
+
+  useEffect(() => {
+    if (!measured) return;
+    const target = index * segW;
+    x.value = reduced ? target : withSpring(target, SEGMENT_SPRING);
+  }, [index, segW, measured, reduced, x]);
+
+  const pill = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+  const counter = useAnimatedStyle(() => ({ transform: [{ translateX: -x.value }] }));
+
   return (
-    <View style={[styles.segmented, style]} accessibilityRole="tablist">
+    <View
+      style={[styles.segmented, style]}
+      accessibilityRole="tablist"
+      onLayout={(e) => {
+        const w = e.nativeEvent.layout.width - SEGMENT_PAD * 2;
+        if (w > 0 && Math.abs(w - inner) > 0.5) {
+          if (!inner) x.value = (Math.max(0, options.findIndex((o) => o.key === value)) * w) / Math.max(1, options.length);
+          setInner(w);
+        }
+      }}
+    >
       {options.map((opt) => {
         const active = opt.key === value;
         return (
@@ -949,14 +985,29 @@ export function Segmented({
             onPress={() => onChange(opt.key)}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
-            style={[styles.segment, active && styles.segmentActive]}
+            style={styles.segment}
           >
-            <Text style={[styles.segmentText, active && styles.segmentTextActive]} numberOfLines={1}>
+            <Text style={styles.segmentText} numberOfLines={1}>
               {opt.label}
             </Text>
           </Pressable>
         );
       })}
+      {measured ? (
+        <Animated.View pointerEvents="none" style={[styles.segmentPill, { width: segW }, pill]}>
+          <View style={styles.segmentClip}>
+            <Animated.View style={[{ flexDirection: 'row', width: inner }, counter]}>
+              {options.map((opt) => (
+                <View key={opt.key} style={[styles.segmentLabel, { width: segW }]}>
+                  <Text style={[styles.segmentText, styles.segmentTextActive]} numberOfLines={1}>
+                    {opt.label}
+                  </Text>
+                </View>
+              ))}
+            </Animated.View>
+          </View>
+        </Animated.View>
+      ) : null}
     </View>
   );
 }
@@ -1256,7 +1307,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 6,
   },
-  segmentActive: { backgroundColor: colors.primary, ...shadows.button },
+  segmentPill: {
+    position: 'absolute',
+    top: SEGMENT_PAD,
+    left: SEGMENT_PAD,
+    height: 42,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primary,
+    ...shadows.button,
+  },
+  segmentClip: { flex: 1, borderRadius: radii.pill, overflow: 'hidden' },
+  segmentLabel: { height: 42, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   segmentText: {
     fontFamily: typography.fontFamilyMedium,
     fontSize: 13.5,

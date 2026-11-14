@@ -4,6 +4,7 @@ import { ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { Button, HeroCard, IconName, Muted, Num, PressableScale, ProgressBar, Rise, Screen, SectionHeader, Segmented, TopBar } from '@/src/design-system/ui';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
@@ -82,7 +83,14 @@ export default function AchievementsScreen() {
         />
         <View style={styles.grid}>
           {list.map((b, i) => (
-            <Rise key={b.id} index={i} style={styles.cellWrap}>
+            <Animated.View
+              key={b.id}
+              style={styles.cellWrap}
+              // ao filtrar, as medalhas que ficam deslizam até o novo lugar e as outras somem suaves
+              layout={LinearTransition.springify().damping(24).stiffness(140)}
+              entering={FadeInDown.duration(320).delay(Math.min(i, 8) * 30)}
+              exiting={FadeOut.duration(160)}
+            >
               <PressableScale onPress={() => setOpen(b)} accessibilityRole="button" accessibilityLabel={`${b.name}, ${b.unlocked ? 'desbloqueada' : 'a conquistar'}`} style={styles.cell}>
                 {b.unlocked ? (
                   <LinearGradient colors={gradients.brand} style={styles.medal}>
@@ -96,7 +104,7 @@ export default function AchievementsScreen() {
                 <Text style={styles.cellName} numberOfLines={2}>{b.name}</Text>
                 <Muted style={{ fontSize: 11.5 }}>{b.sub}</Muted>
               </PressableScale>
-            </Rise>
+            </Animated.View>
           ))}
         </View>
       </ScrollView>
