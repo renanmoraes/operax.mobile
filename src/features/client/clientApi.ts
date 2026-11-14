@@ -111,7 +111,31 @@ export async function changeClassBooking(id: string, action: 'accept' | 'decline
 
 /** Os anexos vêm sem link: pede o link assinado dos mais recentes (o resto aparece como "anexo"). */
 const MEDIA_LIMIT = 30;
-let lastThread: ClientChat | null = null;
+/** Última conversa aberta, de quem (contato + empresa): a lista mostra a prévia sem reabrir a conversa. */
+let lastThread: { owner: string; chat: ClientChat } | null = null;
+const ownerOf = (h: PortalHome) => `${h.contact.id}:${h.tenant_slug}`;
+
+/** Troca de pessoa ou empresa: nada da conta anterior pode aparecer na próxima. */
+export function resetClientCache() {
+  lastHome = null;
+  lastThread = null;
+  mediaUrls.clear();
+}
+
+/** Links assinados dos anexos: reaproveitados por alguns minutos (a conversa aberta é atualizada sempre). */
+const MEDIA_TTL = 5 * 60_000;
+const mediaUrls = new Map<string, { url: string; at: number }>();
+async function mediaUrl(messageId: string): Promise<string | null> {
+  const hit = mediaUrls.get(messageId);
+  if (hit && Date.now() - hit.at < MEDIA_TTL) return hit.url;
+  try {
+    const { url } = await portalChatMedia(messageId);
+    mediaUrls.set(messageId, { url, at: Date.now() });
+    return url;
+  } catch {
+    return null; // sem o link o balão continua mostrando o tipo do anexo
+  }
+}
 
 /** Conversa inteira. No portal, abrir a conversa (GET me/chat) já marca como lida. */
 async function liveThread(): Promise<ClientChat> {
@@ -121,15 +145,13 @@ async function liveThread(): Promise<ClientChat> {
   const urls = new Map<string, string>();
   await Promise.all(
     withMedia.map(async (m) => {
-      try {
-        urls.set(m.id, (await portalChatMedia(m.id)).url);
-      } catch {
-        // sem o link o balão continua mostrando o tipo do anexo
-      }
+      const url = await mediaUrl(m.id);
+      if (url) urls.set(m.id, url);
     }),
   );
-  lastThread = { ...mapped, unread: 0, messages: mapped.messages.map((m) => (m.attachment && urls.has(m.id) ? { ...m, attachment: { ...m.attachment, uri: urls.get(m.id)! } } : m)) };
-  return lastThread;
+  const chatView: ClientChat = { ...mapped, unread: 0, messages: mapped.messages.map((m) => (m.attachment && urls.has(m.id) ? { ...m, attachment: { ...m.attachment, uri: urls.get(m.id)! } } : m)) };
+  lastThread = { owner: ownerOf(h), chat: chatView };
+  return chatView;
 }
 
 /** Lista de conversas (início e aba Conversas): não pode marcar como lida o que a pessoa ainda não abriu. */
@@ -139,7 +161,7 @@ export async function fetchChats(): Promise<ClientChat[]> {
     if (!h.capabilities.chat) return [];
     const unread = h.badges?.chat ?? 0;
     if (unread === 0) return [await liveThread()];
-    const base = lastThread?.tenant_slug === h.tenant_slug ? lastThread : mapPortalChat({ messages: [], service_hours_text: h.service_hours_text ?? null, whatsapp_url: null }, h);
+    const base = lastThread?.owner === ownerOf(h) ? lastThread.chat : mapPortalChat({ messages: [], service_hours_text: h.service_hours_text ?? null, whatsapp_url: null }, h);
     return [{ ...base, unread }];
   }
   await tick();

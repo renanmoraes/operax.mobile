@@ -6,10 +6,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Body, Button, Card, Field, Glow, IconButton, IconName, Muted, Rise, Screen, StatStrip } from '@/src/design-system/ui';
 import { colors, gradients, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
-import { flattenWorkout, totalSets } from '@/src/features/fitness/flatten';
+import { buildResultBodies, flattenWorkout, totalSets } from '@/src/features/fitness/flatten';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
-import { enqueue, loadQueue, newIdempotencyKey, saveQueue } from '@/src/features/fitness/resultsQueue';
-import { clearFinishedSession, FinishedSession, getFinishedSession, loadFinishedSession } from '@/src/features/fitness/sessionStore';
+import { enqueue, loadQueue, saveQueue } from '@/src/features/fitness/resultsQueue';
+import { clearFinishedSession, FinishedSession, getFinishedSession, loadFinishedSession, resultKeyOf } from '@/src/features/fitness/sessionStore';
 import type { FitnessFeeling, FitnessWorkoutView } from '@/src/features/fitness/types';
 import { useHistory, useLoadHistory, useRecordResult } from '@/src/features/fitness/useFitness';
 import { formatClock, formatKg, isoDate } from '@/src/shared/format';
@@ -59,23 +59,29 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
   const maxV = Math.max(1, ...bars.map((b) => b.v));
 
   async function save() {
-    const body = {
+    if (queued || record.isPending) return;
+    // Mesma chave em toda tentativa (vem do treino terminado): repetir nunca grava duas vezes.
+    const bodies = buildResultBodies(rows, logs, {
       workout_id: workout.id,
-      part_index: 0,
-      executed_on: isoDate(new Date()),
-      data: { kind: 'sets' as const, sets: logs.flatMap((l, item) => l.map((s, set) => ({ item, set, done: true, load_kg: s.kg, reps: s.reps }))) },
+      executed_on: isoDate(session ? new Date(session.finishedAt) : new Date()),
+      idempotency_key: session ? resultKeyOf(session) : `${workout.id}-${isoDate(new Date())}`,
       effort: effort ?? undefined,
       feeling: feeling ?? undefined,
       notes: comment.trim() || undefined,
-      idempotency_key: newIdempotencyKey(),
-    };
+    });
+    let sent = 0;
     try {
-      await record.mutateAsync(body);
+      for (const body of bodies) {
+        await record.mutateAsync(body);
+        sent += 1;
+      }
       await clearFinishedSession(workout.id);
       router.replace('/(client)/fitness');
     } catch {
-      await saveQueue(enqueue(await loadQueue(), body));
-      // Já está guardado na fila para enviar depois: pode liberar o rascunho.
+      let queue = await loadQueue();
+      for (const body of bodies.slice(sent)) queue = enqueue(queue, body);
+      await saveQueue(queue);
+      // Já está guardado na fila para enviar depois: pode liberar o rascunho e não envia de novo daqui.
       await clearFinishedSession(workout.id);
       setQueued(true);
     }
@@ -204,7 +210,11 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
           </Rise>
 
           {queued ? <Body style={styles.queued}>Sem conexão agora. O resultado ficou guardado e vai sozinho quando a internet voltar.</Body> : null}
-          <Button label="Salvar e voltar" loading={record.isPending} onPress={() => void save()} />
+          {queued ? (
+            <Button label="Voltar ao treino" onPress={() => router.replace('/(client)/fitness')} />
+          ) : (
+            <Button label="Salvar e voltar" loading={record.isPending} onPress={() => void save()} />
+          )}
         </View>
       </ScrollView>
     </Screen>

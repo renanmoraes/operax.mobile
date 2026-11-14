@@ -32,6 +32,7 @@ const home = (over: Partial<portal.PortalHome> = {}): portal.PortalHome => ({
 describe('dados do cliente com o login real (portal)', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    clientApi.resetClientCache();
     setClientDataMode('live');
   });
   afterAll(() => setClientDataMode('mock'));
@@ -85,5 +86,15 @@ describe('dados do cliente com o login real (portal)', () => {
     await clientApi.sendChatMessage('clinica', { text: 'Posso trocar?', reschedule: { booking_id: 'b1', title: 'Consulta', original_at: '2026-11-20T13:00:00Z' } });
     expect(m.portalSendChat.mock.calls[0][0]).toMatch(/^Posso trocar\?\n\nSobre: Consulta/);
     await expect(clientApi.sendChatMessage('clinica', { text: '', attachment: { kind: 'image', uri: 'file://a' } })).rejects.toThrow(/texto/);
+  });
+
+  it('a prévia guardada de uma pessoa não aparece para outra na mesma empresa', async () => {
+    m.portalHome.mockResolvedValue(home());
+    m.portalChat.mockResolvedValue({ service_hours_text: null, whatsapp_url: null, messages: [{ id: 'm1', from: 'me', text: 'segredo da Ana', at: '2026-11-14T10:00:00Z', attachment: null }] });
+    await clientApi.fetchChatThread('clinica');
+    m.portalHome.mockResolvedValue(home({ contact: { id: 'c2', name: 'Bia', email: null }, badges: { chat: 1, training: 0 } }));
+    const [chat] = await clientApi.fetchChats();
+    expect(chat.messages).toEqual([]);
+    expect(chat.unread).toBe(1);
   });
 });

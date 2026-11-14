@@ -10,7 +10,11 @@ export type SessionDraft = {
   elapsed: number;
 };
 
-export type FinishedSession = SessionDraft & { finishedAt: string };
+/** `resultKey`: chave de envio deste treino terminado (a mesma em toda tentativa de salvar). */
+export type FinishedSession = SessionDraft & { finishedAt: string; resultKey?: string };
+
+/** Chave estável do treino terminado; instalações antigas sem `resultKey` usam treino + horário do fim. */
+export const resultKeyOf = (s: Pick<FinishedSession, 'workoutId' | 'finishedAt' | 'resultKey'>) => s.resultKey ?? `${s.workoutId}-${s.finishedAt}`;
 
 const draftKey = (workoutId: string) => `operax_workout_draft_${workoutId}_${isoDate(new Date())}`;
 

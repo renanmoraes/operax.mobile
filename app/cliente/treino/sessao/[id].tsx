@@ -15,6 +15,7 @@ import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { useLoadHistory } from '@/src/features/fitness/useFitness';
 import type { FitnessWorkoutView } from '@/src/features/fitness/types';
 import { loadDraft, saveDraft, setFinishedSession, SetLog } from '@/src/features/fitness/sessionStore';
+import { newIdempotencyKey } from '@/src/features/fitness/resultsQueue';
 import { formatClock, formatKg } from '@/src/shared/format';
 
 function Stepper({ label, value, unit, onMinus, onPlus }: { label: string; value: string; unit?: string; onMinus: () => void; onPlus: () => void }) {
@@ -147,7 +148,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
 
   function finish() {
     // O rascunho só é apagado depois que o resultado for salvo (na tela de conclusão).
-    setFinishedSession({ workoutId: workout.id, idx, logs, elapsed, finishedAt: new Date().toISOString() });
+    setFinishedSession({ workoutId: workout.id, idx, logs, elapsed, finishedAt: new Date().toISOString(), resultKey: newIdempotencyKey() });
     Speech.stop();
     router.replace('/cliente/treino/concluido');
   }

@@ -57,7 +57,8 @@ export const useClassAction = () =>
   );
 
 export function useChats() {
-  return useQuery({ queryKey: keys.chats, queryFn: api.fetchChats });
+  // Login real: o selo de não lidas acompanha a resposta da equipe sem precisar abrir nada.
+  return useQuery({ queryKey: keys.chats, queryFn: api.fetchChats, refetchInterval: () => (clientDataMode() === 'live' ? 30_000 : false) });
 }
 
 /** A conversa aberta. No portal real, buscá-la já marca como lida. */
@@ -66,10 +67,13 @@ export function useChat(slug: string | undefined) {
   return useQuery({
     queryKey: keys.thread(slug),
     enabled: !!slug,
+    // Conversa aberta com o login real: busca de novo a cada poucos segundos para a resposta da equipe aparecer.
+    refetchInterval: () => (clientDataMode() === 'live' ? 6_000 : false),
     queryFn: async () => {
       const chat = await api.fetchChatThread(slug!);
-      // Depois de abrir, o contador de não lidas do portal já zerou: atualiza a lista e o selo.
-      if (clientDataMode() === 'live') void qc.invalidateQueries({ queryKey: keys.chats });
+      // Abrir/atualizar já zera as não lidas no portal: atualiza a lista e o selo se ainda mostram alguma.
+      const listed = qc.getQueryData<{ unread: number }[]>(keys.chats);
+      if (clientDataMode() === 'live' && listed?.some((c) => c.unread > 0)) void qc.invalidateQueries({ queryKey: keys.chats });
       return chat ?? null;
     },
   });

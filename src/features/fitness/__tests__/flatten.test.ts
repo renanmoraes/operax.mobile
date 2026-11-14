@@ -1,4 +1,4 @@
-import { flattenWorkout, nextPrescription, parseKg } from '../flatten';
+import { buildResultBodies, flattenWorkout, nextPrescription, parseKg } from '../flatten';
 import { WORKOUTS } from '../mockData';
 
 describe('parseKg', () => {
@@ -46,5 +46,36 @@ describe('nextPrescription', () => {
   });
   it('sem séries, usa a prescrição do exercício', () => {
     expect(nextPrescription({ kg: 10, reps: 12, sets: [] }, 0)).toEqual({ kg: 10, reps: 12 });
+  });
+});
+
+describe('buildResultBodies', () => {
+  const rows = [
+    { partIndex: 1, itemIndex: 0 },
+    { partIndex: 1, itemIndex: 1 },
+    { partIndex: 3, itemIndex: 0 },
+  ];
+  const base = { workout_id: 'w', executed_on: '2026-11-14', idempotency_key: 'k', notes: 'ótimo', effort: 7 };
+
+  it('um resultado por parte, com o item de cada série dentro da parte', () => {
+    const bodies = buildResultBodies(rows, [[{ kg: 50, reps: 10 }], [], [{ kg: 20, reps: 8 }, { kg: 15, reps: 8 }]], base);
+    expect(bodies.map((b) => b.part_index)).toEqual([1, 3]);
+    expect(bodies[0].data).toEqual({ kind: 'sets', sets: [{ item: 0, set: 0, done: true, load_kg: 50, reps: 10 }] });
+    expect(bodies[1].data).toEqual({ kind: 'sets', sets: [{ item: 0, set: 0, done: true, load_kg: 20, reps: 8 }, { item: 0, set: 1, done: true, load_kg: 15, reps: 8 }] });
+  });
+
+  it('chave fixa por parte (tentar de novo não duplica) e comentário só no primeiro', () => {
+    const logs = [[{ kg: 50, reps: 10 }], [], [{ kg: 20, reps: 8 }]];
+    const a = buildResultBodies(rows, logs, base);
+    const b = buildResultBodies(rows, logs, base);
+    expect(a.map((x) => x.idempotency_key)).toEqual(['k-p1', 'k-p3']);
+    expect(b.map((x) => x.idempotency_key)).toEqual(a.map((x) => x.idempotency_key));
+    expect(a[0].notes).toBe('ótimo');
+    expect(a[1].notes).toBeUndefined();
+  });
+
+  it('as linhas do treino guardam parte e item originais', () => {
+    const r = flattenWorkout(WORKOUTS[0]);
+    expect(r.every((x) => x.key === `${x.partIndex}:${x.itemIndex}`)).toBe(true);
   });
 });

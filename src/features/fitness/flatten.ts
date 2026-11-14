@@ -1,4 +1,4 @@
-import type { FitnessCombinedItem, FitnessExerciseItem, FitnessExerciseSnapshot, FitnessWorkoutView } from './types';
+import type { FitnessCombinedItem, FitnessExerciseItem, FitnessExerciseSnapshot, FitnessWorkoutView, RecordResultBody } from './types';
 
 export function parseKg(load: string | undefined): number {
   if (!load) return 0;
@@ -20,6 +20,9 @@ const BLOCK_LABEL: Record<FitnessCombinedItem['block_kind'], string> = {
 
 export type ExerciseRow = {
   key: string;
+  /** Onde a linha está no treino: parte e item dentro da parte (é o que o resultado salvo precisa). */
+  partIndex: number;
+  itemIndex: number;
   exerciseId: string;
   name: string;
   snapshot?: FitnessExerciseSnapshot;
@@ -43,7 +46,7 @@ export function flattenWorkout(w: FitnessWorkoutView): ExerciseRow[] {
     if (part.type !== 'strength') return;
     part.items.forEach((item, ii) => {
       if (item.kind === 'exercise') {
-        rows.push(fromExercise(w, item, `${pi}:${ii}`));
+        rows.push(fromExercise(w, item, pi, ii));
         return;
       }
       const first = item.items[0];
@@ -59,6 +62,8 @@ export function flattenWorkout(w: FitnessWorkoutView): ExerciseRow[] {
       ).flat();
       rows.push({
         key: `${pi}:${ii}`,
+        partIndex: pi,
+        itemIndex: ii,
         exerciseId: first.exercise_id,
         name: snap?.name ?? first.exercise_id,
         snapshot: snap,
@@ -75,12 +80,14 @@ export function flattenWorkout(w: FitnessWorkoutView): ExerciseRow[] {
   return rows;
 }
 
-function fromExercise(w: FitnessWorkoutView, item: FitnessExerciseItem, key: string): ExerciseRow {
+function fromExercise(w: FitnessWorkoutView, item: FitnessExerciseItem, partIndex: number, itemIndex: number): ExerciseRow {
   const snap = w.exercise_snapshots.find((s) => s.id === item.exercise_id);
   const sets = item.sets.map((s) => ({ reps: parseInt(s.reps, 10) || 0, kg: parseKg(s.load) }));
   const first = sets[0] ?? { reps: 0, kg: 0 };
   return {
-    key,
+    key: `${partIndex}:${itemIndex}`,
+    partIndex,
+    itemIndex,
     exerciseId: item.exercise_id,
     name: snap?.name ?? item.exercise_id,
     snapshot: snap,
@@ -99,6 +106,36 @@ function fromExercise(w: FitnessWorkoutView, item: FitnessExerciseItem, key: str
 export function nextPrescription(row: Pick<ExerciseRow, 'kg' | 'reps' | 'sets'>, doneCount: number): { kg: number; reps: number } {
   const s = row.sets[Math.min(doneCount, row.sets.length - 1)];
   return s ? { kg: s.kg, reps: s.reps } : { kg: row.kg, reps: row.reps };
+}
+
+/**
+ * Um resultado por parte de força feita, com o item de cada série na posição dele dentro da parte.
+ * A chave de envio é fixa por treino terminado + parte: tentar de novo nunca grava duas vezes.
+ * Sensação, esforço e comentário vão só no primeiro (são do treino, não de cada parte).
+ */
+export function buildResultBodies(
+  rows: Pick<ExerciseRow, 'partIndex' | 'itemIndex'>[],
+  logs: { kg: number; reps: number }[][],
+  base: { workout_id: string; executed_on: string; idempotency_key: string; notes?: string; effort?: number; feeling?: RecordResultBody['feeling'] },
+): RecordResultBody[] {
+  const byPart = new Map<number, { item: number; set: number; done: true; load_kg: number; reps: number }[]>();
+  rows.forEach((r, i) => {
+    const done = logs[i] ?? [];
+    if (!done.length) return;
+    const list = byPart.get(r.partIndex) ?? [];
+    done.forEach((s, set) => list.push({ item: r.itemIndex, set, done: true, load_kg: s.kg, reps: s.reps }));
+    byPart.set(r.partIndex, list);
+  });
+  const { notes, effort, feeling, idempotency_key, ...common } = base;
+  return [...byPart.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([part_index, sets], n) => ({
+      ...common,
+      part_index,
+      data: { kind: 'sets' as const, sets },
+      idempotency_key: `${idempotency_key.slice(0, 72)}-p${part_index}`,
+      ...(n === 0 ? { notes, effort, feeling } : {}),
+    }));
 }
 
 export function totalSets(rows: ExerciseRow[]) {

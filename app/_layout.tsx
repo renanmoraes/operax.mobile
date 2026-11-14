@@ -16,6 +16,7 @@ import { AuthProvider, useAuth } from '@/src/features/auth/AuthContext';
 import { AnimatedSplash } from '@/src/design-system/AnimatedSplash';
 import { IncomingBanner } from '@/src/features/team-chat/IncomingBanner';
 import { TeamChatProvider } from '@/src/features/team-chat/TeamChatContext';
+import { resetClientCache } from '@/src/features/client/clientApi';
 import { colors } from '@/src/design-system/tokens';
 
 SplashScreen.preventAutoHideAsync();
@@ -111,6 +112,7 @@ function AccountCacheReset() {
     if (last.current === key) return;
     last.current = key;
     qc.removeQueries();
+    resetClientCache();
   }, [key, qc]);
   return null;
 }
