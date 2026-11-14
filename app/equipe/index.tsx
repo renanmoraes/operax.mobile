@@ -123,7 +123,7 @@ export default function TeamChatListScreen() {
 }
 
 const styles = StyleSheet.create({
-  tools: { paddingHorizontal: 20, paddingBottom: 10, paddingTop: 4, gap: 10, backgroundColor: colors.pageBg },
+  tools: { paddingHorizontal: 20, paddingBottom: 12, paddingTop: 4, gap: 18, backgroundColor: colors.pageBg },
   search: {
     height: 44,
     borderRadius: radii.pill,
