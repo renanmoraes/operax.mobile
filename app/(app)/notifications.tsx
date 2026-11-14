@@ -72,7 +72,7 @@ export default function NotificationsScreen() {
         keyExtractor={(item) => item.id}
         refreshControl={
           mode === 'live' ? (
-            <RefreshControl refreshing={query.isFetching} onRefresh={() => query.refetch()} />
+            <RefreshControl refreshing={query.isFetching} onRefresh={() => void query.refetch()} />
           ) : undefined
         }
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom, gap: 10 }}

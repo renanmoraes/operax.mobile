@@ -113,7 +113,7 @@ export default function InboxScreen() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom, gap: 10 }}
           refreshControl={
             mode === 'live' ? (
-              <RefreshControl refreshing={query.isFetching} onRefresh={() => query.refetch()} />
+              <RefreshControl refreshing={query.isFetching} onRefresh={() => void query.refetch()} />
             ) : undefined
           }
           ListEmptyComponent={

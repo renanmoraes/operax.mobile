@@ -33,7 +33,7 @@ export default function ClientLayout() {
         options={{
           title: 'Início',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color as string} />
           ),
         }}
       />
@@ -42,7 +42,7 @@ export default function ClientLayout() {
         options={{
           title: 'Agenda',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={size} color={color as string} />
           ),
         }}
       />
@@ -50,7 +50,7 @@ export default function ClientLayout() {
         name="fitness"
         options={{
           title: 'Treino',
-          tabBarIcon: ({ color, size }) => <Ionicons name="barbell-outline" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="barbell-outline" size={size} color={color as string} />,
         }}
       />
       <Tabs.Screen
@@ -59,7 +59,7 @@ export default function ClientLayout() {
           title: 'Conversas',
           tabBarBadge: unread > 0 ? unread : undefined,
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={size} color={color as string} />
           ),
         }}
       />
@@ -68,7 +68,7 @@ export default function ClientLayout() {
         options={{
           title: 'Perfil',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color as string} />
           ),
         }}
       />

@@ -44,7 +44,7 @@ export default function HistoryScreen() {
           data={data}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom, gap: 10 }}
-          refreshControl={mode === 'live' ? <RefreshControl refreshing={query.isFetching} onRefresh={() => query.refetch()} /> : undefined}
+          refreshControl={mode === 'live' ? <RefreshControl refreshing={query.isFetching} onRefresh={() => void query.refetch()} /> : undefined}
           ListEmptyComponent={<EmptyState icon="time-outline" title="Nenhum histórico ainda" subtitle="Atendimentos encerrados aparecem aqui." />}
           renderItem={({ item }) => <ConversationCard item={item} onPress={() => router.push(`/conversation/${item.id}`)} />}
         />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NativeSyntheticEvent, StyleSheet, TextInput, TextInputContentSizeChangeEventData, View } from 'react-native';
+import { StyleSheet, TextInput, TextInputContentSizeChangeEvent, View } from 'react-native';
 import { colors, typography } from '@/src/design-system/tokens';
 
 const LINE = 21;
@@ -29,7 +29,7 @@ export function ChatInput({
     if (!value) setHeight(LINE);
   }, [value]);
 
-  const onSize = (e: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => {
+  const onSize = (e: TextInputContentSizeChangeEvent) => {
     const h = Math.ceil(e.nativeEvent.contentSize.height);
     setHeight(Math.max(LINE, Math.min(LINE * MAX_LINES, h)));
   };

@@ -113,7 +113,7 @@ function TabItem({
 }
 
 /** Navegação inferior em pílula de vidro flutuante; o item ativo abre numa pílula azul com rótulo. */
-export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
+export function GlassTabBar({ state, descriptors, emitter, navigateToTab }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const visible = state.routes.filter((route) => {
     const style = descriptors[route.key].options.tabBarItemStyle as { display?: string } | undefined;
@@ -134,8 +134,8 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
           const focused = state.routes[state.index]?.key === route.key;
           const label = typeof options.title === 'string' ? options.title : route.name;
           const onPress = () => {
-            const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-            if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
+            const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+            if (!focused && !event.defaultPrevented) navigateToTab(route.key);
           };
           return (
             <TabItem

@@ -43,7 +43,7 @@ export default function AppLayout() {
             headerShown: false,
             href: visible('inbox/index') ? undefined : null,
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="chatbubbles" size={size} color={color} />
+              <Ionicons name="chatbubbles" size={size} color={color as string} />
             ),
           }}
         />
@@ -53,7 +53,7 @@ export default function AppLayout() {
             title: 'Agenda',
             href: visible('agenda') ? undefined : null,
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="calendar" size={size} color={color} />
+              <Ionicons name="calendar" size={size} color={color as string} />
             ),
           }}
         />
@@ -63,7 +63,7 @@ export default function AppLayout() {
             title: 'Avisos',
             href: visible('notifications') ? undefined : null,
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="notifications" size={size} color={color} />
+              <Ionicons name="notifications" size={size} color={color as string} />
             ),
           }}
         />
@@ -74,7 +74,7 @@ export default function AppLayout() {
             headerShown: false,
             href: visible('more') ? undefined : null,
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="ellipsis-horizontal-circle" size={size} color={color} />
+              <Ionicons name="ellipsis-horizontal-circle" size={size} color={color as string} />
             ),
           }}
         />
