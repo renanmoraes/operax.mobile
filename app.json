@@ -98,7 +98,16 @@
           }
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-sqlite",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "O Operax usa sua localização durante o treino para medir distância, ritmo, velocidade e altitude da corrida ou do pedal.",
+          "locationAlwaysAndWhenInUsePermission": "O Operax usa sua localização durante o treino, mesmo com a tela apagada, para medir distância, ritmo e altitude.",
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

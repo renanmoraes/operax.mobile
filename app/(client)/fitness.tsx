@@ -5,14 +5,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  Avatar,
   Badge,
   Button,
   Card,
   Display,
   Glow,
   HeroCard,
-  IconButton,
   IconTile,
   Muted,
   Num,
@@ -25,12 +23,12 @@ import {
 } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
-import { flattenWorkout } from '@/src/features/fitness/flatten';
 import { useProviders } from '@/src/features/fitness/connections';
 import { ProviderMark, providerDisplayName } from '@/src/features/fitness/brands';
-import { useCheckins, useFitnessSummary, useWeek, useWorkout } from '@/src/features/fitness/useFitness';
+import { useCheckins, useEvolution, useFitnessSummary, useWeek } from '@/src/features/fitness/useFitness';
 import { formatKg, weekdayShort } from '@/src/shared/format';
-import { useActiveCompanySlug } from '@/src/features/client/useClientData';
+import { useActiveCompanySlug , useClientCapabilities, useCompanies } from '@/src/features/client/useClientData';
+import { workoutChips } from '@/src/features/fitness/parts';
 
 export default function ClientFitnessScreen() {
   const insets = useSafeAreaInsets();
@@ -43,13 +41,16 @@ export default function ClientFitnessScreen() {
 
   const selectedDate = picked ?? week?.today;
   const day = week?.days.find((d) => d.date === selectedDate);
-  const item = day?.items?.[0];
-  const { data: fetchedWorkout } = useWorkout(item?.id);
-  const workout = item ? (fetchedWorkout ?? undefined) : undefined;
-  const rows = workout ? flattenWorkout(workout) : [];
+  // Um dia pode ter vários treinos (ficha individual + aulas coletivas): mostra todos.
+  const items = day?.items ?? [];
   const isToday = selectedDate === week?.today;
   const isPast = !!selectedDate && !!week && selectedDate < week.today;
-  const goal = 5;
+  const { data: evolution } = useEvolution();
+  // Meta da semana definida pela academia; sem meta cadastrada, 5 treinos.
+  const goal = evolution?.weekly_goal ?? 5;
+  const caps = useClientCapabilities();
+  const { data: companies } = useCompanies();
+  const companyName = companies?.find((c) => c.slug === slug)?.name ?? 'Equipe';
   const done = week?.summary.done ?? 0;
   const connected = providers?.filter((p) => p.connected) ?? [];
   const firstCheck = checkins?.[0];
@@ -66,7 +67,7 @@ export default function ClientFitnessScreen() {
           <Display>Treino</Display>
           <PressableScale onPress={() => router.push('/cliente/historico')} accessibilityRole="button" accessibilityLabel={`Sequência de ${summary?.streak ?? 0} dias`} style={styles.streak}>
             <Ionicons name="flame-outline" size={17} color={colors.warn} />
-            <Text style={styles.streakText}>{`${summary?.streak ?? '–'} dias`}</Text>
+            <Text style={styles.streakText}>{summary?.streak === 1 ? '1 dia' : `${summary?.streak ?? '–'} dias`}</Text>
           </PressableScale>
         </View>
 
@@ -83,7 +84,7 @@ export default function ClientFitnessScreen() {
               <View style={{ flex: 1, gap: 14 }}>
                 <View>
                   <Muted style={{ fontSize: 12.5 }}>Meta da semana</Muted>
-                  <Text style={styles.heroLine}>{done >= goal ? 'Meta batida. Que semana!' : `Faltam ${goal - done} treinos para fechar`}</Text>
+                  <Text style={styles.heroLine}>{done >= goal ? 'Meta batida. Que semana!' : goal - done === 1 ? 'Falta 1 treino para fechar' : `Faltam ${goal - done} treinos para fechar`}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 16 }}>
                   <View>
@@ -122,7 +123,7 @@ export default function ClientFitnessScreen() {
           </Rise>
         ) : null}
 
-        <SectionHeader title="Sua semana" action="Hipertrofia · Fase 2" />
+        <SectionHeader title="Sua semana" />
         <View style={styles.days}>
           {week?.days.map((d) => {
             const date = new Date(`${d.date}T12:00:00`);
@@ -145,44 +146,52 @@ export default function ClientFitnessScreen() {
           })}
         </View>
 
-        <Rise index={2} style={{ marginTop: 12 }}>
-          <Card style={{ padding: 20 }}>
-            <View style={styles.rowBetween}>
+        {items.length === 0 ? (
+          <Rise index={2} style={{ marginTop: 12 }}>
+            <Card style={{ padding: 20 }}>
               <Badge label={badge[status][0]} tone={badge[status][1]} />
-              {workout ? <Muted>{`${rows.length} exercícios`}</Muted> : null}
-            </View>
-            <Text style={styles.dayTitle}>{workout ? workout.title : 'Descanso'}</Text>
-            <Muted style={styles.daySub}>
-              {status === 'rest'
-                ? 'Dia livre. Se quiser, 10 minutos de alongamento ou uma caminhada leve.'
-                : status === 'done'
-                  ? 'Feito. Toque para ver o que você registrou.'
-                  : workout?.coach_note ?? ''}
-            </Muted>
-            {status === 'today' && workout ? (
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
-                <Button label="Iniciar treino" icon="play" onPress={() => router.push(`/cliente/treino/${workout.id}`)} style={{ flex: 1 }} />
-                <IconButton icon="list-outline" tone="soft" size={54} accessibilityLabel="Ver ficha" onPress={() => router.push(`/cliente/treino/${workout.id}`)} />
-              </View>
-            ) : status === 'done' ? (
-              <Button label="Ver o que você fez" variant="soft" onPress={() => router.push('/cliente/historico')} style={{ marginTop: 18 }} />
-            ) : workout ? (
-              <Button label="Ver ficha" variant="soft" onPress={() => router.push(`/cliente/treino/${workout.id}`)} style={{ marginTop: 18 }} />
-            ) : null}
-          </Card>
-        </Rise>
+              <Text style={styles.dayTitle}>Descanso</Text>
+              <Muted style={styles.daySub}>Dia livre. Se quiser, 10 minutos de alongamento ou uma caminhada leve.</Muted>
+            </Card>
+          </Rise>
+        ) : (
+          items.map((it, i) => (
+            <Rise key={it.id} index={2 + i} style={{ marginTop: 12 }}>
+              <Card style={{ padding: 20 }} onPress={() => router.push(`/cliente/treino/${it.id}`)} accessibilityLabel={`${it.title}. Ver ficha`}>
+                <View style={styles.rowBetween}>
+                  <Badge label={badge[status][0]} tone={badge[status][1]} />
+                  {items.length > 1 ? <Muted>{`${i + 1} de ${items.length}`}</Muted> : null}
+                </View>
+                <Text style={styles.dayTitle}>{it.title}</Text>
+                <View style={styles.chips}>
+                  {workoutChips(it).map((c, k) => (
+                    <Badge key={k} label={c} tone="neutral" />
+                  ))}
+                </View>
+                {status === 'today' ? (
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+                    <Button label="Iniciar treino" icon="play" onPress={() => router.push(`/cliente/treino/${it.id}`)} style={{ flex: 1 }} />
+                  </View>
+                ) : status === 'done' ? (
+                  <Button label="Ver o que você fez" variant="soft" onPress={() => router.push('/cliente/historico')} style={{ marginTop: 16 }} />
+                ) : null}
+              </Card>
+            </Rise>
+          ))
+        )}
 
-        <Rise index={3} style={{ marginTop: 12 }}>
-          <Card style={styles.coach}>
-            <Avatar initials="CM" size={46} />
-            <View style={{ flex: 1 }}>
-              <Muted style={{ fontSize: 12.5 }}>Seu personal</Muted>
-              <Text style={styles.coachName}>Carlos Mendes</Text>
-              <Muted style={{ marginTop: 2 }}>Semana 3 de 8 do plano</Muted>
-            </View>
-            <IconButton icon="chatbubble-outline" tone="soft" size={46} accessibilityLabel="Conversar com Carlos" onPress={() => router.push(`/cliente/chat/${slug}`)} />
-          </Card>
-        </Rise>
+        {caps.chat ? (
+          <Rise index={3} style={{ marginTop: 12 }}>
+            <Card style={styles.coach} onPress={() => router.push(`/cliente/chat/${slug}`)} accessibilityLabel={`Falar com ${companyName}`}>
+              <IconTile icon="chatbubbles-outline" size={46} tone="soft" />
+              <View style={{ flex: 1 }}>
+                <Muted style={{ fontSize: 12.5 }}>Dúvida sobre o treino?</Muted>
+                <Text style={styles.coachName}>{`Fale com ${companyName}`}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </Card>
+          </Rise>
+        ) : null}
 
         <View style={styles.grid}>
           <Rise index={4} style={{ flex: 1 }}>
@@ -228,6 +237,7 @@ const styles = StyleSheet.create({
   memory: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16, borderRadius: radii.lg },
   memoryText: { flex: 1, fontFamily: typography.fontFamily, fontSize: 13.5, color: colors.text, lineHeight: 19 },
   days: { flexDirection: 'row', gap: 6 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   day: { flex: 1, height: 72, borderRadius: radii.lg - 2, alignItems: 'center', justifyContent: 'center', gap: 2 },
   dayOn: { backgroundColor: colors.primary, ...shadows.button },
   dayOff: { backgroundColor: 'rgba(255,255,255,0.88)' },

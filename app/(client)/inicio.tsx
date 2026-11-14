@@ -20,7 +20,7 @@ import {
   Screen,
 } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
-import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
+import { colors, gradients, radii, shadows, text, typography, glass } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { canUndoBookingAnswer, useBookings, useChats, useClientCapabilities, useCompanies, useConfirmBooking, useUnconfirmBooking } from '@/src/features/client/useClientData';
 import { useFitnessSummary, useWeek } from '@/src/features/fitness/useFitness';
@@ -209,7 +209,7 @@ export default function ClientHomeScreen() {
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 20 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  tenant: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 44, paddingLeft: 6, paddingRight: 14, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.75)', ...shadows.card },
+  tenant: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 44, paddingLeft: 6, paddingRight: 14, borderRadius: 999, backgroundColor: glass(0.75), ...shadows.card },
   tenantName: { fontFamily: typography.fontFamilySemiBold, fontSize: 14, color: colors.text },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heroLabel: { fontFamily: typography.fontFamilySemiBold, fontSize: 13, color: colors.textMuted },

@@ -60,7 +60,26 @@ export type FitnessPart =
       result_type: 'time' | 'rounds_reps' | 'reps' | 'load' | 'calories' | 'distance';
       movements: { exercise_id: string; reps: string; load_rx?: string; notes?: string }[];
     }
+  | {
+      type: 'hyrox';
+      name: string;
+      division?: string;
+      steps: { kind: 'run' | 'station' | 'transition'; name: string; exercise_id?: string; distance_meters?: number; reps?: number; load?: string; target_seconds?: number }[];
+    }
+  | { type: 'endurance'; name: string; sport: EnduranceSport | 'multi'; steps: (FitnessEnduranceStep | { kind: 'repeat'; repeats: number; steps: FitnessEnduranceStep[] })[] }
   | { type: 'free_text'; name: string; text: string };
+
+export type EnduranceSport = 'run' | 'bike' | 'swim' | 'row';
+
+/** Passo de um treino de resistência (corrida, bike, natação, remo), igual ao backend. */
+export interface FitnessEnduranceStep {
+  kind: 'warmup' | 'interval' | 'recovery' | 'cooldown' | 'rest';
+  duration_seconds?: number;
+  distance_meters?: number;
+  manual?: true;
+  sport?: EnduranceSport;
+  target?: { type: 'hr_zone' | 'hr_percent' | 'ftp_percent' | 'pace_percent' | 'pace' | 'rpe' | 'cadence'; min: number; max?: number };
+}
 
 export interface FitnessSchedule {
   mode: 'daily' | 'weekly' | 'once';
@@ -110,8 +129,14 @@ export type FitnessResultData =
   | { kind: 'rounds_reps'; rounds: number; reps: number }
   | { kind: 'reps'; reps: number }
   | { kind: 'load'; kg: number }
+  | { kind: 'calories'; calories: number }
+  | { kind: 'distance'; meters: number }
+  | { kind: 'hyrox'; total_seconds: number; steps?: { index: number; seconds: number }[] }
+  | { kind: 'endurance'; seconds?: number; distance_m?: number; avg_hr?: number }
   | { kind: 'sets'; sets: { item: number; set: number; done: boolean; load_kg?: number; reps?: number }[] }
   | { kind: 'done' };
+
+export type FitnessWodLevel = 'rx' | 'scaled' | 'beginner';
 
 export type FitnessFeeling = 'great' | 'good' | 'ok' | 'bad' | 'awful';
 
@@ -120,10 +145,14 @@ export interface RecordResultBody {
   part_index: number;
   executed_on: string;
   data: FitnessResultData;
+  /** WOD: Prescrito, Adaptado ou Iniciante (obrigatório para WOD no backend). */
+  level?: FitnessWodLevel;
   notes?: string;
   effort?: number;
   feeling?: FitnessFeeling;
   idempotency_key: string;
+  /** Gravação do celular (corrida/bike com GPS): início e trilha tempo × distância. */
+  recording?: { started_at: string; track?: { t: number[]; dist: number[] } };
 }
 
 export interface FitnessResultView {

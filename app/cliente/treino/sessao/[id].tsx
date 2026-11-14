@@ -9,7 +9,7 @@ import Svg, { Circle, Polyline } from 'react-native-svg';
 import { ActionRow, IconButton, Muted, Num, PressableScale, ProgressRing, Screen } from '@/src/design-system/ui';
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
-import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
+import { colors, gradients, radii, shadows, text, typography, glass } from '@/src/design-system/tokens';
 import { flattenWorkout, nextPrescription } from '@/src/features/fitness/flatten';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { useLoadHistory } from '@/src/features/fitness/useFitness';
@@ -408,19 +408,19 @@ const styles = StyleSheet.create({
   pillNext: { backgroundColor: 'rgba(255,255,255,0.7)' },
   pillTitle: { fontFamily: typography.fontFamilySemiBold, fontSize: 11.5 },
   pillValue: { marginTop: 2, fontFamily: typography.fontFamilyBold, fontSize: 13, fontVariant: ['tabular-nums'] },
-  stepper: { flex: 1, padding: 12, borderRadius: radii.lg + 2, backgroundColor: 'rgba(255,255,255,0.88)', ...shadows.card },
+  stepper: { flex: 1, padding: 12, borderRadius: radii.lg + 2, backgroundColor: glass(0.88), ...shadows.card },
   stepLabel: { textAlign: 'center', fontFamily: typography.fontFamilySemiBold, fontSize: 12, color: colors.textMuted },
   stepRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
   stepBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primaryWash, alignItems: 'center', justifyContent: 'center' },
   lastCard: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 10, paddingVertical: 12, paddingHorizontal: 14, borderRadius: radii.lg, backgroundColor: 'rgba(255,255,255,0.88)' },
   lastValue: { marginTop: 2, fontFamily: typography.fontFamilyBold, fontSize: 14, color: colors.text, fontVariant: ['tabular-nums'] },
-  restCard: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 14, padding: 18, borderRadius: radii.xl, backgroundColor: 'rgba(255,255,255,0.88)', ...shadows.card },
+  restCard: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 14, padding: 18, borderRadius: radii.xl, backgroundColor: glass(0.88), ...shadows.card },
   restTitle: { ...text.section, color: colors.text },
   more: { marginTop: 12, alignSelf: 'flex-start', height: 40, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.primaryWash, justifyContent: 'center' },
   moreText: { fontFamily: typography.fontFamilySemiBold, fontSize: 13.5, color: colors.primary },
   doneCard: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 14, padding: 18, borderRadius: radii.xl },
   doneIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  footer: { paddingHorizontal: 16, paddingTop: 12, backgroundColor: 'rgba(255,255,255,0.78)', borderTopLeftRadius: 28, borderTopRightRadius: 28, ...shadows.nav },
+  footer: { paddingHorizontal: 16, paddingTop: 12, backgroundColor: glass(0.78), borderTopLeftRadius: 28, borderTopRightRadius: 28, ...shadows.nav },
   primary: { height: 56, borderRadius: 999, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, ...shadows.button },
   primaryText: { color: '#fff', fontFamily: typography.fontFamilyBold, fontSize: 16 },
 });

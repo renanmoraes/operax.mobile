@@ -229,8 +229,25 @@ export async function fetchSummary() {
 }
 
 /** Registros corporais — ainda sem rota no portal (avaliações ficam em `/assessments`). */
+type PortalAssessment = { id: string; assessed_on: string; measures: Record<string, number>; derived?: { body_fat_percent?: number | null } | null };
+
+/** Login real: as avaliações físicas feitas pela academia viram os pontos da evolução corporal. */
 export async function fetchCheckins(): Promise<BodyCheckin[]> {
-  if (live()) return []; // sem rota no portal: no login real a lista começa vazia
+  if (live()) {
+    const { data } = await api.get(`${F}/assessments`);
+    return ((Array.isArray(data) ? data : []) as PortalAssessment[])
+      .filter((a) => typeof a.measures?.weight_kg === 'number')
+      .map((a) => ({
+        id: a.id,
+        date: a.assessed_on,
+        weight_kg: a.measures.weight_kg,
+        body_fat_pct: a.derived?.body_fat_percent ?? a.measures.body_fat_percent ?? undefined,
+        waist_cm: a.measures.waist_cm,
+        hip_cm: a.measures.hip_cm,
+        photo_uri: null,
+      }))
+      .sort((x, y) => x.date.localeCompare(y.date));
+  }
   await tick();
   return getCheckins();
 }

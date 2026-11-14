@@ -1,4 +1,4 @@
-import type { TextStyle } from 'react-native';
+import { Platform, type TextStyle } from 'react-native';
 export const colors = {
   pageBg: '#f4f7fc',
   cardBg: '#ffffff',
@@ -150,3 +150,9 @@ export const motion = {
   pressMs: 160,
   stagger: 50,
 } as const;
+
+/**
+ * Superfície "vidro" (branco translúcido). No Android, fundo translúcido com sombra (elevation)
+ * deixa a sombra vazar por dentro do cartão (manchas claras atrás do texto): lá vira branco opaco.
+ */
+export const glass = (alpha: number) => (Platform.OS === 'android' ? '#ffffff' : `rgba(255,255,255,${alpha})`);

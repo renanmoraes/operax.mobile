@@ -6,6 +6,7 @@ import { colors, numbers, radii, typography } from '@/src/design-system/tokens';
 import { useFitnessSummary, useHistory, usePlannedWeekdays } from '@/src/features/fitness/useFitness';
 import { formatDuration, isoDate, monthFull, weekdayShort } from '@/src/shared/format';
 import { useNow } from '@/src/shared/useNow';
+import { clientDataMode } from '@/src/features/client/dataMode';
 
 const GROUPS: Record<string, [string, number][]> = {
   'w-a': [['Peito', 13], ['Braços', 9]],
@@ -33,7 +34,8 @@ export default function FitnessHistoryScreen() {
       const wid = e.title.startsWith('Treino A') ? 'w-a' : e.title.startsWith('Treino B') ? 'w-b' : 'w-c';
       GROUPS[wid].forEach(([g, n]) => groupTotals.set(g, (groupTotals.get(g) ?? 0) + n));
     });
-  const groups = [...groupTotals.entries()].sort((a, b) => b[1] - a[1]);
+  // Grupos musculares só existem nos dados de demonstração (a API ainda não manda por exercício).
+  const groups = clientDataMode() === 'live' ? [] : [...groupTotals.entries()].sort((a, b) => b[1] - a[1]);
   const maxGroup = Math.max(1, ...groups.map((g) => g[1]));
 
   return (
@@ -84,6 +86,7 @@ export default function FitnessHistoryScreen() {
           </Card>
         </Rise>
 
+        {groups.length ? (
         <Rise index={2} style={{ marginTop: 12 }}>
           <Card>
             <Text style={styles.cardTitle}>Onde foi o seu esforço</Text>
@@ -103,6 +106,7 @@ export default function FitnessHistoryScreen() {
             </View>
           </Card>
         </Rise>
+        ) : null}
 
         <SectionHeader title="Todos os treinos" />
         <View style={{ gap: 8 }}>

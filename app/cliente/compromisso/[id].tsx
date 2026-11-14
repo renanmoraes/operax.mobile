@@ -3,7 +3,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar, Badge, Button, Card, EmptyState, IconButton, IconName, IconTile, Muted, PressableScale, Rise, Screen } from '@/src/design-system/ui';
-import { colors, radii, shadows, typography } from '@/src/design-system/tokens';
+import { colors, radii, shadows, typography, glass } from '@/src/design-system/tokens';
 import { DetailHero } from '@/src/features/client/DetailHero';
 import { bookingKindLabel, bookingPill } from '@/src/features/client/BookingCard';
 import { canUndoBookingAnswer, useBooking, useConfirmBooking, useUnconfirmBooking } from '@/src/features/client/useClientData';
@@ -145,7 +145,7 @@ export default function BookingDetailScreen() {
 
 const styles = StyleSheet.create({
   facts: { flexDirection: 'row', gap: 8, marginTop: 18 },
-  fact: { flex: 1, padding: 14, borderRadius: radii.lg, backgroundColor: 'rgba(255,255,255,0.85)', ...shadows.card },
+  fact: { flex: 1, padding: 14, borderRadius: radii.lg, backgroundColor: glass(0.85), ...shadows.card },
   factValue: { marginTop: 3, fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text, fontVariant: ['tabular-nums'] },
   warnDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.warn },
   statusTitle: { fontFamily: typography.fontFamilyBold, fontSize: 14.5, color: colors.text },

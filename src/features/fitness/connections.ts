@@ -1,11 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as WebBrowser from 'expo-web-browser';
+import { api } from '@/src/shared/api/client';
+import { clientDataMode } from '@/src/features/client/dataMode';
 import type { ImportedSessionView, ProviderView } from './types';
 
+const C = '/api/public/portal/fitness/connections';
+const live = () => clientDataMode() === 'live';
+
 /**
- * Relógios e apps (`/api/public/portal/fitness/connections*`). Store em memória com o formato real
- * até existir o login mobile de cliente. No modo real, `connect` faz POST `/:provider/start`, abre a
- * URL devolvida com `WebBrowser.openAuthSessionAsync` e recarrega a lista ao voltar — o callback OAuth
- * do backend hoje só redireciona para o portal web, então precisa de um destino com deep link `operax://`.
+ * Relógios e apps (`/api/public/portal/fitness/connections*`). Login real: rotas do portal;
+ * demonstração: store em memória com o mesmo formato. Conectar abre a autorização do relógio no
+ * navegador do sistema e recarrega a lista ao voltar (o callback do backend ainda volta para o portal
+ * web; para voltar direto ao app ele precisa redirecionar para `operax://relogios`).
  */
 
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
@@ -28,11 +34,16 @@ const imported: ImportedSessionView[] = [
 const tick = () => new Promise((r) => setTimeout(r, 160));
 
 async function fetchProviders() {
+  if (live()) return ((await api.get(C)).data ?? []) as ProviderView[];
   await tick();
   return providers;
 }
 
 async function fetchImported() {
+  if (live()) {
+    const { data } = await api.get(`${C}/history`);
+    return (Array.isArray(data) ? data : data?.data ?? []) as ImportedSessionView[];
+  }
   await tick();
   return imported;
 }
@@ -42,17 +53,29 @@ function patch(id: ProviderView['id'], p: Partial<ProviderView>) {
 }
 
 async function connect(id: ProviderView['id']) {
+  if (live()) {
+    // O backend devolve a página de autorização do relógio; volta para o app pelo deep link operax://.
+    const { data } = await api.post(`${C}/${id}/start`, {});
+    const url = (data as { url?: string } | undefined)?.url;
+    if (url) await WebBrowser.openAuthSessionAsync(url, 'operax://relogios');
+    return;
+  }
   await new Promise((r) => setTimeout(r, 700));
   patch(id, { connected: true, status: 'connected', last_sync_at: new Date().toISOString() });
 }
 
 async function sync(id: ProviderView['id']) {
+  if (live()) return (await api.post(`${C}/${id}/sync`, {})).data as { imported: number; matched: number };
   await new Promise((r) => setTimeout(r, 900));
   patch(id, { last_sync_at: new Date().toISOString() });
   return { imported: 0, matched: 0 };
 }
 
 async function disconnect(id: ProviderView['id']) {
+  if (live()) {
+    await api.delete(`${C}/${id}`);
+    return;
+  }
   await tick();
   patch(id, { connected: false, status: null, last_sync_at: null, imported: 0 });
 }

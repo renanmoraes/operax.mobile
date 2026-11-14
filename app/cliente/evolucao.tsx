@@ -9,7 +9,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Circle, Defs, LinearGradient as SvgLinear, Path, Polyline, Stop } from 'react-native-svg';
-import { Badge, Card, IconButton, Muted, Num, PressableScale, Rise, Screen, Segmented, TopBar } from '@/src/design-system/ui';
+import { Badge, Card, EmptyState, IconButton, Muted, Num, PressableScale, Rise, Screen, Segmented, TopBar } from '@/src/design-system/ui';
+import { clientDataMode } from '@/src/features/client/dataMode';
 import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { useAddCheckin, useCheckins } from '@/src/features/fitness/useFitness';
 import type { BodyCheckin } from '@/src/features/fitness/types';
@@ -109,7 +110,21 @@ export default function BodyEvolutionScreen() {
   const beforeTag = useAnimatedStyle(() => ({ opacity: interpolate(pos.value, [0, 0.18], [0, 1], 'clamp') }));
   const afterTag = useAnimatedStyle(() => ({ opacity: interpolate(pos.value, [0.82, 1], [1, 0], 'clamp') }));
 
-  if (!checkins?.length) return <Screen>{null}</Screen>;
+  if (!checkins?.length) {
+    return (
+      <Screen>
+        <TopBar safe title="Evolução corporal" onBack={() => router.back()} />
+        <EmptyState
+          icon="body-outline"
+          title="Sua evolução aparece aqui"
+          subtitle="Quando a academia registrar sua avaliação física (peso, gordura, medidas), os números e o gráfico aparecem nesta tela."
+        />
+      </Screen>
+    );
+  }
+  // Avaliações da academia não têm foto: sem foto, a comparação lado a lado não aparece.
+  const hasPhotos = checkins.some((c) => !!c.photo_uri);
+  const canAdd = clientDataMode() !== 'live';
   const after = checkins[checkins.length - 1];
   const before = checkins[Math.min(beforeIdx, checkins.length - 2)] ?? checkins[0];
   const days = Math.round((new Date(after.date).getTime() - new Date(before.date).getTime()) / 86_400_000);
@@ -129,8 +144,9 @@ export default function BodyEvolutionScreen() {
 
   return (
     <Screen>
-      <TopBar safe title="Evolução corporal" onBack={() => router.back()} right={<IconButton icon="add" tone="primary" accessibilityLabel="Adicionar foto de evolução" onPress={() => void addPhoto()} />} />
+      <TopBar safe title="Evolução corporal" onBack={() => router.back()} right={canAdd ? <IconButton icon="add" tone="primary" accessibilityLabel="Adicionar foto de evolução" onPress={() => void addPhoto()} /> : undefined} />
       <ScrollView scrollEnabled={!dragging} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32 }}>
+        {hasPhotos ? (<>
         <Rise>
           <GestureDetector gesture={gesture}>
             <View
@@ -185,6 +201,7 @@ export default function BodyEvolutionScreen() {
             { key: 'after', label: 'Depois' },
           ]}
         />
+        </>) : null}
 
         <Text style={styles.compareLabel}>Comparar com</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.rail} contentContainerStyle={styles.railContent}>
@@ -220,7 +237,10 @@ export default function BodyEvolutionScreen() {
             ['Gordura', after.body_fat_pct != null ? formatKg(after.body_fat_pct) : '—', '%', delta(before.body_fat_pct, after.body_fat_pct, ' pontos')],
             ['Cintura', after.waist_cm != null ? formatKg(after.waist_cm) : '—', 'cm', delta(before.waist_cm, after.waist_cm, ' cm')],
             ['Quadril', after.hip_cm != null ? formatKg(after.hip_cm) : '—', 'cm', delta(before.hip_cm, after.hip_cm, ' cm')],
-          ].map(([label, value, unit, d]) => (
+          ]
+            // Medida que a avaliação não teve não vira cartão vazio.
+            .filter(([, value]) => value !== '—')
+            .map(([label, value, unit, d]) => (
             <Card key={label} style={styles.measure}>
               <Muted style={{ fontSize: 12.5 }}>{label}</Muted>
               <Num size="md" style={{ marginTop: 6 }}>
