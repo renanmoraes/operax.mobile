@@ -16,11 +16,14 @@ import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, TextWithMeta } from '@/src/f
 import { AudioBubble } from '@/src/features/chat/AudioBubble';
 import { MicButton, RecordingBar, useVoiceRecorder } from '@/src/features/chat/VoiceRecorder';
 import { ChatInput } from '@/src/features/chat/ChatInput';
+import { QuickReplySuggestions } from '@/src/features/chat/QuickReplySuggestions';
+import { applyQuickReply, filterQuickReplies, resolveQuickReplyVariables, slashTerm } from '@/src/features/chat/quickReplyMatch';
+import { listQuickReplies } from '@/src/shared/api/quick-replies.api';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
-import { getConversation as getMockConv, getMessages as getMockMessages, type Message } from '@/src/mocks/data';
+import { getConversation as getMockConv, getMessages as getMockMessages, quickReplies as mockQuickReplies, type Message } from '@/src/mocks/data';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import {
   claimConversation,
@@ -45,6 +48,14 @@ export default function ConversationScreen() {
   const { mode, user } = useAuth();
   const qc = useQueryClient();
   const [draft, setDraft] = useState('');
+  const qrTerm = slashTerm(draft);
+  const qrQuery = useQuery({
+    queryKey: ['quick-replies', 'search', qrTerm],
+    enabled: mode === 'live' && qrTerm !== null,
+    queryFn: () => listQuickReplies({ search: qrTerm || undefined, limit: 10 }),
+    staleTime: 10_000,
+  });
+  const qrItems = qrTerm === null ? [] : mode === 'live' ? qrQuery.data ?? [] : filterQuickReplies(mockQuickReplies, qrTerm);
   const [localMsgs, setLocalMsgs] = useState<Message[]>([]);
   const listRef = useRef<FlatList<Message>>(null);
   const voice = useVoiceRecorder();
@@ -296,6 +307,17 @@ export default function ConversationScreen() {
         }}
       />
 
+      {qrTerm !== null && canCompose && !voice.recording ? (
+        <QuickReplySuggestions
+          term={qrTerm}
+          items={qrItems}
+          loading={qrQuery.isFetching}
+          onPick={(q) =>
+            setDraft((d) => applyQuickReply(d, resolveQuickReplyVariables(q.body, { name: conversation.contactName }, user?.name ?? '')))
+          }
+        />
+      ) : null}
+
       {voice.recording ? (
         <View style={[styles.composer, { paddingHorizontal: 0, paddingTop: 0 }]}>
           <RecordingBar elapsedS={voice.elapsedS} levels={voice.levels} onCancel={() => void voice.cancel()} onSend={() => void sendVoice()} bottomInset={Math.max(insets.bottom, 12)} />
@@ -311,10 +333,10 @@ export default function ConversationScreen() {
             <Ionicons name="add" size={24} color={colors.primary} />
           </Pressable>
           <Pressable
-            onPress={() => router.push({ pathname: '/quick-replies', params: { conversationId: id } })}
+            onPress={() => canCompose && setDraft((d) => (!d ? '/' : d.endsWith('\n') ? `${d}/` : `${d}\n/`))}
             style={styles.qrBtn}
             accessibilityRole="button"
-            accessibilityLabel="Respostas rápidas"
+            accessibilityLabel="Inserir resposta rápida"
           >
             <Ionicons name="flash-outline" size={20} color={colors.primary} />
           </Pressable>

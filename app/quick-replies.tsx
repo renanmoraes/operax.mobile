@@ -15,7 +15,7 @@ export default function QuickRepliesScreen() {
   const query = useQuery({
     queryKey: ['quick-replies'],
     enabled: mode === 'live',
-    queryFn: listQuickReplies,
+    queryFn: () => listQuickReplies(),
   });
 
   const data = mode === 'live' ? query.data ?? [] : mockQuickReplies;
