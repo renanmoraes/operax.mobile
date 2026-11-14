@@ -2,6 +2,7 @@ import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/design-system/tokens';
 import { GlassTabBar } from '@/src/design-system/GlassTabBar';
+import { TAB_TRANSITION } from '@/src/design-system/tabTransition';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { QueueDrawerProvider } from '@/src/features/queue/QueueDrawerContext';
 import { hasPermission } from '@/src/features/auth/permissions';
@@ -38,6 +39,7 @@ export default function AppLayout() {
           headerTintColor: colors.text,
           headerTitleStyle: { fontFamily: 'Inter_700Bold', fontSize: 16 },
           sceneStyle: { backgroundColor: 'transparent' },
+          ...TAB_TRANSITION,
         }}
       >
         <Tabs.Screen

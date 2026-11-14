@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { TAB_TRANSITION } from '@/src/design-system/tabTransition';
 import { GlassTabBar } from '@/src/design-system/GlassTabBar';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { useClientUnread } from '@/src/features/client/useClientData';
@@ -26,7 +27,7 @@ export default function ClientLayout() {
   return (
     <Tabs
       tabBar={(props) => <GlassTabBar {...props} />}
-      screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: 'transparent' } }}
+      screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: 'transparent' }, ...TAB_TRANSITION }}
     >
       <Tabs.Screen
         name="inicio"
