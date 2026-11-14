@@ -32,12 +32,34 @@ export async function clearDraft(workoutId: string) {
   await deleteItem(draftKey(workoutId));
 }
 
+const FINISHED_KEY = 'operax_workout_finished';
 let finished: FinishedSession | null = null;
 
+/** Treino terminado e ainda não salvo: fica gravado no aparelho até o resultado ser salvo ou ir para a fila. */
 export function setFinishedSession(s: FinishedSession) {
   finished = s;
+  void setItem(FINISHED_KEY, JSON.stringify(s));
 }
 
 export function getFinishedSession() {
   return finished;
+}
+
+/** Recupera o treino terminado se o app foi fechado na tela de conclusão. */
+export async function loadFinishedSession(): Promise<FinishedSession | null> {
+  if (finished) return finished;
+  try {
+    const raw = await getItem(FINISHED_KEY);
+    finished = raw ? (JSON.parse(raw) as FinishedSession) : null;
+  } catch {
+    finished = null;
+  }
+  return finished;
+}
+
+/** Depois de salvar (ou guardar na fila): apaga o treino terminado e o rascunho do dia. */
+export async function clearFinishedSession(workoutId: string) {
+  finished = null;
+  await deleteItem(FINISHED_KEY);
+  await clearDraft(workoutId);
 }

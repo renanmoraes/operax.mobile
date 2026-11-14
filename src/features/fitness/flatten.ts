@@ -23,7 +23,8 @@ export type ExerciseRow = {
   exerciseId: string;
   name: string;
   snapshot?: FitnessExerciseSnapshot;
-  sets: { reps: number; kg: number }[];
+  /** Séries na ordem de execução. `rest`: descanso depois desta série (0 = segue direto, como entre estágios de um drop set). */
+  sets: { reps: number; kg: number; rest?: number }[];
   restSeconds: number;
   kg: number;
   reps: number;
@@ -50,12 +51,18 @@ export function flattenWorkout(w: FitnessWorkoutView): ExerciseRow[] {
       const loads = item.items.map((x) => parseKg(x.sets[0]?.load));
       const reps = parseInt(first.sets[0]?.reps ?? '0', 10) || 0;
       const loadLabel = `${fmt(Math.max(...loads))} → ${fmt(Math.min(...loads))} kg`;
+      // Cada rodada tem todos os estágios do bloco (carga e repetições de cada um);
+      // entre estágios não há descanso, só ao fim da rodada.
+      const stages = item.items.map((x) => ({ kg: parseKg(x.sets[0]?.load), reps: parseInt(x.sets[0]?.reps ?? '0', 10) || 0 }));
+      const sets = Array.from({ length: item.rounds }, () =>
+        stages.map((st, si) => ({ ...st, rest: si === stages.length - 1 ? item.rest_seconds : 0 })),
+      ).flat();
       rows.push({
         key: `${pi}:${ii}`,
         exerciseId: first.exercise_id,
         name: snap?.name ?? first.exercise_id,
         snapshot: snap,
-        sets: Array.from({ length: item.rounds }, () => ({ reps, kg: loads[0] })),
+        sets,
         restSeconds: item.rest_seconds,
         kg: loads[0],
         reps,

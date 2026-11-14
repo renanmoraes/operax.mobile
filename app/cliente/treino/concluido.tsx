@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,7 +9,7 @@ import { colors, gradients, numbers, radii, shadows, text, typography } from '@/
 import { flattenWorkout, totalSets } from '@/src/features/fitness/flatten';
 import { LOAD_HISTORY, WORKOUTS } from '@/src/features/fitness/mockData';
 import { enqueue, loadQueue, newIdempotencyKey, saveQueue } from '@/src/features/fitness/resultsQueue';
-import { getFinishedSession } from '@/src/features/fitness/sessionStore';
+import { clearFinishedSession, FinishedSession, getFinishedSession, loadFinishedSession } from '@/src/features/fitness/sessionStore';
 import type { FitnessFeeling } from '@/src/features/fitness/types';
 import { useHistory, useRecordResult } from '@/src/features/fitness/useFitness';
 import { formatClock, formatKg, isoDate } from '@/src/shared/format';
@@ -24,7 +24,12 @@ const FEELINGS: { key: FitnessFeeling; label: string; icon: IconName }[] = [
 
 export default function WorkoutDoneScreen() {
   const insets = useSafeAreaInsets();
-  const session = getFinishedSession();
+  const [session, setSession] = useState<FinishedSession | null>(() => getFinishedSession());
+  // App fechado e reaberto nesta tela: recupera o treino terminado gravado no aparelho.
+  useEffect(() => {
+    if (session) return;
+    void loadFinishedSession().then((s) => s && setSession(s));
+  }, [session]);
   const workout = WORKOUTS.find((w) => w.id === session?.workoutId) ?? WORKOUTS[0];
   const rows = useMemo(() => flattenWorkout(workout), [workout]);
   const { data: history } = useHistory();
@@ -62,9 +67,12 @@ export default function WorkoutDoneScreen() {
     };
     try {
       await record.mutateAsync(body);
+      await clearFinishedSession(workout.id);
       router.replace('/(client)/fitness');
     } catch {
       await saveQueue(enqueue(await loadQueue(), body));
+      // Já está guardado na fila para enviar depois: pode liberar o rascunho.
+      await clearFinishedSession(workout.id);
       setQueued(true);
     }
   }

@@ -20,8 +20,14 @@ describe('flattenWorkout', () => {
   it('bloco combinado vira uma linha com o rótulo do bloco e as cargas em sequência', () => {
     const drop = rows[6];
     expect(drop.tag).toBe('Drop set');
-    expect(drop.sets).toHaveLength(3);
     expect(drop.loadLabel).toBe('25 → 15 kg');
+    // 3 rodadas × 3 estágios: cada estágio com a própria carga e repetições, descanso só no fim da rodada
+    expect(drop.sets).toHaveLength(9);
+    expect(drop.sets.slice(0, 3)).toEqual([
+      { kg: 25, reps: 10, rest: 0 },
+      { kg: 20, reps: 8, rest: 0 },
+      { kg: 15, reps: 8, rest: 75 },
+    ]);
   });
 
   it('resume séries e prescrição', () => {

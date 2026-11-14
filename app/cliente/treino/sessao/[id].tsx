@@ -12,7 +12,7 @@ import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { flattenWorkout } from '@/src/features/fitness/flatten';
 import { LOAD_HISTORY, WORKOUTS } from '@/src/features/fitness/mockData';
-import { clearDraft, loadDraft, saveDraft, setFinishedSession, SetLog } from '@/src/features/fitness/sessionStore';
+import { loadDraft, saveDraft, setFinishedSession, SetLog } from '@/src/features/fitness/sessionStore';
 import { formatClock, formatKg } from '@/src/shared/format';
 
 function Stepper({ label, value, unit, onMinus, onPlus }: { label: string; value: string; unit?: string; onMinus: () => void; onPlus: () => void }) {
@@ -123,15 +123,23 @@ export default function WorkoutSessionScreen() {
     const next = logs.map((l, i) => (i === idx ? [...l, { kg, reps }] : l));
     setLogs(next);
     say(`${formatKg(kg)} quilos, ${reps} repetições`);
-    if (next[idx].length < row.sets.length) {
-      setRest(row.restSeconds);
-      setRestTotal(row.restSeconds);
+    const doneCount = next[idx].length;
+    if (doneCount < row.sets.length) {
+      // Próxima série já vem com a carga/repetições prescritas (drop set muda a cada estágio).
+      const upcoming = row.sets[doneCount];
+      setKg(upcoming.kg);
+      setReps(upcoming.reps);
+      const restAfter = row.sets[doneCount - 1]?.rest ?? row.restSeconds;
+      if (restAfter > 0) {
+        setRest(restAfter);
+        setRestTotal(restAfter);
+      }
     }
   }
 
   function finish() {
+    // O rascunho só é apagado depois que o resultado for salvo (na tela de conclusão).
     setFinishedSession({ workoutId: workout.id, idx, logs, elapsed, finishedAt: new Date().toISOString() });
-    void clearDraft(workout.id);
     Speech.stop();
     router.replace('/cliente/treino/concluido');
   }
