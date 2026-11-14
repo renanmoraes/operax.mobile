@@ -95,6 +95,12 @@ function fromExercise(w: FitnessWorkoutView, item: FitnessExerciseItem, key: str
   };
 }
 
+/** Carga e repetições da próxima série ainda não feita (drop set: o estágio seguinte, não o primeiro). */
+export function nextPrescription(row: Pick<ExerciseRow, 'kg' | 'reps' | 'sets'>, doneCount: number): { kg: number; reps: number } {
+  const s = row.sets[Math.min(doneCount, row.sets.length - 1)];
+  return s ? { kg: s.kg, reps: s.reps } : { kg: row.kg, reps: row.reps };
+}
+
 export function totalSets(rows: ExerciseRow[]) {
   return rows.reduce((n, r) => n + r.sets.length, 0);
 }

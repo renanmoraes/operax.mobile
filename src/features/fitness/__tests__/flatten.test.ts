@@ -1,4 +1,4 @@
-import { flattenWorkout, parseKg } from '../flatten';
+import { flattenWorkout, nextPrescription, parseKg } from '../flatten';
 import { WORKOUTS } from '../mockData';
 
 describe('parseKg', () => {
@@ -34,5 +34,17 @@ describe('flattenWorkout', () => {
     expect(rows[0].prescription).toBe('4 × 10 · 40 kg');
     expect(rows[0].kg).toBe(40);
     expect(rows[0].restSeconds).toBe(60);
+  });
+});
+
+describe('nextPrescription', () => {
+  const row = { kg: 25, reps: 10, sets: [{ kg: 25, reps: 10 }, { kg: 20, reps: 8 }, { kg: 15, reps: 8 }] };
+  it('ao retomar o drop set, volta no estágio seguinte', () => {
+    expect(nextPrescription(row, 0)).toEqual({ kg: 25, reps: 10 });
+    expect(nextPrescription(row, 1)).toEqual({ kg: 20, reps: 8 });
+    expect(nextPrescription(row, 3)).toEqual({ kg: 15, reps: 8 });
+  });
+  it('sem séries, usa a prescrição do exercício', () => {
+    expect(nextPrescription({ kg: 10, reps: 12, sets: [] }, 0)).toEqual({ kg: 10, reps: 12 });
   });
 });

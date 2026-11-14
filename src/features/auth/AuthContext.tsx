@@ -71,7 +71,8 @@ type AuthState = {
   addAccount: (role: Role) => Promise<void>;
   /** Papel para onde voltar se a pessoa desistir de adicionar a conta. */
   returnRole: Role | null;
-  cancelAddAccount: () => Promise<void>;
+  /** `true` quando voltou para a conta anterior; em falha passageira fica no login para tentar de novo. */
+  cancelAddAccount: () => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -288,12 +289,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return 'ok';
     }
 
-    async function switchTo(target: Role, known: Accounts) {
+    /**
+     * Abre a conta salva `target`. `leaving`: a conta atual acabou de sair (logout) e não existe
+     * mais para onde voltar. `returnRole` só é limpo quando a troca dá certo, para "Voltar" poder
+     * tentar de novo depois de uma falha passageira.
+     */
+    async function switchTo(target: Role, known: Accounts, opts?: { leaving?: boolean }): Promise<boolean> {
       const summary = known[target];
-      if (!summary) return;
+      if (!summary) return false;
       disconnectSocket();
       await setSavedRole(target);
-      setReturnRole(null);
       setNeedsMfa(false);
       setMfaToken(null);
       setError(null);
@@ -302,7 +307,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRole(target);
         setUser(target === 'client' ? demoClientRef.current : DEMO_USER);
         setAuthenticated(true);
-        return;
+        setReturnRole(null);
+        return true;
       }
       try {
         const me = target === 'staff' ? await getMeApi() : await loadPortalUser();
@@ -310,8 +316,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRole(target);
         setUser(me);
         setAuthenticated(true);
+        setReturnRole(null);
         await connectSocket();
         void registerDevicePushToken();
+        return true;
       } catch (e) {
         const status = (e as { response?: { status?: number } })?.response?.status;
         if (status === 401 || status === 403) {
@@ -322,15 +330,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(target);
           setUser(null);
           setAuthenticated(false);
-          return;
+          setReturnRole(null);
+          return false;
+        }
+        if (opts?.leaving) {
+          // A conta de onde saiu já não tem sessão: nada de voltar para ela. Fica no login da outra
+          // conta (o acesso salvo dela continua guardado e volta a valer ao abrir o app de novo).
+          setMode('live');
+          setRole(target);
+          setUser(null);
+          setAuthenticated(false);
+          setError('Você saiu da conta, mas não foi possível abrir a outra agora. Confira a internet e tente de novo.');
+          return false;
         }
         // Falha passageira (sem internet, servidor fora): a conta salva continua guardada e
-        // a pessoa segue na conta em que estava, podendo tentar trocar de novo.
+        // a pessoa segue onde estava, podendo tentar trocar de novo.
         if (role && role !== target) {
           await setSavedRole(role);
-          void connectSocket();
+          if (isAuthenticated) void connectSocket();
         }
         setError('Não foi possível trocar de conta agora. Confira a internet e tente de novo.');
+        return false;
       }
     }
 
@@ -550,9 +570,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           delete remaining[current];
           forget(current);
         }
+        // A conta que saiu deixa de valer já, antes de tentar abrir a outra.
+        setAuthenticated(false);
+        setUser(null);
         const other = current ? otherRole(current) : null;
         if (other && remaining[other]) {
-          await switchTo(other, remaining);
+          await switchTo(other, remaining, { leaving: true });
           return;
         }
         writeDemoFlag(false);
@@ -566,7 +589,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       accounts,
       returnRole,
 
-      switchAccount: (target) => switchTo(target, accounts),
+      switchAccount: async (target) => {
+        await switchTo(target, accounts);
+      },
 
       addAccount: async (target) => {
         disconnectSocket();
@@ -581,9 +606,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setMode('live');
       },
 
-      cancelAddAccount: async () => {
-        if (returnRole) await switchTo(returnRole, accounts);
-      },
+      cancelAddAccount: async () => (returnRole ? switchTo(returnRole, accounts) : false),
     };
   }, [ready, mode, role, isAuthenticated, needsMfa, mfaToken, user, error, accounts, returnRole]);
 

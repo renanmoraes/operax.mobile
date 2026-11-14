@@ -10,7 +10,7 @@ import { ActionRow, IconButton, Muted, Num, PressableScale, ProgressRing, Screen
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
-import { flattenWorkout } from '@/src/features/fitness/flatten';
+import { flattenWorkout, nextPrescription } from '@/src/features/fitness/flatten';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { useLoadHistory } from '@/src/features/fitness/useFitness';
 import type { FitnessWorkoutView } from '@/src/features/fitness/types';
@@ -87,8 +87,9 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
         setIdx(d.idx);
         setLogs(d.logs);
         setElapsed(d.elapsed);
-        setKg(rows[d.idx].kg);
-        setReps(rows[d.idx].reps);
+        const p = nextPrescription(rows[d.idx], d.logs[d.idx]?.length ?? 0);
+        setKg(p.kg);
+        setReps(p.reps);
       }
       setReady(true);
     });
@@ -120,8 +121,9 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
 
   function goTo(i: number) {
     setIdx(i);
-    setKg(rows[i].kg);
-    setReps(rows[i].reps);
+    const p = nextPrescription(rows[i], logs[i]?.length ?? 0);
+    setKg(p.kg);
+    setReps(p.reps);
     setRest(0);
   }
 

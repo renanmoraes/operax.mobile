@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ReactNode, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { FlatList, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, TextInputInstance, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
@@ -23,6 +23,7 @@ import { useTeamChat } from '@/src/features/team-chat/TeamChatContext';
 import { API_URL } from '@/src/shared/config';
 import { listTeamMessages, searchTeamUsers, sendTeamMedia, sendTeamMessage } from '@/src/shared/api/team-chat.api';
 import { listContacts } from '@/src/shared/api/contacts.api';
+import { mergeThread, retainWindow } from '@/src/features/team-chat/thread';
 import { applyPick, compactName, ContactRef, detectPicker, MentionUser, mentionsInBody, splitMentions } from '@/src/features/team-chat/mentions';
 import { MentionItem, MentionSuggestions } from '@/src/features/team-chat/MentionSuggestions';
 import { phoneLabel } from '@/src/features/agenda/bookingDetails';
@@ -55,18 +56,23 @@ export default function TeamChatConversationScreen() {
   }, [id, setOpenChannel]);
 
   useSyncExternalStore(demoTeamChat.subscribe, demoTeamChat.version, demoTeamChat.version);
+  // Mensagens mais antigas que a página atual: carregadas sob demanda e mantidas ao atualizar.
+  const [older, setOlder] = useState<TeamMessage[]>([]);
   const query = useQuery({
     queryKey: ['team-chat', 'messages', id],
     enabled: live && !!id,
     refetchInterval: 4000,
-    queryFn: async () => (await listTeamMessages(id, PAGE)).map((m) => mapApiMessage(m, user?.id, API_URL)),
+    queryFn: async () => {
+      const page = (await listTeamMessages(id, PAGE)).map((m) => mapApiMessage(m, user?.id, API_URL));
+      // Com histórico aberto, a janela das mais novas também fica guardada (a que sai dela não some).
+      setOlder((prev) => retainWindow(prev, page));
+      return page;
+    },
   });
-  // Mensagens mais antigas que a página atual: carregadas sob demanda e mantidas ao atualizar.
-  const [older, setOlder] = useState<TeamMessage[]>([]);
   const [olderDone, setOlderDone] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
-  const latest = query.data ?? [];
-  const thread = live ? [...older.filter((o) => !latest.some((m) => m.id === o.id)), ...latest] : demoTeamChat.messages(id);
+  const latest = useMemo(() => query.data ?? [], [query.data]);
+  const thread = live ? mergeThread(older, latest) : demoTeamChat.messages(id);
   const canLoadOlder = live && !olderDone && (older.length > 0 || latest.length >= PAGE);
   const loadOlder = async () => {
     const first = thread[0];
@@ -74,7 +80,8 @@ export default function TeamChatConversationScreen() {
     setLoadingOlder(true);
     try {
       const page = (await listTeamMessages(id, PAGE, first.id)).map((m) => mapApiMessage(m, user?.id, API_URL));
-      setOlder((prev) => [...page.filter((m) => !prev.some((p) => p.id === m.id)), ...prev]);
+      // Guarda junto a janela atual já na primeira página antiga, para nada se perder no próximo polling.
+      setOlder((prev) => retainWindow([...page.filter((m) => !prev.some((p) => p.id === m.id)), ...prev], latest));
       if (page.length < PAGE) setOlderDone(true);
     } catch {
       show('Não foi possível carregar as mensagens anteriores', 'error');

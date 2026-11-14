@@ -20,7 +20,7 @@ export default function ClientLoginScreen() {
 
   // Adicionando uma segunda conta: voltar desiste e reabre a conta que já estava aberta.
   const backToRoles = () =>
-    returnRole ? cancelAddAccount().then(() => router.replace('/')) : clearRole().then(() => router.replace('/(auth)/role-select'));
+    returnRole ? cancelAddAccount().then((ok) => ok && router.replace('/')) : clearRole().then(() => router.replace('/(auth)/role-select'));
 
   async function submit() {
     setLoading(true);
