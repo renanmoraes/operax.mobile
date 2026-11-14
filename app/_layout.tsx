@@ -4,11 +4,11 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LogBox, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
@@ -83,6 +83,7 @@ export default function RootLayout() {
           </Stack>
           <IncomingBanner />
           <SplashGate />
+          <AccountCacheReset />
           </TeamChatProvider>
         </AuthProvider>
       </QueryClientProvider>
@@ -95,3 +96,22 @@ function SplashGate() {
   const { ready } = useAuth();
   return <AnimatedSplash ready={ready} />;
 }
+
+/**
+ * Dados em memória pertencem a uma conta. Ao sair, entrar ou trocar de conta/empresa, apaga tudo
+ * o que foi carregado (chaves Pix, conversas, agenda…) para nada de uma empresa aparecer na outra.
+ */
+function AccountCacheReset() {
+  const { user, mode } = useAuth();
+  const qc = useQueryClient();
+  const tenant = user?.kind === 'staff' ? user.tenant_id ?? '' : user?.kind === 'client' ? user.active_tenant_id ?? '' : '';
+  const key = `${mode}:${user?.kind ?? '-'}:${user?.id ?? '-'}:${tenant}`;
+  const last = useRef(key);
+  useEffect(() => {
+    if (last.current === key) return;
+    last.current = key;
+    qc.removeQueries();
+  }, [key, qc]);
+  return null;
+}
+

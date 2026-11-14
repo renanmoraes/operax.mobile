@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Button, Chip, Field, PressableScale } from '@/src/design-system/ui';
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
+import { useAuth } from '@/src/features/auth/AuthContext';
 import { listSavedPixKeys, PixData, PixKeyType, pixKeyTypeLabel, PIX_KEY_TYPES } from '@/src/shared/api/conversation-actions.api';
 import { DEMO_PIX_KEYS, formatPixKey, pixKeyError } from './logic';
 import { PixCard } from './PixCard';
@@ -34,7 +35,9 @@ export function PixSheet({
   sending?: boolean;
   onSend: (pix: PixData & { save?: boolean }) => void;
 }) {
-  const saved = useQuery({ queryKey: ['pix-keys'], enabled: live && visible, queryFn: listSavedPixKeys, staleTime: 60_000 });
+  const { user } = useAuth();
+  // A conta faz parte da chave: chaves Pix de uma empresa nunca aparecem em outra.
+  const saved = useQuery({ queryKey: ['pix-keys', user?.id, user?.kind === 'staff' ? user.tenant_id : null], enabled: live && visible, queryFn: listSavedPixKeys, staleTime: 60_000 });
   const keys = live ? saved.data ?? [] : DEMO_PIX_KEYS;
   const [save, setSave] = useState(false);
   const [touched, setTouched] = useState(false);
