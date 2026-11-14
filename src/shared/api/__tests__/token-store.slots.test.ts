@@ -1,8 +1,8 @@
-const mem = new Map<string, string>();
+const mockMem = new Map<string, string>();
 jest.mock('../../storage', () => ({
-  getItem: jest.fn(async (k: string) => mem.get(k) ?? null),
-  setItem: jest.fn(async (k: string, v: string) => void mem.set(k, v)),
-  deleteItem: jest.fn(async (k: string) => void mem.delete(k)),
+  getItem: jest.fn(async (k: string) => mockMem.get(k) ?? null),
+  setItem: jest.fn(async (k: string, v: string) => void mockMem.set(k, v)),
+  deleteItem: jest.fn(async (k: string) => void mockMem.delete(k)),
 }));
 
 import {
@@ -17,7 +17,7 @@ import {
   setTokens,
 } from '../token-store';
 
-beforeEach(() => mem.clear());
+beforeEach(() => mockMem.clear());
 
 describe('token-store com uma sessão por tipo de conta', () => {
   it('guarda equipe e cliente separados e lê pelo lado ativo', async () => {
@@ -49,15 +49,15 @@ describe('token-store com uma sessão por tipo de conta', () => {
   });
 
   it('migra o token antigo (sem lado) para o lado salvo, ou equipe', async () => {
-    mem.set('operax_access_token', 'old-a');
-    mem.set('operax_refresh_token', 'old-r');
+    mockMem.set('operax_access_token', 'old-a');
+    mockMem.set('operax_refresh_token', 'old-r');
     await migrateLegacyTokens();
     expect(await hasSession('staff')).toBe(true);
-    expect(mem.has('operax_access_token')).toBe(false);
+    expect(mockMem.has('operax_access_token')).toBe(false);
 
-    mem.clear();
-    mem.set('operax_access_token', 'old-a');
-    mem.set('operax_refresh_token', 'old-r');
+    mockMem.clear();
+    mockMem.set('operax_access_token', 'old-a');
+    mockMem.set('operax_refresh_token', 'old-r');
     await setSavedRole('client');
     await migrateLegacyTokens();
     expect(await hasSession('client')).toBe(true);
