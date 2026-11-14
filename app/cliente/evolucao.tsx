@@ -1,13 +1,15 @@
-import { router } from 'expo-router';
-import { useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, PanResponder, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router, useNavigation } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { LayoutChangeEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { Easing, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Circle, Defs, LinearGradient as SvgLinear, Path, Polyline, Stop } from 'react-native-svg';
-import { Badge, Card, IconButton, Muted, Num, PressableScale, Rise, Screen, TopBar } from '@/src/design-system/ui';
+import { Badge, Card, IconButton, Muted, Num, PressableScale, Rise, Screen, Segmented, TopBar } from '@/src/design-system/ui';
 import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { useAddCheckin, useCheckins } from '@/src/features/fitness/useFitness';
 import type { BodyCheckin } from '@/src/features/fitness/types';
@@ -27,6 +29,9 @@ function Photo({ c, tone, width }: { c: BodyCheckin; tone: 'before' | 'after'; w
   );
 }
 
+type CompareView = 'before' | 'split' | 'after';
+const HANDLE = 52;
+
 const shortDate = (iso: string) => {
   const d = new Date(`${iso}T12:00:00`);
   return `${d.getDate()} ${monthShort(d)}`;
@@ -36,30 +41,73 @@ export default function BodyEvolutionScreen() {
   const insets = useSafeAreaInsets();
   const { data: checkins } = useCheckins();
   const add = useAddCheckin();
+  const navigation = useNavigation();
   const [width, setWidth] = useState(0);
-  const [pos, setPos] = useState(0.5);
   const [beforeIdx, setBeforeIdx] = useState(0);
-  const startPos = useRef(0.5);
-  const widthRef = useRef(0);
+  const [dragging, setDragging] = useState(false);
+  const [view, setView] = useState<CompareView>('split');
 
-  const pan = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: (e) => {
-          const w = widthRef.current || 1;
-          const p = Math.max(0, Math.min(1, e.nativeEvent.locationX / w));
-          startPos.current = p;
-          setPos(p);
-        },
-        onPanResponderMove: (_, g) => {
-          const w = widthRef.current || 1;
-          setPos(Math.max(0, Math.min(1, startPos.current + g.dx / w)));
-        },
-      }),
-    [],
-  );
+  // Posição da divisória (0 = só o depois, 1 = só o antes), animada fora da thread do JS.
+  const pos = useSharedValue(0.5);
+  const startPos = useSharedValue(0.5);
+  const widthSV = useSharedValue(0);
+  const active = useSharedValue(0);
+
+  // Dedo na foto: o "voltar" com o dedo do iPhone fica desligado até soltar.
+  const lockBack = useCallback((locked: boolean) => navigation.setOptions({ gestureEnabled: !locked }), [navigation]);
+  const onDragStart = useCallback(() => {
+    setDragging(true);
+    setView('split');
+  }, []);
+  const onDragEnd = useCallback(() => {
+    setDragging(false);
+    lockBack(false);
+  }, [lockBack]);
+
+  const gesture = useMemo(() => {
+    const pan = Gesture.Pan()
+      .activeOffsetX([-6, 6])
+      .failOffsetY([-14, 14])
+      .onTouchesDown(() => {
+        runOnJS(lockBack)(true);
+        active.value = withTiming(1, { duration: 140 });
+      })
+      .onStart(() => {
+        startPos.value = pos.value;
+        runOnJS(onDragStart)();
+      })
+      .onUpdate((e) => {
+        const w = widthSV.value || 1;
+        pos.value = Math.max(0, Math.min(1, startPos.value + e.translationX / w));
+      })
+      .onFinalize(() => {
+        active.value = withTiming(0, { duration: 180 });
+        runOnJS(onDragEnd)();
+      });
+    // Toque simples leva a divisória até o ponto tocado.
+    const tap = Gesture.Tap()
+      .maxDuration(250)
+      .onEnd((e) => {
+        const w = widthSV.value || 1;
+        pos.value = withTiming(Math.max(0, Math.min(1, e.x / w)), { duration: 320, easing: Easing.bezier(0.23, 1, 0.32, 1) });
+        runOnJS(setView)('split');
+      });
+    return Gesture.Race(pan, tap);
+  }, [active, lockBack, onDragEnd, onDragStart, pos, startPos, widthSV]);
+
+  const showView = (v: CompareView) => {
+    setView(v);
+    pos.value = withTiming(v === 'before' ? 1 : v === 'after' ? 0 : 0.5, { duration: 520, easing: Easing.bezier(0.45, 0, 0.15, 1) });
+  };
+
+  const beforeClip = useAnimatedStyle(() => ({ width: pos.value * widthSV.value }));
+  const lineStyle = useAnimatedStyle(() => ({ transform: [{ translateX: pos.value * widthSV.value - 1.5 }] }));
+  const handleStyle = useAnimatedStyle(() => ({
+    // nas pontas o puxador para na borda da foto, sempre inteiro para arrastar de volta
+    transform: [{ translateX: Math.max(8, Math.min(widthSV.value - HANDLE - 8, pos.value * widthSV.value - HANDLE / 2)) }, { scale: 1 + 0.12 * active.value }],
+  }));
+  const beforeTag = useAnimatedStyle(() => ({ opacity: interpolate(pos.value, [0, 0.18], [0, 1], 'clamp') }));
+  const afterTag = useAnimatedStyle(() => ({ opacity: interpolate(pos.value, [0.82, 1], [1, 0], 'clamp') }));
 
   if (!checkins?.length) return <Screen>{null}</Screen>;
   const after = checkins[checkins.length - 1];
@@ -82,47 +130,61 @@ export default function BodyEvolutionScreen() {
   return (
     <Screen>
       <TopBar safe title="Evolução corporal" onBack={() => router.back()} right={<IconButton icon="add" tone="primary" accessibilityLabel="Adicionar foto de evolução" onPress={() => void addPhoto()} />} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32 }}>
+      <ScrollView scrollEnabled={!dragging} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32 }}>
         <Rise>
-          <View
-            style={styles.compare}
-            onLayout={(e: LayoutChangeEvent) => {
-              setWidth(e.nativeEvent.layout.width);
-              widthRef.current = e.nativeEvent.layout.width;
-            }}
-            {...pan.panHandlers}
-            accessible
-            accessibilityRole="adjustable"
-            accessibilityLabel="Comparar antes e depois"
-            accessibilityValue={{ min: 0, max: 100, now: Math.round(pos * 100) }}
-            accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-            onAccessibilityAction={(e) => setPos((p) => Math.max(0, Math.min(1, p + (e.nativeEvent.actionName === 'increment' ? 0.1 : -0.1))))}
-          >
-            {width ? (
-              <>
-                <View style={StyleSheet.absoluteFill}>
-                  <Photo c={after} tone="after" width={width} />
-                </View>
-                <View style={[StyleSheet.absoluteFill, { width: pos * width, overflow: 'hidden' }]}>
-                  <Photo c={before} tone="before" width={width} />
-                </View>
-                <View pointerEvents="none" style={[styles.handleLine, { left: pos * width - 1.5 }]} />
-                <View pointerEvents="none" style={[styles.handle, { left: pos * width - 22 }]}>
-                  <Ionicons name="code-outline" size={20} color={colors.text} />
-                </View>
-              </>
-            ) : null}
-            <View pointerEvents="none" style={[styles.tag, { left: 16, backgroundColor: 'rgba(255,255,255,0.75)' }]}>
-              <Text style={styles.tagText}>{`Antes · ${shortDate(before.date)}`}</Text>
+          <GestureDetector gesture={gesture}>
+            <View
+              style={styles.compare}
+              onLayout={(e: LayoutChangeEvent) => {
+                setWidth(e.nativeEvent.layout.width);
+                widthSV.value = e.nativeEvent.layout.width;
+              }}
+              accessible
+              accessibilityRole="adjustable"
+              accessibilityLabel="Comparar antes e depois. Arraste para os lados."
+              accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+              onAccessibilityAction={(e) => {
+                pos.value = withTiming(Math.max(0, Math.min(1, pos.value + (e.nativeEvent.actionName === 'increment' ? 0.1 : -0.1))), { duration: 200 });
+              }}
+            >
+              {width ? (
+                <>
+                  <View style={StyleSheet.absoluteFill}>
+                    <Photo c={after} tone="after" width={width} />
+                  </View>
+                  <Animated.View style={[StyleSheet.absoluteFill, { overflow: 'hidden' }, beforeClip]}>
+                    <Photo c={before} tone="before" width={width} />
+                  </Animated.View>
+                  <Animated.View pointerEvents="none" style={[styles.handleLine, lineStyle]} />
+                  <Animated.View pointerEvents="none" style={[styles.handle, handleStyle]}>
+                    <Ionicons name="chevron-back" size={18} color={colors.primary} />
+                    <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+                  </Animated.View>
+                </>
+              ) : null}
+              <Animated.View pointerEvents="none" style={[styles.tag, { left: 16 }, beforeTag]}>
+                <Text style={styles.tagText}>{`Antes · ${shortDate(before.date)}`}</Text>
+              </Animated.View>
+              <Animated.View pointerEvents="none" style={[styles.tag, { right: 16 }, afterTag]}>
+                <Text style={styles.tagText}>{`Depois · ${shortDate(after.date)}`}</Text>
+              </Animated.View>
+              <View pointerEvents="none" style={styles.journey}>
+                <Text style={styles.journeyText}>{`${days} dias de jornada`}</Text>
+              </View>
             </View>
-            <View pointerEvents="none" style={[styles.tag, { right: 16, backgroundColor: 'rgba(255,255,255,0.92)' }]}>
-              <Text style={styles.tagText}>{`Depois · ${shortDate(after.date)}`}</Text>
-            </View>
-            <View pointerEvents="none" style={styles.journey}>
-              <Text style={styles.journeyText}>{`${days} dias de jornada`}</Text>
-            </View>
-          </View>
+          </GestureDetector>
         </Rise>
+
+        <Segmented
+          style={{ marginTop: 14 }}
+          value={view}
+          onChange={(k) => showView(k as CompareView)}
+          options={[
+            { key: 'before', label: 'Antes' },
+            { key: 'split', label: 'Lado a lado' },
+            { key: 'after', label: 'Depois' },
+          ]}
+        />
 
         <Text style={styles.compareLabel}>Comparar com</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.rail} contentContainerStyle={styles.railContent}>
@@ -208,9 +270,9 @@ export default function BodyEvolutionScreen() {
 
 const styles = StyleSheet.create({
   compare: { height: 380, borderRadius: radii.hero, overflow: 'hidden', backgroundColor: '#dce6fa', ...shadows.hero },
-  handleLine: { position: 'absolute', top: 0, bottom: 0, width: 3, backgroundColor: '#fff' },
-  handle: { position: 'absolute', top: '50%', marginTop: -22, width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...shadows.card },
-  tag: { position: 'absolute', top: 16, height: 32, paddingHorizontal: 12, borderRadius: 999, justifyContent: 'center' },
+  handleLine: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: '#fff', shadowColor: '#0c1836', shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 0 } },
+  handle: { position: 'absolute', left: 0, top: '50%', marginTop: -HANDLE / 2, width: HANDLE, height: HANDLE, borderRadius: HANDLE / 2, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', ...shadows.hero },
+  tag: { position: 'absolute', top: 16, height: 32, paddingHorizontal: 12, borderRadius: 999, justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.92)' },
   tagText: { fontFamily: typography.fontFamilySemiBold, fontSize: 12.5, color: colors.text },
   journey: { position: 'absolute', bottom: 16, alignSelf: 'center', height: 34, paddingHorizontal: 14, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.92)', justifyContent: 'center' },
   journeyText: { fontFamily: typography.fontFamilyBold, fontSize: 13, color: colors.primary },
