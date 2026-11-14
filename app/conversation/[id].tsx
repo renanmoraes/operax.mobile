@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Avatar, Backdrop, Badge, Button, IconButton, IconTile, Muted } from '@/src/design-system/ui';
+import { Avatar, Backdrop, Button, IconButton, IconTile, Muted } from '@/src/design-system/ui';
+import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, MessageMeta } from '@/src/features/chat/MessageParts';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
@@ -223,16 +224,28 @@ export default function ConversationScreen() {
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, gap: 8, paddingBottom: 16 }}
         renderItem={({ item }) => {
           const out = item.direction === 'out';
+          if (item.type === 'image' || item.type === 'video' || item.type === 'document') {
+            const media: ChatMediaData =
+              item.type === 'document' ? { kind: 'document', name: item.fileName ?? item.body } : { kind: item.type };
+            return (
+              <View style={{ alignSelf: out ? 'flex-end' : 'flex-start', maxWidth: '82%' }}>
+                <MediaBubble media={media} caption={item.caption} at={item.at} mine={out} status={item.status} />
+              </View>
+            );
+          }
           return (
             <View style={[styles.bubble, out ? styles.bubbleOut : styles.bubbleIn]}>
-              {item.type !== 'text' ? (
-                <Badge label={item.type.toUpperCase()} tone={out ? 'neutral' : 'primary'} />
-              ) : null}
-              <Text style={[styles.bubbleText, out && { color: '#fff' }]}>{item.body}</Text>
-              <Text style={[styles.meta, out && { color: 'rgba(255,255,255,0.72)' }]}>
-                {item.at}
-                {item.status ? ` · ${STATUS_LABEL[item.status] ?? item.status}` : ''}
-              </Text>
+              {item.type === 'audio' ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="mic" size={16} color={out ? '#fff' : colors.primary} />
+                  <Text style={[styles.bubbleText, out && { color: '#fff' }]}>Áudio</Text>
+                </View>
+              ) : (
+                <Text style={[styles.bubbleText, out && { color: '#fff' }]}>{item.body}</Text>
+              )}
+              <View style={{ alignSelf: 'flex-end', marginTop: 2 }}>
+                <MessageMeta at={item.at} mine={out} status={item.status} tone={out ? 'onBubbleMine' : 'onBubbleTheirs'} />
+              </View>
             </View>
           );
         }}
@@ -327,14 +340,6 @@ export default function ConversationScreen() {
   );
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  queued: 'na fila',
-  sent: 'enviada',
-  delivered: 'entregue',
-  read: 'lida',
-  failed: 'falhou',
-};
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.pageBg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.pageBg },
@@ -378,7 +383,7 @@ const styles = StyleSheet.create({
   },
   claimText: { flex: 1, fontFamily: typography.fontFamilyMedium, fontSize: 13.5, lineHeight: 19, color: colors.textSoft },
   link: { color: colors.warnText, fontFamily: typography.fontFamilyBold, fontSize: 13, textDecorationLine: 'underline' },
-  bubble: { maxWidth: '82%', borderRadius: radii.lg, paddingHorizontal: 14, paddingVertical: 10, gap: 4 },
+  bubble: { maxWidth: '82%', borderRadius: BUBBLE_RADIUS, paddingHorizontal: 13, paddingTop: 9, paddingBottom: 6 },
   bubbleIn: {
     alignSelf: 'flex-start',
     backgroundColor: colors.cardBg,
@@ -386,8 +391,7 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   bubbleOut: { alignSelf: 'flex-end', backgroundColor: colors.primary, borderBottomRightRadius: 8, ...shadows.button },
-  bubbleText: { fontFamily: typography.fontFamily, fontSize: 15, lineHeight: 21, color: colors.text },
-  meta: { fontFamily: typography.fontFamilyMedium, fontSize: 11, color: colors.textMuted, alignSelf: 'flex-end' },
+  bubbleText: { ...text.body, color: colors.text },
   composer: {
     flexDirection: 'row',
     alignItems: 'center',

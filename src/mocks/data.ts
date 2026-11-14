@@ -24,6 +24,10 @@ export type Message = {
   body: string;
   at: string;
   status?: 'sent' | 'delivered' | 'read';
+  /** Legenda real de foto/vídeo/documento (o `body` pode trazer só o nome do arquivo). */
+  caption?: string;
+  /** Nome do arquivo, quando for documento. */
+  fileName?: string;
 };
 
 export type Contact = {
@@ -212,6 +216,15 @@ export const messages: Message[] = [
     type: 'image',
     body: 'pedido-exame.jpg',
     at: '10:43',
+  },
+  {
+    id: 'm4b',
+    conversationId: 'cv1',
+    direction: 'in',
+    type: 'document',
+    body: 'Pedido de exame.pdf',
+    fileName: 'Pedido de exame.pdf',
+    at: '10:44',
   },
   {
     id: 'm5',

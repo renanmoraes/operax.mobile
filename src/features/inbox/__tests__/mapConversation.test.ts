@@ -47,4 +47,16 @@ describe('mapConversation', () => {
     expect(m.direction).toBe('in');
     expect(m.body).toBe('oi');
   });
+
+  it('mídia sem legenda não vira texto da bolha', () => {
+    const m = mapApiMessage({ id: 'm2', direction: 'inbound', type: 'image', body: null, media_id: 'x1', created_at: '2026-07-25T12:00:00.000Z' }, 'cv1');
+    expect(m.type).toBe('image');
+    expect(m.caption).toBeUndefined();
+    expect(m.body).toBe('[image]');
+  });
+
+  it('mídia com legenda guarda a legenda', () => {
+    const m = mapApiMessage({ id: 'm3', direction: 'outbound', type: 'image', caption: 'Olha o resultado', media_id: 'x2', created_at: '2026-07-25T12:00:00.000Z' }, 'cv1');
+    expect(m.caption).toBe('Olha o resultado');
+  });
 });
