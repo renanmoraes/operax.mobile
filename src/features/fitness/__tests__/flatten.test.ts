@@ -23,11 +23,30 @@ describe('flattenWorkout', () => {
     expect(drop.loadLabel).toBe('25 → 15 kg');
     // 3 rodadas × 3 estágios: cada estágio com a própria carga e repetições, descanso só no fim da rodada
     expect(drop.sets).toHaveLength(9);
-    expect(drop.sets.slice(0, 3)).toEqual([
+    expect(drop.sets.slice(0, 3).map(({ kg, reps, rest }) => ({ kg, reps, rest }))).toEqual([
       { kg: 25, reps: 10, rest: 0 },
       { kg: 20, reps: 8, rest: 0 },
       { kg: 15, reps: 8, rest: 75 },
     ]);
+    // Drop set é um exercício só: o nome não vira lista
+    expect(drop.name).toBe('Tríceps na polia');
+    expect(drop.sets[1].exerciseId).toBe('triceps-polia');
+  });
+
+  it('superset com exercícios diferentes: cada estágio diz o seu exercício', () => {
+    const w = { ...WORKOUTS[0], parts: [{ type: 'strength' as const, name: 'Força', items: [{ kind: 'combined' as const, block_kind: 'superset' as const, rounds: 2, rest_seconds: 60,
+      items: [{ kind: 'exercise' as const, exercise_id: 'a', sets: [{ reps: '10', load: '20', rest_seconds: 0 }] }, { kind: 'exercise' as const, exercise_id: 'b', sets: [{ reps: '12', load: '15', rest_seconds: 0 }] }] }] }],
+      exercise_snapshots: [{ ...WORKOUTS[0].exercise_snapshots[0], id: 'a', name: 'Supino' }, { ...WORKOUTS[0].exercise_snapshots[0], id: 'b', name: 'Remada' }] };
+    const [row] = flattenWorkout(w as never);
+    expect(row.name).toBe('Supino + Remada');
+    expect(row.prescription).toBe('2 rodadas · 2 exercícios');
+    expect(row.sets.map((x) => x.name)).toEqual(['Supino', 'Remada', 'Supino', 'Remada']);
+  });
+
+  it('cada série guarda o próprio descanso', () => {
+    const w = { ...WORKOUTS[0], parts: [{ type: 'strength' as const, name: 'Força', items: [{ kind: 'exercise' as const, exercise_id: 'a', sets: [{ reps: '10', load: '20', rest_seconds: 30 }, { reps: '8', load: '22', rest_seconds: 90 }] }] }] };
+    const [row] = flattenWorkout(w as never);
+    expect(row.sets.map((x) => x.rest)).toEqual([30, 90]);
   });
 
   it('resume séries e prescrição', () => {

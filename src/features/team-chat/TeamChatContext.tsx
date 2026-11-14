@@ -35,6 +35,19 @@ export function TeamChatProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const openRef = useRef<string | null>(null);
   const [notice, setNotice] = useState<IncomingNotice | null>(null);
+  const lastUnread = useRef<Map<string, number> | null>(null);
+
+  // Trocou de conta (ou saiu): o aviso e a contagem da conta anterior não podem aparecer para a próxima.
+  const accountKey = `${mode}:${user?.id ?? '-'}`;
+  const [noticeAccount, setNoticeAccount] = useState(accountKey);
+  if (noticeAccount !== accountKey) {
+    setNoticeAccount(accountKey);
+    setNotice(null);
+  }
+  useEffect(() => {
+    lastUnread.current = null;
+    openRef.current = null;
+  }, [accountKey]);
 
   // ---------- demo ----------
   const demoVersion = useSyncExternalStore(demoTeamChat.subscribe, demoTeamChat.version, demoTeamChat.version);
@@ -57,7 +70,6 @@ export function TeamChatProvider({ children }: { children: ReactNode }) {
   });
 
   // Sem socket (ou se ele cair), percebe a chegada pela contagem que subiu.
-  const lastUnread = useRef<Map<string, number> | null>(null);
   useEffect(() => {
     if (!live || !query.data) return;
     const prev = lastUnread.current;

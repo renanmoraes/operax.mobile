@@ -136,6 +136,12 @@ export async function fetchEvolution(): Promise<FitnessEvolution> {
   return { strength, weekly, total_sessions: 74 + h.filter((e) => e.date >= isoDate(start)).length, weekly_goal: 5 };
 }
 
+/** GET /media/:id — endereço assinado (5 min) do vídeo ou foto que o professor pôs no exercício. */
+export async function fetchMediaUrl(mediaFileId: string): Promise<string | null> {
+  if (!live()) return null;
+  return ((await api.get(`${F}/media/${mediaFileId}`)).data as { url: string }).url ?? null;
+}
+
 /** Demonstração: o caminho de cada treino livre gravado nesta sessão do app, para o detalhe do histórico. */
 const demoDetails = new Map<string, ActivityDetail>();
 

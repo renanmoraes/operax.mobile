@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import type { ClientBooking } from '@/src/features/client/types';
 import { getItem, setItem } from '@/src/shared/storage';
+import { kvGet, kvSet } from '@/src/shared/db/localDb';
 
 /**
  * Lembretes de agenda e aula do cliente, agendados NO APARELHO (notificação local).
@@ -12,6 +13,20 @@ import { getItem, setItem } from '@/src/shared/storage';
 export const REMINDER_CHANNEL = 'operax-reminders';
 const PREFIX = 'reminder:';
 const KNOWN_KEY = 'operax_known_bookings';
+const KNOWN_MAX = 1000;
+
+/** Horários já vistos. Instalações antigas guardavam no armazenamento seguro: lê de lá uma vez. */
+async function loadKnown(): Promise<string[] | null> {
+  const cur = await kvGet<string[]>(KNOWN_KEY);
+  if (cur) return cur;
+  try {
+    const raw = await getItem(KNOWN_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : null;
+  } catch {
+    return null;
+  }
+}
+const saveKnown = (ids: string[]) => kvSet(KNOWN_KEY, ids);
 /** iOS guarda no máximo 64 notificações agendadas por app: fica uma folga. */
 const MAX_SCHEDULED = 56;
 const HORIZON_DAYS = 14;
@@ -58,7 +73,6 @@ export function planReminders(bookings: ClientBooking[], now = new Date()): Plan
     const isClass = b.kind === 'class';
     const noun = isClass ? 'Sua aula' : 'Seu horário';
     const needsConfirm = b.status === 'pending' && b.can_confirm;
-    const body = describe(b, start, now);
     const url = urlFor(b);
     const offsets: { min: number; title: string }[] = [
       { min: 24 * 60, title: needsConfirm ? `${noun} é amanhã: confirme sua presença` : `${noun} é amanhã` },
@@ -68,7 +82,8 @@ export function planReminders(bookings: ClientBooking[], now = new Date()): Plan
     for (const o of offsets) {
       const at = s - o.min * 60_000;
       if (at <= t0 + 30_000) continue; // já passou (ou é agora): não agenda no passado
-      out.push({ identifier: `${PREFIX}${b.id}:${o.min}`, at, title: o.title, body, url });
+      // O texto vale para a hora em que o aviso toca: o de 1 hora antes não pode dizer "amanhã".
+      out.push({ identifier: `${PREFIX}${b.id}:${o.min}`, at, title: o.title, body: describe(b, start, new Date(at)), url });
     }
   }
   return out.sort((a, b) => a.at - b.at).slice(0, MAX_SCHEDULED);
@@ -168,14 +183,14 @@ export async function syncBookingReminders(bookings: ClientBooking[], now = new 
     }
 
     // Horário novo marcado pela empresa: avisa na hora (só depois do primeiro sync).
-    const raw = await getItem(KNOWN_KEY);
-    const known = raw ? (JSON.parse(raw) as string[]) : null;
+    const known = await loadKnown();
     for (const b of newBookings(bookings, known, now).slice(0, 3)) {
       const start = new Date(b.starts_at);
       await notifyNow(b.kind === 'class' ? 'Aula marcada' : 'Novo horário marcado', describe(b, start, now), urlFor(b));
     }
-    // Armazenamento seguro tem limite de ~2 KB por valor: guarda só os mais recentes.
-    await setItem(KNOWN_KEY, JSON.stringify(bookings.map((b) => b.id).slice(-40)));
+    // Banco local (sem o limite de 2 KB do armazenamento seguro): guarda todos os atuais e os já vistos,
+    // para um horário que já existia nunca ser anunciado de novo como novo.
+    await saveKnown([...new Set([...bookings.map((b) => b.id), ...(known ?? [])])].slice(0, KNOWN_MAX));
     return { scheduled, canceled };
   } catch {
     return { scheduled: 0, canceled: 0 };
@@ -189,6 +204,7 @@ export async function clearBookingReminders(): Promise<void> {
   try {
     const current = await N.getAllScheduledNotificationsAsync();
     await Promise.all(current.filter((n) => n.identifier.startsWith(PREFIX)).map((n) => N.cancelScheduledNotificationAsync(n.identifier)));
+    await kvSet(KNOWN_KEY, null);
     await setItem(KNOWN_KEY, '');
   } catch {
     // sem lembretes para limpar

@@ -25,3 +25,25 @@ describe('registrar resultado', () => {
     expect(buildResult({ type: 'endurance', name: 'Corrida', sport: 'run', steps: [] }, empty)).toEqual({ error: 'Informe o tempo ou a distância' });
   });
 });
+
+describe('campo de tempo e números vazios', () => {
+  it('máscara de cronômetro para o teclado numérico', () => {
+    const { maskClock, parseClock } = jest.requireActual('../results') as typeof import('../results');
+    expect(maskClock('5')).toBe('0:05');
+    expect(maskClock('1234')).toBe('12:34');
+    expect(maskClock('11500')).toBe('1:15:00');
+    expect(maskClock('12:34')).toBe('12:34');
+    expect(maskClock('')).toBe('');
+    expect(parseClock(maskClock('1234'))).toBe(754);
+  });
+  it('campo obrigatório vazio não vira zero', () => {
+    const { buildResult } = jest.requireActual('../results') as typeof import('../results');
+    const empty = { time: '', rounds: '', reps: '', kg: '', calories: '', meters: '', km: '' };
+    for (const result_type of ['rounds_reps', 'reps', 'load', 'calories', 'distance'] as const) {
+      const r = buildResult({ type: 'metcon', name: 'WOD', format: 'amrap', result_type, movements: [] } as never, empty);
+      expect('error' in r).toBe(true);
+    }
+    const zero = buildResult({ type: 'metcon', name: 'WOD', format: 'amrap', result_type: 'reps', movements: [] } as never, { ...empty, reps: '0' });
+    expect('data' in zero).toBe(true);
+  });
+});

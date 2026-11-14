@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { Recorder, type RecorderSave } from '@/src/features/fitness/Recorder';
 import { partLabel, plannedMeters } from '@/src/features/fitness/parts';
-import { enqueue, loadQueue, newIdempotencyKey, saveQueue } from '@/src/features/fitness/resultsQueue';
+import { newIdempotencyKey, queueResults } from '@/src/features/fitness/resultsQueue';
 import { sportInfo } from '@/src/features/fitness/sports';
 import { useRecordResult } from '@/src/features/fitness/useFitness';
 import type { FitnessWorkoutView, RecordResultBody } from '@/src/features/fitness/types';
@@ -37,7 +37,7 @@ function PlannedRecord({ workout, partIndex }: { workout: FitnessWorkoutView; pa
       await record.mutateAsync(body);
       return 'saved';
     } catch {
-      await saveQueue(enqueue(await loadQueue(), body));
+      await queueResults([body]);
       return 'queued';
     }
   }

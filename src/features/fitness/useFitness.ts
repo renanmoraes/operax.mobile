@@ -2,9 +2,9 @@ import { useEffect, useMemo } from 'react';
 import { AppState } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from './fitnessApi';
-import { flushQueue, loadActivityQueue, loadQueue, saveActivityQueue, saveQueue } from './resultsQueue';
-import type { BodyCheckin, FreeActivityBody, RecordResultBody } from './types';
 import { isAxiosError } from 'axios';
+import { flushAll } from './resultsQueue';
+import type { BodyCheckin, FreeActivityBody, RecordResultBody } from './types';
 
 /** Status HTTP para a fila: 4xx descarta (o servidor recusou ou já tem), sem resposta ou 5xx tenta depois. */
 const statusOf = (e: unknown) => (isAxiosError(e) ? (e.response?.status ?? 0) : 0);
@@ -13,29 +13,18 @@ const statusOf = (e: unknown) => (isAxiosError(e) ? (e.response?.status ?? 0) : 
 export function useFlushResultsQueue() {
   const qc = useQueryClient();
   useEffect(() => {
+    // 4xx vai com o status: a fila descarta o que o servidor recusou em vez de travar nele para sempre.
+    const sender = <T,>(post: (b: T) => Promise<unknown>) => async (body: T) => {
+      try {
+        await post(body);
+        return { ok: true } as const;
+      } catch (e) {
+        return { ok: false, status: statusOf(e) } as const;
+      }
+    };
     const run = async () => {
-      const queue = await loadQueue();
-      const acts = await loadActivityQueue();
-      if (!queue.length && !acts.length) return;
-      const rest = await flushQueue(queue, async (body) => {
-        try {
-          await api.recordResult(body);
-          return { ok: true };
-        } catch {
-          return { ok: false, status: 0 };
-        }
-      });
-      const restActs = await flushQueue<FreeActivityBody>(acts, async (body) => {
-        try {
-          await api.recordFreeActivity(body);
-          return { ok: true };
-        } catch (e) {
-          return { ok: false, status: statusOf(e) };
-        }
-      });
-      await saveQueue(rest);
-      await saveActivityQueue(restActs);
-      if (rest.length < queue.length || restActs.length < acts.length) void qc.invalidateQueries({ queryKey: root });
+      const changed = await flushAll({ result: sender(api.recordResult), activity: sender(api.recordFreeActivity) });
+      if (changed) void qc.invalidateQueries({ queryKey: root });
     };
     void run();
     const sub = AppState.addEventListener('change', (s) => {

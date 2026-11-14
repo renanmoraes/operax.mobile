@@ -6,11 +6,11 @@ import { Badge, Body, Button, Card, Field, Muted, Rise, Screen, Segmented, TopBa
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { partLabel, partLines } from '@/src/features/fitness/parts';
-import { enqueue, loadQueue, newIdempotencyKey, saveQueue } from '@/src/features/fitness/resultsQueue';
+import { newIdempotencyKey, queueResults } from '@/src/features/fitness/resultsQueue';
 import { useRecordResult } from '@/src/features/fitness/useFitness';
 import type { FitnessWodLevel, FitnessWorkoutView } from '@/src/features/fitness/types';
 import { isoDate } from '@/src/shared/format';
-import { buildResult } from '@/src/features/fitness/results';
+import { buildResult, maskClock } from '@/src/features/fitness/results';
 
 export default function RegisterResultScreen() {
   const { id, parte } = useLocalSearchParams<{ id: string; parte?: string }>();
@@ -34,7 +34,7 @@ function RegisterResult({ workout, partIndex }: { workout: FitnessWorkoutView; p
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<'idle' | 'saved' | 'queued'>('idle');
-  const set = (k: keyof typeof f) => (v: string) => setF((p) => ({ ...p, [k]: v }));
+  const set = (k: keyof typeof f) => (v: string) => setF((p) => ({ ...p, [k]: k === 'time' ? maskClock(v) : v }));
 
   async function save() {
     setError(null);
@@ -58,7 +58,7 @@ function RegisterResult({ workout, partIndex }: { workout: FitnessWorkoutView; p
       setState('saved');
     } catch {
       // Sem internet: fica na fila e vai sozinho quando a conexão voltar.
-      await saveQueue(enqueue(await loadQueue(), body));
+      await queueResults([body]);
       setState('queued');
     }
   }
@@ -78,7 +78,7 @@ function RegisterResult({ workout, partIndex }: { workout: FitnessWorkoutView; p
         case 'reps':
           return <Field label="Repetições" value={f.reps} onChangeText={set('reps')} placeholder="120" keyboardType="number-pad" />;
         case 'load':
-          return <Field label="Carga (kg)" value={f.kg} onChangeText={set('kg')} placeholder="60" keyboardType="number-pad" />;
+          return <Field label="Carga (kg)" value={f.kg} onChangeText={set('kg')} placeholder="60" keyboardType="decimal-pad" />;
         case 'calories':
           return <Field label="Calorias" value={f.calories} onChangeText={set('calories')} placeholder="80" keyboardType="number-pad" />;
         default:
@@ -90,7 +90,7 @@ function RegisterResult({ workout, partIndex }: { workout: FitnessWorkoutView; p
       return (
         <View style={styles.pair}>
           <View style={{ flex: 1 }}><Field label="Tempo (min:seg)" value={f.time} onChangeText={set('time')} placeholder="32:10" keyboardType="number-pad" /></View>
-          <View style={{ flex: 1 }}><Field label="Distância (km)" value={f.km} onChangeText={set('km')} placeholder="5,2" keyboardType="number-pad" /></View>
+          <View style={{ flex: 1 }}><Field label="Distância (km)" value={f.km} onChangeText={set('km')} placeholder="5,2" keyboardType="decimal-pad" /></View>
         </View>
       );
     return <Body>Confirme que fez esta parte do treino.</Body>;

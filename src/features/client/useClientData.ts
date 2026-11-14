@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useIsFocused } from 'expo-router';
 import { isAxiosError } from 'axios';
 import { Alert } from 'react-native';
 import * as api from './clientApi';
@@ -114,12 +115,15 @@ export function useChats() {
 /** A conversa aberta. No portal real, buscá-la já marca como lida. */
 export function useChat(slug: string | undefined) {
   const qc = useQueryClient();
+  // Só busca com a conversa na tela: abrir uma foto por cima ou trocar de aba para tudo, senão o
+  // portal marcaria como lida a mensagem que a pessoa não viu.
+  const focused = useIsFocused();
   return useQuery({
     queryKey: keys.thread(slug),
-    enabled: !!slug,
+    enabled: !!slug && focused,
     // Conversa aberta com o login real: o portal não tem tempo real, então busca a cada 3 s (só com o
     // app na frente; em segundo plano para, e a mensagem não é marcada como lida sem a pessoa ver).
-    refetchInterval: () => (clientDataMode() === 'live' ? 3_000 : false),
+    refetchInterval: () => (clientDataMode() === 'live' && focused ? 3_000 : false),
     queryFn: async () => {
       const chat = await api.fetchChatThread(slug!);
       // Abrir/atualizar já zera as não lidas no portal: atualiza a lista e o selo se ainda mostram alguma.

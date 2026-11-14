@@ -2,7 +2,7 @@ import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import { useClientCapabilities } from '@/src/features/client/useClientData';
 import { Recorder, type RecorderSave } from '@/src/features/fitness/Recorder';
-import { enqueue, loadActivityQueue, newIdempotencyKey, saveActivityQueue } from '@/src/features/fitness/resultsQueue';
+import { newIdempotencyKey, queueActivity } from '@/src/features/fitness/resultsQueue';
 import { SPORTS } from '@/src/features/fitness/sports';
 import { useRecordFreeActivity } from '@/src/features/fitness/useFitness';
 import type { FreeActivityBody } from '@/src/features/fitness/types';
@@ -39,7 +39,7 @@ export default function FreeRecordScreen() {
       // Recusado pelo servidor (4xx) não adianta guardar: a tela avisa e a pessoa tenta de novo.
       const status = isAxiosError(e) ? (e.response?.status ?? 0) : 0;
       if (status >= 400 && status < 500) throw e;
-      await saveActivityQueue(enqueue(await loadActivityQueue(), body));
+      await queueActivity(body);
       return 'queued';
     }
   }

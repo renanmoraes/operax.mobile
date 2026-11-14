@@ -1,11 +1,14 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
-import { Avatar, Badge, Body, Button, Card, Chip, EmptyState, Glow, IconButton, Loading, Rise, Screen, StatStrip } from '@/src/design-system/ui';
+import { Badge, Body, Button, Card, Chip, EmptyState, Glow, IconButton, Loading, PressableScale, Rise, Screen, StatStrip } from '@/src/design-system/ui';
+import { fetchMediaUrl } from '@/src/features/fitness/fitnessApi';
+import { openViewer } from '@/src/features/media/viewer';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { flattenWorkout } from '@/src/features/fitness/flatten';
 import { useLoadHistory, useWorkout } from '@/src/features/fitness/useFitness';
@@ -41,6 +44,7 @@ export default function ExerciseDetailScreen() {
   const slug = useActiveCompanySlug();
   const send = useSendChat(slug);
   const [requested, setRequested] = useState(false);
+  const [opening, setOpening] = useState(false);
 
   if (!snap && isLoading) return <Screen><Loading label="Carregando o exercício" /></Screen>;
   if (!snap) return <Screen><EmptyState icon="barbell-outline" title="Exercício não encontrado" actionLabel="Voltar" onAction={() => router.back()} /></Screen>;
@@ -48,6 +52,25 @@ export default function ExerciseDetailScreen() {
   const hist = LOAD_HISTORY[snap.id];
   const steps = snap.instructions?.split('\n').filter(Boolean) ?? [];
   const hasVideo = snap.media.length > 0;
+
+  // O arquivo é privado: pede o endereço assinado na hora e abre no player do celular (vídeo) ou no visualizador (foto, GIF).
+  async function play() {
+    const m = snap!.media[0];
+    setOpening(true);
+    try {
+      const url = await fetchMediaUrl(m.media_file_id);
+      if (!url) {
+        Alert.alert('Vídeo indisponível', 'No modo demonstração os vídeos do professor não ficam disponíveis.');
+        return;
+      }
+      if (m.kind === 'video') await WebBrowser.openBrowserAsync(url);
+      else openViewer({ kind: 'image', uri: url, title: m.name });
+    } catch {
+      Alert.alert('Não deu para abrir o vídeo', 'Confira a internet e tente de novo.');
+    } finally {
+      setOpening(false);
+    }
+  }
 
   return (
     <Screen backdrop="none">
@@ -64,14 +87,20 @@ export default function ExerciseDetailScreen() {
             ) : null}
           </View>
           <View style={styles.playWrap}>
-            <View style={styles.play} accessible accessibilityRole="button" accessibilityLabel={hasVideo ? `Reproduzir ${snap.media[0].name}` : 'Sem vídeo para este exercício'}>
-              <Ionicons name={hasVideo ? 'play' : 'image-outline'} size={26} color={colors.text} />
-            </View>
+            {hasVideo ? (
+              <PressableScale onPress={() => void play()} disabled={opening} accessibilityRole="button" accessibilityLabel={`Reproduzir ${snap.media[0].name}`} style={styles.play}>
+                {opening ? <ActivityIndicator color={colors.text} /> : <Ionicons name={snap.media[0].kind === 'video' ? 'play' : 'image-outline'} size={26} color={colors.text} style={snap.media[0].kind === 'video' ? { marginLeft: 3 } : undefined} />}
+              </PressableScale>
+            ) : (
+              <View style={styles.play} accessible accessibilityLabel="Sem vídeo para este exercício">
+                <Ionicons name="image-outline" size={26} color={colors.text} />
+              </View>
+            )}
           </View>
           {hasVideo ? (
             <View style={styles.mediaFoot}>
-              <Avatar initials="CM" size={30} />
-              <Text style={styles.mediaFootText}>{`${workout?.contact_name ?? 'Seu personal'} · enviado no chat`}</Text>
+              <Ionicons name={snap.media[0].kind === 'video' ? 'videocam' : 'image'} size={16} color="#fff" />
+              <Text style={styles.mediaFootText} numberOfLines={1}>{`${snap.media.length > 1 ? `${snap.media.length} arquivos do professor` : 'Arquivo do professor'} · toque para abrir`}</Text>
             </View>
           ) : null}
         </View>

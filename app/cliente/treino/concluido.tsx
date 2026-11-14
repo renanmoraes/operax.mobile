@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +8,8 @@ import { Body, Button, Card, Field, Glow, IconButton, IconName, Muted, Rise, Scr
 import { colors, gradients, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { buildResultBodies, flattenWorkout, totalSets } from '@/src/features/fitness/flatten';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
-import { enqueue, loadQueue, saveQueue } from '@/src/features/fitness/resultsQueue';
+import { queueResults } from '@/src/features/fitness/resultsQueue';
+import { isAxiosError } from 'axios';
 import { clearFinishedSession, FinishedSession, getFinishedSession, loadFinishedSession, resultKeyOf } from '@/src/features/fitness/sessionStore';
 import type { FitnessFeeling, FitnessWorkoutView } from '@/src/features/fitness/types';
 import { useHistory, useLoadHistory, useRecordResult } from '@/src/features/fitness/useFitness';
@@ -77,10 +78,14 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
       }
       await clearFinishedSession(workout.id);
       router.replace('/(client)/fitness');
-    } catch {
-      let queue = await loadQueue();
-      for (const body of bodies.slice(sent)) queue = enqueue(queue, body);
-      await saveQueue(queue);
+    } catch (e) {
+      // Recusado pelo servidor (dado inválido, sem acesso): guardar não adianta, a pessoa precisa saber.
+      const status = isAxiosError(e) ? (e.response?.status ?? 0) : 0;
+      if (status >= 400 && status < 500) {
+        Alert.alert('Não deu para salvar', 'O servidor recusou este resultado. Confira os dados e tente de novo.');
+        return;
+      }
+      await queueResults(bodies.slice(sent));
       // Já está guardado na fila para enviar depois: pode liberar o rascunho e não envia de novo daqui.
       await clearFinishedSession(workout.id);
       setQueued(true);

@@ -482,7 +482,7 @@ export function Field({
   onChangeText: (v: string) => void;
   placeholder?: string;
   secureTextEntry?: boolean;
-  keyboardType?: 'default' | 'email-address' | 'number-pad' | 'phone-pad';
+  keyboardType?: 'default' | 'email-address' | 'number-pad' | 'decimal-pad' | 'phone-pad';
   multiline?: boolean;
   icon?: IconName;
   autoCapitalize?: 'none' | 'sentences' | 'words';

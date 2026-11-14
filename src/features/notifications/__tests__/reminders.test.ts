@@ -2,6 +2,7 @@ import type { ClientBooking } from '@/src/features/client/types';
 import { newBookings, planReminders } from '../reminders';
 
 jest.mock('@/src/shared/storage', () => ({ getItem: jest.fn(), setItem: jest.fn() }));
+jest.mock('@/src/shared/db/localDb', () => ({ kvGet: jest.fn(), kvSet: jest.fn() }));
 
 const now = new Date(2026, 10, 14, 10, 0);
 const at = (h: number, m = 0, dayPlus = 0) => new Date(2026, 10, 14 + dayPlus, h, m).toISOString();
@@ -26,6 +27,10 @@ describe('lembretes de agenda e aula', () => {
     const plan = planReminders([booking({ id: 'c1', kind: undefined, category: 'session', status: 'pending', can_confirm: true, starts_at: at(14, 0, 1) })], now);
     expect(plan[0]).toMatchObject({ identifier: 'reminder:c1:1440', title: 'Seu horário é amanhã: confirme sua presença', url: '/cliente/compromisso/c1' });
     expect(plan).toHaveLength(3);
+    // Cada texto vale para a hora em que toca: véspera diz "amanhã", os do dia dizem "hoje".
+    expect(plan[0].body).toContain('amanhã às 14:00');
+    expect(plan[1].body).toContain('hoje às 14:00');
+    expect(plan[2].body).toContain('hoje às 14:00');
   });
 
   it('cancelado, realizado, passado ou longe demais não ganha lembrete', () => {

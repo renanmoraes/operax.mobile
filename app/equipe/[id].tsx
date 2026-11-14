@@ -152,11 +152,17 @@ function TeamChatConversationScreen() {
   };
 
   const sendMut = useMutation({
-    mutationFn: ({ body, extras }: { body: string; extras: ReturnType<typeof mentionsInBody> }) => sendTeamMessage(id, body, extras),
+    mutationFn: ({ body, extras }: { body: string; extras: ReturnType<typeof mentionsInBody>; users: typeof pendingUsers; refs: typeof pendingRefs }) => sendTeamMessage(id, body, extras),
     onSuccess: () => refreshLive(),
     onError: (_e, vars) => {
-      // Devolve o texto ao campo só se a pessoa não começou outra mensagem.
-      setDraft((current) => current || vars.body);
+      // Devolve o texto ao campo só se a pessoa não começou outra mensagem, junto com as marcações
+      // (@pessoa, #paciente): sem elas o reenvio sairia sem notificar quem foi marcado.
+      setDraft((current) => {
+        if (current) return current;
+        setPendingUsers(vars.users);
+        setPendingRefs(vars.refs);
+        return vars.body;
+      });
       show('Falha ao enviar', 'error');
     },
   });
@@ -178,10 +184,12 @@ function TeamChatConversationScreen() {
       return;
     }
     // O campo esvazia já no envio: o que for digitado enquanto envia não é apagado depois.
+    const users = pendingUsers;
+    const refs = pendingRefs;
     setDraft('');
     setPendingUsers([]);
     setPendingRefs([]);
-    sendMut.mutate({ body, extras });
+    sendMut.mutate({ body, extras, users, refs });
   };
 
   const pick = async (kind: 'image' | 'document') => {

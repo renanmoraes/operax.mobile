@@ -1,3 +1,4 @@
+import { Stack } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, BackHandler, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +13,7 @@ import { kvGet, kvSet } from '@/src/shared/db/localDb';
 import { reportError, trackAction } from '@/src/shared/telemetry/errorReporter';
 import { RouteMap } from './RouteMap';
 import { addPoint, averagePace, currentPace, decimateTrack, defaultTitle, emptyRun, formatKm, formatPace, kmSplits, resumeAt, type RunState, type Track } from './runTracker';
+import { ownedKey } from './owner';
 import { FEELINGS, effortWord, type SportInfo } from './sports';
 import type { FitnessFeeling } from './types';
 
@@ -36,7 +38,9 @@ const PREFS_KEY = 'fitness_recorder_prefs';
  * Rascunho da gravação no banco do aparelho: se o Android fechar o app no meio do treino (pouca memória,
  * bateria) ou o app travar, a pessoa reabre e retoma de onde parou, em vez de perder a corrida.
  */
-const DRAFT_KEY = 'fitness_recording_draft';
+const DRAFT_BASE = 'fitness_recording_draft';
+/** Por conta (ver owner.ts): o rascunho de um aluno não aparece para outro no mesmo celular. */
+const draftStoreKey = () => ownedKey(DRAFT_BASE);
 const DRAFT_MAX_AGE_MS = 6 * 3600_000;
 type Draft = { key: string; startedAt: number; banked: number; savedAt: number; run: Omit<RunState, 'last' | 'recent'> };
 
@@ -101,26 +105,34 @@ export function Recorder({
   const lastDraftAt = useRef(0);
 
   useEffect(() => {
-    void kvGet<Draft>(DRAFT_KEY).then((d) => {
+    const k = draftStoreKey();
+    if (!k) return;
+    void kvGet<Draft>(k).then((d) => {
       if (d && d.key === draftKey && Date.now() - d.savedAt < DRAFT_MAX_AGE_MS && d.banked >= 5000) setDraft(d);
     });
   }, [draftKey]);
 
+  const dropDraft = () => {
+    const k = draftStoreKey();
+    if (k) void kvSet(k, null);
+  };
   const clearDraft = () => {
     setDraft(null);
-    void kvSet(DRAFT_KEY, null);
+    dropDraft();
   };
 
-  // Grava o rascunho a cada ~10 s gravando e sempre que muda de fase (pausa, fim).
+  // Grava o rascunho a cada ~10 s gravando (pelo cronômetro: musculação não tem GPS mudando nada) e sempre que muda de fase.
   useEffect(() => {
     if (phase !== 'running' && phase !== 'paused' && phase !== 'review') return;
     const now = Date.now();
     if (phase === 'running' && now - lastDraftAt.current < 10_000) return;
+    const k = draftStoreKey();
+    if (!k) return;
     lastDraftAt.current = now;
     const bankedNow = banked.current + (runningSince.current ? now - runningSince.current : 0);
     const { last: _l, recent: _r, ...keep } = run;
-    void kvSet(DRAFT_KEY, { key: draftKey, startedAt: startedAt.current, banked: bankedNow, savedAt: now, run: keep } satisfies Draft);
-  }, [run, phase, draftKey]);
+    void kvSet(k, { key: draftKey, startedAt: startedAt.current, banked: bankedNow, savedAt: now, run: keep } satisfies Draft);
+  }, [run, phase, draftKey, elapsed]);
 
   function restore(d: Draft) {
     startedAt.current = d.startedAt;
@@ -180,7 +192,7 @@ export function Recorder({
   const discard = useCallback(() => {
     Alert.alert('Descartar treino?', 'O que foi gravado agora não vai para o histórico.', [
       { text: 'Voltar', style: 'cancel' },
-      { text: 'Descartar', style: 'destructive', onPress: () => { stopWatch(); void kvSet(DRAFT_KEY, null); onClose(); } },
+      { text: 'Descartar', style: 'destructive', onPress: () => { stopWatch(); dropDraft(); onClose(); } },
     ]);
   }, [onClose]);
 
@@ -258,7 +270,7 @@ export function Recorder({
         effort,
         notes: notes.trim() || undefined,
       });
-      void kvSet(DRAFT_KEY, null);
+      dropDraft();
       go(out);
     } catch (e) {
       void reportError(e, { context: 'salvar treino gravado' });
@@ -304,6 +316,7 @@ export function Recorder({
     const seconds = elapsed;
     return (
       <Screen>
+        <NoSwipeBack phase={phase} />
         <TopBar safe title="Salvar treino" onBack={() => go('paused')} />
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 28, gap: 18 }} keyboardShouldPersistTaps="handled">
           <View style={styles.summary}>
@@ -373,6 +386,7 @@ export function Recorder({
   const showMap = sport.gps && prefs.showMap;
   return (
     <Screen backdrop="none" style={{ backgroundColor: '#fff' }}>
+      <NoSwipeBack phase={phase} />
       {active && prefs.keepAwake ? <KeepAwake /> : null}
       {showMap ? (
         <View style={styles.mapWrap}>
@@ -521,6 +535,11 @@ export function Recorder({
       </Modal>
     </Screen>
   );
+}
+
+/** Gravando, pausado ou salvando: o gesto de voltar do iPhone não pode tirar a pessoa da tela sem querer. */
+function NoSwipeBack({ phase }: { phase: Phase }) {
+  return <Stack.Screen options={{ gestureEnabled: phase === 'ready' || phase === 'saved' || phase === 'queued' }} />;
 }
 
 function BigButton({ label, icon, tone = 'primary', onPress, accessibilityLabel }: { label?: string; icon: keyof typeof Ionicons.glyphMap; tone?: 'primary' | 'dark'; onPress: () => void; accessibilityLabel?: string }) {

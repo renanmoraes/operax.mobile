@@ -105,5 +105,7 @@ export type PortalChatMessage = { id: string; from: 'me' | 'team'; text: string;
 export type PortalChat = { messages: PortalChatMessage[]; service_hours_text: string | null; whatsapp_url: string | null };
 
 export const portalChat = async () => (await api.get(`${BASE}/me/chat`)).data as PortalChat;
-export const portalSendChat = async (text: string) => void (await api.post(`${BASE}/me/chat`, { text: text.slice(0, 1000) }));
+/** Limite do portal por mensagem. Quem chama confere antes: cortar em silêncio perderia o fim do texto. */
+export const PORTAL_CHAT_MAX = 1000;
+export const portalSendChat = async (text: string) => void (await api.post(`${BASE}/me/chat`, { text }));
 export const portalChatMedia = async (messageId: string) => (await api.get(`${BASE}/me/chat/media/${messageId}`)).data as { url: string };

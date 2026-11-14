@@ -26,8 +26,11 @@ export type ExerciseRow = {
   exerciseId: string;
   name: string;
   snapshot?: FitnessExerciseSnapshot;
-  /** Séries na ordem de execução. `rest`: descanso depois desta série (0 = segue direto, como entre estágios de um drop set). */
-  sets: { reps: number; kg: number; rest?: number }[];
+  /**
+   * Séries na ordem de execução. `rest`: descanso depois desta série (0 = segue direto, como entre estágios de um drop set).
+   * Em bloco com exercícios diferentes (superset, circuito…), cada estágio diz o seu exercício.
+   */
+  sets: { reps: number; kg: number; rest?: number; exerciseId?: string; name?: string; snapshot?: FitnessExerciseSnapshot }[];
   restSeconds: number;
   kg: number;
   reps: number;
@@ -51,12 +54,20 @@ export function flattenWorkout(w: FitnessWorkoutView): ExerciseRow[] {
       }
       const first = item.items[0];
       const snap = w.exercise_snapshots.find((s) => s.id === first.exercise_id);
+      const snapOf = (id: string) => w.exercise_snapshots.find((s) => s.id === id);
+      const distinct = [...new Set(item.items.map((x) => x.exercise_id))];
       const loads = item.items.map((x) => parseKg(x.sets[0]?.load));
       const reps = parseInt(first.sets[0]?.reps ?? '0', 10) || 0;
       const loadLabel = `${fmt(Math.max(...loads))} → ${fmt(Math.min(...loads))} kg`;
       // Cada rodada tem todos os estágios do bloco (carga e repetições de cada um);
       // entre estágios não há descanso, só ao fim da rodada.
-      const stages = item.items.map((x) => ({ kg: parseKg(x.sets[0]?.load), reps: parseInt(x.sets[0]?.reps ?? '0', 10) || 0 }));
+      const stages = item.items.map((x) => ({
+        kg: parseKg(x.sets[0]?.load),
+        reps: parseInt(x.sets[0]?.reps ?? '0', 10) || 0,
+        exerciseId: x.exercise_id,
+        name: snapOf(x.exercise_id)?.name ?? x.exercise_id,
+        snapshot: snapOf(x.exercise_id),
+      }));
       const sets = Array.from({ length: item.rounds }, () =>
         stages.map((st, si) => ({ ...st, rest: si === stages.length - 1 ? item.rest_seconds : 0 })),
       ).flat();
@@ -65,13 +76,14 @@ export function flattenWorkout(w: FitnessWorkoutView): ExerciseRow[] {
         partIndex: pi,
         itemIndex: ii,
         exerciseId: first.exercise_id,
-        name: snap?.name ?? first.exercise_id,
+        // Drop set é o mesmo exercício; superset/circuito mostra todos ("Supino + Remada").
+        name: distinct.length > 1 ? distinct.map((id) => snapOf(id)?.name ?? id).join(' + ') : snap?.name ?? first.exercise_id,
         snapshot: snap,
         sets,
         restSeconds: item.rest_seconds,
         kg: loads[0],
         reps,
-        prescription: `${item.rounds} séries · ${item.items.length} cargas`,
+        prescription: distinct.length > 1 ? `${item.rounds} rodadas · ${item.items.length} exercícios` : `${item.rounds} séries · ${item.items.length} cargas`,
         loadLabel,
         tag: BLOCK_LABEL[item.block_kind],
       });
@@ -82,7 +94,8 @@ export function flattenWorkout(w: FitnessWorkoutView): ExerciseRow[] {
 
 function fromExercise(w: FitnessWorkoutView, item: FitnessExerciseItem, partIndex: number, itemIndex: number): ExerciseRow {
   const snap = w.exercise_snapshots.find((s) => s.id === item.exercise_id);
-  const sets = item.sets.map((s) => ({ reps: parseInt(s.reps, 10) || 0, kg: parseKg(s.load) }));
+  // Cada série com o próprio descanso: 30 s depois da primeira e 90 s depois da segunda valem como prescrito.
+  const sets = item.sets.map((s) => ({ reps: parseInt(s.reps, 10) || 0, kg: parseKg(s.load), ...(s.rest_seconds != null ? { rest: s.rest_seconds } : {}) }));
   const first = sets[0] ?? { reps: 0, kg: 0 };
   return {
     key: `${partIndex}:${itemIndex}`,

@@ -17,6 +17,8 @@ import { AnimatedSplash } from '@/src/design-system/AnimatedSplash';
 import { IncomingBanner } from '@/src/features/team-chat/IncomingBanner';
 import { TeamChatProvider } from '@/src/features/team-chat/TeamChatContext';
 import { resetClientCache } from '@/src/features/client/clientApi';
+import { setFitnessOwner } from '@/src/features/fitness/owner';
+import { resetFinishedSessionMemory } from '@/src/features/fitness/sessionStore';
 import { colors } from '@/src/design-system/tokens';
 import { installErrorReporter, reportError, setReporterSession, trackRoute } from '@/src/shared/telemetry/errorReporter';
 import { Button } from '@/src/design-system/ui';
@@ -118,14 +120,6 @@ function SplashGate() {
   return <AnimatedSplash ready={ready} />;
 }
 
-/**
- * Dados em memória pertencem a uma conta. Ao sair, entrar ou trocar de conta/empresa, apaga tudo
- * o que foi carregado (chaves Pix, conversas, agenda…) para nada de uma empresa aparecer na outra.
- */
-/**
- * Notificações: mostra com o app aberto e, ao tocar (com o app aberto, em segundo plano
- * ou fechado), abre a tela do aviso (`data.url`, ex.: o compromisso do lembrete).
- */
 /** Nova versão baixada em segundo plano: avisa e deixa atualizar na hora (senão entra ao reabrir). */
 function UpdateBanner() {
   const { state, apply } = useAppUpdates();
@@ -141,7 +135,24 @@ function UpdateBanner() {
   );
 }
 
+/**
+ * Notificações: mostra com o app aberto e, ao tocar (com o app aberto, em segundo plano
+ * ou fechado), abre a tela do aviso (`data.url`, ex.: o compromisso do lembrete).
+ * Com o app fechado, o toque chega antes de o login ser restaurado: o destino espera o login
+ * (senão a rota protegida manda para o início e o aviso se perde).
+ */
 function NotificationRouter() {
+  const { ready, isAuthenticated } = useAuth();
+  const canOpen = ready && isAuthenticated;
+  const canOpenRef = useRef(canOpen);
+  const pending = useRef<string | null>(null);
+  useEffect(() => {
+    canOpenRef.current = canOpen;
+    if (canOpen && pending.current) {
+      router.push(pending.current as never);
+      pending.current = null;
+    }
+  }, [canOpen]);
   useEffect(() => {
     if (Platform.OS === 'web') return;
     let sub: { remove: () => void } | null = null;
@@ -154,7 +165,9 @@ function NotificationRouter() {
         const data = (raw ?? {}) as Record<string, unknown>;
         // Lembrete local já traz a tela do app; push do Operax traz o link do web (convertido aqui).
         const url = typeof data.url === 'string' && data.url.startsWith('/') ? data.url : data.notificationId || data.link ? linkToAppRoute(data.link, data) : null;
-        if (url) router.push(url as never);
+        if (!url) return;
+        if (canOpenRef.current) router.push(url as never);
+        else pending.current = url;
       };
       sub = N.addNotificationResponseReceivedListener((r) => open(r.notification.request.content.data));
       // App aberto pelo toque na notificação (estava fechado).
@@ -169,17 +182,24 @@ function NotificationRouter() {
   return null;
 }
 
+/**
+ * Dados em memória pertencem a uma conta. Ao sair, entrar ou trocar de conta/empresa, apaga tudo
+ * o que foi carregado (chaves Pix, conversas, agenda…) para nada de uma empresa aparecer na outra.
+ */
 function AccountCacheReset() {
   const { user, mode } = useAuth();
   const qc = useQueryClient();
   const tenant = user?.kind === 'staff' ? user.tenant_id ?? '' : user?.kind === 'client' ? user.active_tenant_id ?? '' : '';
   const key = `${mode}:${user?.kind ?? '-'}:${user?.id ?? '-'}:${tenant}`;
   const last = useRef(key);
+  // Dono dos dados de treino guardados no aparelho (fila offline e rascunhos): só a conta logada lê e envia os seus.
+  setFitnessOwner(user ? key : '');
   useEffect(() => {
     if (last.current === key) return;
     last.current = key;
     qc.removeQueries();
     resetClientCache();
+    resetFinishedSessionMemory();
   }, [key, qc]);
   // O log de erro diz quem estava usando e onde (o servidor confere pelo token).
   const pathname = usePathname();

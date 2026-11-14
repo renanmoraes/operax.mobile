@@ -6,7 +6,7 @@ import {
   portalConfirmBooking,
   portalHome,
   portalMyCompanies,
-  portalSendChat,
+  portalSendChat, PORTAL_CHAT_MAX,
   type PortalHome,
 } from '@/src/shared/api/portal.api';
 import { clientDataMode } from './dataMode';
@@ -154,13 +154,16 @@ async function liveThread(): Promise<ClientChat> {
   return chatView;
 }
 
-/** Lista de conversas (início e aba Conversas): não pode marcar como lida o que a pessoa ainda não abriu. */
+/**
+ * Lista de conversas (início e aba Conversas): só leitura. Buscar a conversa no portal já a marca como
+ * lida, então a lista nunca busca: usa o contador do início e a última conversa aberta neste aparelho.
+ * (Buscar quando o contador era zero deixava passar a mensagem que chegasse no meio e a marcava como lida.)
+ */
 export async function fetchChats(): Promise<ClientChat[]> {
   if (live()) {
     const h = await home(true);
     if (!h.capabilities.chat) return [];
     const unread = h.badges?.chat ?? 0;
-    if (unread === 0) return [await liveThread()];
     const base = lastThread?.owner === ownerOf(h) ? lastThread.chat : mapPortalChat({ messages: [], service_hours_text: h.service_hours_text ?? null, whatsapp_url: null }, h);
     return [{ ...base, unread }];
   }
@@ -189,6 +192,7 @@ export async function sendChatMessage(
     const about = r ? `\n\nSobre: ${r.title} de ${new Date(r.original_at).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : '';
     const text = `${input.text.trim() || (r ? 'Consigo outro horário?' : '')}${about}`.trim();
     if (!text) throw unsupported('Escreva a mensagem antes de enviar.');
+    if (text.length > PORTAL_CHAT_MAX) throw unsupported(`A mensagem tem ${text.length} caracteres e o limite é ${PORTAL_CHAT_MAX}. Divida em duas mensagens.`);
     await portalSendChat(text);
     return { id: `local-${Date.now()}`, from: 'me', text, at: new Date().toISOString(), status: 'sent', attachment: null };
   }

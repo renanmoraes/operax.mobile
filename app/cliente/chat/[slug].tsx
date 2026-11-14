@@ -93,12 +93,14 @@ export default function ClientChatScreen() {
   async function sendText() {
     if ((!text.trim() && !withReschedule) || send.isPending) return;
     setSendError(null);
+    // O campo segue editável enquanto envia: só limpa se a pessoa não escreveu mais nada nesse meio-tempo.
+    const submitted = text;
     try {
       await send.mutateAsync({
-        text: text.trim(),
+        text: submitted.trim(),
         reschedule: withReschedule && booking ? { booking_id: booking.id, title: booking.service_name ?? 'Compromisso', original_at: booking.starts_at } : undefined,
       });
-      setText('');
+      setText((cur) => (cur === submitted ? '' : cur));
       setWithReschedule(false);
     } catch (e) {
       setSendError(e instanceof Error && !isAxiosError(e) ? e.message : 'Não foi possível enviar agora. Confira a internet e tente de novo.');

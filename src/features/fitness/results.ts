@@ -10,7 +10,22 @@ export function parseClock(v: string): number | null {
   return secs > 0 ? secs : null;
 }
 
+/**
+ * Máscara do campo de tempo para o teclado numérico (o do iPhone não tem dois-pontos): os dígitos
+ * entram da direita como num cronômetro. "5" → "0:05", "1234" → "12:34", "11500" → "1:15:00".
+ */
+export function maskClock(v: string): string {
+  const d = v.replace(/\D/g, '').replace(/^0+/, '').slice(0, 6);
+  if (!d) return '';
+  const sec = d.slice(-2).padStart(2, '0');
+  const rest = d.slice(0, -2);
+  if (rest.length <= 2) return `${rest || '0'}:${sec}`;
+  return `${rest.slice(0, -2)}:${rest.slice(-2)}:${sec}`;
+}
+
+/** Campo vazio é "não informado", não zero (Number('') daria 0 e salvaria um resultado zerado). */
 const num = (v: string) => {
+  if (!v.trim()) return null;
   const x = Number(v.replace(',', '.'));
   return Number.isFinite(x) && x >= 0 ? x : null;
 };

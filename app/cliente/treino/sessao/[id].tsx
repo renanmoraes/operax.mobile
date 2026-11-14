@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import Svg, { Circle, Polyline } from 'react-native-svg';
-import { ActionRow, IconButton, Muted, Num, PressableScale, ProgressRing, Screen } from '@/src/design-system/ui';
+import { ActionRow, EmptyState, IconButton, Muted, Num, PressableScale, ProgressRing, Screen, TopBar } from '@/src/design-system/ui';
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { colors, gradients, radii, shadows, text, typography, glass } from '@/src/design-system/tokens';
@@ -54,7 +54,23 @@ function Spark({ values }: { values: number[] }) {
 
 export default function WorkoutSessionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  return <WorkoutGate id={id}>{(workout) => <WorkoutSession workout={workout} />}</WorkoutGate>;
+  return <WorkoutGate id={id}>{(workout) => (flattenWorkout(workout).length ? <WorkoutSession workout={workout} /> : <NoSetsSession workout={workout} />)}</WorkoutGate>;
+}
+
+/** Treino sem exercício de força (só WOD, texto, corrida…): a sessão de séries não serve; cada parte se registra na ficha. */
+function NoSetsSession({ workout }: { workout: FitnessWorkoutView }) {
+  return (
+    <Screen>
+      <TopBar safe title={workout.title} onBack={() => router.back()} />
+      <EmptyState
+        icon="list-outline"
+        title="Este treino não tem séries para marcar"
+        subtitle="Ele é de outra modalidade (WOD, corrida ou orientação). Abra a ficha para registrar o resultado de cada parte."
+        actionLabel="Abrir a ficha"
+        onAction={() => router.replace(`/cliente/treino/${workout.id}`)}
+      />
+    </Screen>
+  );
 }
 
 function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
@@ -80,7 +96,12 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
   const exDone = done.length >= row.sets.length;
   const isLast = idx === rows.length - 1;
   const resting = rest > 0;
-  const step = row.snapshot?.equipment?.toLowerCase().includes('halter') ? 2 : 2.5;
+  // Superset/circuito: o exercício da vez é o do estágio atual, não o primeiro do bloco.
+  const stage = row.sets[Math.min(done.length, row.sets.length - 1)];
+  const exId = stage?.exerciseId ?? row.exerciseId;
+  const exName = stage?.name ?? row.name;
+  const exSnap = stage?.snapshot ?? row.snapshot;
+  const step = exSnap?.equipment?.toLowerCase().includes('halter') ? 2 : 2.5;
 
   useEffect(() => {
     void loadDraft(workout.id).then((d) => {
@@ -218,9 +239,9 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16 }}>
         <View style={styles.exHead}>
           <PressableScale
-            onPress={() => router.push(`/cliente/exercicio/${row.exerciseId}?treino=${workout.id}`)}
+            onPress={() => router.push(`/cliente/exercicio/${exId}?treino=${workout.id}`)}
             accessibilityRole="button"
-            accessibilityLabel={`Ver como executar ${row.name}`}
+            accessibilityLabel={`Ver como executar ${exName}`}
           >
             <LinearGradient colors={gradients.media} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.thumb}>
               <View style={styles.thumbPlay}>
@@ -229,12 +250,12 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
             </LinearGradient>
           </PressableScale>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.name}>{row.name}</Text>
+            <Text style={styles.name}>{exName}</Text>
             <Text style={styles.prescription} numberOfLines={2}>
-              {[row.snapshot?.muscle_group, row.prescription, row.tag === 'Drop set' ? row.loadLabel : null].filter(Boolean).join(' · ')}
+              {[exName !== row.name && row.tag ? `${row.tag}: ${row.name}` : null, exSnap?.muscle_group, row.prescription, row.tag === 'Drop set' ? row.loadLabel : null].filter(Boolean).join(' · ')}
             </Text>
-            <Pressable onPress={() => router.push(`/cliente/exercicio/${row.exerciseId}?treino=${workout.id}`)} hitSlop={8} accessibilityRole="link">
-              <Text style={styles.howTo}>{row.snapshot?.media.length ? 'Vídeo do seu personal' : 'Como executar'}</Text>
+            <Pressable onPress={() => router.push(`/cliente/exercicio/${exId}?treino=${workout.id}`)} hitSlop={8} accessibilityRole="link">
+              <Text style={styles.howTo}>{exSnap?.media.length ? 'Vídeo do seu personal' : 'Como executar'}</Text>
             </Pressable>
           </View>
         </View>
@@ -282,13 +303,13 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
               <Stepper label="Carga" value={formatKg(kg)} unit="kg" onMinus={() => setKg((v) => Math.max(0, v - step))} onPlus={() => setKg((v) => v + step)} />
               <Stepper label="Repetições" value={String(reps)} onMinus={() => setReps((v) => Math.max(1, v - 1))} onPlus={() => setReps((v) => v + 1)} />
             </View>
-            {LOAD_HISTORY[row.exerciseId] ? (
+            {LOAD_HISTORY[exId] ? (
               <View style={styles.lastCard}>
                 <View style={{ flex: 1 }}>
                   <Muted style={{ fontSize: 12 }}>Última vez</Muted>
-                  <Text style={styles.lastValue}>{`${formatKg(LOAD_HISTORY[row.exerciseId].slice(-1)[0])} kg × ${row.reps}`}</Text>
+                  <Text style={styles.lastValue}>{`${formatKg(LOAD_HISTORY[exId].slice(-1)[0])} kg × ${row.reps}`}</Text>
                 </View>
-                <Spark values={LOAD_HISTORY[row.exerciseId]} />
+                <Spark values={LOAD_HISTORY[exId]} />
               </View>
             ) : null}
           </>
