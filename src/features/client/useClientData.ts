@@ -4,7 +4,9 @@ import { Alert } from 'react-native';
 import * as api from './clientApi';
 import { clientDataMode } from './dataMode';
 import { useAuth } from '@/src/features/auth/AuthContext';
-import type { ChatMessage, OutgoingAttachment } from './types';
+import type { ChatMessage, ClientBooking, OutgoingAttachment } from './types';
+import { useEffect } from 'react';
+import { describe, notifyNow, syncBookingReminders } from '@/src/features/notifications/reminders';
 
 const keys = {
   companies: ['client', 'companies'] as const,
@@ -78,10 +80,31 @@ export const useConfirmBooking = () => useBookingMutation((id: string) => api.co
 export const useUnconfirmBooking = () => useBookingMutation((id: string) => api.unconfirmBooking(id));
 export const useCancelBooking = () =>
   useBookingMutation(({ id, reason }: { id: string; reason: string }) => api.cancelBooking(id, reason));
-export const useClassAction = () =>
-  useBookingMutation(({ id, action }: { id: string; action: 'accept' | 'decline' | 'reset' }) =>
-    api.changeClassBooking(id, action),
-  );
+export function useClassAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action }: { id: string; action: 'accept' | 'decline' | 'reset' }) => api.changeClassBooking(id, action),
+    onSuccess: (_d, vars) => {
+      // Inscreveu-se na aula: aviso na hora (os lembretes antes da aula vêm do sync da agenda).
+      if (vars.action === 'accept') {
+        const b = qc.getQueryData<ClientBooking[]>(keys.bookings)?.find((x) => x.id === vars.id);
+        if (b) void notifyNow('Inscrição na aula confirmada', describe(b, new Date(b.starts_at), new Date()), `/cliente/aula/${b.id}`);
+      }
+      return qc.invalidateQueries({ queryKey: keys.bookings });
+    },
+    onError: (e) => Alert.alert('Não deu certo', actionErrorMessage(e)),
+  });
+}
+
+/** Mantém os lembretes do aparelho iguais à agenda (só com login real e agenda liberada). */
+export function useBookingReminders() {
+  const caps = useClientCapabilities();
+  const { data } = useBookings();
+  useEffect(() => {
+    if (!data || clientDataMode() !== 'live' || !caps.scheduling) return;
+    void syncBookingReminders(data);
+  }, [data, caps.scheduling]);
+}
 
 export function useChats() {
   // Login real: o selo de não lidas acompanha a resposta da equipe sem precisar abrir nada.

@@ -6,7 +6,7 @@ import {
 } from '@expo-google-fonts/inter';
 import { focusManager, QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
-import { Stack, usePathname, type ErrorBoundaryProps } from 'expo-router';
+import { router, Stack, usePathname, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
 import { AppState, LogBox, Platform, Text, View } from 'react-native';
@@ -99,6 +99,7 @@ export default function RootLayout() {
           <IncomingBanner />
           <SplashGate />
           <AccountCacheReset />
+          <NotificationRouter />
           </TeamChatProvider>
         </AuthProvider>
       </QueryClientProvider>
@@ -116,6 +117,36 @@ function SplashGate() {
  * Dados em memória pertencem a uma conta. Ao sair, entrar ou trocar de conta/empresa, apaga tudo
  * o que foi carregado (chaves Pix, conversas, agenda…) para nada de uma empresa aparecer na outra.
  */
+/**
+ * Notificações: mostra com o app aberto e, ao tocar (com o app aberto, em segundo plano
+ * ou fechado), abre a tela do aviso (`data.url`, ex.: o compromisso do lembrete).
+ */
+function NotificationRouter() {
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let sub: { remove: () => void } | null = null;
+    let alive = true;
+    void import('expo-notifications').then(async (N) => {
+      N.setNotificationHandler({
+        handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
+      });
+      const open = (data: unknown) => {
+        const url = (data as { url?: unknown } | undefined)?.url;
+        if (typeof url === 'string' && url.startsWith('/')) router.push(url as never);
+      };
+      sub = N.addNotificationResponseReceivedListener((r) => open(r.notification.request.content.data));
+      // App aberto pelo toque na notificação (estava fechado).
+      const last = await N.getLastNotificationResponseAsync();
+      if (alive && last) open(last.notification.request.content.data);
+    }).catch(() => undefined);
+    return () => {
+      alive = false;
+      sub?.remove();
+    };
+  }, []);
+  return null;
+}
+
 function AccountCacheReset() {
   const { user, mode } = useAuth();
   const qc = useQueryClient();

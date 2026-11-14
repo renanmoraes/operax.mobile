@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { TAB_TRANSITION } from '@/src/design-system/tabTransition';
 import { GlassTabBar } from '@/src/design-system/GlassTabBar';
 import { useAuth } from '@/src/features/auth/AuthContext';
-import { useClientCapabilities, useClientUnread } from '@/src/features/client/useClientData';
+import { useBookingReminders, useClientCapabilities, useClientUnread } from '@/src/features/client/useClientData';
 import { hasSeenClientOnboarding } from '@/src/features/permissions/permissions';
 import { useFlushResultsQueue } from '@/src/features/fitness/useFitness';
 
@@ -13,6 +13,8 @@ export default function ClientLayout() {
   const unread = useClientUnread();
   // Abas seguem o que a empresa liberou no portal (sem treino liberado, não existe aba Treino).
   const caps = useClientCapabilities();
+  // Lembretes de agenda e aula agendados no aparelho (tocam com o app fechado).
+  useBookingReminders();
   useFlushResultsQueue();
   const [onboarded, setOnboarded] = useState<boolean | null>(null);
   useEffect(() => {

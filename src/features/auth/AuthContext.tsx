@@ -31,6 +31,7 @@ import {
 } from '@/src/shared/api/token-store';
 import { connectSocket, disconnectSocket } from '@/src/shared/realtime/socket';
 import { registerForPushNotificationsAsync } from '@/src/features/notifications/push';
+import { clearBookingReminders } from '@/src/features/notifications/reminders';
 
 type AuthMode = 'mock' | 'live';
 export type Role = SavedRole;
@@ -556,6 +557,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mode === 'live' && current === 'client') {
           await portalLogout().catch(() => undefined);
           await clearTokens('client');
+          // Saiu da conta de cliente: os lembretes dela não podem tocar depois.
+          void clearBookingReminders();
           portalIdentity.current = null;
         } else if (mode === 'live') {
           try {
