@@ -2,7 +2,7 @@ import { Linking, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
 import { formatHour } from '@/src/shared/format';
-import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, MessageMeta } from '@/src/features/chat/MessageParts';
+import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, MessageMeta, TextWithMeta } from '@/src/features/chat/MessageParts';
 import type { ChatAttachment, ChatMessage } from './types';
 
 function toMedia(a: ChatAttachment): ChatMediaData | null {
@@ -38,10 +38,9 @@ export function ChatBubble({ m }: { m: ChatMessage }) {
         <MediaBubble media={media} caption={m.text} at={at} mine={mine} status={m.status} onOpen={uri ? () => void Linking.openURL(uri) : undefined} />
       ) : (
         <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
-          <Text style={[styles.text, mine && { color: '#fff' }]}>{m.text}</Text>
-          <View style={styles.metaInside}>
-            <MessageMeta at={at} mine={mine} status={m.status} tone={mine ? 'onBubbleMine' : 'onBubbleTheirs'} />
-          </View>
+          <TextWithMeta at={at} mine={mine} status={m.status} tone={mine ? 'onBubbleMine' : 'onBubbleTheirs'} style={[styles.text, mine && { color: '#fff' }]}>
+            {m.text}
+          </TextWithMeta>
         </View>
       )}
     </View>
@@ -51,7 +50,7 @@ export function ChatBubble({ m }: { m: ChatMessage }) {
 const styles = StyleSheet.create({
   wrap: { maxWidth: '82%' },
   author: { marginLeft: 12, marginBottom: 4, ...text.captionStrong, color: colors.textMuted },
-  bubble: { paddingTop: 9, paddingBottom: 6, paddingHorizontal: 13, borderRadius: BUBBLE_RADIUS },
+  bubble: { paddingTop: 8, paddingBottom: 7, paddingHorizontal: 12, borderRadius: BUBBLE_RADIUS },
   mine: { backgroundColor: colors.primary, borderBottomRightRadius: 8 },
   theirs: { backgroundColor: '#fff', borderBottomLeftRadius: 8 },
   text: { ...text.body, color: colors.text },

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, Text, TextStyle, View } from 'react-native';
 import { colors, gradients, text } from '@/src/design-system/tokens';
 
 /**
@@ -63,6 +63,38 @@ export function MessageMeta({ at, mine, status, tone }: { at: string; mine: bool
   );
 }
 
+/**
+ * Texto com a hora no fim da última linha, como no WhatsApp: um espaço invisível do tamanho da hora
+ * fica no fim do texto e a hora é desenhada por cima. Se a linha não comporta, a hora desce sozinha.
+ */
+export function TextWithMeta({
+  children,
+  at,
+  mine,
+  status,
+  tone,
+  style,
+}: {
+  children: ReactNode;
+  at: string;
+  mine: boolean;
+  status?: MessageStatus;
+  tone: 'onBubbleMine' | 'onBubbleTheirs';
+  style?: StyleProp<TextStyle>;
+}) {
+  return (
+    <View>
+      <Text style={style}>
+        {children}
+        <Text style={styles.metaSpacer} accessible={false}>{`\u2003${at}${mine ? '\u2003\u2002' : ''}`}</Text>
+      </Text>
+      <View style={styles.metaFloat}>
+        <MessageMeta at={at} mine={mine} status={status} tone={tone} />
+      </View>
+    </View>
+  );
+}
+
 function OverlayMeta({ children, left }: { children: ReactNode; left?: ReactNode }) {
   return (
     <LinearGradient colors={['rgba(5,10,20,0)', 'rgba(5,10,20,0.55)']} style={styles.scrim} pointerEvents="none">
@@ -73,11 +105,11 @@ function OverlayMeta({ children, left }: { children: ReactNode; left?: ReactNode
 }
 
 /** Foto ou vídeo ocupando a bolha toda. */
-function VisualMedia({ media, meta }: { media: Extract<ChatMediaData, { kind: 'image' | 'video' }>; meta: ReactNode | null }) {
+function VisualMedia({ media, meta, joined }: { media: Extract<ChatMediaData, { kind: 'image' | 'video' }>; meta: ReactNode | null; joined?: boolean }) {
   const h = mediaHeight(media.width, media.height);
   const isVideo = media.kind === 'video';
   return (
-    <View style={[styles.visual, { height: h }]}>
+    <View style={[styles.visual, { height: h }, joined && styles.visualJoined]}>
       {media.uri && !isVideo ? (
         <Image source={{ uri: media.uri }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel="Foto" />
       ) : (
@@ -162,19 +194,29 @@ export function MediaBubble({
 }) {
   const visual = media.kind !== 'document';
   const hasCaption = !!caption?.trim();
-  const metaInside = <MessageMeta at={at} mine={mine} status={status} tone={mine ? 'onBubbleMine' : 'onBubbleTheirs'} />;
+  const tone = mine ? 'onBubbleMine' : 'onBubbleTheirs';
   const label =
     media.kind === 'image' ? 'Foto' : media.kind === 'video' ? `Vídeo${media.title ? ` ${media.title}` : ''}${media.durationS != null ? `, ${durationLabel(media.durationS)}` : ''}` : `Documento ${media.name}`;
 
   const body = (
     <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
       {visual ? (
-        <VisualMedia media={media} meta={hasCaption ? null : <MessageMeta at={at} mine={mine} status={status} tone="overlay" />} />
+        <VisualMedia media={media} joined={hasCaption} meta={hasCaption ? null : <MessageMeta at={at} mine={mine} status={status} tone="overlay" />} />
       ) : (
         <DocumentMedia media={media} mine={mine} />
       )}
-      {hasCaption ? <Text style={[styles.caption, mine && { color: '#fff' }]}>{caption}</Text> : null}
-      {!visual || hasCaption ? <View style={styles.metaInside}>{metaInside}</View> : null}
+      {hasCaption ? (
+        <View style={styles.captionWrap}>
+          <TextWithMeta at={at} mine={mine} status={status} tone={tone} style={[styles.caption, mine && { color: '#fff' }]}>
+            {caption}
+          </TextWithMeta>
+        </View>
+      ) : null}
+      {!visual && !hasCaption ? (
+        <View style={styles.metaInside}>
+          <MessageMeta at={at} mine={mine} status={status} tone={tone} />
+        </View>
+      ) : null}
     </View>
   );
 
@@ -202,7 +244,11 @@ const styles = StyleSheet.create({
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText: { ...text.label, fontFamily: 'Inter_500Medium', fontVariant: ['tabular-nums'] },
   metaInside: { alignSelf: 'flex-end', paddingHorizontal: 8, paddingTop: 2, paddingBottom: 4 },
-  caption: { ...text.body, color: colors.text, paddingHorizontal: 9, paddingTop: 7, width: MEDIA_WIDTH },
+  captionWrap: { width: MEDIA_WIDTH, paddingHorizontal: 9, paddingTop: 6, paddingBottom: 4 },
+  caption: { ...text.body, color: colors.text },
+  metaSpacer: { ...text.label, fontFamily: 'Inter_500Medium', color: 'transparent' },
+  metaFloat: { position: 'absolute', right: 0, bottom: 1 },
+  visualJoined: { borderBottomLeftRadius: 3, borderBottomRightRadius: 3 },
   page: { height: 112, borderTopLeftRadius: INNER_RADIUS, borderTopRightRadius: INNER_RADIUS, backgroundColor: '#e9edf4', overflow: 'hidden', alignItems: 'center', paddingTop: 14 },
   sheet: { width: '78%', flex: 1, backgroundColor: '#fff', borderTopLeftRadius: 4, borderTopRightRadius: 4, padding: 12, gap: 7, shadowColor: '#0c1222', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
   line: { height: 4, borderRadius: 2, backgroundColor: '#e3e8f0' },

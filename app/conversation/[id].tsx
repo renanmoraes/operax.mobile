@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar, Backdrop, Button, IconButton, IconTile, Muted } from '@/src/design-system/ui';
-import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, MessageMeta } from '@/src/features/chat/MessageParts';
+import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, MessageMeta, TextWithMeta } from '@/src/features/chat/MessageParts';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
@@ -241,11 +241,15 @@ export default function ConversationScreen() {
                   <Text style={[styles.bubbleText, out && { color: '#fff' }]}>Áudio</Text>
                 </View>
               ) : (
-                <Text style={[styles.bubbleText, out && { color: '#fff' }]}>{item.body}</Text>
+                <TextWithMeta at={item.at} mine={out} status={item.status} tone={out ? 'onBubbleMine' : 'onBubbleTheirs'} style={[styles.bubbleText, out && { color: '#fff' }]}>
+                  {item.body}
+                </TextWithMeta>
               )}
-              <View style={{ alignSelf: 'flex-end', marginTop: 2 }}>
-                <MessageMeta at={item.at} mine={out} status={item.status} tone={out ? 'onBubbleMine' : 'onBubbleTheirs'} />
-              </View>
+              {item.type === 'audio' ? (
+                <View style={{ alignSelf: 'flex-end', marginTop: 2 }}>
+                  <MessageMeta at={item.at} mine={out} status={item.status} tone={out ? 'onBubbleMine' : 'onBubbleTheirs'} />
+                </View>
+              ) : null}
             </View>
           );
         }}
@@ -383,7 +387,7 @@ const styles = StyleSheet.create({
   },
   claimText: { flex: 1, fontFamily: typography.fontFamilyMedium, fontSize: 13.5, lineHeight: 19, color: colors.textSoft },
   link: { color: colors.warnText, fontFamily: typography.fontFamilyBold, fontSize: 13, textDecorationLine: 'underline' },
-  bubble: { maxWidth: '82%', borderRadius: BUBBLE_RADIUS, paddingHorizontal: 13, paddingTop: 9, paddingBottom: 6 },
+  bubble: { maxWidth: '82%', borderRadius: BUBBLE_RADIUS, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 7 },
   bubbleIn: {
     alignSelf: 'flex-start',
     backgroundColor: colors.cardBg,
