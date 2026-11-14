@@ -1103,11 +1103,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   inputFocused: {
-    borderColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
+    backgroundColor: '#fff',
+    borderColor: '#c9d3e6',
   },
   input: {
     flex: 1,

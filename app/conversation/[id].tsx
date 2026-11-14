@@ -7,7 +7,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,6 +15,7 @@ import { Avatar, Backdrop, Button, IconButton, IconTile, Muted } from '@/src/des
 import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, TextWithMeta } from '@/src/features/chat/MessageParts';
 import { AudioBubble } from '@/src/features/chat/AudioBubble';
 import { MicButton, RecordingBar, useVoiceRecorder } from '@/src/features/chat/VoiceRecorder';
+import { ChatInput } from '@/src/features/chat/ChatInput';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
@@ -301,7 +301,7 @@ export default function ConversationScreen() {
           <RecordingBar elapsedS={voice.elapsedS} levels={voice.levels} onCancel={() => void voice.cancel()} onSend={() => void sendVoice()} bottomInset={Math.max(insets.bottom, 12)} />
         </View>
       ) : (
-        <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
           <Pressable
             onPress={() => setSheet('attach')}
             style={styles.attachBtn}
@@ -318,19 +318,11 @@ export default function ConversationScreen() {
           >
             <Ionicons name="flash-outline" size={20} color={colors.primary} />
           </Pressable>
-          <TextInput
-            style={styles.input}
+          <ChatInput
             value={draft}
             onChangeText={setDraft}
-            placeholder={
-              !conversation.within24h
-                ? 'Use um template'
-                : ownership !== 'mine'
-                  ? 'Assuma para responder'
-                  : 'Mensagem…'
-            }
+            placeholder={!conversation.within24h ? 'Use um template' : ownership !== 'mine' ? 'Assuma para responder' : 'Mensagem…'}
             editable={canCompose}
-            placeholderTextColor={colors.textMuted}
           />
           {draft.trim() || !canCompose ? (
             <Pressable
@@ -449,41 +441,28 @@ const styles = StyleSheet.create({
   bubbleText: { ...text.body, color: colors.text },
   composer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: 8,
     paddingHorizontal: 12,
-    paddingTop: 12,
+    paddingTop: 8,
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,
     backgroundColor: colors.cardBg,
     ...shadows.nav,
   },
   attachBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.primaryWash,
     alignItems: 'center',
     justifyContent: 'center',
   },
   qrBtn: {
     width: 36,
-    height: 40,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  input: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 44,
-    maxHeight: 100,
-    borderRadius: 22,
-    backgroundColor: colors.pageBg,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontFamily: typography.fontFamily,
-    color: colors.text,
-    fontSize: 15,
   },
   send: {
     backgroundColor: colors.primary,

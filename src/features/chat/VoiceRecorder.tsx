@@ -111,7 +111,7 @@ export function RecordingBar({
 }
 
 export function MicButton({ onPress, disabled }: { onPress: () => void; disabled?: boolean }) {
-  return <IconButton icon="mic" tone="primary" size={48} accessibilityLabel="Gravar áudio" onPress={disabled ? () => undefined : onPress} />;
+  return <IconButton icon="mic" tone="primary" size={44} accessibilityLabel="Gravar áudio" onPress={disabled ? () => undefined : onPress} />;
 }
 
 const styles = StyleSheet.create({

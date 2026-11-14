@@ -9,11 +9,24 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '@/src/features/auth/AuthContext';
 import { colors } from '@/src/design-system/tokens';
 
 SplashScreen.preventAutoHideAsync();
+
+// No navegador (inclusive Safari do iPhone), tira o contorno azul de foco dos campos e o
+// clarão cinza do toque: no app nativo nada disso existe.
+if (Platform.OS === 'web' && typeof document !== 'undefined' && !document.getElementById('operax-web-reset')) {
+  const style = document.createElement('style');
+  style.id = 'operax-web-reset';
+  style.textContent =
+    'input:focus,textarea:focus,[contenteditable]:focus{outline:none!important;box-shadow:none}' +
+    '*{-webkit-tap-highlight-color:transparent}' +
+    'textarea{resize:none}';
+  document.head.appendChild(style);
+}
 
 export default function RootLayout() {
   const [loaded] = useFonts({

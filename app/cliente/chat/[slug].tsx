@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Body, Button, Card, IconButton, IconName, IconTile, Muted, PressableScale, Screen } from '@/src/design-system/ui';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { MicButton, RecordingBar, useVoiceRecorder } from '@/src/features/chat/VoiceRecorder';
+import { ChatInput } from '@/src/features/chat/ChatInput';
 import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { ChatBubble } from '@/src/features/client/ChatBubble';
 import { useBooking, useChat, useCompanies, useMarkChatRead, useSendChat } from '@/src/features/client/useClientData';
@@ -177,23 +178,13 @@ export default function ClientChatScreen() {
             <RecordingBar elapsedS={voice.elapsedS} levels={voice.levels} onCancel={() => void voice.cancel()} onSend={() => void sendVoice()} bottomInset={insets.bottom + 14} />
           </View>
         ) : (
-        <View style={[styles.composer, { paddingBottom: insets.bottom + 14 }]}>
+        <View style={[styles.composer, { paddingBottom: insets.bottom + 10 }]}>
           <PressableScale onPress={() => setSheet((v) => !v)} accessibilityRole="button" accessibilityLabel="Anexar arquivo" accessibilityState={{ expanded: sheet }} scaleTo={0.92} style={[styles.plus, sheet && { backgroundColor: colors.primary }]}>
             <Ionicons name="add" size={24} color={sheet ? '#fff' : colors.text} style={{ transform: [{ rotate: sheet ? '45deg' : '0deg' }] }} />
           </PressableScale>
-          <View style={styles.input}>
-            <TextInput
-              value={text}
-              onChangeText={setText}
-              placeholder="Mensagem para a equipe"
-              placeholderTextColor="#6b7486"
-              accessibilityLabel="Mensagem"
-              multiline
-              style={styles.inputText}
-            />
-          </View>
+          <ChatInput value={text} onChangeText={setText} placeholder="Mensagem para a equipe" />
           {text.trim() || withReschedule ? (
-            <IconButton icon="send" tone="primary" size={48} accessibilityLabel="Enviar" onPress={() => void sendText()} />
+            <IconButton icon="send" tone="primary" size={44} accessibilityLabel="Enviar" onPress={() => void sendText()} />
           ) : (
             <MicButton onPress={() => void startVoice()} />
           )}
@@ -236,11 +227,9 @@ export default function ClientChatScreen() {
                 </Card>
               )}
             </View>
-            <View style={[styles.composer, { paddingBottom: insets.bottom + 14 }]}>
-              <View style={styles.input}>
-                <TextInput value={caption} onChangeText={setCaption} placeholder="Adicione uma legenda" placeholderTextColor="#6b7486" accessibilityLabel="Legenda" style={styles.inputText} />
-              </View>
-              <Button label="Enviar" icon="send" loading={send.isPending} onPress={() => void sendDraft()} style={{ minHeight: 48 }} />
+            <View style={[styles.composer, { paddingBottom: insets.bottom + 10 }]}>
+              <ChatInput value={caption} onChangeText={setCaption} placeholder="Adicione uma legenda" accessibilityLabel="Legenda" />
+              <Button label="Enviar" icon="send" compact loading={send.isPending} onPress={() => void sendDraft()} style={{ minHeight: 44 }} />
             </View>
           </View>
         ) : null}
@@ -260,10 +249,8 @@ const styles = StyleSheet.create({
   perm: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 12, marginBottom: 8, padding: 10, paddingLeft: 14, borderRadius: radii.lg - 4, backgroundColor: colors.warnSoft },
   rescheduleDraft: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 12, marginBottom: 8, padding: 10, paddingLeft: 14, borderRadius: radii.lg - 4, backgroundColor: colors.primaryTint },
   rdTitle: { fontFamily: typography.fontFamilyBold, fontSize: 13, color: colors.primaryDeep },
-  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 12, paddingTop: 10, backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, ...shadows.card },
-  plus: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#f0f2f5', alignItems: 'center', justifyContent: 'center' },
-  input: { flex: 1, minHeight: 48, maxHeight: 120, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 24, backgroundColor: '#f0f2f5', justifyContent: 'center' },
-  inputText: { fontFamily: typography.fontFamily, fontSize: 16, color: colors.text, padding: 0 },
+  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 12, paddingTop: 8, backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, ...shadows.card },
+  plus: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f0f2f5', alignItems: 'center', justifyContent: 'center' },
   attachRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 18 },
   attachOpt: { alignItems: 'center', gap: 8, width: 96 },
   attachLabel: { fontFamily: typography.fontFamilySemiBold, fontSize: 12.5, color: colors.text, textAlign: 'center' },
