@@ -40,6 +40,7 @@ CRIAR
   src/features/auth/resolveAuthRoute.ts (+ __tests__)
   src/features/auth/permissions.ts       (+ __tests__)
   src/shared/api/__tests__/isAuthRoute.test.ts
+  src/shared/api/__tests__/auth.api.kind.test.ts
   app/(auth)/role-select.tsx
   app/(auth)/client-login.tsx
   app/(auth)/client-otp.tsx
@@ -201,6 +202,7 @@ git commit -m "refactor: extrair isAuthRoute e incluir rotas de login de cliente
 
 **Files:**
 - Modify: `src/shared/api/auth.api.ts`
+- Test: `src/shared/api/__tests__/auth.api.kind.test.ts`
 - Modify: `app/(app)/profile.tsx`
 - Modify: `app/notification-prefs.tsx`
 
@@ -265,6 +267,19 @@ export type ClientTokenBundle = {
 
 export type ClientLoginResult = ClientTokenBundle | { status: 'no_portal_access' };
 
+/**
+ * O backend não devolve `kind` (é um discriminante só do app). Essas duas
+ * funções marcam o objeto de usuário com o `kind` certo assim que a resposta
+ * chega — é o único lugar que faz isso, pra não esquecer em nenhuma chamada.
+ */
+function asStaffUser(raw: unknown): StaffUser {
+  return { ...(raw as object), kind: 'staff' } as StaffUser;
+}
+
+function asClientUser(raw: unknown): ClientUser {
+  return { ...(raw as object), kind: 'client' } as ClientUser;
+}
+
 export async function loginApi(input: {
   email: string;
   password: string;
@@ -278,7 +293,10 @@ export async function loginApi(input: {
   if (data?.access_token && data?.refresh_token) {
     await setTokens(data.access_token, data.refresh_token);
   }
-  return data as LoginResult;
+  if (data?.user) {
+    return { ...data, user: asStaffUser(data.user) } as LoginResult;
+  }
+  return data as LoginResult; // status: mfa_required | mfa_setup_required
 }
 
 export async function verifyMfaApi(input: {
@@ -289,12 +307,12 @@ export async function verifyMfaApi(input: {
   if (data?.access_token && data?.refresh_token) {
     await setTokens(data.access_token, data.refresh_token);
   }
-  return data as TokenBundle;
+  return { ...data, user: asStaffUser(data.user) } as TokenBundle;
 }
 
 export async function getMeApi(): Promise<StaffUser> {
   const { data } = await api.get('/api/auth/me');
-  return data as StaffUser;
+  return asStaffUser(data);
 }
 
 export async function logoutApi(): Promise<void> {
@@ -323,7 +341,10 @@ export async function clientLoginApi(input: {
   if (data?.access_token && data?.refresh_token) {
     await setTokens(data.access_token, data.refresh_token);
   }
-  return data as ClientLoginResult;
+  if (data?.user) {
+    return { ...data, user: asClientUser(data.user) } as ClientLoginResult;
+  }
+  return data as ClientLoginResult; // { status: 'no_portal_access' }
 }
 
 export async function requestClientOtpApi(input: { identifier: string }): Promise<void> {
@@ -338,12 +359,15 @@ export async function verifyClientOtpApi(input: {
   if (data?.access_token && data?.refresh_token) {
     await setTokens(data.access_token, data.refresh_token);
   }
-  return data as ClientLoginResult;
+  if (data?.user) {
+    return { ...data, user: asClientUser(data.user) } as ClientLoginResult;
+  }
+  return data as ClientLoginResult; // { status: 'no_portal_access' }
 }
 
 export async function getClientMeApi(): Promise<ClientUser> {
   const { data } = await api.get('/api/auth/client/me');
-  return data as ClientUser;
+  return asClientUser(data);
 }
 
 export async function switchClientTenantApi(input: {
@@ -353,13 +377,78 @@ export async function switchClientTenantApi(input: {
   if (data?.access_token && data?.refresh_token) {
     await setTokens(data.access_token, data.refresh_token);
   }
-  return data as ClientTokenBundle;
+  return { ...data, user: asClientUser(data.user) } as ClientTokenBundle;
 }
 ```
 
 Os endpoints `/api/auth/client/*` são os propostos na seção 5.2/7 da spec — ainda não existem no backend. Rodar contra a API real vai dar 404 até lá; o modo demo (Task 6) é o que permite testar a UI sem isso.
 
-- [ ] **Step 2: Corrigir os dois call sites que quebram com a union**
+**Importante:** `kind` nunca vem do backend — se qualquer função nova de auth for adicionada depois sem passar pelo `asStaffUser`/`asClientUser`, o `AuthContext` todo para de funcionar em modo real (só o modo demo, que usa `DEMO_USER`/`DEMO_CLIENT_USER` com `kind` já no literal, continuaria funcionando — e esconderia o bug). O teste do Step 3 existe pra pegar exatamente isso.
+
+- [ ] **Step 2: Testar a normalização de `kind`**
+
+Crie `src/shared/api/__tests__/auth.api.kind.test.ts`:
+
+```ts
+jest.mock('../client', () => ({ api: { get: jest.fn(), post: jest.fn() } }));
+jest.mock('../token-store', () => ({ setTokens: jest.fn(), clearTokens: jest.fn() }));
+
+import { api } from '../client';
+import { clientLoginApi, getClientMeApi, getMeApi, loginApi } from '../auth.api';
+
+describe('normalização de kind (o backend não devolve esse campo)', () => {
+  it('getMeApi marca kind: staff', async () => {
+    (api.get as jest.Mock).mockResolvedValue({ data: { id: 'u1', name: 'Ana', email: 'a@a.com' } });
+    const user = await getMeApi();
+    expect(user.kind).toBe('staff');
+  });
+
+  it('loginApi marca kind: staff no bundle de tokens', async () => {
+    (api.post as jest.Mock).mockResolvedValue({
+      data: { user: { id: 'u1', name: 'Ana', email: 'a@a.com' }, access_token: 'a', refresh_token: 'r' },
+    });
+    const result = await loginApi({ email: 'a@a.com', password: 'x', company_code: 'OPRX' });
+    expect('user' in result && result.user.kind).toBe('staff');
+  });
+
+  it('loginApi não quebra quando é status de mfa (sem user)', async () => {
+    (api.post as jest.Mock).mockResolvedValue({ data: { status: 'mfa_required', mfa_token: 't' } });
+    const result = await loginApi({ email: 'a@a.com', password: 'x', company_code: 'OPRX' });
+    expect('status' in result && result.status).toBe('mfa_required');
+  });
+
+  it('getClientMeApi marca kind: client', async () => {
+    (api.get as jest.Mock).mockResolvedValue({
+      data: { id: 'c1', name: 'Cliente', active_tenant_id: 't1', memberships: [] },
+    });
+    const user = await getClientMeApi();
+    expect(user.kind).toBe('client');
+  });
+
+  it('clientLoginApi marca kind: client quando autentica, e não quebra no bloqueio', async () => {
+    (api.post as jest.Mock).mockResolvedValueOnce({
+      data: {
+        user: { id: 'c1', name: 'Cliente', active_tenant_id: 't1', memberships: [] },
+        access_token: 'a',
+        refresh_token: 'r',
+      },
+    });
+    const ok = await clientLoginApi({ identifier: 'c@c.com', password: 'x' });
+    expect('user' in ok && ok.user.kind).toBe('client');
+
+    (api.post as jest.Mock).mockResolvedValueOnce({ data: { status: 'no_portal_access' } });
+    const blocked = await clientLoginApi({ identifier: 'c@c.com', password: 'x' });
+    expect('status' in blocked && blocked.status).toBe('no_portal_access');
+  });
+});
+```
+
+- [ ] **Step 3: Rodar e confirmar que passa**
+
+Run: `npx jest auth.api.kind`
+Expected: PASS (5 testes).
+
+- [ ] **Step 4: Corrigir os dois call sites que quebram com a union**
 
 `AuthUser` agora só expõe `role_code`/`notification_prefs` quando `kind === 'staff'`. Em `app/(app)/profile.tsx`, troque:
 
@@ -387,16 +476,16 @@ const remote = (user?.kind === 'staff' ? user.notification_prefs : undefined) as
   | undefined;
 ```
 
-- [ ] **Step 3: Checar tipos**
+- [ ] **Step 5: Checar tipos**
 
 Run: `npx tsc --noEmit`
 Expected: um único erro esperado, em `src/features/auth/AuthContext.tsx`, porque `DEMO_USER` ainda não tem `kind: 'staff'` (ver "Notas gerais" no topo do plano) — resolve na Task 6. Nenhum outro erro relacionado a `AuthUser`/`role_code`/`notification_prefs`.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/shared/api/auth.api.ts app/\(app\)/profile.tsx app/notification-prefs.tsx
-git commit -m "feat: AuthUser como union staff/cliente + API de login de cliente"
+git add src/shared/api/auth.api.ts src/shared/api/__tests__/auth.api.kind.test.ts app/\(app\)/profile.tsx app/notification-prefs.tsx
+git commit -m "feat: AuthUser como union staff/cliente + API de login de cliente, com kind normalizado em runtime"
 ```
 
 ---
@@ -1348,7 +1437,7 @@ git commit -m "feat: tela de login de cliente (senha ou OTP)"
 
 ```tsx
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Body, Button, Field, Muted, Title } from '@/src/design-system/ui';
@@ -1363,15 +1452,26 @@ export default function ClientOtpScreen() {
   const [loading, setLoading] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
   async function resend() {
     if (cooldown > 0 || !identifier) return;
-    await requestClientOtp(identifier);
+    try {
+      await requestClientOtp(identifier);
+    } catch {
+      return; // erro já fica em `error`
+    }
     setCooldown(30);
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setCooldown((prev) => {
         if (prev <= 1) {
-          clearInterval(timer);
+          if (timerRef.current) clearInterval(timerRef.current);
           return 0;
         }
         return prev - 1;
@@ -1712,7 +1812,11 @@ export default function ClientPerfilScreen() {
         <View style={styles.section}>
           <Muted style={styles.sectionLabel}>Empresa ativa</Muted>
           {memberships.map((m) => (
-            <Pressable key={m.tenant_id} onPress={() => switchTenant(m.tenant_id)} style={styles.row}>
+            <Pressable
+              key={m.tenant_id}
+              onPress={() => switchTenant(m.tenant_id).catch(() => {})}
+              style={styles.row}
+            >
               <Body>{m.tenant_name}</Body>
               {m.tenant_id === activeTenantId ? (
                 <Body style={{ color: colors.primary }}>Ativa</Body>
