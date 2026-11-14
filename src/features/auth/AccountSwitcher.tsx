@@ -16,7 +16,7 @@ const SIDE: Record<Role, { label: string; icon: 'headset-outline' | 'person-outl
  * o atalho para adicionar a do outro lado sem sair da atual.
  */
 export function AccountSwitcher() {
-  const { role, user, accounts, switchAccount, addAccount } = useAuth();
+  const { role, user, accounts, switchAccount, addAccount, error } = useAuth();
   const [busy, setBusy] = useState(false);
   if (!role) return null;
   const other = otherRole(role);
@@ -60,6 +60,7 @@ export function AccountSwitcher() {
           />
         )}
       </SettingsGroup>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
       <Text style={styles.hint}>
         {otherAccount ? 'Sair de uma conta mantém a outra aberta neste aparelho.' : 'Quem é dono de empresa e também cliente de outra usa as duas aqui.'}
       </Text>
@@ -68,5 +69,6 @@ export function AccountSwitcher() {
 }
 
 const styles = StyleSheet.create({
+  error: { fontFamily: 'Inter_500Medium', fontSize: 12.5, lineHeight: 17, color: colors.dangerText, paddingHorizontal: 4 },
   hint: { ...text.caption, color: colors.textMuted, paddingHorizontal: 4 },
 });

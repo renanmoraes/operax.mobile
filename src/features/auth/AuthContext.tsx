@@ -280,14 +280,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthenticated(true);
         await connectSocket();
         void registerDevicePushToken();
-      } catch {
-        // Sessão daquela conta expirou: cai no login dela.
-        await clearTokens(target);
-        forget(target);
-        setMode('live');
-        setRole(target);
-        setUser(null);
-        setAuthenticated(false);
+      } catch (e) {
+        const status = (e as { response?: { status?: number } })?.response?.status;
+        if (status === 401 || status === 403) {
+          // Sessão daquela conta foi recusada pelo servidor: cai no login dela.
+          await clearTokens(target);
+          forget(target);
+          setMode('live');
+          setRole(target);
+          setUser(null);
+          setAuthenticated(false);
+          return;
+        }
+        // Falha passageira (sem internet, servidor fora): a conta salva continua guardada e
+        // a pessoa segue na conta em que estava, podendo tentar trocar de novo.
+        if (role && role !== target) {
+          await setSavedRole(role);
+          void connectSocket();
+        }
+        setError('Não foi possível trocar de conta agora. Confira a internet e tente de novo.');
       }
     }
 
