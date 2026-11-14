@@ -13,6 +13,8 @@ import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '@/src/features/auth/AuthContext';
+import { IncomingBanner } from '@/src/features/team-chat/IncomingBanner';
+import { TeamChatProvider } from '@/src/features/team-chat/TeamChatContext';
 import { colors } from '@/src/design-system/tokens';
 
 SplashScreen.preventAutoHideAsync();
@@ -48,6 +50,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
+          <TeamChatProvider>
           <StatusBar style="dark" />
           <Stack
             screenOptions={{
@@ -68,8 +71,12 @@ export default function RootLayout() {
             <Stack.Screen name="quick-replies" options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="templates" options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="notification-prefs" options={{ headerShown: false }} />
+            <Stack.Screen name="equipe/index" options={{ headerShown: false }} />
+            <Stack.Screen name="equipe/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="visualizar" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade' }} />
           </Stack>
+          <IncomingBanner />
+          </TeamChatProvider>
         </AuthProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

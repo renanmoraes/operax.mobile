@@ -6,6 +6,7 @@ import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { colors, text, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
+import { TeamChatCard } from '@/src/features/team-chat/TeamChatCard';
 
 const WORK: { label: string; hint: string; href: string; icon: IconName }[] = [
   { label: 'Kanban', hint: 'Pipeline comercial', href: '/kanban', icon: 'grid-outline' },
@@ -40,8 +41,12 @@ export default function MoreScreen() {
               </View>
             </HeroCard>
           </Rise>
-          <Muted style={styles.groupLabel}>Trabalho</Muted>
+          <Muted style={styles.groupLabel}>Equipe</Muted>
           <Rise index={1}>
+            <TeamChatCard onPress={() => router.push('/equipe')} />
+          </Rise>
+          <Muted style={styles.groupLabel}>Trabalho</Muted>
+          <Rise index={2}>
             <SettingsGroup>
               {WORK.map((item, i) => (
                 <SettingsRow key={item.href} icon={item.icon} title={item.label} subtitle={item.hint} onPress={() => router.push(item.href as never)} last={i === WORK.length - 1} />
@@ -49,7 +54,7 @@ export default function MoreScreen() {
             </SettingsGroup>
           </Rise>
           <Muted style={styles.groupLabel}>Conta</Muted>
-          <Rise index={2}>
+          <Rise index={3}>
             <SettingsGroup>
               {ACCOUNT.map((item, i) => (
                 <SettingsRow key={item.href} icon={item.icon} title={item.label} subtitle={item.hint} onPress={() => router.push(item.href as never)} last={i === ACCOUNT.length - 1} />

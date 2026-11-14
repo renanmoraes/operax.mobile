@@ -5,6 +5,7 @@ import { GlassTabBar } from '@/src/design-system/GlassTabBar';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { QueueDrawerProvider } from '@/src/features/queue/QueueDrawerContext';
 import { hasPermission } from '@/src/features/auth/permissions';
+import { useTeamChat } from '@/src/features/team-chat/TeamChatContext';
 
 // Nenhuma aba exige permissão ainda — é só o mecanismo. Specs futuras preenchem
 // isto conforme admin/atendente precisarem ver coisas diferentes.
@@ -19,6 +20,7 @@ const HIDDEN_ITEM = { display: 'none' } as const;
 
 export default function AppLayout() {
   const { isAuthenticated, user } = useAuth();
+  const teamChat = useTeamChat();
   if (!isAuthenticated || user?.kind !== 'staff') return <Redirect href="/" />;
 
   const permissions = user?.kind === 'staff' ? user.permissions : undefined;
@@ -75,6 +77,8 @@ export default function AppLayout() {
             title: 'Mais',
             headerShown: false,
             href: visible('more') ? undefined : null,
+            // Mensagens novas do chat interno aparecem como contador na aba Mais.
+            tabBarBadge: teamChat.unread > 0 ? teamChat.unread : undefined,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="ellipsis-horizontal-circle" size={size} color={color as string} />
             ),

@@ -41,7 +41,8 @@ function TabItem({
 }: {
   focused: boolean;
   label: string;
-  badge: boolean;
+  /** `true` mostra um ponto; um número mostra o contador (some quando a aba está aberta). */
+  badge: boolean | number;
   renderIcon: (color: string) => ReactNode;
   onPress: () => void;
 }) {
@@ -88,7 +89,7 @@ function TabItem({
       onPressOut={() => (press.value = withTiming(1, { duration: motion.pressMs, easing: easeOut }))}
       accessibilityRole="tab"
       accessibilityState={{ selected: focused }}
-      accessibilityLabel={badge ? `${label}, novas mensagens` : label}
+      accessibilityLabel={typeof badge === 'number' && badge > 0 ? `${label}, ${badge} ${badge === 1 ? 'mensagem nova' : 'mensagens novas'}` : badge ? `${label}, novas mensagens` : label}
       style={{ flexShrink: 0 }}
     >
       <Animated.View style={[styles.item, container]}>
@@ -102,7 +103,15 @@ function TabItem({
             {label}
           </Animated.Text>
         </Animated.View>
-        {badge ? <Animated.View style={[styles.dot, dot]} /> : null}
+        {typeof badge === 'number' ? (
+          badge > 0 ? (
+            <Animated.View style={[styles.count, dot]}>
+              <Text style={styles.countText}>{badge > 99 ? '99+' : badge}</Text>
+            </Animated.View>
+          ) : null
+        ) : badge ? (
+          <Animated.View style={[styles.dot, dot]} />
+        ) : null}
       </Animated.View>
       {/* medida invisível do rótulo, para saber até onde a pílula abre */}
       <Text style={[styles.label, styles.measure]} numberOfLines={1} onLayout={onMeasure} accessible={false} importantForAccessibility="no-hide-descendants">
@@ -142,7 +151,7 @@ export function GlassTabBar({ state, descriptors, emitter, navigateToTab }: TabB
               key={route.key}
               focused={focused}
               label={label}
-              badge={options.tabBarBadge != null}
+              badge={typeof options.tabBarBadge === 'number' ? options.tabBarBadge : options.tabBarBadge != null}
               renderIcon={(color) => options.tabBarIcon?.({ focused, color, size: ICON })}
               onPress={onPress}
             />
@@ -200,6 +209,21 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
   },
   measure: { position: 'absolute', opacity: 0, left: -9999, top: 0 },
+  count: {
+    position: 'absolute',
+    top: 7,
+    right: 5,
+    minWidth: 19,
+    height: 19,
+    paddingHorizontal: 5,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countText: { color: '#fff', fontFamily: typography.fontFamilySemiBold, fontSize: 10.5, lineHeight: 13, fontVariant: ['tabular-nums'] },
   dot: {
     position: 'absolute',
     top: 12,
