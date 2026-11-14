@@ -432,3 +432,35 @@ export function getMessages(conversationId: string) {
 export function getContact(id: string) {
   return contacts.find((c) => c.id === id);
 }
+
+/** Ficha dos agendamentos do demo (mesmos campos que a API manda para a agenda). */
+export const agendaDetails: Record<string, Record<string, unknown>> = {
+  'a-m1': { provider_name: 'Dr. Ricardo Alves', payment_type: 'private', visit_kind: 'primeira_consulta', client_phone_e164: '+5511981112233', reminder_offsets_minutes: [1440, 120] },
+  'a-m2': { provider_name: 'Dr. Ricardo Alves', payment_type: 'insurance', plan_type_name: 'Unimed', visit_kind: 'retorno', client_phone_e164: '+5511982223344', staff_notes: 'Trazer exames de sangue do mês passado.' },
+  'a-m3': { provider_name: 'Dr. Ricardo Alves', payment_type: 'insurance', plan_type_name: 'Bradesco Saúde', visit_kind: 'retorno', client_phone_e164: '+5511983334455', reminder_offsets_minutes: [1440] },
+  a1: {
+    provider_name: 'Dr. Ricardo Alves',
+    payment_type: 'insurance',
+    plan_type_name: 'SulAmérica',
+    visit_kind: 'retorno',
+    client_phone_e164: '+5511987654321',
+    client_contact_id: 'c1',
+    customer_note: 'Posso chegar uns 10 minutos atrasada, estou vindo do trabalho.',
+    staff_notes: 'Ajustar a dose do anti-inflamatório conforme o retorno.',
+    reminder_offsets_minutes: [1440, 120],
+    series_id: 's-maria',
+    occurrence_index: 3,
+  },
+  a2: {
+    provider_name: 'Ana Ribeiro',
+    visit_kind: 'primeira_consulta',
+    client_phone_e164: '+5511976543210',
+    customer_note: 'Primeira vez, quero entender os planos.',
+    requested_by_contact_name: 'Carla (mãe)',
+    sem_lembrete: true,
+    sem_lembrete_motivo: 'o pedido veio pelo Instagram e o contato não tem WhatsApp',
+  },
+  'a-m4': { provider_name: 'Dr. Ricardo Alves', payment_type: 'private', visit_kind: 'primeira_consulta', is_encaixe: true, encaixe_justification: 'Encaixe pedido pelo Dr. Ricardo: dor aguda.', client_phone_e164: '+5511985556677' },
+  a3: { provider_name: 'Equipe comercial', payment_type: 'private', staff_notes: 'Revisar metas do mês e campanhas de retorno.' },
+};
+

@@ -19,6 +19,7 @@ export type DayEvent = {
 
 const HOURS_COL = 56;
 const CARD_PAD_V = 7;
+const HOUR_ROW_H = 18;
 const TICK_MS = 15_000;
 /** Depois de rolar com o dedo, a agenda espera isso antes de voltar a seguir o relógio. */
 const MANUAL_HOLD_MS = 45_000;
@@ -36,7 +37,18 @@ const TONE = {
  * hora atual, que desce sozinha. Abre já na hora atual e continua acompanhando o relógio
  * enquanto a pessoa não rola; se ela rolar para longe, aparece o botão "Agora".
  */
-export function DayTimeline({ events, bottomInset, header }: { events: DayEvent[]; bottomInset: number; header?: React.ReactNode }) {
+export function DayTimeline({
+  events,
+  bottomInset,
+  header,
+  onPressEvent,
+}: {
+  events: DayEvent[];
+  bottomInset: number;
+  header?: React.ReactNode;
+  /** Toque no cartão: abre a ficha do agendamento. */
+  onPressEvent?: (id: string) => void;
+}) {
   const reduced = useReducedMotion();
   const [now, setNow] = useState(() => nowMinutes());
   const [gridW, setGridW] = useState(0);
@@ -119,7 +131,7 @@ export function DayTimeline({ events, bottomInset, header }: { events: DayEvent[
         <View onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}>{header}</View>
         <View style={[styles.grid, { height: gridH + 16 }]}>
           {Array.from({ length: endHour - startHour + 1 }, (_, i) => (
-            <View key={i} style={[styles.hourRow, { top: yAt(axis, (startHour + i) * 60) }]} pointerEvents="none">
+            <View key={i} style={[styles.hourRow, { top: yAt(axis, (startHour + i) * 60) - HOUR_ROW_H / 2 }]} pointerEvents="none">
               <Text style={[styles.hourLabel, Math.abs(startHour * 60 + i * 60 - now) < 14 && { opacity: 0 }]}>{clockLabel((startHour + i) * 60)}</Text>
               <View style={styles.hourLine} />
             </View>
@@ -135,6 +147,8 @@ export function DayTimeline({ events, bottomInset, header }: { events: DayEvent[
                   return (
                     <PressableScale
                       key={ev.id}
+                      onPress={() => onPressEvent?.(ev.id)}
+                      accessibilityHint="Abre os detalhes do agendamento"
                       accessibilityRole="button"
                       accessibilityLabel={`${clockLabel(ev.startMin)} a ${clockLabel(ev.endMin)}, ${ev.title}, ${ev.person}, ${ev.statusLabel}${rel ? `, ${rel}` : ''}`}
                       style={[
@@ -196,10 +210,10 @@ export function DayTimeline({ events, bottomInset, header }: { events: DayEvent[
 
 const styles = StyleSheet.create({
   grid: { marginTop: 22, marginHorizontal: 16 },
-  hourRow: { position: 'absolute', left: 0, right: 0, height: 1, flexDirection: 'row', alignItems: 'center' },
+  // A linha tem a altura do texto: com 1 px o iPhone cortava os rótulos das horas (sumiam).
+  hourRow: { position: 'absolute', left: 0, right: 0, height: HOUR_ROW_H, flexDirection: 'row', alignItems: 'center' },
   hourLabel: {
     width: HOURS_COL,
-    marginTop: -1,
     fontFamily: typography.fontFamilyMedium,
     fontSize: 11.5,
     color: colors.textMuted,
