@@ -845,7 +845,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthState>(() => {
     function applyClientResult(result: ClientLoginResult): 'blocked' | 'ok' {
-      if ('status' in result && result.status === 'no_portal_access') {
+      // Só checar `'status' in result` já discrimina a union — o outro
+      // membro (ClientTokenBundle) não tem esse campo. Checar também o
+      // valor (`result.status === 'no_portal_access'`) quebra a narrowing
+      // do TypeScript e `result.user` abaixo não compila.
+      if ('status' in result) {
         return 'blocked';
       }
       setUser(result.user);
