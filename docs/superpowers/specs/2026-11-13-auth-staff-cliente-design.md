@@ -75,6 +75,10 @@ booting
 
 `app/index.tsx` passa a ser o único ponto de decisão: lê o `role` salvo no device + o estado de auth e redireciona pro passo certo (hoje só olha `needsMfa`/`isAuthenticated`).
 
+**Instalações existentes (migração):** quem já tem o app instalado tem token salvo mas nunca teve `role` salvo (campo é novo). Regra: se existe token válido e `role` está vazio, assume `staff` (é o único papel que existia antes) em vez de cair em `role_unselected` — evita deslogar usuários existentes.
+
+`client_blocked_no_portal` não é um estado persistido no `AuthContext` — é só o resultado de uma chamada (`{status:'no_portal_access'}`) tratado como erro local na tela `client-login.tsx`/`client-otp.tsx`, igual já acontece hoje com erro de credencial inválida. Não precisa de teste de resolver de rota para ele.
+
 **`client-login.tsx`:** campo único (telefone ou email, detectado pelo formato) + toggle "senha" / "receber código".
 - Senha → campo de senha normal, botão Entrar.
 - Código → botão "Enviar código" leva pro `client-otp.tsx` (campo de 6 dígitos + "reenviar" com cooldown de 30–60s, visual análogo ao `mfa.tsx` atual).
@@ -162,3 +166,4 @@ Estas decisões estão fora do controle deste repositório (mobile-only) — sã
 - Os endpoints `/api/auth/client/*` da seção 5.2 não existem ainda.
 - O backend precisa filtrar memberships do cliente por "portal habilitado no plano do tenant" (equivalente ao gate que já existe pra Agenda/Scheduling).
 - O mecanismo de troca de empresa via reemissão de token (em vez de header por request) precisa ser aceito por quem mantém a API.
+- `POST /api/auth/refresh` precisa preservar o estado "sem tenant ativo" (caso 2+ vínculos) ao renovar o token — o refresh não pode forçar um tenant nem exigir um.
