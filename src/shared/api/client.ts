@@ -53,18 +53,26 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+const AUTH_ROUTE_PATTERNS = [
+  '/api/auth/login',
+  '/api/auth/refresh',
+  '/api/auth/logout',
+  '/api/auth/mfa/',
+  '/api/auth/client/login',
+  '/api/auth/client/otp/',
+];
+
+export function isAuthRoute(url: string): boolean {
+  return AUTH_ROUTE_PATTERNS.some((pattern) => url.includes(pattern));
+}
+
 api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
     const original = error.config as RetriableConfig | undefined;
     const url = String(original?.url ?? '');
-    const isAuthRoute =
-      url.includes('/api/auth/login') ||
-      url.includes('/api/auth/refresh') ||
-      url.includes('/api/auth/logout') ||
-      url.includes('/api/auth/mfa/');
 
-    if (error.response?.status === 401 && original && !original._retry && !isAuthRoute) {
+    if (error.response?.status === 401 && original && !original._retry && !isAuthRoute(url)) {
       original._retry = true;
       try {
         const access = await refreshAccessToken();
