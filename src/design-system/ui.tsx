@@ -621,6 +621,55 @@ export function StatTile({
   );
 }
 
+export type ActionItem = {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+  tone?: 'primary' | 'neutral' | 'danger';
+  /** Estado ligado (ex.: pausado): pinta cheio. */
+  active?: boolean;
+  disabled?: boolean;
+  accessibilityLabel?: string;
+};
+
+const ACTION_TONE = {
+  primary: { bg: colors.primaryWash, fg: colors.primary, activeBg: colors.primary },
+  neutral: { bg: '#eef1f6', fg: colors.text, activeBg: colors.text },
+  danger: { bg: colors.dangerSoft, fg: colors.dangerText, activeBg: colors.danger },
+} as const;
+
+/**
+ * Fileira de ações de mesmo peso que divide a largura toda em partes iguais.
+ * Cada botão vive numa célula `flex: 1` própria, então não depende do estilo do botão para crescer.
+ */
+export function ActionRow({ items, style }: { items: ActionItem[]; style?: StyleProp<ViewStyle> }) {
+  return (
+    <View style={[styles.actionRow, style]}>
+      {items.map((it) => {
+        const t = ACTION_TONE[it.tone ?? 'neutral'];
+        const fg = it.active ? '#fff' : t.fg;
+        return (
+          <View key={it.label} style={styles.actionCell}>
+            <PressableScale
+              onPress={it.onPress}
+              disabled={it.disabled}
+              accessibilityRole="button"
+              accessibilityLabel={it.accessibilityLabel ?? it.label}
+              accessibilityState={{ disabled: !!it.disabled, selected: !!it.active }}
+              style={[styles.actionBtn, { backgroundColor: it.active ? t.activeBg : t.bg }, it.disabled && { opacity: 0.45 }]}
+            >
+              <Ionicons name={it.icon} size={18} color={fg} />
+              <Text style={[styles.actionText, { color: fg }]} numberOfLines={1}>
+                {it.label}
+              </Text>
+            </PressableScale>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 export type StatItem = { value: string | number; label: string; accent?: boolean };
 
 /** Fileira de números com legenda (treinos, séries, carga…). */
@@ -982,6 +1031,10 @@ const styles = StyleSheet.create({
   muted: { ...text.caption, color: colors.textMuted },
   num: { color: colors.text },
   statStrip: { flexDirection: 'row', gap: 8 },
+  actionRow: { flexDirection: 'row', gap: 8, alignSelf: 'stretch' },
+  actionCell: { flex: 1, minWidth: 0 },
+  actionBtn: { height: 52, borderRadius: radii.control, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 8 },
+  actionText: { ...text.calloutStrong },
   statCell: { flex: 1, paddingVertical: 12, paddingHorizontal: 12, borderRadius: radii.lg - 2, backgroundColor: 'rgba(255,255,255,0.88)', ...shadows.card },
   label: { ...text.captionStrong, color: colors.textMuted },
   sectionHeader: {

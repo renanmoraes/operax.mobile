@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import Svg, { Circle, Polyline } from 'react-native-svg';
-import { IconButton, Muted, Num, PressableScale, ProgressRing, Screen } from '@/src/design-system/ui';
+import { ActionRow, IconButton, Muted, Num, PressableScale, ProgressRing, Screen } from '@/src/design-system/ui';
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { flattenWorkout } from '@/src/features/fitness/flatten';
@@ -262,20 +262,27 @@ export default function WorkoutSessionScreen() {
         <PressableScale onPress={primary.onPress} accessibilityRole="button" accessibilityLabel={primary.label} style={styles.primary}>
           <Text style={styles.primaryText} numberOfLines={1}>{primary.label}</Text>
         </PressableScale>
-        <View style={styles.controls}>
-          <PressableScale onPress={() => setPaused((p) => !p)} accessibilityRole="button" accessibilityLabel={paused ? 'Continuar treino' : 'Pausar treino'} style={styles.control}>
-            <Ionicons name={paused ? 'play' : 'pause'} size={18} color={colors.text} />
-            <Text style={styles.controlText}>{paused ? 'Continuar' : 'Pausar'}</Text>
-          </PressableScale>
-          <PressableScale onPress={() => !isLast && goTo(idx + 1)} accessibilityRole="button" accessibilityLabel="Pular para o próximo exercício" accessibilityState={{ disabled: isLast }} style={[styles.control, isLast && { opacity: 0.45 }]}>
-            <Ionicons name="play-skip-forward-outline" size={18} color={colors.text} />
-            <Text style={styles.controlText}>Pular</Text>
-          </PressableScale>
-          <PressableScale onPress={finish} accessibilityRole="button" accessibilityLabel="Encerrar treino" style={[styles.control, { backgroundColor: colors.dangerSoft }]}>
-            <Ionicons name="flag-outline" size={18} color={colors.dangerText} />
-            <Text style={[styles.controlText, { color: colors.dangerText }]}>Encerrar</Text>
-          </PressableScale>
-        </View>
+        <ActionRow
+          style={{ marginTop: 10 }}
+          items={[
+            {
+              icon: paused ? 'play' : 'pause',
+              label: paused ? 'Continuar' : 'Pausar',
+              accessibilityLabel: paused ? 'Continuar treino' : 'Pausar treino',
+              tone: 'primary',
+              active: paused,
+              onPress: () => setPaused((p) => !p),
+            },
+            {
+              icon: 'play-skip-forward',
+              label: 'Pular',
+              accessibilityLabel: 'Pular para o próximo exercício',
+              disabled: isLast,
+              onPress: () => goTo(idx + 1),
+            },
+            { icon: 'flag', label: 'Encerrar', accessibilityLabel: 'Encerrar treino', tone: 'danger', onPress: finish },
+          ]}
+        />
       </View>
 
       <Toast toast={toast} top={insets.top + 72} />
@@ -322,7 +329,4 @@ const styles = StyleSheet.create({
   footer: { paddingHorizontal: 16, paddingTop: 12, backgroundColor: 'rgba(255,255,255,0.78)', borderTopLeftRadius: 28, borderTopRightRadius: 28, ...shadows.nav },
   primary: { height: 56, borderRadius: 999, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, ...shadows.button },
   primaryText: { color: '#fff', fontFamily: typography.fontFamilyBold, fontSize: 16 },
-  controls: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  control: { flex: 1, height: 52, borderRadius: radii.lg - 2, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', gap: 3 },
-  controlText: { fontFamily: typography.fontFamilySemiBold, fontSize: 12, color: colors.text },
 });
