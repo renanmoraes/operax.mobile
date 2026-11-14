@@ -32,22 +32,39 @@ export function mapApiConversation(c: ApiConversation, currentUserId?: string): 
   };
 }
 
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+/** Id da mídia no servidor a partir de `media_url` (`/api/media/:id/...` ou só o id); link externo não tem id. */
+export function mediaIdFrom(m: Pick<ApiMessage, 'media_id' | 'media_url'>): string | undefined {
+  if (m.media_id) return m.media_id;
+  const url = m.media_url ?? '';
+  if (!url || /^https?:\/\//i.test(url)) return undefined;
+  return url.match(UUID)?.[0];
+}
+
+const STATUS: Record<string, Message['status']> = { accepted: 'sent', sent: 'sent', delivered: 'delivered', read: 'read' };
+
 export function mapApiMessage(m: ApiMessage, conversationId: string): Message {
   const inbound = m.direction === 'inbound' || m.direction === 'in';
-  const type = (m.type as Message['type']) || 'text';
+  const rawType = (m.message_type || m.type || 'text').toLowerCase();
+  const type = (rawType === 'sticker' ? 'image' : rawType) as Message['type'];
+  const text = m.body_text ?? m.body ?? null;
+  const caption = m.caption ?? (typeof m.payload_json?.caption === 'string' ? m.payload_json.caption : null);
   const pix = (m.message_type === 'pix' || m.type === 'pix') && m.payload_json?.pix ? (m.payload_json.pix as Message['pix']) : undefined;
   if (pix) {
-    return { id: m.id, conversationId, direction: inbound ? 'in' : 'out', type: 'pix', body: m.body || 'Chave Pix', at: formatTime(m.created_at), status: (m.status as Message['status']) || undefined, pix };
+    return { id: m.id, conversationId, direction: inbound ? 'in' : 'out', type: 'pix', body: text || 'Chave Pix', at: formatTime(m.created_at), status: STATUS[m.status ?? ''], pix };
   }
   return {
     id: m.id,
     conversationId,
     direction: inbound ? 'in' : 'out',
     type: ['image', 'audio', 'video', 'document'].includes(type) ? type : 'text',
-    body: m.body || m.caption || (m.media_id ? `[${type}]` : ''),
+    // Template sem texto salvo mostra o nome; botão/lista mostram o rótulo que veio em body_text.
+    body: text || caption || (m.template_name ? `Modelo: ${m.template_name}` : m.media_url || m.media_id ? `[${type}]` : ''),
     at: formatTime(m.created_at),
-    status: (m.status as Message['status']) || undefined,
-    caption: type !== 'text' && m.caption ? m.caption : undefined,
-    mediaId: m.media_id ?? undefined,
+    status: STATUS[m.status ?? ''],
+    caption: type !== 'text' && caption ? caption : undefined,
+    fileName: typeof m.payload_json?.filename === 'string' ? m.payload_json.filename : undefined,
+    mediaId: mediaIdFrom(m),
   };
 }

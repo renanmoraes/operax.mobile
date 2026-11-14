@@ -32,7 +32,12 @@ export type ApiMessage = {
   created_at?: string;
   media_id?: string | null;
   message_type?: string;
-  payload_json?: { pix?: { key: string; key_type: string; holder_name: string } } | null;
+  /** Campos atuais da API (`conversation_messages`); `body`/`type` ficam para respostas antigas. */
+  body_text?: string | null;
+  media_url?: string | null;
+  media_mime?: string | null;
+  template_name?: string | null;
+  payload_json?: ({ pix?: { key: string; key_type: string; holder_name: string }; caption?: string; filename?: string } & Record<string, unknown>) | null;
 };
 
 export async function listConversations(params?: Record<string, unknown>) {
@@ -50,9 +55,13 @@ export async function getConversation(id: string) {
   return data as ApiConversation;
 }
 
+/**
+ * Linha do tempo do contato (mesma rota do Operax web): as mensagens mais recentes, em ordem.
+ * `/messages` só pagina para trás a partir de `before_id` e, sem ele, volta vazio.
+ */
 export async function getConversationMessages(id: string, limit = 50) {
-  const { data } = await api.get(`/api/conversations/${id}/messages`, {
-    params: { limit },
+  const { data } = await api.get(`/api/conversations/${id}/timeline`, {
+    params: { limit: Math.min(limit, 100) },
   });
   // API pode devolver { messages } ou array
   if (Array.isArray(data)) return { messages: data as ApiMessage[], hasMore: false };

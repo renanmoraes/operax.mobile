@@ -86,7 +86,8 @@ export function TextWithMeta({
     <View>
       <Text style={style}>
         {children}
-        <Text style={styles.metaSpacer} accessible={false}>{`\u2003${at}${mine ? '\u2003\u2002' : ''}`}</Text>
+        {/* Espaço para a hora flutuante. Android desenha texto aninhado "transparent": usa a cor do balão. */}
+        <Text style={[styles.metaSpacer, { color: tone === 'onBubbleMine' ? colors.primary : colors.cardBg }]} accessible={false}>{`\u2003${at}${mine ? '\u2003\u2002' : ''}`}</Text>
       </Text>
       <View style={styles.metaFloat}>
         <MessageMeta at={at} mine={mine} status={status} tone={tone} />

@@ -8,6 +8,7 @@ import { markClientOnboardingSeen, openSystemSettings, PermissionKey, usePermiss
 import type { PermissionState } from '@/src/features/permissions/permissionState';
 import { useProviders } from '@/src/features/fitness/connections';
 import { providerDisplayName } from '@/src/features/fitness/brands';
+import { useClientCapabilities } from '@/src/features/client/useClientData';
 
 function StatusAction({
   state,
@@ -58,7 +59,11 @@ export default function ClientPermissionsScreen() {
   const { mode } = useAuth();
   const keys: PermissionKey[] = ['notifications', 'camera', 'photos'];
   const { states, request } = usePermissions(keys, mode === 'live');
+  const caps = useClientCapabilities();
   const { data: providers } = useProviders();
+  // Relógio só com treino liberado; câmera serve ao treino (fotos de evolução) e ao chat com anexos (só no demo por enquanto).
+  const showWatch = caps.training;
+  const showMedia = caps.training || (mode !== 'live' && caps.chat);
   const connected = providers?.filter((p) => p.connected).map((p) => providerDisplayName(p.id, p.label)) ?? [];
 
   const finish = async () => {
@@ -90,9 +95,10 @@ export default function ClientPermissionsScreen() {
             index={2}
             icon="notifications-outline"
             title="Notificações"
-            body="Lembrete antes dos seus horários, resposta da equipe no chat e aviso quando o personal mudar seu treino."
+            body={caps.training ? 'Lembrete antes dos seus horários, resposta da equipe no chat e aviso quando o personal mudar seu treino.' : 'Lembrete antes dos seus horários e resposta da equipe no chat.'}
             action={<StatusAction state={states.notifications} grantLabel="Ativar" onRequest={() => void request('notifications')} />}
           />
+          {showWatch ? (
           <PermissionCard
             index={3}
             icon="watch-outline"
@@ -106,6 +112,8 @@ export default function ClientPermissionsScreen() {
               )
             }
           />
+          ) : null}
+          {showMedia ? (
           <PermissionCard
             index={4}
             icon="camera-outline"
@@ -122,6 +130,7 @@ export default function ClientPermissionsScreen() {
               />
             }
           />
+          ) : null}
         </View>
 
         <View style={{ flex: 1, minHeight: 24 }} />

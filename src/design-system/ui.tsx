@@ -1,6 +1,7 @@
 import { ComponentProps, ReactNode, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   PressableProps,
   StyleProp,
@@ -1082,7 +1083,7 @@ const styles = StyleSheet.create({
   actionCell: { flex: 1, minWidth: 0 },
   actionBtn: { height: 52, borderRadius: radii.control, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 8 },
   actionText: { ...text.calloutStrong },
-  statCell: { flex: 1, paddingVertical: 12, paddingHorizontal: 12, borderRadius: radii.lg - 2, backgroundColor: 'rgba(255,255,255,0.88)', ...shadows.card },
+  statCell: { flex: 1, paddingVertical: 12, paddingHorizontal: 12, borderRadius: radii.lg - 2, backgroundColor: Platform.OS === 'android' ? '#fff' : 'rgba(255,255,255,0.88)', ...shadows.card },
   label: { ...text.captionStrong, color: colors.textMuted },
   sectionHeader: {
     flexDirection: 'row',
@@ -1195,7 +1196,8 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 14,
     borderRadius: radii.lg,
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    // Android: fundo translúcido + elevation deixa a sombra vazar por dentro do cartão (manchas claras).
+    backgroundColor: Platform.OS === 'android' ? '#fff' : 'rgba(255,255,255,0.85)',
     ...shadows.card,
   },
   empty: {

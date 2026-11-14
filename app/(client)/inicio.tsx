@@ -172,9 +172,10 @@ export default function ClientHomeScreen() {
                 {chat.unread ? <Badge label={String(chat.unread)} tone="solid" /> : null}
               </View>
               <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
-                <Avatar initials={(lastTeam.author_name ?? 'E').split(' ').map((w) => w[0]).slice(0, 2).join('')} size={42} />
+                <Avatar initials={(lastTeam.author_name || chat.tenant_name || 'E').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()} size={42} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.msgAuthor}>{lastTeam.author_name}</Text>
+                  {/* O portal não diz quem da equipe escreveu: mostra a empresa. */}
+                  <Text style={styles.msgAuthor}>{lastTeam.author_name || chat.tenant_name}</Text>
                   <Text style={styles.msgText} numberOfLines={2}>
                     {textMsg?.text}
                   </Text>

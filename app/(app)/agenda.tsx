@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, EmptyState, Screen, ScreenHeader } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { colors, text, typography } from '@/src/design-system/tokens';
+import { LinearGradient } from 'expo-linear-gradient';
 import { DayEvent, DayTimeline } from '@/src/features/agenda/DayTimeline';
 import { toMinutes } from '@/src/features/agenda/timeline';
 import { ApiBooking, BookingAction, listBookings, runBookingAction } from '@/src/shared/api/bookings.api';
@@ -165,6 +166,8 @@ function AgendaScreen() {
           }
         />
       )}
+      {/* A linha do tempo rola por baixo da barra de status: um véu no topo evita horários em cima do relógio. */}
+      <LinearGradient pointerEvents="none" colors={[colors.pageBg, colors.pageBg, 'rgba(244,247,252,0)']} locations={[0, 0.7, 1]} style={[styles.statusVeil, { height: insets.top + 18 }]} />
 
       <BookingDetailSheet
         visible={!!open}
@@ -213,5 +216,6 @@ function toEvent(b: ApiBooking): DayEvent {
 }
 
 const styles = StyleSheet.create({
+  statusVeil: { position: 'absolute', top: 0, left: 0, right: 0 },
   summary: { ...text.caption, color: colors.textMuted, marginHorizontal: 20, marginTop: -4, fontFamily: typography.fontFamilyMedium },
 });

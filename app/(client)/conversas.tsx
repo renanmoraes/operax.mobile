@@ -8,6 +8,7 @@ import { colors, typography } from '@/src/design-system/tokens';
 import { useChats, useCompanies } from '@/src/features/client/useClientData';
 import type { ChatMessage } from '@/src/features/client/types';
 import { formatHour, sameDay, timeAgo } from '@/src/shared/format';
+import { clientDataMode } from '@/src/features/client/dataMode';
 
 function preview(m: ChatMessage): { chip?: string; text: string } {
   const who = m.from === 'me' ? 'Você: ' : '';
@@ -34,7 +35,7 @@ export default function ClientConversationsScreen() {
                 <IconTile icon="shield-checkmark-outline" size={44} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.heroTitle}>Direto com a equipe</Text>
-                  <Muted style={{ marginTop: 3, lineHeight: 19, color: colors.textSoft }}>Fotos, vídeos e documentos vão para a caixa de entrada da empresa. Sem número pessoal.</Muted>
+                  <Muted style={{ marginTop: 3, lineHeight: 19, color: colors.textSoft }}>{clientDataMode() === 'live' ? 'Suas mensagens vão direto para a caixa de entrada da empresa. Sem número pessoal.' : 'Fotos, vídeos e documentos vão para a caixa de entrada da empresa. Sem número pessoal.'}</Muted>
                 </View>
               </View>
             </HeroCard>
