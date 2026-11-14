@@ -694,6 +694,35 @@ export function ScreenHeader({
   );
 }
 
+/** Barra das telas empurradas: voltar, título central e ação opcional. */
+export function TopBar({
+  title,
+  onBack,
+  right,
+  tone = 'light',
+}: {
+  title?: string;
+  onBack?: () => void;
+  right?: ReactNode;
+  tone?: 'light' | 'glass';
+}) {
+  return (
+    <View style={styles.topBar}>
+      <View style={styles.topSide}>
+        {onBack ? <IconButton icon="chevron-back" onPress={onBack} accessibilityLabel="Voltar" tone={tone} /> : null}
+      </View>
+      {title ? (
+        <Text style={styles.topTitle} numberOfLines={1} accessibilityRole="header">
+          {title}
+        </Text>
+      ) : (
+        <View style={{ flex: 1 }} />
+      )}
+      <View style={[styles.topSide, { alignItems: 'flex-end' }]}>{right}</View>
+    </View>
+  );
+}
+
 export function ListRow({
   title,
   subtitle,
@@ -1004,6 +1033,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 10,
     fontFamily: typography.fontFamilySemiBold,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: 20,
+    paddingVertical: spacing.sm,
+    minHeight: 60,
+  },
+  topSide: { width: 52 },
+  topTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontFamily: typography.fontFamilyBold,
+    fontSize: 15,
+    color: colors.text,
   },
   listRow: {
     flexDirection: 'row',
