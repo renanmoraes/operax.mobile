@@ -18,7 +18,9 @@ export default function NotificationPrefsScreen() {
   const [saved, setSaved] = useState<string | null>(null);
 
   useEffect(() => {
-    const remote = user?.notification_prefs as Partial<NotificationPrefsState> | undefined;
+    const remote = (user?.kind === 'staff' ? user.notification_prefs : undefined) as
+      | Partial<NotificationPrefsState>
+      | undefined;
     if (!remote) return;
     setPrefs((prev) => ({
       ...prev,

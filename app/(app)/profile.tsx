@@ -30,7 +30,7 @@ export default function ProfileScreen() {
         <Title>{user?.name || 'Usuário'}</Title>
         <Muted>{user?.email}</Muted>
         <Body style={styles.meta}>
-          {mode === 'live' ? 'Online' : 'Mock'} · {user?.role_code || '—'}
+          {mode === 'live' ? 'Online' : 'Mock'} · {(user?.kind === 'staff' && user.role_code) || '—'}
         </Body>
         <Muted>API {API_URL}</Muted>
       </Card>
