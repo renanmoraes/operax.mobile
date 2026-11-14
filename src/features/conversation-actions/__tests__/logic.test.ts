@@ -7,6 +7,10 @@ describe('ações da conversa', () => {
     expect(pixKeyError('cnpj', '12.345.678/0001-99')).toBeNull();
     expect(pixKeyError('phone', '(11) 98765-4321')).toBeNull();
     expect(pixKeyError('phone', '+55 11 98765-4321')).toBeNull();
+    // DDD 55 (RS) não é confundido com o código do país
+    expect(pixKeyError('phone', '(55) 99999-1234')).toBeNull();
+    expect(formatPixKey('phone', '(55) 99999-1234')).toBe('(55) 99999-1234');
+    expect(formatPixKey('phone', '+55 55 99999-1234')).toBe('(55) 99999-1234');
     expect(pixKeyError('email', 'a@b.co')).toBeNull();
     expect(pixKeyError('email', 'a@b')).not.toBeNull();
     expect(pixKeyError('random', '123e4567-e89b-12d3-a456-426614174000')).toBeNull();

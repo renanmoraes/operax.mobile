@@ -2,6 +2,13 @@ import type { PixKeyType, SavedPixKey, SchedProvider, SchedService, SchedSlot } 
 
 const digits = (s: string) => s.replace(/\D/g, '');
 
+/** Celular só com DDD + número: tira o 55 do país apenas quando ele veio junto (+55 ou 12–13 dígitos). */
+function domesticPhone(key: string): string {
+  const d = digits(key);
+  const hasCountry = key.trim().startsWith('+') || d.length === 12 || d.length === 13;
+  return hasCountry && d.startsWith('55') ? d.slice(2) : d;
+}
+
 /** Mesmas regras básicas do formulário do Operax web; `null` quando está certo. */
 export function pixKeyError(type: PixKeyType, key: string): string | null {
   const k = key.trim();
@@ -12,7 +19,7 @@ export function pixKeyError(type: PixKeyType, key: string): string | null {
     case 'cnpj':
       return digits(k).length === 14 ? null : 'CNPJ tem 14 números';
     case 'phone': {
-      const n = digits(k).replace(/^55/, '');
+      const n = domesticPhone(k);
       return n.length === 10 || n.length === 11 ? null : 'Celular com DDD';
     }
     case 'email':
@@ -30,7 +37,7 @@ export function formatPixKey(type: PixKeyType, key: string): string {
   if (type === 'cpf' && d.length === 11) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
   if (type === 'cnpj' && d.length === 14) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
   if (type === 'phone') {
-    const n = d.replace(/^55/, '');
+    const n = domesticPhone(key);
     if (n.length === 11) return `(${n.slice(0, 2)}) ${n.slice(2, 7)}-${n.slice(7)}`;
     if (n.length === 10) return `(${n.slice(0, 2)}) ${n.slice(2, 6)}-${n.slice(6)}`;
   }

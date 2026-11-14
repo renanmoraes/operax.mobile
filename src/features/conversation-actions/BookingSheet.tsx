@@ -77,24 +77,25 @@ export function BookingSheet({
   });
   const slots = upcomingSlots(slotsQ.data ?? []);
 
+  // O que foi enviado vira um retrato: mudar a seleção durante o envio não afeta a confirmação.
+  type Submitted = { slot: SchedSlot; providerId: string; serviceId: string; providerName: string; serviceName: string; note: string };
   const create = useMutation({
-    mutationFn: async () => {
-      if (!slot || !providerId || !serviceId) throw new Error('incompleto');
-      if (!live) return { id: 'demo', starts_at: slot.starts_at };
+    mutationFn: async (v: Submitted) => {
+      if (!live) return { id: 'demo', starts_at: v.slot.starts_at };
       return createQuickBooking({
-        provider_id: providerId,
-        service_id: serviceId,
+        provider_id: v.providerId,
+        service_id: v.serviceId,
         contact_id: contactId,
         client_name: contactName,
-        starts_at: slot.starts_at,
-        ends_at: slot.ends_at,
-        customer_note: note.trim() || undefined,
+        starts_at: v.slot.starts_at,
+        ends_at: v.slot.ends_at,
+        customer_note: v.note.trim() || undefined,
       });
     },
-    onSuccess: () => {
-      const d = new Date(slot!.starts_at);
-      const when = `${d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', '')} às ${hhmm(slot!.starts_at)}`;
-      onBooked(`${service?.name ?? 'Horário'} com ${provider?.name ?? 'a equipe'}, ${when}`);
+    onSuccess: (_res, v) => {
+      const d = new Date(v.slot.starts_at);
+      const when = `${d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', '')} às ${hhmm(v.slot.starts_at)}`;
+      onBooked(`${v.serviceName} com ${v.providerName}, ${when}`);
       setSlot(null);
       setNote('');
     },
@@ -103,6 +104,11 @@ export function BookingSheet({
       onError(Array.isArray(msg) ? msg[0] : msg || 'Não foi possível agendar. Tente outro horário.');
     },
   });
+
+  const submit = () => {
+    if (!slot || !providerId || !serviceId || create.isPending) return;
+    create.mutate({ slot, providerId, serviceId, providerName: provider?.name ?? 'a equipe', serviceName: service?.name ?? 'Horário', note });
+  };
 
   const loadingBase = live && (providersQ.isLoading || servicesQ.isLoading);
 
@@ -181,7 +187,7 @@ export function BookingSheet({
         label={slot ? `Agendar ${dayLabel(day).top.toLowerCase()} às ${hhmm(slot.starts_at)}` : 'Escolha um horário'}
         disabled={!slot}
         loading={create.isPending}
-        onPress={() => create.mutate()}
+        onPress={submit}
       />
     </BottomSheet>
   );
