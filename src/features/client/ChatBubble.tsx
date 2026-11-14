@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
 import { formatHour } from '@/src/shared/format';
 import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, MessageMeta, TextWithMeta } from '@/src/features/chat/MessageParts';
+import { AudioBubble } from '@/src/features/chat/AudioBubble';
 import type { ChatAttachment, ChatMessage } from './types';
 
 function toMedia(a: ChatAttachment): ChatMediaData | null {
@@ -34,6 +35,15 @@ export function ChatBubble({ m }: { m: ChatMessage }) {
             <MessageMeta at={at} mine={mine} status={m.status} tone="onBubbleTheirs" />
           </View>
         </View>
+      ) : m.attachment?.kind === 'audio' ? (
+        <AudioBubble
+          id={m.id}
+          source={m.attachment.asset ?? (m.attachment.uri || null)}
+          durationS={m.attachment.duration_s}
+          at={at}
+          mine={mine}
+          status={m.status}
+        />
       ) : media ? (
         <MediaBubble media={media} caption={m.text} at={at} mine={mine} status={m.status} onOpen={uri ? () => void Linking.openURL(uri) : undefined} />
       ) : (

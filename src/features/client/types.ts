@@ -28,7 +28,7 @@ export type ChatAttachment =
   | { kind: 'image'; uri: string; width?: number; height?: number }
   | { kind: 'video'; uri: string; duration_s: number; title?: string }
   | { kind: 'document'; uri: string; name: string; size_bytes: number; pages?: number }
-  | { kind: 'audio'; uri: string; duration_s: number };
+  | { kind: 'audio'; uri: string; duration_s: number; /** Arquivo embutido no app (só no demo). */ asset?: number };
 
 export type ChatMessage = {
   id: string;
@@ -60,7 +60,7 @@ export type ClientCompany = {
 };
 
 export type OutgoingAttachment = {
-  kind: 'image' | 'video' | 'document';
+  kind: 'image' | 'video' | 'document' | 'audio';
   uri: string;
   name?: string;
   size_bytes?: number;

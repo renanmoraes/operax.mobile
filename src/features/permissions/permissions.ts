@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Linking, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from 'expo-audio';
 import { registerForPushNotificationsAsync } from '@/src/features/notifications/push';
 import { registerDevicePushToken } from '@/src/shared/api/auth.api';
 import { getItem, setItem } from '@/src/shared/storage';
 import { PermissionState, SystemPermissionResponse, toPermissionState } from './permissionState';
 
-export type PermissionKey = 'notifications' | 'camera' | 'photos' | 'health';
+export type PermissionKey = 'notifications' | 'camera' | 'photos' | 'microphone' | 'health';
 
 async function readNotifications(): Promise<PermissionState> {
   if (Platform.OS === 'web') return 'unavailable';
@@ -28,6 +29,12 @@ export async function getPermission(key: PermissionKey): Promise<PermissionState
     case 'photos':
       if (Platform.OS === 'web') return 'granted';
       return toPermissionState((await ImagePicker.getMediaLibraryPermissionsAsync()) as SystemPermissionResponse);
+    case 'microphone':
+      try {
+        return toPermissionState((await getRecordingPermissionsAsync()) as SystemPermissionResponse);
+      } catch {
+        return 'unavailable';
+      }
     case 'health':
       // Apple Saúde / Health Connect dependem de módulo nativo e de uma rota no backend que ainda não existe.
       return 'unavailable';
@@ -54,6 +61,12 @@ export async function requestPermission(key: PermissionKey, opts: { live: boolea
     case 'photos':
       if (Platform.OS === 'web') return 'granted';
       return toPermissionState((await ImagePicker.requestMediaLibraryPermissionsAsync()) as SystemPermissionResponse);
+    case 'microphone':
+      try {
+        return toPermissionState((await requestRecordingPermissionsAsync()) as SystemPermissionResponse);
+      } catch {
+        return 'unavailable';
+      }
     case 'health':
       return 'unavailable';
   }

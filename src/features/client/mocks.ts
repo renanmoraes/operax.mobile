@@ -1,5 +1,8 @@
 import type { ClientBooking, ClientChat, ClientCompany } from './types';
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const DEMO_VOICE: number = require('@/assets/audio/demo-recado.wav');
+
 /** Dados de exemplo até existir o login mobile de cliente (/auth/client/*). Datas relativas a hoje. */
 
 function at(dayOffset: number, hh: number, mm = 0) {
@@ -46,6 +49,7 @@ export function buildMockChats(): ClientChat[] {
         { id: 'm3', from: 'me', text: 'Meu joelho fica assim no final. Tá certo?', at: minutesFromNow(-50), attachment: { kind: 'image', uri: '' }, status: 'read' },
         { id: 'm4', from: 'team', author_name: 'Carlos Mendes', text: 'Tá ótimo! Só não deixa o joelho passar da ponta do pé. Segue sua avaliação de outubro:', at: minutesFromNow(-48), attachment: null },
         { id: 'm5', from: 'team', author_name: 'Carlos Mendes', text: '', at: minutesFromNow(-48), attachment: { kind: 'document', uri: '', name: 'Avaliação física — outubro.pdf', size_bytes: 1_250_000, pages: 4 } },
+        { id: 'm6', from: 'team', author_name: 'Carlos Mendes', text: '', at: minutesFromNow(-46), attachment: { kind: 'audio', uri: '', duration_s: 4, asset: DEMO_VOICE } },
       ],
     },
     {

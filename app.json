@@ -67,7 +67,13 @@
       ],
       "expo-secure-store",
       "expo-image-picker",
-      "expo-document-picker"
+      "expo-document-picker",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "O Operax usa o microfone para você gravar e mandar áudios no chat com a equipe."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Platform,
   FlatList,
   Pressable,
   StyleSheet,
@@ -12,12 +13,14 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar, Backdrop, Button, IconButton, IconTile, Muted } from '@/src/design-system/ui';
-import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, MessageMeta, TextWithMeta } from '@/src/features/chat/MessageParts';
+import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, TextWithMeta } from '@/src/features/chat/MessageParts';
+import { AudioBubble } from '@/src/features/chat/AudioBubble';
+import { MicButton, RecordingBar, useVoiceRecorder } from '@/src/features/chat/VoiceRecorder';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
-import { getConversation as getMockConv, getMessages as getMockMessages } from '@/src/mocks/data';
+import { getConversation as getMockConv, getMessages as getMockMessages, type Message } from '@/src/mocks/data';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import {
   claimConversation,
@@ -42,6 +45,9 @@ export default function ConversationScreen() {
   const { mode, user } = useAuth();
   const qc = useQueryClient();
   const [draft, setDraft] = useState('');
+  const [localMsgs, setLocalMsgs] = useState<Message[]>([]);
+  const listRef = useRef<FlatList<Message>>(null);
+  const voice = useVoiceRecorder();
   const [sheet, setSheet] = useState<Sheet>(null);
   const { toast, show } = useToast(1800);
 
@@ -80,7 +86,7 @@ export default function ConversationScreen() {
   }, [mode, id, liveQuery]);
 
   const conversation = mode === 'live' ? liveQuery.data?.conversation : mockConv;
-  const thread = mode === 'live' ? liveQuery.data?.messages ?? [] : mockThread;
+  const thread = mode === 'live' ? liveQuery.data?.messages ?? [] : [...mockThread, ...localMsgs];
   const [ownership, setOwnership] = useState(conversation?.ownership ?? 'queue');
 
   useEffect(() => {
@@ -171,6 +177,44 @@ export default function ConversationScreen() {
 
   const canCompose = conversation.within24h && ownership === 'mine';
 
+  const appendLocal = (m: Omit<Message, 'id' | 'conversationId' | 'direction' | 'at' | 'status'>) =>
+    setLocalMsgs((prev) => [
+      ...prev,
+      {
+        id: `local-${Date.now()}`,
+        conversationId: id,
+        direction: 'out',
+        at: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        status: 'sent',
+        ...m,
+      },
+    ]);
+
+  const startVoice = async () => {
+    if (!canCompose) return;
+    const result = await voice.start();
+    if (result !== 'granted') show('Libere o microfone nos ajustes do celular para gravar áudio.', 'error', 'mic-off-outline');
+  };
+
+  const sendVoice = async () => {
+    const audio = await voice.stop();
+    if (!audio) return;
+    if (mode === 'mock') {
+      appendLocal({ type: 'audio', body: 'Áudio', audioUri: audio.uri, durationS: audio.durationS });
+      return;
+    }
+    try {
+      await sendMediaMessage(id, {
+        uri: audio.uri,
+        name: Platform.OS === 'web' ? 'audio.webm' : 'audio.m4a',
+        type: Platform.OS === 'web' ? 'audio/webm' : 'audio/mp4',
+      });
+      await liveQuery.refetch();
+    } catch {
+      showToast('Falha no envio do áudio');
+    }
+  };
+
   return (
     <View style={styles.root}>
       <Backdrop variant="chat" />
@@ -219,6 +263,8 @@ export default function ConversationScreen() {
       ) : null}
 
       <FlatList
+        ref={listRef}
+        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         data={thread}
         keyExtractor={(m) => m.id}
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, gap: 8, paddingBottom: 16 }}
@@ -233,76 +279,81 @@ export default function ConversationScreen() {
               </View>
             );
           }
+          if (item.type === 'audio') {
+            return (
+              <View style={{ alignSelf: out ? 'flex-end' : 'flex-start' }}>
+                <AudioBubble id={item.id} source={item.audioUri ?? null} durationS={item.durationS} at={item.at} mine={out} status={item.status} />
+              </View>
+            );
+          }
           return (
             <View style={[styles.bubble, out ? styles.bubbleOut : styles.bubbleIn]}>
-              {item.type === 'audio' ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="mic" size={16} color={out ? '#fff' : colors.primary} />
-                  <Text style={[styles.bubbleText, out && { color: '#fff' }]}>Áudio</Text>
-                </View>
-              ) : (
-                <TextWithMeta at={item.at} mine={out} status={item.status} tone={out ? 'onBubbleMine' : 'onBubbleTheirs'} style={[styles.bubbleText, out && { color: '#fff' }]}>
-                  {item.body}
-                </TextWithMeta>
-              )}
-              {item.type === 'audio' ? (
-                <View style={{ alignSelf: 'flex-end', marginTop: 2 }}>
-                  <MessageMeta at={item.at} mine={out} status={item.status} tone={out ? 'onBubbleMine' : 'onBubbleTheirs'} />
-                </View>
-              ) : null}
+              <TextWithMeta at={item.at} mine={out} status={item.status} tone={out ? 'onBubbleMine' : 'onBubbleTheirs'} style={[styles.bubbleText, out && { color: '#fff' }]}>
+                {item.body}
+              </TextWithMeta>
             </View>
           );
         }}
       />
 
-      <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <Pressable
-          onPress={() => setSheet('attach')}
-          style={styles.attachBtn}
-          accessibilityRole="button"
-          accessibilityLabel="Anexar mídia"
-        >
-          <Ionicons name="add" size={24} color={colors.primary} />
-        </Pressable>
-        <Pressable
-          onPress={() => router.push({ pathname: '/quick-replies', params: { conversationId: id } })}
-          style={styles.qrBtn}
-          accessibilityRole="button"
-          accessibilityLabel="Respostas rápidas"
-        >
-          <Ionicons name="flash-outline" size={20} color={colors.primary} />
-        </Pressable>
-        <TextInput
-          style={styles.input}
-          value={draft}
-          onChangeText={setDraft}
-          placeholder={
-            !conversation.within24h
-              ? 'Use um template'
-              : ownership !== 'mine'
-                ? 'Assuma para responder'
-                : 'Mensagem…'
-          }
-          editable={canCompose}
-          placeholderTextColor={colors.textMuted}
-        />
-        <Pressable
-          onPress={() => {
-            if (!draft.trim() || !canCompose) return;
-            if (mode === 'mock') {
-              showToast('Mensagem enviada');
-              setDraft('');
-              return;
+      {voice.recording ? (
+        <View style={[styles.composer, { paddingHorizontal: 0, paddingTop: 0 }]}>
+          <RecordingBar elapsedS={voice.elapsedS} levels={voice.levels} onCancel={() => void voice.cancel()} onSend={() => void sendVoice()} bottomInset={Math.max(insets.bottom, 12)} />
+        </View>
+      ) : (
+        <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <Pressable
+            onPress={() => setSheet('attach')}
+            style={styles.attachBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Anexar mídia"
+          >
+            <Ionicons name="add" size={24} color={colors.primary} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push({ pathname: '/quick-replies', params: { conversationId: id } })}
+            style={styles.qrBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Respostas rápidas"
+          >
+            <Ionicons name="flash-outline" size={20} color={colors.primary} />
+          </Pressable>
+          <TextInput
+            style={styles.input}
+            value={draft}
+            onChangeText={setDraft}
+            placeholder={
+              !conversation.within24h
+                ? 'Use um template'
+                : ownership !== 'mine'
+                  ? 'Assuma para responder'
+                  : 'Mensagem…'
             }
-            sendMut.mutate(draft.trim());
-          }}
-          style={[styles.send, (!canCompose || !draft.trim()) && { opacity: 0.45 }]}
-          accessibilityRole="button"
-          accessibilityLabel="Enviar"
-        >
-          <Ionicons name="send" size={18} color="#fff" />
-        </Pressable>
-      </View>
+            editable={canCompose}
+            placeholderTextColor={colors.textMuted}
+          />
+          {draft.trim() || !canCompose ? (
+            <Pressable
+              onPress={() => {
+                if (!draft.trim() || !canCompose) return;
+                if (mode === 'mock') {
+                  appendLocal({ type: 'text', body: draft.trim() });
+                  setDraft('');
+                  return;
+                }
+                sendMut.mutate(draft.trim());
+              }}
+              style={[styles.send, (!canCompose || !draft.trim()) && { opacity: 0.45 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Enviar"
+            >
+              <Ionicons name="send" size={18} color="#fff" />
+            </Pressable>
+          ) : (
+            <MicButton onPress={() => void startVoice()} />
+          )}
+        </View>
+      )}
 
       <Toast toast={toast} />
 

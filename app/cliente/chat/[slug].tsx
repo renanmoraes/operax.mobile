@@ -9,6 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Body, Button, Card, IconButton, IconName, IconTile, Muted, PressableScale, Screen } from '@/src/design-system/ui';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
+import { MicButton, RecordingBar, useVoiceRecorder } from '@/src/features/chat/VoiceRecorder';
 import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { ChatBubble } from '@/src/features/client/ChatBubble';
 import { useBooking, useChat, useCompanies, useMarkChatRead, useSendChat } from '@/src/features/client/useClientData';
@@ -41,6 +42,7 @@ export default function ClientChatScreen() {
   const [caption, setCaption] = useState('');
   const [permIssue, setPermIssue] = useState<string | null>(null);
   const [withReschedule, setWithReschedule] = useState(!!remarcar);
+  const voice = useVoiceRecorder();
 
   useEffect(() => {
     if (slug) markRead.mutate(slug);
@@ -94,6 +96,17 @@ export default function ClientChatScreen() {
     });
     setText('');
     setWithReschedule(false);
+  }
+
+  async function startVoice() {
+    const result = await voice.start();
+    if (result === 'blocked' || result === 'denied') setPermIssue('Para gravar áudio, libere o microfone nos ajustes do celular.');
+    else if (result === 'unavailable') setPermIssue('Este aparelho não deixou usar o microfone.');
+  }
+
+  async function sendVoice() {
+    const audio = await voice.stop();
+    if (audio) await send.mutateAsync({ text: '', attachment: { kind: 'audio', uri: audio.uri, duration_s: audio.durationS } });
   }
 
   async function sendDraft() {
@@ -159,6 +172,11 @@ export default function ClientChatScreen() {
           </View>
         ) : null}
 
+        {voice.recording ? (
+          <View style={[styles.composer, { paddingHorizontal: 0, paddingTop: 0 }]}>
+            <RecordingBar elapsedS={voice.elapsedS} levels={voice.levels} onCancel={() => void voice.cancel()} onSend={() => void sendVoice()} bottomInset={insets.bottom + 14} />
+          </View>
+        ) : (
         <View style={[styles.composer, { paddingBottom: insets.bottom + 14 }]}>
           <PressableScale onPress={() => setSheet((v) => !v)} accessibilityRole="button" accessibilityLabel="Anexar arquivo" accessibilityState={{ expanded: sheet }} scaleTo={0.92} style={[styles.plus, sheet && { backgroundColor: colors.primary }]}>
             <Ionicons name="add" size={24} color={sheet ? '#fff' : colors.text} style={{ transform: [{ rotate: sheet ? '45deg' : '0deg' }] }} />
@@ -174,8 +192,13 @@ export default function ClientChatScreen() {
               style={styles.inputText}
             />
           </View>
-          <IconButton icon="send" tone="primary" size={48} accessibilityLabel="Enviar" onPress={() => void sendText()} />
+          {text.trim() || withReschedule ? (
+            <IconButton icon="send" tone="primary" size={48} accessibilityLabel="Enviar" onPress={() => void sendText()} />
+          ) : (
+            <MicButton onPress={() => void startVoice()} />
+          )}
         </View>
+        )}
 
         <BottomSheet visible={sheet} onClose={() => setSheet(false)} closeLabel="Fechar anexos" title="Enviar para a equipe">
           <View style={styles.attachRow}>

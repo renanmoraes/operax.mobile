@@ -81,7 +81,9 @@ export async function sendChatMessage(
         ? { kind: 'document', uri: att.uri, name: att.name ?? 'Documento', size_bytes: att.size_bytes ?? 0 }
         : att.kind === 'video'
           ? { kind: 'video', uri: att.uri, duration_s: att.duration_s ?? 0 }
-          : { kind: 'image', uri: att.uri }
+          : att.kind === 'audio'
+            ? { kind: 'audio', uri: att.uri, duration_s: att.duration_s ?? 0 }
+            : { kind: 'image', uri: att.uri }
       : null,
   };
   chats = getChats().map((c) => (c.tenant_slug === slug ? { ...c, messages: [...c.messages, message] } : c));

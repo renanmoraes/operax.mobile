@@ -28,6 +28,9 @@ export type Message = {
   caption?: string;
   /** Nome do arquivo, quando for documento. */
   fileName?: string;
+  /** Arquivo local do áudio (gravado agora, antes de a API devolver o link). */
+  audioUri?: string;
+  durationS?: number;
 };
 
 export type Contact = {
