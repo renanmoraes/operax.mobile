@@ -1,14 +1,14 @@
 import { router } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, PanResponder, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Circle, Defs, LinearGradient as SvgLinear, Path, Polyline, Stop } from 'react-native-svg';
-import { Badge, Card, IconButton, Muted, Num, Rise, Screen, TopBar } from '@/src/design-system/ui';
-import { colors, numbers, radii, shadows, typography } from '@/src/design-system/tokens';
+import { Badge, Card, IconButton, Muted, Num, PressableScale, Rise, Screen, TopBar } from '@/src/design-system/ui';
+import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { useAddCheckin, useCheckins } from '@/src/features/fitness/useFitness';
 import type { BodyCheckin } from '@/src/features/fitness/types';
 import { formatKg, isoDate, monthShort } from '@/src/shared/format';
@@ -125,14 +125,29 @@ export default function BodyEvolutionScreen() {
         </Rise>
 
         <Text style={styles.compareLabel}>Comparar com</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.rail} contentContainerStyle={styles.railContent}>
           {checkins.slice(0, -1).map((c, i) => {
             const on = c.id === before.id;
             return (
-              <Pressable key={c.id} onPress={() => setBeforeIdx(i)} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={`${shortDate(c.date)}, ${formatKg(c.weight_kg)} quilos`} style={[styles.pick, on ? styles.pickOn : styles.pickOff]}>
-                <Text style={[styles.pickDate, on && { color: 'rgba(255,255,255,0.8)' }]}>{shortDate(c.date)}</Text>
-                <Text style={[styles.pickKg, on && { color: '#fff' }]}>{`${formatKg(c.weight_kg)} kg`}</Text>
-              </Pressable>
+              <PressableScale
+                key={c.id}
+                onPress={() => setBeforeIdx(i)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={`Comparar com ${shortDate(c.date)}, ${formatKg(c.weight_kg)} quilos`}
+                style={[styles.pick, on ? styles.pickOn : styles.pickOff]}
+              >
+                <Text style={[styles.pickDate, on && styles.pickDateOn]}>{shortDate(c.date)}</Text>
+                <Text style={[styles.pickKg, on && styles.pickKgOn]}>
+                  {formatKg(c.weight_kg)}
+                  <Text style={[styles.pickUnit, on && styles.pickDateOn]}> kg</Text>
+                </Text>
+                {on ? (
+                  <View style={styles.pickCheck} accessible={false}>
+                    <Ionicons name="checkmark" size={10} color="#fff" />
+                  </View>
+                ) : null}
+              </PressableScale>
             );
           })}
         </ScrollView>
@@ -200,11 +215,17 @@ const styles = StyleSheet.create({
   journey: { position: 'absolute', bottom: 16, alignSelf: 'center', height: 34, paddingHorizontal: 14, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.92)', justifyContent: 'center' },
   journeyText: { fontFamily: typography.fontFamilyBold, fontSize: 13, color: colors.primary },
   compareLabel: { marginTop: 18, marginBottom: 10, fontFamily: typography.fontFamilySemiBold, fontSize: 13, color: colors.textMuted },
-  pick: { width: 78, height: 64, borderRadius: radii.lg - 2, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  pickOn: { backgroundColor: colors.primary, ...shadows.button },
-  pickOff: { backgroundColor: 'rgba(255,255,255,0.88)' },
-  pickDate: { fontFamily: typography.fontFamilySemiBold, fontSize: 11.5, color: colors.textMuted },
+  rail: { flexGrow: 0, marginHorizontal: -20 },
+  railContent: { gap: 10, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 6 },
+  pick: { width: 84, height: 62, borderRadius: 18, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  pickOn: { backgroundColor: colors.primaryWash, borderWidth: 1.5, borderColor: colors.primary },
+  pickOff: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e6ebf3' },
+  pickDate: { ...text.label, color: colors.textMuted },
+  pickDateOn: { color: colors.primary },
   pickKg: { ...numbers.sm, color: colors.text },
+  pickKgOn: { color: colors.primaryDeep },
+  pickUnit: { ...text.label, color: colors.textMuted },
+  pickCheck: { position: 'absolute', top: -5, right: -5, width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: '#fff', backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   measures: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
   measure: { width: '48%', flexGrow: 1, padding: 16 },
   rowBetween: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
