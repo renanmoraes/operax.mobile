@@ -11,7 +11,7 @@ import {
   useSyncProvider,
 } from '@/src/features/fitness/connections';
 import { HealthCard } from '@/src/features/fitness/health/HealthCard';
-import { DataSourceAttribution, GarminAttribution, ProviderMark, providerDisplayName, StravaConnectButton } from '@/src/features/fitness/brands';
+import { DataSourceAttribution, GarminAttribution, ProviderMark, providerDisplayName, StravaConnectButton, WorksWithZepp } from '@/src/features/fitness/brands';
 import type { ProviderView } from '@/src/features/fitness/types';
 import { formatDistance, formatDuration, timeAgo } from '@/src/shared/format';
 
@@ -42,6 +42,7 @@ function ProviderCard({ p }: { p: ProviderView }) {
         </View>
         {p.state === 'soon' && p.id !== 'apple' ? <Badge label="Em breve" /> : null}
       </View>
+      {p.id === 'zepp' && p.state === 'available' ? <WorksWithZepp /> : null}
       {p.state === 'available' ? (
         p.connected ? (
           <View style={styles.actions}>

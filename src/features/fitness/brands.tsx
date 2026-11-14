@@ -14,13 +14,17 @@ type SourceView = ImportedSessionView['sources'][number];
  *   A etiqueta Garmin não vai em avatar, selo ou onde não há dado do Garmin.
  * - Strava: conectar só pelo botão oficial "Connect with Strava"; dado vindo do Strava leva
  *   "Powered by Strava". Não sugerir que o app é feito ou patrocinado pelo Strava.
- * - Polar, Coros, Zepp e Apple: só a inicial até chegarem os pacotes oficiais.
+ * - Zepp: o pacote oficial só traz o selo "Works with Zepp | Zepp OS", que afirma compatibilidade.
+ *   Ele aparece apenas quando a conexão com a Zepp estiver disponível; até lá, a inicial.
+ *   Altura mínima digital de 66 px e área de respiro em volta (guia da Zepp, v1.0 de 13/07/2022).
+ * - Polar, Coros e Apple: só a inicial até chegarem os pacotes oficiais.
  */
 
 const GARMIN_TILE = require('@/assets/brand/watches/garmin-connect-tile.png');
 const GARMIN_TAG = require('@/assets/brand/watches/garmin-tag-black.png');
 const STRAVA_CONNECT = require('@/assets/brand/watches/strava-connect-orange.png');
 const STRAVA_POWERED = require('@/assets/brand/watches/strava-powered-orange.png');
+const ZEPP_WORKS_WITH = require('@/assets/brand/watches/zepp-works-with-horizontal.png');
 
 export const STRAVA_ORANGE = '#FC4C02';
 
@@ -73,6 +77,15 @@ export function PoweredByStrava({ style }: { style?: StyleProp<ViewStyle> }) {
   return (
     <View style={style} accessible accessibilityLabel="Powered by Strava">
       <Image source={STRAVA_POWERED} style={{ width: 128, height: 13 }} resizeMode="contain" />
+    </View>
+  );
+}
+
+/** Selo oficial "Works with Zepp | Zepp OS" (só com a integração Zepp disponível). */
+export function WorksWithZepp({ style }: { style?: StyleProp<ViewStyle> }) {
+  return (
+    <View style={[{ paddingVertical: 8, alignSelf: 'flex-start' }, style]} accessible accessibilityLabel="Works with Zepp">
+      <Image source={ZEPP_WORKS_WITH} style={{ width: 128, height: 66 }} resizeMode="contain" />
     </View>
   );
 }
