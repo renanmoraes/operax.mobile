@@ -4,7 +4,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ReactNode, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInputInstance, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, TextInputInstance, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Toast, useToast } from '@/src/design-system/Toast';
@@ -29,6 +29,8 @@ import { phoneLabel } from '@/src/features/agenda/bookingDetails';
 import { contacts as mockContacts, teamUsers } from '@/src/mocks/data';
 import { SkeletonList } from '@/src/design-system/Skeleton';
 
+const PAGE = 60;
+
 /** Conversa do chat interno (grupo ou direta) com texto, foto, PDF e áudio. */
 export default function TeamChatConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -40,6 +42,7 @@ export default function TeamChatConversationScreen() {
   const [draft, setDraft] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
   const listRef = useRef<FlatList<TeamMessage>>(null);
+  const scrolledTo = useRef<string | null>(null);
   const voice = useVoiceRecorder();
   const { toast, show } = useToast(1800);
 
@@ -56,9 +59,29 @@ export default function TeamChatConversationScreen() {
     queryKey: ['team-chat', 'messages', id],
     enabled: live && !!id,
     refetchInterval: 4000,
-    queryFn: async () => (await listTeamMessages(id)).map((m) => mapApiMessage(m, user?.id, API_URL)),
+    queryFn: async () => (await listTeamMessages(id, PAGE)).map((m) => mapApiMessage(m, user?.id, API_URL)),
   });
-  const thread = live ? query.data ?? [] : demoTeamChat.messages(id);
+  // Mensagens mais antigas que a página atual: carregadas sob demanda e mantidas ao atualizar.
+  const [older, setOlder] = useState<TeamMessage[]>([]);
+  const [olderDone, setOlderDone] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const latest = query.data ?? [];
+  const thread = live ? [...older.filter((o) => !latest.some((m) => m.id === o.id)), ...latest] : demoTeamChat.messages(id);
+  const canLoadOlder = live && !olderDone && (older.length > 0 || latest.length >= PAGE);
+  const loadOlder = async () => {
+    const first = thread[0];
+    if (!first || loadingOlder) return;
+    setLoadingOlder(true);
+    try {
+      const page = (await listTeamMessages(id, PAGE, first.id)).map((m) => mapApiMessage(m, user?.id, API_URL));
+      setOlder((prev) => [...page.filter((m) => !prev.some((p) => p.id === m.id)), ...prev]);
+      if (page.length < PAGE) setOlderDone(true);
+    } catch {
+      show('Não foi possível carregar as mensagens anteriores', 'error');
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
 
   // Mensagem nova chegando com a conversa aberta já conta como lida.
   const lastId = thread[thread.length - 1]?.id;
@@ -110,18 +133,18 @@ export default function TeamChatConversationScreen() {
 
   const sendMut = useMutation({
     mutationFn: ({ body, extras }: { body: string; extras: ReturnType<typeof mentionsInBody> }) => sendTeamMessage(id, body, extras),
-    onSuccess: () => {
-      setDraft('');
-      setPendingUsers([]);
-      setPendingRefs([]);
-      refreshLive();
+    onSuccess: () => refreshLive(),
+    onError: (_e, vars) => {
+      // Devolve o texto ao campo só se a pessoa não começou outra mensagem.
+      setDraft((current) => current || vars.body);
+      show('Falha ao enviar', 'error');
     },
-    onError: () => show('Falha ao enviar', 'error'),
   });
 
   const sendText = () => {
     const body = draft.trim();
-    if (!body) return;
+    // Um envio por vez: tocar de novo enquanto envia não duplica a mensagem para o canal.
+    if (!body || sendMut.isPending) return;
     const extras = mentionsInBody(body, pendingUsers, pendingRefs);
     if (!live) {
       demoTeamChat.send(id, { type: 'text', body });
@@ -134,6 +157,10 @@ export default function TeamChatConversationScreen() {
       }
       return;
     }
+    // O campo esvazia já no envio: o que for digitado enquanto envia não é apagado depois.
+    setDraft('');
+    setPendingUsers([]);
+    setPendingRefs([]);
     sendMut.mutate({ body, extras });
   };
 
@@ -215,7 +242,7 @@ export default function TeamChatConversationScreen() {
       const uri = fileUri(item);
       const media: ChatMediaData = item.type === 'document' ? { kind: 'document', name: item.fileName || 'Documento', uri, sizeBytes: item.sizeBytes } : { kind: item.type, uri };
       const onOpen = uri
-        ? () => (item.type === 'image' ? openViewer({ kind: 'image', uri, title: `Foto de ${item.mine ? 'você' : firstName(item.senderName)}` }) : item.type === 'document' ? void openDocument(uri, item.fileName || 'documento') : undefined)
+        ? () => (item.type === 'image' ? openViewer({ kind: 'image', uri, title: `Foto de ${item.mine ? 'você' : firstName(item.senderName)}` }) : item.type === 'document' ? void openDocument(uri, item.fileName || 'documento') : void Linking.openURL(uri))
         : undefined;
       bubble = <MediaBubble media={media} caption={item.body || undefined} at={item.at} mine={item.mine} onOpen={onOpen} />;
     } else if (item.type === 'audio') {
@@ -265,7 +292,20 @@ export default function TeamChatConversationScreen() {
         ref={listRef}
         data={thread}
         keyExtractor={(m) => m.id}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+        onContentSizeChange={() => {
+          // Só desce quando chega mensagem nova (carregar as antigas não pula para o fim).
+          if (lastId && lastId !== scrolledTo.current) {
+            scrolledTo.current = lastId;
+            listRef.current?.scrollToEnd({ animated: true });
+          }
+        }}
+        ListHeaderComponent={
+          canLoadOlder ? (
+            <Pressable onPress={() => void loadOlder()} disabled={loadingOlder} accessibilityRole="button" style={styles.older}>
+              <Text style={styles.olderText}>{loadingOlder ? 'Carregando…' : 'Carregar mensagens anteriores'}</Text>
+            </Pressable>
+          ) : undefined
+        }
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16, gap: 4 }}
         renderItem={renderItem}
         ListEmptyComponent={
@@ -295,7 +335,7 @@ export default function TeamChatConversationScreen() {
           </Pressable>
           <ChatInput inputRef={inputRef} value={draft} onChangeText={setDraft} placeholder={isGroup ? `Mensagem para ${channel?.title ?? 'o grupo'}` : 'Mensagem…'} />
           {draft.trim() ? (
-            <Pressable onPress={sendText} style={[styles.send, sendMut.isPending && { opacity: 0.6 }]} accessibilityRole="button" accessibilityLabel="Enviar">
+            <Pressable onPress={sendText} disabled={sendMut.isPending} style={[styles.send, sendMut.isPending && { opacity: 0.6 }]} accessibilityRole="button" accessibilityLabel="Enviar" accessibilityState={{ disabled: sendMut.isPending }}>
               <Ionicons name="send" size={18} color="#fff" />
             </Pressable>
           ) : (
@@ -341,6 +381,8 @@ const styles = StyleSheet.create({
   mentionContact: { color: '#0f766e' },
   mentionMine: { color: '#fff', textDecorationLine: 'underline' },
   empty: { alignItems: 'center', gap: 10, paddingTop: 60 },
+  older: { alignSelf: 'center', paddingHorizontal: 14, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.9)', justifyContent: 'center', marginBottom: 10 },
+  olderText: { ...text.captionStrong, color: colors.primary },
   emptyText: { ...text.callout, color: colors.textMuted },
   composer: {
     flexDirection: 'row',

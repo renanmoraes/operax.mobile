@@ -45,8 +45,9 @@ export async function getTeamUnread(): Promise<ApiTeamUnread> {
   return { total: Number(data?.total ?? 0), by_channel: data?.by_channel ?? [] };
 }
 
-export async function listTeamMessages(channelId: string, limit = 60): Promise<ApiTeamMessage[]> {
-  const { data } = await api.get(`/api/chat/channels/${channelId}/messages`, { params: { limit } });
+/** Página de mensagens (mais recentes); com `before`, a página anterior àquela mensagem. */
+export async function listTeamMessages(channelId: string, limit = 60, before?: string): Promise<ApiTeamMessage[]> {
+  const { data } = await api.get(`/api/chat/channels/${channelId}/messages`, { params: { limit, ...(before ? { before } : {}) } });
   return (Array.isArray(data) ? data : data?.data ?? []) as ApiTeamMessage[];
 }
 
