@@ -15,6 +15,8 @@ const TAB_PERMISSIONS: Record<string, string | undefined> = {
   more: undefined,
 };
 
+const HIDDEN_ITEM = { display: 'none' } as const;
+
 export default function AppLayout() {
   const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated || user?.kind !== 'staff') return <Redirect href="/" />;
@@ -78,9 +80,11 @@ export default function AppLayout() {
             ),
           }}
         />
-        <Tabs.Screen name="kanban" options={{ href: null, title: 'Kanban' }} />
-        <Tabs.Screen name="profile" options={{ href: null, title: 'Perfil' }} />
-        <Tabs.Screen name="history" options={{ href: null, title: 'Histórico' }} />
+        {/* Telas abertas pelo Mais: ficam fora da barra, mas acessíveis. No expo-router 58
+            `href: null` faz a rota redirecionar para a primeira aba, então só escondemos o item. */}
+        <Tabs.Screen name="kanban" options={{ title: 'Kanban', tabBarItemStyle: HIDDEN_ITEM }} />
+        <Tabs.Screen name="profile" options={{ title: 'Perfil', tabBarItemStyle: HIDDEN_ITEM }} />
+        <Tabs.Screen name="history" options={{ title: 'Histórico', tabBarItemStyle: HIDDEN_ITEM }} />
       </Tabs>
     </QueueDrawerProvider>
   );
