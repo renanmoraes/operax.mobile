@@ -144,6 +144,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (alive) setAccounts(known);
 
         savedRole = await getSavedRole();
+
+        // Adicionar conta interrompido (app fechado no meio do login): volta para a conta salva que
+        // existe, inclusive se ela for demo. Resolve isso antes de decidir entre demo e sessão real.
+        if (savedRole && !known[savedRole]?.demo && !(await hasSession(savedRole))) {
+          const other = otherRole(savedRole);
+          if (known[other]) {
+            savedRole = other;
+            await setSavedRole(other);
+          }
+        }
+
         const legacyDemo = readDemoFlag() && !staffSummary && !clientSummary;
         const active = savedRole ? known[savedRole] : undefined;
 
@@ -157,15 +168,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Adicionar conta interrompido (app fechado no meio do login): volta para a que tem sessão.
-        if (savedRole && !(await hasSession(savedRole))) {
-          const other = otherRole(savedRole);
-          if (known[other]) {
-            savedRole = other;
-            await setSavedRole(other);
-          }
-        }
-
         if (savedRole == null && (await hasSession('staff'))) {
           // Instalação de antes deste recurso: só existia staff.
           savedRole = 'staff';
@@ -177,9 +179,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // Sessão restaurada sem resumo (veio de instalação antiga): registra na troca de contas.
+        const registerIfMissing = (r: Role, u: AuthUser) => {
+          if (known[r]) return;
+          const summary: AccountSummary = { role: r, name: u.name || (r === 'staff' ? 'Equipe' : 'Cliente'), email: u.email ?? undefined, demo: false };
+          void saveAccountSummary(summary);
+          setAccounts((prev) => ({ ...prev, [r]: summary }));
+        };
+
         if (savedRole === 'staff') {
           const me = await getMeApi();
           if (!alive) return;
+          registerIfMissing('staff', me);
           setMode('live');
           setRole('staff');
           setUser(me);
@@ -189,6 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           const me = await getClientMeApi();
           if (!alive) return;
+          registerIfMissing('client', me);
           setMode('live');
           setRole('client');
           setUser(me);
