@@ -20,7 +20,7 @@ export type Message = {
   id: string;
   conversationId: string;
   direction: 'in' | 'out';
-  type: 'text' | 'image' | 'audio' | 'video' | 'document';
+  type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'pix';
   body: string;
   at: string;
   status?: 'sent' | 'delivered' | 'read';
@@ -31,6 +31,8 @@ export type Message = {
   /** Arquivo local do áudio (gravado agora, antes de a API devolver o link). */
   audioUri?: string;
   durationS?: number;
+  /** Chave Pix enviada pela conversa. */
+  pix?: { key: string; key_type: 'cpf' | 'cnpj' | 'phone' | 'email' | 'random' | 'copy_paste'; holder_name: string };
 };
 
 export type Contact = {

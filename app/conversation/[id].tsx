@@ -38,9 +38,15 @@ import {
 import { mapApiConversation, mapApiMessage } from '@/src/features/inbox/mapConversation';
 import { getSocket } from '@/src/shared/realtime/socket';
 import * as DocumentPicker from 'expo-document-picker';
+import { ActionsSheet, ConversationAction } from '@/src/features/conversation-actions/ActionsSheet';
+import { BookingSheet } from '@/src/features/conversation-actions/BookingSheet';
+import { PixCard } from '@/src/features/conversation-actions/PixCard';
+import { PixSheet } from '@/src/features/conversation-actions/PixSheet';
+import { QuickRepliesSheet } from '@/src/features/conversation-actions/QuickRepliesSheet';
+import { PixData, sendPixMessage } from '@/src/shared/api/conversation-actions.api';
 import * as ImagePicker from 'expo-image-picker';
 
-type Sheet = 'actions' | 'attach' | 'transfer' | null;
+type Sheet = 'actions' | 'attach' | 'transfer' | 'quick' | 'pix' | 'booking' | null;
 
 export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -60,7 +66,11 @@ export default function ConversationScreen() {
   const listRef = useRef<FlatList<Message>>(null);
   const voice = useVoiceRecorder();
   const [sheet, setSheet] = useState<Sheet>(null);
-  const { toast, show } = useToast(1800);
+  const { toast, show } = useToast(2200);
+  const switchSheet = (next: Sheet) => {
+    setSheet(null);
+    setTimeout(() => setSheet(next), 320);
+  };
 
   const mockConv = getMockConv(id);
   const mockThread = useMemo(() => getMockMessages(id), [id]);
@@ -150,18 +160,27 @@ export default function ConversationScreen() {
     setSheet(null);
   };
 
-  const pickAndSend = async (kind: 'image' | 'document') => {
+  const pickAndSend = async (kind: 'image' | 'document' | 'camera') => {
     setSheet(null);
     if (mode === 'mock') {
-      showToast(kind === 'image' ? 'Mídia (demo)' : 'Documento (demo)');
+      showToast(kind === 'document' ? 'Documento (demo)' : 'Mídia (demo)');
       return;
     }
     try {
-      if (kind === 'image') {
-        const res = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images', 'videos'],
-          quality: 0.85,
-        });
+      if (kind === 'image' || kind === 'camera') {
+        if (kind === 'camera') {
+          const perm = await ImagePicker.requestCameraPermissionsAsync();
+          if (!perm.granted) {
+            show('Libere a câmera nos ajustes do celular.', 'error', 'camera-outline');
+            return;
+          }
+        }
+        const res = kind === 'camera'
+          ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images', 'videos'], quality: 0.85 })
+          : await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ['images', 'videos'],
+              quality: 0.85,
+            });
         if (res.canceled || !res.assets?.[0]) return;
         const asset = res.assets[0];
         await sendMediaMessage(id, {
@@ -187,6 +206,51 @@ export default function ConversationScreen() {
   };
 
   const canCompose = conversation.within24h && ownership === 'mine';
+  const composeBlock = !conversation.within24h ? 'Fora da janela de 24 h: use uma mensagem ativa' : ownership !== 'mine' ? 'Assuma o atendimento para enviar' : undefined;
+
+  const sendPix = async (pix: PixData & { save?: boolean }) => {
+    if (mode === 'mock') {
+      appendLocal({ type: 'pix', body: 'Chave Pix', pix });
+      setSheet(null);
+      showToast('Chave Pix enviada');
+      return;
+    }
+    try {
+      await sendPixMessage(id, pix);
+      setSheet(null);
+      await liveQuery.refetch();
+      showToast('Chave Pix enviada');
+    } catch {
+      showToast('Falha ao enviar a chave Pix');
+    }
+  };
+
+  const guarded = (fn: () => void) => () => {
+    if (composeBlock) {
+      setSheet(null);
+      show(composeBlock, 'info');
+      return;
+    }
+    fn();
+  };
+
+  const actions: ConversationAction[] = [
+    { key: 'media', label: 'Foto e vídeo', icon: 'images', tone: 'media', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('image')) },
+    { key: 'camera', label: 'Câmera', icon: 'camera', tone: 'camera', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('camera')) },
+    { key: 'document', label: 'Documento', icon: 'document', tone: 'document', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('document')) },
+    { key: 'pix', label: 'Chave Pix', icon: 'diamond', tone: 'pix', blockedReason: composeBlock, onPress: guarded(() => switchSheet('pix')) },
+    { key: 'booking', label: 'Agendar horário', icon: 'calendar', tone: 'booking', onPress: () => switchSheet('booking') },
+    {
+      key: 'template',
+      label: 'Mensagem ativa',
+      icon: 'document-text',
+      tone: 'template',
+      onPress: () => {
+        setSheet(null);
+        router.push({ pathname: '/templates', params: { conversationId: id } });
+      },
+    },
+  ];
 
   const appendLocal = (m: Omit<Message, 'id' | 'conversationId' | 'direction' | 'at' | 'status'>) =>
     setLocalMsgs((prev) => [
@@ -290,6 +354,13 @@ export default function ConversationScreen() {
               </View>
             );
           }
+          if (item.type === 'pix' && item.pix) {
+            return (
+              <View style={{ alignSelf: out ? 'flex-end' : 'flex-start' }}>
+                <PixCard pix={item.pix} at={item.at} mine={out} status={item.status} />
+              </View>
+            );
+          }
           if (item.type === 'audio') {
             return (
               <View style={{ alignSelf: out ? 'flex-end' : 'flex-start' }}>
@@ -328,15 +399,15 @@ export default function ConversationScreen() {
             onPress={() => setSheet('attach')}
             style={styles.attachBtn}
             accessibilityRole="button"
-            accessibilityLabel="Anexar mídia"
+            accessibilityLabel="Mais ações: mídia, Pix, agendar"
           >
             <Ionicons name="add" size={24} color={colors.primary} />
           </Pressable>
           <Pressable
-            onPress={() => canCompose && setDraft((d) => (!d ? '/' : d.endsWith('\n') ? `${d}/` : `${d}\n/`))}
+            onPress={() => setSheet('quick')}
             style={styles.qrBtn}
             accessibilityRole="button"
-            accessibilityLabel="Inserir resposta rápida"
+            accessibilityLabel="Respostas rápidas e templates"
           >
             <Ionicons name="flash-outline" size={20} color={colors.primary} />
           </Pressable>
@@ -393,18 +464,43 @@ export default function ConversationScreen() {
         <Button label="Liberar para a fila" onPress={() => runAction('release')} />
       </BottomSheet>
 
-      <BottomSheet visible={sheet === 'attach'} onClose={() => setSheet(null)} title="Anexar mídia">
-        <Button label="Foto / Vídeo" variant="secondary" onPress={() => pickAndSend('image')} />
-        <Button label="Documento" variant="secondary" onPress={() => pickAndSend('document')} />
-        <Button
-          label="Áudio (em breve)"
-          variant="ghost"
-          onPress={() => {
-            setSheet(null);
-            show('Áudio na próxima versão', 'info');
-          }}
-        />
-      </BottomSheet>
+      <ActionsSheet visible={sheet === 'attach'} onClose={() => setSheet(null)} actions={actions} footnote={composeBlock} />
+
+      <QuickRepliesSheet
+        visible={sheet === 'quick'}
+        onClose={() => setSheet(null)}
+        live={mode === 'live'}
+        demoItems={mockQuickReplies}
+        within24h={conversation.within24h}
+        onPick={(q) => {
+          setSheet(null);
+          const body = resolveQuickReplyVariables(q.body, { name: conversation.contactName }, user?.name ?? '');
+          if (!canCompose) {
+            show(composeBlock ?? 'Não dá para responder agora', 'info');
+            return;
+          }
+          setDraft((d) => (slashTerm(d) !== null ? applyQuickReply(d, body) : d ? `${d}\n${body}` : body));
+        }}
+        onTemplates={() => {
+          setSheet(null);
+          router.push({ pathname: '/templates', params: { conversationId: id } });
+        }}
+      />
+
+      <PixSheet visible={sheet === 'pix'} onClose={() => setSheet(null)} live={mode === 'live'} onSend={(pix) => void sendPix(pix)} />
+
+      <BookingSheet
+        visible={sheet === 'booking'}
+        onClose={() => setSheet(null)}
+        live={mode === 'live'}
+        contactId={conversation.contactId ?? ''}
+        contactName={conversation.contactName}
+        onBooked={(summary) => {
+          setSheet(null);
+          show(`Agendado: ${summary}`, 'success', 'calendar-outline');
+        }}
+        onError={(msg) => show(msg, 'error')}
+      />
     </View>
   );
 }

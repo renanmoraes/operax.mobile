@@ -30,6 +30,8 @@ export type ApiMessage = {
   status?: string;
   created_at?: string;
   media_id?: string | null;
+  message_type?: string;
+  payload_json?: { pix?: { key: string; key_type: string; holder_name: string } } | null;
 };
 
 export async function listConversations(params?: Record<string, unknown>) {

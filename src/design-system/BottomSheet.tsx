@@ -1,5 +1,5 @@
 import { ReactNode, useEffect } from 'react';
-import { Modal, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, motion, radii, shadows, text, zIndex } from './tokens';
@@ -8,7 +8,7 @@ const easeOut = Easing.bezier(...motion.easeOut);
 
 /**
  * Folha que sobe de baixo: fundo escurece, a folha desliza.
- * Toque fora ou no voltar do Android fecha.
+ * Toque fora ou no voltar do Android fecha. Sobe junto com o teclado quando há campos.
  */
 export function BottomSheet({
   visible,
@@ -40,26 +40,26 @@ export function BottomSheet({
       <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, scrim]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={closeLabel} />
       </Animated.View>
-      <Animated.View style={[styles.sheet, { paddingBottom: insets.bottom + 20 }, panel]} accessibilityViewIsModal>
-        <View style={styles.grabber} />
-        {title ? (
-          <Text style={styles.title} accessibilityRole="header">
-            {title}
-          </Text>
-        ) : null}
-        <View style={[{ gap: 10 }, contentStyle]}>{children}</View>
-      </Animated.View>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.dock} pointerEvents="box-none">
+        <Animated.View style={[styles.sheet, { paddingBottom: insets.bottom + 20 }, panel]} accessibilityViewIsModal>
+          <View style={styles.grabber} />
+          {title ? (
+            <Text style={styles.title} accessibilityRole="header">
+              {title}
+            </Text>
+          ) : null}
+          <View style={[{ gap: 10 }, contentStyle]}>{children}</View>
+        </Animated.View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   scrim: { backgroundColor: colors.overlay },
+  dock: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'flex-end' },
   sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
+    maxHeight: '92%',
     paddingHorizontal: 20,
     paddingTop: 10,
     backgroundColor: colors.cardBg,

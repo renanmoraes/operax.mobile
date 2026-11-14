@@ -35,6 +35,10 @@ export function mapApiConversation(c: ApiConversation, currentUserId?: string): 
 export function mapApiMessage(m: ApiMessage, conversationId: string): Message {
   const inbound = m.direction === 'inbound' || m.direction === 'in';
   const type = (m.type as Message['type']) || 'text';
+  const pix = (m.message_type === 'pix' || m.type === 'pix') && m.payload_json?.pix ? (m.payload_json.pix as Message['pix']) : undefined;
+  if (pix) {
+    return { id: m.id, conversationId, direction: inbound ? 'in' : 'out', type: 'pix', body: m.body || 'Chave Pix', at: formatTime(m.created_at), status: (m.status as Message['status']) || undefined, pix };
+  }
   return {
     id: m.id,
     conversationId,
