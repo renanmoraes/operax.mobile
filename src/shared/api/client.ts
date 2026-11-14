@@ -20,6 +20,8 @@ type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean; _role?: 
 const refreshing: Partial<Record<SavedRole, Promise<string | null>>> = {};
 
 async function refreshAccessToken(role: SavedRole): Promise<string | null> {
+  // O portal do cliente não tem renovação: sessão vencida = entrar de novo.
+  if (role === 'client') return null;
   if (!refreshing[role]) {
     refreshing[role] = (async () => {
       const refresh = await getRefreshToken(role);

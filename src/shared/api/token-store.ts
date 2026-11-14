@@ -47,6 +47,11 @@ export async function setTokens(access: string, refresh: string, role?: SavedRol
   await setItem(refreshKey(r), refresh);
 }
 
+/** Portal do cliente: guarda o token de identidade (a pessoa, sem empresa) no lugar do refresh. */
+export async function setRefreshToken(token: string, role: SavedRole): Promise<void> {
+  await setItem(refreshKey(role), token);
+}
+
 /** Sai de uma conta só: apaga o token e o resumo dela. A outra continua. */
 export async function clearTokens(role?: SavedRole): Promise<void> {
   const r = await resolveRole(role);

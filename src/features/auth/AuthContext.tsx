@@ -1,30 +1,32 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AuthUser, ClientUser, StaffUser, getMeApi, loginApi, logoutApi, registerDevicePushToken, verifyMfaApi } from '@/src/shared/api/auth.api';
 import {
-  AuthUser,
-  ClientLoginResult,
-  ClientUser,
-  StaffUser,
-  clientLoginApi,
-  getClientMeApi,
-  getMeApi,
-  loginApi,
-  logoutApi,
-  registerDevicePushToken,
-  requestClientOtpApi,
-  switchClientTenantApi,
-  verifyClientOtpApi,
-  verifyMfaApi,
-} from '@/src/shared/api/auth.api';
+  PortalLoginResult,
+  portalHome,
+  portalLogout,
+  portalMyCompanies,
+  portalPasswordLogin,
+  portalRequestCode,
+  portalSelectCompany,
+  portalSetPassword,
+  portalSwitch,
+  portalVerifyCode,
+} from '@/src/shared/api/portal.api';
+import { portalUser, portalUserWithoutSession } from '@/src/features/client/portalMapping';
+import { setClientDataMode } from '@/src/features/client/dataMode';
 import {
   AccountSummary,
   clearSavedRole,
   clearTokens,
   getAccountSummary,
+  getRefreshToken,
   getSavedRole,
   hasSession,
   migrateLegacyTokens,
   saveAccountSummary,
+  setRefreshToken,
   setSavedRole,
+  setTokens,
   SavedRole,
 } from '@/src/shared/api/token-store';
 import { connectSocket, disconnectSocket } from '@/src/shared/realtime/socket';
@@ -54,7 +56,10 @@ type AuthState = {
   verifyMfa: (code: string) => Promise<void>;
   clientLogin: (identifier: string, password?: string) => Promise<'blocked' | 'ok'>;
   requestClientOtp: (identifier: string) => Promise<void>;
-  verifyClientOtp: (identifier: string, code: string) => Promise<'blocked' | 'ok'>;
+  /** Código certo: entra (ok), ou no primeiro acesso pede para criar a senha (set_password). */
+  verifyClientOtp: (identifier: string, code: string) => Promise<'blocked' | 'ok' | 'set_password'>;
+  /** Primeiro acesso pelo código: cria a senha e entra. */
+  setClientPassword: (password: string) => Promise<'blocked' | 'ok'>;
   switchTenant: (tenantId: string) => Promise<void>;
   enterClientDemo: () => void;
   logout: () => Promise<void>;
@@ -111,6 +116,12 @@ function writeDemoFlag(on: boolean) {
   }
 }
 
+/** Usuário cliente a partir da sessão da empresa no portal (me/home + empresas). */
+async function loadPortalUser(fallbackCompanies: Parameters<typeof portalUser>[1] = []): Promise<ClientUser> {
+  const [home, companies] = await Promise.all([portalHome(), portalMyCompanies().catch(() => fallbackCompanies)]);
+  return portalUser(home, companies.length ? companies : fallbackCompanies);
+}
+
 function messageFromError(err: unknown, fallback: string): string {
   const msg =
     (err as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
@@ -128,6 +139,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<Accounts>({});
   const [returnRole, setReturnRole] = useState<Role | null>(null);
+  // Portal do cliente: identidade (lista/escolha de empresa), desafio do código e ticket do primeiro acesso.
+  const portalIdentity = useRef<string | null>(null);
+  const portalChallenge = useRef<string | null>(null);
+  const portalSetup = useRef<string | null>(null);
   /** Guarda a empresa escolhida no demo de cliente entre uma troca e outra. */
   const demoClientRef = useRef<ClientUser>(DEMO_CLIENT_USER);
 
@@ -198,15 +213,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await connectSocket();
           void registerDevicePushToken();
         } else {
-          const me = await getClientMeApi();
+          // Cliente: sessão da empresa no portal (me/home + empresas).
+          const me = await loadPortalUser();
           if (!alive) return;
           registerIfMissing('client', me);
           setMode('live');
           setRole('client');
           setUser(me);
           setAuthenticated(true);
-          await connectSocket();
-          void registerDevicePushToken();
         }
       } catch {
         try {
@@ -226,6 +240,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // As funções de dados do cliente (agenda, chat, treino) seguem o modo do login.
+  useEffect(() => {
+    setClientDataMode(mode);
+  }, [mode]);
+
   const value = useMemo<AuthState>(() => {
     function remember(r: Role, u: AuthUser, demo: boolean) {
       const summary: AccountSummary = { role: r, name: u.name || (r === 'staff' ? 'Equipe' : 'Cliente'), email: u.email ?? undefined, demo };
@@ -241,18 +260,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }
 
-    function applyClientResult(result: ClientLoginResult): 'blocked' | 'ok' {
-      if ('status' in result) {
-        return 'blocked';
+    /**
+     * Resultado de login do portal: guarda a identidade, abre a sessão da empresa (se veio uma)
+     * e monta o usuário. Sem empresa ainda, vai para a escolha de empresa.
+     */
+    async function enterPortal(result: PortalLoginResult): Promise<'blocked' | 'ok'> {
+      if (!result.session && result.companies.length === 0) return 'blocked';
+      // Antes de qualquer chamada `me/*`: o token de cliente é o que vai no cabeçalho.
+      await setSavedRole('client');
+      setMode('live');
+      if (result.identity_token) {
+        portalIdentity.current = result.identity_token;
+        await setRefreshToken(result.identity_token, 'client');
       }
-      setUser(result.user);
+      let next: ClientUser;
+      if (result.session) {
+        await setTokens(result.session.access_token, portalIdentity.current ?? '', 'client');
+        next = await loadPortalUser(result.companies);
+      } else {
+        next = portalUserWithoutSession(result.companies);
+      }
+      setUser(next);
       setAuthenticated(true);
       setRole('client');
       setReturnRole(null);
-      void setSavedRole('client');
-      remember('client', result.user, false);
-      void connectSocket();
-      void registerDevicePushToken();
+      remember('client', next, false);
       return 'ok';
     }
 
@@ -273,7 +305,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const me = target === 'staff' ? await getMeApi() : await getClientMeApi();
+        const me = target === 'staff' ? await getMeApi() : await loadPortalUser();
         setMode('live');
         setRole(target);
         setUser(me);
@@ -412,10 +444,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       clientLogin: async (identifier, password) => {
         setError(null);
-        setMode('live');
         try {
-          const result = await clientLoginApi({ identifier, password });
-          return applyClientResult(result);
+          return await enterPortal(await portalPasswordLogin(identifier, password ?? ''));
         } catch (err) {
           setError(messageFromError(err, 'Falha no login. Verifique os dados e a conexão.'));
           throw err;
@@ -425,28 +455,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestClientOtp: async (identifier) => {
         setError(null);
         try {
-          await requestClientOtpApi({ identifier });
+          const r = await portalRequestCode(identifier);
+          portalChallenge.current = r.challenge_id;
         } catch (err) {
           setError(messageFromError(err, 'Não foi possível enviar o código. Tente de novo.'));
           throw err;
         }
       },
 
-      verifyClientOtp: async (identifier, code) => {
+      verifyClientOtp: async (_identifier, code) => {
         setError(null);
         try {
-          const result = await verifyClientOtpApi({ identifier, code });
-          return applyClientResult(result);
-        } catch {
-          setError('Código inválido ou expirado.');
+          if (!portalChallenge.current) throw new Error('sem_desafio');
+          const r = await portalVerifyCode(portalChallenge.current, code);
+          if ('step' in r && r.step === 'password') {
+            portalSetup.current = r.setup_ticket;
+            return 'set_password';
+          }
+          return await enterPortal(r as PortalLoginResult);
+        } catch (err) {
+          setError(messageFromError(err, 'Código inválido ou expirado.'));
           throw new Error('invalid_otp');
+        }
+      },
+
+      setClientPassword: async (password) => {
+        setError(null);
+        try {
+          if (!portalSetup.current) throw new Error('sem_ticket');
+          const r = await portalSetPassword(portalSetup.current, password);
+          portalSetup.current = null;
+          return await enterPortal(r);
+        } catch (err) {
+          setError(messageFromError(err, 'Não foi possível criar a senha. Tente de novo.'));
+          throw err;
         }
       },
 
       switchTenant: async (tenantId) => {
         if (mode === 'mock') {
           // Modo demo: não existe backend real pra escopar o token, só troca
-          // a empresa ativa localmente (ver Task 11/12 do plano).
+          // a empresa ativa localmente.
           setUser((prev) => {
             if (prev?.kind !== 'client') return prev;
             const next = { ...prev, active_tenant_id: tenantId };
@@ -455,11 +504,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
           return;
         }
-        await switchClientTenantApi({ tenant_id: tenantId });
-        const me = await getClientMeApi();
-        setUser(me);
-        disconnectSocket();
-        await connectSocket();
+        // `tenantId` é o access_id da empresa no portal. Com sessão aberta troca por ela;
+        // logo após o login (sem empresa ainda) escolhe com o token de identidade.
+        const hasCompany = user?.kind === 'client' && !!user.active_tenant_id && (await hasSession('client'));
+        if (hasCompany) {
+          await enterPortal(await portalSwitch(tenantId));
+          return;
+        }
+        const identity = portalIdentity.current ?? (await getRefreshToken('client'));
+        if (!identity) throw new Error('Sessão expirada. Entre de novo.');
+        await enterPortal(await portalSelectCompany(identity, tenantId));
       },
 
       enterClientDemo: () => {
@@ -477,7 +531,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       logout: async () => {
         const current = role;
-        if (mode === 'live') {
+        if (mode === 'live' && current === 'client') {
+          await portalLogout().catch(() => undefined);
+          await clearTokens('client');
+          portalIdentity.current = null;
+        } else if (mode === 'live') {
           try {
             await logoutApi();
           } catch {

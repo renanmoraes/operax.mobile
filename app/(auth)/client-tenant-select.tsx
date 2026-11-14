@@ -7,6 +7,7 @@ import { colors, text, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { AuthShell } from '@/src/features/auth/AuthShell';
 import { useCompanies } from '@/src/features/client/useClientData';
+import { clientDataMode } from '@/src/features/client/dataMode';
 
 function initialsOf(name: string) {
   return name
@@ -19,7 +20,8 @@ function initialsOf(name: string) {
 
 export default function ClientTenantSelectScreen() {
   const { user, switchTenant } = useAuth();
-  const { data: companies } = useCompanies();
+  // Login real: ainda não há sessão de empresa aqui (me/companies daria 401); o nome e a marca vêm da lista do login.
+  const { data: companies } = useCompanies({ enabled: clientDataMode() !== 'live' });
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const memberships = user?.kind === 'client' ? user.memberships : [];
   const firstName = user?.kind === 'client' ? user.name?.split(' ')[0] : undefined;

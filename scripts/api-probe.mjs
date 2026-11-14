@@ -77,6 +77,13 @@ const checks = [
   ['GET', '/api/kanban/pipelines'],
   ['GET', '/api/contacts?limit=5'],
   ['GET', '/api/queues'],
+  // Adicionados com o redesign: chat da equipe, marcações, ações da conversa e agenda
+  ['GET', '/api/chat/channels'],
+  ['GET', '/api/chat/unread-count'],
+  ['GET', '/api/users/search?q=a&limit=5'],
+  ['GET', '/api/conversations/pix-keys'],
+  ['GET', '/api/scheduling/providers?limit=5'],
+  ['GET', '/api/scheduling/services?limit=5'],
 ];
 
 for (const [method, path] of checks) {
