@@ -1,73 +1,35 @@
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import { Body, Button, Field, Muted } from '@/src/design-system/ui';
-import { colors, radii, spacing } from '@/src/design-system/tokens';
+import { colors } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
+import { AuthShell } from '@/src/features/auth/AuthShell';
 import { ALLOW_MOCK, API_URL } from '@/src/shared/config';
 
 export default function LoginScreen() {
-  const insets = useSafeAreaInsets();
   const { login, enterDemo, error, clearError, clearRole } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [companyCode, setCompanyCode] = useState('OPRX');
   const [loading, setLoading] = useState(false);
 
+  const backToRoles = () => clearRole().then(() => router.replace('/(auth)/role-select'));
+
   return (
-    <KeyboardAvoidingView
-      style={[styles.root, { paddingTop: insets.top + spacing.xl }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + spacing.xl }]}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.brand}>
-          <Image source={require('../../assets/brand/operax-mark.png')} style={styles.mark} contentFit="contain" />
-          <Image source={require('../../assets/brand/operax-logo-full.png')} style={styles.logo} contentFit="contain" />
-          {__DEV__ ? <Muted style={styles.dev}>API {API_URL}</Muted> : null}
-        </View>
-
-        <View style={styles.form}>
-          <Field
-            label="Código da empresa"
-            value={companyCode}
-            onChangeText={(v) => setCompanyCode(v.toUpperCase())}
-            placeholder="Ex.: OPRX"
-          />
-          <Field
-            label="E-mail"
-            value={email}
-            onChangeText={(v) => {
-              clearError();
-              setEmail(v);
-            }}
-            keyboardType="email-address"
-            placeholder="seu@email.com"
-          />
-          <Field
-            label="Senha"
-            value={password}
-            onChangeText={(v) => {
-              clearError();
-              setPassword(v);
-            }}
-            secureTextEntry
-            placeholder="Sua senha"
-          />
-
-          <Muted style={styles.notice}>
-            Ao entrar neste aparelho, a sessão no computador será encerrada.
-          </Muted>
-
-          {error ? <Body style={{ color: colors.danger, fontSize: 13 }}>{error}</Body> : null}
-
+    <AuthShell
+      onBack={backToRoles}
+      tag="Equipe"
+      showLogo
+      title="Bom trabalho hoje"
+      subtitle="Entre com o acesso que a sua empresa liberou para você."
+      footer={
+        <>
+          <Muted style={styles.notice}>Ao entrar neste aparelho, a sessão no computador é encerrada.</Muted>
           <Button
-            label={loading ? 'Entrando…' : 'Entrar'}
-            disabled={loading}
+            label="Entrar"
+            icon="arrow-forward"
+            loading={loading}
             onPress={async () => {
               setLoading(true);
               try {
@@ -90,41 +52,56 @@ export default function LoginScreen() {
               }}
             />
           ) : null}
-
-          <Pressable onPress={() => clearRole().then(() => router.replace('/(auth)/role-select'))}>
-            <Muted style={{ textAlign: 'center', marginTop: spacing.sm }}>
-              Não é você? Entrar como cliente
-            </Muted>
+          <Pressable onPress={backToRoles} accessibilityRole="button" hitSlop={8}>
+            <Text style={styles.switch}>
+              É cliente? <Text style={styles.switchLink}>Entrar como cliente</Text>
+            </Text>
           </Pressable>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          {__DEV__ ? <Muted style={{ textAlign: 'center', fontSize: 11 }}>API {API_URL}</Muted> : null}
+        </>
+      }
+    >
+      <Field
+        label="Código da empresa"
+        icon="business-outline"
+        value={companyCode}
+        autoCapitalize="none"
+        onChangeText={(v) => setCompanyCode(v.toUpperCase())}
+        placeholder="Ex.: OPRX"
+      />
+      <Field
+        label="E-mail de trabalho"
+        icon="mail-outline"
+        value={email}
+        autoCapitalize="none"
+        autoComplete="email"
+        onChangeText={(v) => {
+          clearError();
+          setEmail(v);
+        }}
+        keyboardType="email-address"
+        placeholder="seu@empresa.com"
+      />
+      <Field
+        label="Senha"
+        icon="lock-closed-outline"
+        value={password}
+        autoComplete="password"
+        onChangeText={(v) => {
+          clearError();
+          setPassword(v);
+        }}
+        secureTextEntry
+        placeholder="Sua senha"
+      />
+      {error ? <Body style={styles.error}>{error}</Body> : null}
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.chromeNavy,
-  },
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: spacing.xl,
-    justifyContent: 'space-between',
-    gap: spacing.xxl,
-  },
-  brand: { alignItems: 'center', gap: spacing.md, marginTop: spacing.xl },
-  mark: { width: 72, height: 72 },
-  logo: { width: 180, height: 40 },
-  dev: { color: '#9aa8bd', textAlign: 'center' },
-  form: {
-    backgroundColor: colors.cardBg,
-    borderRadius: radii.sheet,
-    padding: spacing.xl,
-    gap: spacing.md,
-  },
-  notice: {
-    color: colors.textMuted,
-    lineHeight: 18,
-  },
+  notice: { textAlign: 'center', lineHeight: 18 },
+  error: { color: colors.dangerText, fontSize: 13.5 },
+  switch: { textAlign: 'center', fontSize: 14, color: colors.textMuted, fontFamily: 'Inter_400Regular' },
+  switchLink: { color: colors.primary, fontFamily: 'Inter_600SemiBold' },
 });

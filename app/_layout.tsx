@@ -3,6 +3,7 @@ import {
   Inter_500Medium,
   Inter_600SemiBold,
   Inter_700Bold,
+  Inter_800ExtraBold,
 } from '@expo-google-fonts/inter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
@@ -21,6 +22,7 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Inter_800ExtraBold,
   });
   const [queryClient] = useState(() => new QueryClient());
 
@@ -33,12 +35,13 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: colors.chromeNavy },
-            headerTintColor: '#fff',
-            headerTitleStyle: { fontFamily: 'Inter_600SemiBold' },
+            headerStyle: { backgroundColor: colors.pageBg },
+            headerShadowVisible: false,
+            headerTintColor: colors.text,
+            headerTitleStyle: { fontFamily: 'Inter_700Bold', fontSize: 16 },
             contentStyle: { backgroundColor: colors.pageBg },
           }}
         >

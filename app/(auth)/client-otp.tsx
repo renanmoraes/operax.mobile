@@ -1,13 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Body, Button, Field, Muted, Title } from '@/src/design-system/ui';
-import { colors, radii, spacing } from '@/src/design-system/tokens';
+import { StyleSheet } from 'react-native';
+import { Body, Button, Field } from '@/src/design-system/ui';
+import { colors } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
+import { AuthShell } from '@/src/features/auth/AuthShell';
 
 export default function ClientOtpScreen() {
-  const insets = useSafeAreaInsets();
   const { identifier } = useLocalSearchParams<{ identifier: string }>();
   const { verifyClientOtp, requestClientOtp, error } = useAuth();
   const [code, setCode] = useState('');
@@ -42,71 +41,52 @@ export default function ClientOtpScreen() {
   }
 
   return (
-    <View
-      style={[
-        styles.root,
-        { paddingTop: insets.top + spacing.xxl, paddingBottom: insets.bottom + spacing.lg },
-      ]}
-    >
-      <View style={{ gap: spacing.sm, paddingHorizontal: spacing.xl }}>
-        <Title style={{ color: '#fff' }}>Verificação</Title>
-        <Muted style={{ color: '#9aa8bd' }}>Digite o código enviado pra {identifier}.</Muted>
-      </View>
-
-      <View style={styles.card}>
-        <Field
-          label="Código"
-          value={code}
-          onChangeText={setCode}
-          keyboardType="number-pad"
-          placeholder="000000"
-        />
-        {blocked ? (
-          <Body style={{ color: colors.danger, fontSize: 13 }}>
-            Nenhuma das suas empresas tem o portal disponível. Fale com elas pra habilitar.
-          </Body>
-        ) : error ? (
-          <Body style={{ color: colors.danger, fontSize: 13 }}>{error}</Body>
-        ) : null}
-        <Button
-          label={loading ? 'Confirmando…' : 'Confirmar'}
-          disabled={loading || !code}
-          onPress={async () => {
-            if (!identifier) return;
-            setLoading(true);
-            try {
-              const outcome = await verifyClientOtp(identifier, code);
-              if (outcome === 'blocked') {
-                setBlocked(true);
-                return;
+    <AuthShell
+      onBack={() => router.replace('/(auth)/client-login')}
+      title="Confira seu celular"
+      subtitle={`Digite o código de 6 dígitos enviado para ${identifier ?? 'você'}.`}
+      footer={
+        <>
+          <Button
+            label="Confirmar"
+            loading={loading}
+            disabled={code.length < 4}
+            onPress={async () => {
+              if (!identifier) return;
+              setLoading(true);
+              try {
+                const outcome = await verifyClientOtp(identifier, code);
+                if (outcome === 'blocked') {
+                  setBlocked(true);
+                  return;
+                }
+                router.replace('/');
+              } catch {
+                /* erro já fica em `error` */
+              } finally {
+                setLoading(false);
               }
-              router.replace('/');
-            } catch {
-              /* erro já fica em `error` */
-            } finally {
-              setLoading(false);
-            }
-          }}
-        />
-        <Button
-          label={cooldown > 0 ? `Reenviar (${cooldown}s)` : 'Reenviar código'}
-          variant="ghost"
-          disabled={cooldown > 0}
-          onPress={resend}
-        />
-        <Button label="Voltar" variant="ghost" onPress={() => router.replace('/(auth)/client-login')} />
-      </View>
-    </View>
+            }}
+          />
+          <Button
+            label={cooldown > 0 ? `Reenviar em ${cooldown}s` : 'Reenviar código'}
+            variant="ghost"
+            disabled={cooldown > 0}
+            onPress={resend}
+          />
+        </>
+      }
+    >
+      <Field label="Código" icon="keypad-outline" value={code} onChangeText={setCode} keyboardType="number-pad" autoComplete="one-time-code" placeholder="000000" />
+      {blocked ? (
+        <Body style={styles.error}>Nenhuma das suas empresas tem o portal disponível. Fale com elas para habilitar.</Body>
+      ) : error ? (
+        <Body style={styles.error}>{error}</Body>
+      ) : null}
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.chromeNavy, justifyContent: 'space-between' },
-  card: {
-    marginHorizontal: spacing.xl,
-    backgroundColor: colors.cardBg,
-    borderRadius: radii.sheet,
-    padding: spacing.xl,
-    gap: spacing.md,
-  },
+  error: { color: colors.dangerText, fontSize: 13.5 },
 });

@@ -38,6 +38,6 @@ describe('resolveAuthRoute', () => {
   it('cliente autenticado com empresa ativa vai pro shell de cliente', () => {
     expect(
       resolveAuthRoute({ phase: 'client', authenticated: true, activeTenantId: 't1' }),
-    ).toBe('/(client)/agenda');
+    ).toBe('/(client)/inicio');
   });
 });

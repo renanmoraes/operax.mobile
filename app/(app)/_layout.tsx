@@ -1,6 +1,7 @@
 import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/design-system/tokens';
+import { GlassTabBar } from '@/src/design-system/GlassTabBar';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { QueueDrawerProvider } from '@/src/features/queue/QueueDrawerContext';
 import { hasPermission } from '@/src/features/auth/permissions';
@@ -25,17 +26,14 @@ export default function AppLayout() {
   return (
     <QueueDrawerProvider>
       <Tabs
+        tabBar={(props) => <GlassTabBar {...props} />}
         screenOptions={{
-          headerStyle: { backgroundColor: colors.chromeNavy },
-          headerTintColor: '#fff',
-          headerTitleStyle: { fontFamily: 'Inter_600SemiBold' },
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.textMuted,
-          tabBarStyle: {
-            backgroundColor: colors.cardBg,
-            borderTopColor: colors.border,
-          },
-          tabBarLabelStyle: { fontFamily: 'Inter_500Medium', fontSize: 11 },
+          headerShown: false,
+          headerStyle: { backgroundColor: colors.pageBg },
+          headerShadowVisible: false,
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontFamily: 'Inter_700Bold', fontSize: 16 },
+          sceneStyle: { backgroundColor: 'transparent' },
         }}
       >
         <Tabs.Screen

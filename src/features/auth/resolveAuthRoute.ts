@@ -10,7 +10,7 @@ export type AuthRoute =
   | '/(app)/inbox'
   | '/(auth)/client-login'
   | '/(auth)/client-tenant-select'
-  | '/(client)/agenda';
+  | '/(client)/inicio';
 
 export function resolveAuthRoute(input: AuthRouteInput): AuthRoute {
   if (input.phase === 'role_unselected') return '/(auth)/role-select';
@@ -21,5 +21,5 @@ export function resolveAuthRoute(input: AuthRouteInput): AuthRoute {
   }
 
   if (!input.authenticated) return '/(auth)/client-login';
-  return input.activeTenantId == null ? '/(auth)/client-tenant-select' : '/(client)/agenda';
+  return input.activeTenantId == null ? '/(auth)/client-tenant-select' : '/(client)/inicio';
 }

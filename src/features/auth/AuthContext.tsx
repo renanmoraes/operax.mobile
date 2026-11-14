@@ -65,12 +65,13 @@ const DEMO_USER: StaffUser = {
 const DEMO_CLIENT_USER: ClientUser = {
   kind: 'client',
   id: 'c1',
-  name: 'Cliente Demo',
-  email: 'cliente@demo.exemplo',
+  name: 'Marina Duarte',
+  email: 'marina.duarte@email.com',
   active_tenant_id: null,
   memberships: [
-    { tenant_id: 't1', tenant_name: 'Clínica Exemplo' },
-    { tenant_id: 't2', tenant_name: 'Studio Fit Exemplo' },
+    { tenant_id: 't1', tenant_name: 'Move Studio' },
+    { tenant_id: 't2', tenant_name: 'Studio Bela Vista' },
+    { tenant_id: 't3', tenant_name: 'Clínica Vitta' },
   ],
 };
 
