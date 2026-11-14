@@ -5,6 +5,7 @@ import { Avatar, Button, HeroCard, IconTile, Muted, PressableScale, Rise, Screen
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
+import { AccountSwitcher } from '@/src/features/auth/AccountSwitcher';
 import { useCompanies } from '@/src/features/client/useClientData';
 import { useProviders } from '@/src/features/fitness/connections';
 import { providerDisplayName } from '@/src/features/fitness/brands';
@@ -13,7 +14,7 @@ import { usePermissions } from '@/src/features/permissions/permissions';
 
 export default function ClientPerfilScreen() {
   const insets = useSafeAreaInsets();
-  const { user, logout, clearRole, switchTenant, mode } = useAuth();
+  const { user, logout, switchTenant, mode } = useAuth();
   const { data: companies } = useCompanies();
   const { data: summary } = useFitnessSummary();
   const { data: providers } = useProviders();
@@ -102,9 +103,12 @@ export default function ClientPerfilScreen() {
           </SettingsGroup>
         </Rise>
 
-        <Rise index={2} style={{ marginTop: 16, gap: 10 }}>
-          <Button label="Entrar como equipe" icon="headset-outline" variant="secondary" onPress={() => clearRole().then(() => router.replace('/(auth)/role-select'))} />
-          <Button label="Sair da conta" variant="ghost" onPress={() => logout()} style={{ minHeight: 48 }} />
+        <Text style={styles.groupLabel}>Contas</Text>
+        <Rise index={2}>
+          <AccountSwitcher />
+        </Rise>
+        <Rise index={3} style={{ marginTop: 16 }}>
+          <Button label="Sair desta conta" variant="ghost" onPress={() => void logout().then(() => router.replace('/'))} style={{ minHeight: 48 }} />
         </Rise>
       </ScrollView>
     </Screen>
@@ -112,6 +116,7 @@ export default function ClientPerfilScreen() {
 }
 
 const styles = StyleSheet.create({
+  groupLabel: { marginTop: 22, marginBottom: 10, ...text.calloutStrong, color: colors.textMuted },
   name: { ...text.title, color: colors.text },
   stats: { marginTop: 18 },
   companies: { flexDirection: 'row', gap: 10 },

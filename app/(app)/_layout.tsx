@@ -17,7 +17,7 @@ const TAB_PERMISSIONS: Record<string, string | undefined> = {
 
 export default function AppLayout() {
   const { isAuthenticated, user } = useAuth();
-  if (!isAuthenticated) return <Redirect href="/(auth)/login" />;
+  if (!isAuthenticated || user?.kind !== 'staff') return <Redirect href="/" />;
 
   const permissions = user?.kind === 'staff' ? user.permissions : undefined;
   const visible = (tab: keyof typeof TAB_PERMISSIONS) =>

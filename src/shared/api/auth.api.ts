@@ -78,7 +78,7 @@ export async function loginApi(input: {
     company_code: input.company_code.toUpperCase(),
   });
   if (data?.access_token && data?.refresh_token) {
-    await setTokens(data.access_token, data.refresh_token);
+    await setTokens(data.access_token, data.refresh_token, 'staff');
   }
   if (data?.user) {
     return { ...data, user: asStaffUser(data.user) } as LoginResult;
@@ -92,7 +92,7 @@ export async function verifyMfaApi(input: {
 }): Promise<TokenBundle> {
   const { data } = await api.post('/api/auth/mfa/verify', input);
   if (data?.access_token && data?.refresh_token) {
-    await setTokens(data.access_token, data.refresh_token);
+    await setTokens(data.access_token, data.refresh_token, 'staff');
   }
   return { ...data, user: asStaffUser(data.user) } as TokenBundle;
 }
@@ -126,7 +126,7 @@ export async function clientLoginApi(input: {
 }): Promise<ClientLoginResult> {
   const { data } = await api.post('/api/auth/client/login', input);
   if (data?.access_token && data?.refresh_token) {
-    await setTokens(data.access_token, data.refresh_token);
+    await setTokens(data.access_token, data.refresh_token, 'client');
   }
   if (data?.user) {
     return { ...data, user: asClientUser(data.user) } as ClientLoginResult;
@@ -144,7 +144,7 @@ export async function verifyClientOtpApi(input: {
 }): Promise<ClientLoginResult> {
   const { data } = await api.post('/api/auth/client/otp/verify', input);
   if (data?.access_token && data?.refresh_token) {
-    await setTokens(data.access_token, data.refresh_token);
+    await setTokens(data.access_token, data.refresh_token, 'client');
   }
   if (data?.user) {
     return { ...data, user: asClientUser(data.user) } as ClientLoginResult;
@@ -160,6 +160,6 @@ export async function getClientMeApi(): Promise<ClientUser> {
 export async function switchClientTenantApi(input: { tenant_id: string }): Promise<void> {
   const { data } = await api.post('/api/auth/client/switch-tenant', input);
   if (data?.access_token && data?.refresh_token) {
-    await setTokens(data.access_token, data.refresh_token);
+    await setTokens(data.access_token, data.refresh_token, 'client');
   }
 }

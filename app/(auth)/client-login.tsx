@@ -11,14 +11,16 @@ import { ALLOW_MOCK } from '@/src/shared/config';
 type Method = 'password' | 'otp';
 
 export default function ClientLoginScreen() {
-  const { clientLogin, requestClientOtp, clearRole, enterClientDemo, error, clearError } = useAuth();
+  const { clientLogin, requestClientOtp, clearRole, returnRole, cancelAddAccount, enterClientDemo, error, clearError } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [method, setMethod] = useState<Method>('password');
   const [loading, setLoading] = useState(false);
   const [blocked, setBlocked] = useState(false);
 
-  const backToRoles = () => clearRole().then(() => router.replace('/(auth)/role-select'));
+  // Adicionando uma segunda conta: voltar desiste e reabre a conta que já estava aberta.
+  const backToRoles = () =>
+    returnRole ? cancelAddAccount().then(() => router.replace('/')) : clearRole().then(() => router.replace('/(auth)/role-select'));
 
   async function submit() {
     setLoading(true);

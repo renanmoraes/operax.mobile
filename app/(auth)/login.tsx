@@ -8,18 +8,20 @@ import { AuthShell } from '@/src/features/auth/AuthShell';
 import { ALLOW_MOCK, API_URL } from '@/src/shared/config';
 
 export default function LoginScreen() {
-  const { login, enterDemo, error, clearError, clearRole } = useAuth();
+  const { login, enterDemo, error, clearError, clearRole, returnRole, cancelAddAccount } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [companyCode, setCompanyCode] = useState('OPRX');
   const [loading, setLoading] = useState(false);
 
-  const backToRoles = () => clearRole().then(() => router.replace('/(auth)/role-select'));
+  // Adicionando uma segunda conta: voltar desiste e reabre a conta que já estava aberta.
+  const backToRoles = () =>
+    returnRole ? cancelAddAccount().then(() => router.replace('/')) : clearRole().then(() => router.replace('/(auth)/role-select'));
 
   return (
     <AuthShell
       onBack={backToRoles}
-      tag="Equipe"
+      tag={returnRole ? "Nova conta · Equipe" : "Equipe"}
       showLogo
       title="Bom trabalho hoje"
       subtitle="Entre com o acesso que a sua empresa liberou para você."

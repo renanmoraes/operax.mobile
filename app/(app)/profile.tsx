@@ -3,7 +3,9 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar, Badge, Button, Card, HeroCard, IconTile, Muted, Rise, Screen, ScreenHeader, SettingsGroup, SettingsRow } from '@/src/design-system/ui';
 import { colors, text, typography } from '@/src/design-system/tokens';
+import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { useAuth } from '@/src/features/auth/AuthContext';
+import { AccountSwitcher } from '@/src/features/auth/AccountSwitcher';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
 import { openSystemSettings, usePermissions } from '@/src/features/permissions/permissions';
 import { API_URL } from '@/src/shared/config';
@@ -16,7 +18,7 @@ export default function ProfileScreen() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 40 }}>
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom }}>
         <ScreenHeader title="Perfil" onBack={() => router.back()} />
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
           <Rise>
@@ -67,12 +69,17 @@ export default function ProfileScreen() {
           </Rise>
 
           <Rise index={3}>
+            <Text style={styles.groupLabel}>Contas</Text>
+            <AccountSwitcher />
+          </Rise>
+
+          <Rise index={4}>
             <Button
-              label="Sair da conta"
+              label="Sair desta conta"
               variant="danger"
               onPress={async () => {
                 await logout();
-                router.replace('/(auth)/login');
+                router.replace('/');
               }}
             />
           </Rise>
@@ -86,4 +93,5 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   name: { ...text.title, color: colors.text },
   cardTitle: { fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text },
+  groupLabel: { marginTop: 10, marginBottom: 10, fontFamily: typography.fontFamilySemiBold, fontSize: 13.5, color: colors.textMuted },
 });
