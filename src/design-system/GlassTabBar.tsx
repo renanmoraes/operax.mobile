@@ -8,7 +8,6 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,14 +22,19 @@ const COLLAPSED = 52;
 const PAD_LEFT = 15;
 const PAD_RIGHT = 18;
 const GAP = 8;
-/** Mola firme, quase sem quique: a pílula abre rápido e assenta sem balançar. */
-const SPRING = { damping: 26, stiffness: 260, mass: 0.9 };
+/**
+ * Abertura lenta e gradual: a pílula nasce como um círculo atrás do ícone e vai se
+ * esticando devagar, descobrindo o nome pela borda. Fechar é um pouco mais rápido.
+ */
+const SMOOTH = Easing.bezier(0.45, 0, 0.15, 1);
+const OPEN = { duration: 900, easing: SMOOTH };
+const CLOSE = { duration: 460, easing: SMOOTH };
 const easeOut = Easing.bezier(...motion.easeOut);
 
 /**
- * Um item da barra. Ao ficar ativo, a pílula azul cresce do ícone para ícone + rótulo
- * (largura com mola), o fundo surge com leve escala, o rótulo entra deslizando e o ícone
- * passa de cinza para branco. Ao sair, faz o caminho inverso, e pode ser interrompido no meio.
+ * Um item da barra. Ao ficar ativo, um círculo azul surge atrás do ícone (que fica branco)
+ * e a pílula vai se esticando devagar (~0,9 s), descobrindo o nome pela borda. Ao sair,
+ * faz o caminho inverso mais depressa, e pode ser interrompido no meio.
  */
 function TabItem({
   focused,
@@ -52,29 +56,31 @@ function TabItem({
   const [labelW, setLabelW] = useState(0);
 
   useEffect(() => {
-    p.value = reduced ? (focused ? 1 : 0) : withSpring(focused ? 1 : 0, SPRING);
+    p.value = reduced ? (focused ? 1 : 0) : withTiming(focused ? 1 : 0, focused ? OPEN : CLOSE);
   }, [focused, reduced, p]);
 
   const expanded = PAD_LEFT + ICON + GAP + labelW + PAD_RIGHT;
 
   const container = useAnimatedStyle(() => ({
-    width: labelW ? interpolate(p.value, [0, 1], [COLLAPSED, expanded]) : COLLAPSED,
+    // primeiro o círculo azul surge atrás do ícone; só então a pílula começa a esticar
+    width: labelW ? interpolate(p.value, [0.14, 1], [COLLAPSED, expanded], 'clamp') : COLLAPSED,
     transform: [{ scale: press.value }],
   }));
   const pill = useAnimatedStyle(() => ({
-    opacity: p.value,
-    transform: [{ scale: 0.92 + 0.08 * p.value }],
+    opacity: interpolate(p.value, [0, 0.16], [0, 1], 'clamp'),
+    transform: [{ scale: interpolate(p.value, [0, 0.2], [0.86, 1], 'clamp') }],
   }));
   const content = useAnimatedStyle(() => ({
     // centralizado quando fechado; alinhado à esquerda (com respiro) quando aberto
     transform: [{ translateX: interpolate(p.value, [0, 1], [(COLLAPSED - ICON) / 2, PAD_LEFT]) }],
   }));
   const labelStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(p.value, [0.35, 1], [0, 1], 'clamp'),
-    transform: [{ translateX: (1 - p.value) * -6 }],
+    // o nome é descoberto pela borda da pílula enquanto ela cresce, ganhando cor aos poucos
+    opacity: interpolate(p.value, [0.28, 0.92], [0, 1], 'clamp'),
+    transform: [{ translateX: interpolate(p.value, [0.14, 1], [-4, 0], 'clamp') }],
   }));
-  const iconOn = useAnimatedStyle(() => ({ opacity: p.value }));
-  const iconOff = useAnimatedStyle(() => ({ opacity: 1 - p.value }));
+  const iconOn = useAnimatedStyle(() => ({ opacity: interpolate(p.value, [0, 0.18], [0, 1], 'clamp') }));
+  const iconOff = useAnimatedStyle(() => ({ opacity: interpolate(p.value, [0, 0.18], [1, 0], 'clamp') }));
   const dot = useAnimatedStyle(() => ({ opacity: 1 - p.value, transform: [{ scale: 1 - 0.4 * p.value }] }));
 
   const onMeasure = (e: LayoutChangeEvent) => {
