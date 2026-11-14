@@ -73,7 +73,8 @@ function TeamChatConversationScreen() {
   const query = useQuery({
     queryKey: ['team-chat', 'messages', id],
     enabled: live && !!id,
-    refetchInterval: 4000,
+    // O tempo real atualiza na hora; isto é só reserva se a conexão cair.
+    refetchInterval: 15_000,
     queryFn: async () => {
       const page = (await listTeamMessages(id, PAGE)).map((m) => mapApiMessage(m, user?.id, API_URL));
       // Com histórico aberto, a janela das mais novas também fica guardada (a que sai dela não some).

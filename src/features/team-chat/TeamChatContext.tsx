@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { listTeamChannels, markTeamChannelRead } from '@/src/shared/api/team-chat.api';
-import { getSocket } from '@/src/shared/realtime/socket';
+import { useSocketEvents } from '@/src/shared/realtime/socket';
 import { demoTeamChat } from './demoStore';
 import { IncomingNotice, mapApiChannel, sortChannels, TeamChannel, unreadTotal } from './model';
 
@@ -71,22 +71,23 @@ export function TeamChatProvider({ children }: { children: ReactNode }) {
     lastUnread.current = next;
   }, [live, query.data]);
 
-  useEffect(() => {
-    if (!live) return;
-    const socket = getSocket();
-    if (!socket) return;
-    const onNew = (payload: { channel_id?: string; sender_id?: string } | undefined) => {
-      if (payload?.sender_id && payload.sender_id === user?.id) return;
-      void qc.invalidateQueries({ queryKey: TEAM_CHANNELS_KEY });
-      if (payload?.channel_id) void qc.invalidateQueries({ queryKey: ['team-chat', 'messages', payload.channel_id] });
-    };
-    socket.on('chat.message.new', onNew);
-    socket.on('chat.channel.updated', onNew);
-    return () => {
-      socket.off('chat.message.new', onNew);
-      socket.off('chat.channel.updated', onNew);
-    };
-  }, [live, qc, user?.id]);
+  // Ao vivo: mensagem nova, edição, reação ou canal alterado → lista, contador e conversa aberta na hora.
+  const onTeamEvent = (raw: unknown) => {
+    const payload = raw as { channel_id?: string; channelId?: string; sender_id?: string } | undefined;
+    void qc.invalidateQueries({ queryKey: TEAM_CHANNELS_KEY });
+    const channel = payload?.channel_id ?? payload?.channelId;
+    if (channel && payload?.sender_id !== user?.id) void qc.invalidateQueries({ queryKey: ['team-chat', 'messages', channel] });
+  };
+  useSocketEvents(
+    {
+      'chat.message.new': onTeamEvent,
+      'chat.message.edited': onTeamEvent,
+      'chat.message.reaction': onTeamEvent,
+      'chat.channel.updated': onTeamEvent,
+      'chat.notify': onTeamEvent,
+    },
+    live,
+  );
 
   const markRead = useCallback(
     (id: string) => {

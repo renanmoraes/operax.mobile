@@ -11,7 +11,7 @@ import { useAuth } from '@/src/features/auth/AuthContext';
 import { claimConversation, getMyHistory, listConversations } from '@/src/shared/api/conversations.api';
 import { mapApiConversation } from '@/src/features/inbox/mapConversation';
 import { sortForHome } from '@/src/features/inbox/sortConversations';
-import { getSocket } from '@/src/shared/realtime/socket';
+import { useSocketEvents } from '@/src/shared/realtime/socket';
 import { useQueueDrawer } from '@/src/features/queue/QueueDrawerContext';
 import { QueueDrawer } from '@/src/features/queue/QueueDrawer';
 import { SkeletonList } from '@/src/design-system/Skeleton';
@@ -34,6 +34,8 @@ function InboxScreen() {
   const query = useQuery({
     queryKey: ['inbox', mode, user?.id],
     enabled: mode === 'live',
+    // Reserva se o tempo real cair (o normal é atualizar pelo socket, na hora).
+    refetchInterval: 20_000,
     queryFn: async () => {
       const [list, history] = await Promise.all([
         listConversations({ limit: 50, sort_by: 'unread_first' }),
@@ -48,20 +50,20 @@ function InboxScreen() {
     },
   });
 
-  useEffect(() => {
-    if (mode !== 'live') return;
-    const socket = getSocket();
-    if (!socket) return;
-    const invalidate = () => query.refetch();
-    socket.on('conversation.new', invalidate);
-    socket.on('conversation.updated', invalidate);
-    socket.on('message.received', invalidate);
-    return () => {
-      socket.off('conversation.new', invalidate);
-      socket.off('conversation.updated', invalidate);
-      socket.off('message.received', invalidate);
-    };
-  }, [mode, query]);
+  // Ao vivo: chegou mensagem, alguém assumiu/liberou/encerrou → a lista e os contadores mudam na hora.
+  const refresh = () => void query.refetch();
+  useSocketEvents(
+    {
+      'conversation.new': refresh,
+      'conversation.updated': refresh,
+      'conversation.closed': refresh,
+      'message.received': refresh,
+      'message.sent': refresh,
+      'assignment.claimed': refresh,
+      'assignment.released': refresh,
+    },
+    mode === 'live',
+  );
 
   const { active, queue } = useMemo(() => {
     if (mode === 'mock') {

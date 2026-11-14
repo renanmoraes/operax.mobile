@@ -7,6 +7,8 @@ import { useAuth } from '@/src/features/auth/AuthContext';
 import { QueueDrawerProvider } from '@/src/features/queue/QueueDrawerContext';
 import { hasPermission, PERMS, type PermissionNeed } from '@/src/features/auth/permissions';
 import { useTeamChat } from '@/src/features/team-chat/TeamChatContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSocketEvents } from '@/src/shared/realtime/socket';
 
 // Mesmas permissões do menu do Operax web: sem elas a aba nem aparece.
 const TAB_PERMISSIONS: Record<string, PermissionNeed | undefined> = {
@@ -21,6 +23,9 @@ const HIDDEN_ITEM = { display: 'none' } as const;
 export default function AppLayout() {
   const { isAuthenticated, user } = useAuth();
   const teamChat = useTeamChat();
+  const qc = useQueryClient();
+  // Aviso novo chega ao vivo na aba Avisos.
+  useSocketEvents({ 'notification.new': () => void qc.invalidateQueries({ queryKey: ['notifications'] }) }, user?.kind === 'staff');
   if (!isAuthenticated || user?.kind !== 'staff') return <Redirect href="/" />;
 
   const permissions = user?.kind === 'staff' ? user.permissions : undefined;

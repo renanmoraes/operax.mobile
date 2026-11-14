@@ -4,12 +4,12 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
-import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { focusManager, QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, usePathname, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
-import { LogBox, Platform } from 'react-native';
+import { AppState, LogBox, Platform, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/src/features/auth/AuthContext';
@@ -18,12 +18,26 @@ import { IncomingBanner } from '@/src/features/team-chat/IncomingBanner';
 import { TeamChatProvider } from '@/src/features/team-chat/TeamChatContext';
 import { resetClientCache } from '@/src/features/client/clientApi';
 import { colors } from '@/src/design-system/tokens';
+import { installErrorReporter, reportError, setReporterSession, trackRoute } from '@/src/shared/telemetry/errorReporter';
+import { Button } from '@/src/design-system/ui';
 
 SplashScreen.preventAutoHideAsync();
 
 // Aviso só de desenvolvimento do expo-router 58 ao montar abas com telas escondidas; não afeta o app
 // e o aviso ficava por cima da barra de abas no Expo Go.
 LogBox.ignoreLogs(["The action 'ROUTE_NAMES_CHANGED'"]);
+
+// Erros do celular vão para o servidor (system_logs) com o retrato do aparelho.
+installErrorReporter();
+
+// No celular, "em foco" = app na frente. Com isso as consultas automáticas (chat ao vivo, contadores)
+// param em segundo plano — nada é marcado como lido sem a pessoa ver — e atualizam ao voltar.
+if (Platform.OS !== 'web') {
+  focusManager.setEventListener((setFocused) => {
+    const sub = AppState.addEventListener('change', (state) => setFocused(state === 'active'));
+    return () => sub.remove();
+  });
+}
 
 // No navegador (inclusive Safari do iPhone), tira o contorno azul de foco dos campos e o
 // clarão cinza do toque: no app nativo nada disso existe.
@@ -114,6 +128,31 @@ function AccountCacheReset() {
     qc.removeQueries();
     resetClientCache();
   }, [key, qc]);
+  // O log de erro diz quem estava usando e onde (o servidor confere pelo token).
+  const pathname = usePathname();
+  useEffect(() => trackRoute(pathname), [pathname]);
+  useEffect(() => {
+    setReporterSession({ role: user?.kind, mode, tenant: tenant || null });
+  }, [user?.kind, mode, tenant]);
   return null;
+}
+
+/**
+ * Tela que travou: avisa o servidor (com a tela e o aparelho) e deixa tentar de novo,
+ * em vez de deixar o app branco ou fechar.
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    void reportError(error, { context: 'tela', extra: { boundary: true } });
+  }, [error]);
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 14, backgroundColor: colors.pageBg }}>
+      <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 20, color: colors.text, textAlign: 'center' }}>Algo deu errado nesta tela</Text>
+      <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 15, lineHeight: 21, color: colors.textSoft, textAlign: 'center' }}>
+        Já avisamos a equipe Operax com os detalhes para corrigir. Tente de novo.
+      </Text>
+      <Button label="Tentar de novo" onPress={() => void retry()} style={{ alignSelf: 'stretch', marginTop: 6 }} />
+    </View>
+  );
 }
 

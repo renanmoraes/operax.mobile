@@ -1,6 +1,8 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig, isCancel } from 'axios';
 import { API_URL, MOBILE_CLIENT_HEADER } from '@/src/shared/config';
 import { clearTokens, getAccessToken, getRefreshToken, getSavedRole, SavedRole, setTokens } from './token-store';
+import { refreshSocketAuth } from '@/src/shared/realtime/socket';
+import { reportError } from '@/src/shared/telemetry/errorReporter';
 
 // `axios.create` é o uso documentado da biblioteca; o aviso de import nomeado não se aplica.
 // eslint-disable-next-line import/no-named-as-default-member
@@ -43,6 +45,8 @@ async function refreshAccessToken(role: SavedRole): Promise<string | null> {
       if (!access) return null;
       // Grava na conta que pediu, mesmo que a pessoa já tenha trocado de conta.
       await setTokens(access, nextRefresh, role);
+      // O tempo real usa o mesmo token: troca na conexão aberta (senão cai ao vencer).
+      if (role === 'staff') void refreshSocketAuth();
       return access;
     })().finally(() => {
       delete refreshing[role];
@@ -96,6 +100,27 @@ api.interceptors.response.use(
         await clearTokens(role);
       }
     }
+    reportApiFailure(error, url);
     return Promise.reject(error);
   },
 );
+
+/**
+ * Falha do servidor (5xx) ou sem resposta (rede, tempo esgotado) vira log de erro do celular.
+ * 4xx é regra de negócio respondida (senha errada, sem permissão) e não entra. Só método, rota e
+ * status: nunca o corpo nem a query (podem ter dado pessoal).
+ */
+function reportApiFailure(error: AxiosError, url: string) {
+  const status = error.response?.status;
+  if (status != null && status < 500) return;
+  if (isCancel(error)) return;
+  const path = url.split('?')[0].replace(/^https?:\/\/[^/]+/, '');
+  const method = String(error.config?.method ?? 'get').toUpperCase();
+  const message = status ? `API ${status} em ${method} ${path}` : `Sem resposta da API em ${method} ${path} (${error.code ?? 'rede'})`;
+  // A mensagem curta e estável agrupa o mesmo problema no painel (o objeto do axios variaria a cada vez).
+  void reportError(message, {
+    context: `api ${method} ${path}`.slice(0, 56),
+    level: status ? 'error' : 'warn',
+    extra: { request: { method, path, status: status ?? null, code: error.code ?? null, server_message: typeof (error.response?.data as { message?: unknown })?.message === 'string' ? (error.response?.data as { message: string }).message.slice(0, 300) : null } },
+  });
+}

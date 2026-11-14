@@ -24,6 +24,7 @@ export default function NotificationsScreen() {
   const query = useQuery({
     queryKey: ['notifications', mode],
     enabled: mode === 'live',
+    refetchInterval: 60_000,
     queryFn: async () => {
       const page = await listNotifications(1, 40);
       return page.data ?? [];

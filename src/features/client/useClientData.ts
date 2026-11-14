@@ -85,7 +85,7 @@ export const useClassAction = () =>
 
 export function useChats() {
   // Login real: o selo de não lidas acompanha a resposta da equipe sem precisar abrir nada.
-  return useQuery({ queryKey: keys.chats, queryFn: api.fetchChats, refetchInterval: () => (clientDataMode() === 'live' ? 30_000 : false) });
+  return useQuery({ queryKey: keys.chats, queryFn: api.fetchChats, refetchInterval: () => (clientDataMode() === 'live' ? 10_000 : false) });
 }
 
 /** A conversa aberta. No portal real, buscá-la já marca como lida. */
@@ -94,8 +94,9 @@ export function useChat(slug: string | undefined) {
   return useQuery({
     queryKey: keys.thread(slug),
     enabled: !!slug,
-    // Conversa aberta com o login real: busca de novo a cada poucos segundos para a resposta da equipe aparecer.
-    refetchInterval: () => (clientDataMode() === 'live' ? 6_000 : false),
+    // Conversa aberta com o login real: o portal não tem tempo real, então busca a cada 3 s (só com o
+    // app na frente; em segundo plano para, e a mensagem não é marcada como lida sem a pessoa ver).
+    refetchInterval: () => (clientDataMode() === 'live' ? 3_000 : false),
     queryFn: async () => {
       const chat = await api.fetchChatThread(slug!);
       // Abrir/atualizar já zera as não lidas no portal: atualiza a lista e o selo se ainda mostram alguma.

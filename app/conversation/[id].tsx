@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInputInstance, View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInputInstance, View, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar, Backdrop, Button, IconButton, IconTile, Muted } from '@/src/design-system/ui';
@@ -29,7 +29,7 @@ import {
   sendTextMessage,
 } from '@/src/shared/api/conversations.api';
 import { mapApiConversation, mapApiMessage } from '@/src/features/inbox/mapConversation';
-import { getSocket } from '@/src/shared/realtime/socket';
+import { useConversationRoom, useSocketEvents } from '@/src/shared/realtime/socket';
 import * as DocumentPicker from 'expo-document-picker';
 import { ActionsSheet, ConversationAction } from '@/src/features/conversation-actions/ActionsSheet';
 import { BookingSheet } from '@/src/features/conversation-actions/BookingSheet';
@@ -84,12 +84,15 @@ function ConversationScreen() {
   const liveQuery = useQuery({
     queryKey: ['conversation', id],
     enabled: mode === 'live' && !!id,
+    // Reserva se o tempo real cair.
+    refetchInterval: 15_000,
     queryFn: async () => {
       const [conv, page] = await Promise.all([
         getConversation(id),
         getConversationMessages(id, 80),
       ]);
-      await markConversationRead(id).catch(() => undefined);
+      // Só conta como lida com o app na frente (um evento em segundo plano não pode zerar o que ninguém viu).
+      if (AppState.currentState === 'active') await markConversationRead(id).catch(() => undefined);
       return {
         conversation: mapApiConversation(conv, user?.id),
         messages: (page.messages ?? []).map((m) => mapApiMessage(m, id)),
@@ -98,19 +101,24 @@ function ConversationScreen() {
     },
   });
 
-  useEffect(() => {
-    if (mode !== 'live' || !id) return;
-    const socket = getSocket();
-    if (!socket) return;
-    const onMsg = () => liveQuery.refetch();
-    socket.emit?.('join', { conversationId: id });
-    socket.on('message.received', onMsg);
-    socket.on('message.sent', onMsg);
-    return () => {
-      socket.off('message.received', onMsg);
-      socket.off('message.sent', onMsg);
-    };
-  }, [mode, id, liveQuery]);
+  // Ao vivo: mensagem nova, status (enviada/entregue/lida), posse ou encerramento desta conversa.
+  useConversationRoom(id, mode === 'live');
+  const onConversationEvent = (payload: unknown) => {
+    const cid = (payload as { conversationId?: string; conversation_id?: string } | undefined)?.conversationId ?? (payload as { conversation_id?: string } | undefined)?.conversation_id;
+    if (!cid || cid === id) void liveQuery.refetch();
+  };
+  useSocketEvents(
+    {
+      'message.received': onConversationEvent,
+      'message.sent': onConversationEvent,
+      'message.updated': onConversationEvent,
+      'conversation.updated': onConversationEvent,
+      'conversation.closed': onConversationEvent,
+      'assignment.claimed': onConversationEvent,
+      'assignment.released': onConversationEvent,
+    },
+    mode === 'live' && !!id,
+  );
 
   const conversation = mode === 'live' ? liveQuery.data?.conversation : mockConv;
   const thread = mode === 'live' ? liveQuery.data?.messages ?? [] : [...mockThread, ...localMsgs];
