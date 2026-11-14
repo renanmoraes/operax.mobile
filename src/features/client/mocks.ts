@@ -2,6 +2,10 @@ import type { ClientBooking, ClientChat, ClientCompany } from './types';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const DEMO_VOICE: number = require('@/assets/audio/demo-recado.wav');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const DEMO_PHOTO: number = require('@/assets/demo/foto-joelho.jpg');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const DEMO_PDF: number = require('@/assets/demo/avaliacao-outubro.pdf');
 
 /** Dados de exemplo até existir o login mobile de cliente (/auth/client/*). Datas relativas a hoje. */
 
@@ -46,9 +50,9 @@ export function buildMockChats(): ClientChat[] {
       messages: [
         { id: 'm1', from: 'team', author_name: 'Carlos Mendes', text: 'Bom dia, Marina! Separei o vídeo do búlgaro para você ver antes da próxima perna.', at: minutesFromNow(-55), attachment: null },
         { id: 'm2', from: 'team', author_name: 'Carlos Mendes', text: '', at: minutesFromNow(-54), attachment: { kind: 'video', uri: '', duration_s: 42, title: 'Agachamento búlgaro' } },
-        { id: 'm3', from: 'me', text: 'Meu joelho fica assim no final. Tá certo?', at: minutesFromNow(-50), attachment: { kind: 'image', uri: '' }, status: 'read' },
+        { id: 'm3', from: 'me', text: 'Meu joelho fica assim no final. Tá certo?', at: minutesFromNow(-50), attachment: { kind: 'image', uri: '', width: 1080, height: 1350, asset: DEMO_PHOTO }, status: 'read' },
         { id: 'm4', from: 'team', author_name: 'Carlos Mendes', text: 'Tá ótimo! Só não deixa o joelho passar da ponta do pé. Segue sua avaliação de outubro:', at: minutesFromNow(-48), attachment: null },
-        { id: 'm5', from: 'team', author_name: 'Carlos Mendes', text: '', at: minutesFromNow(-48), attachment: { kind: 'document', uri: '', name: 'Avaliação física — outubro.pdf', size_bytes: 1_250_000, pages: 4 } },
+        { id: 'm5', from: 'team', author_name: 'Carlos Mendes', text: '', at: minutesFromNow(-48), attachment: { kind: 'document', uri: '', name: 'Avaliação física — outubro.pdf', size_bytes: 1_844, pages: 2, asset: DEMO_PDF } },
         { id: 'm6', from: 'team', author_name: 'Carlos Mendes', text: '', at: minutesFromNow(-46), attachment: { kind: 'audio', uri: '', duration_s: 4, asset: DEMO_VOICE } },
       ],
     },

@@ -25,9 +25,9 @@ export type ClientBooking = {
 };
 
 export type ChatAttachment =
-  | { kind: 'image'; uri: string; width?: number; height?: number }
+  | { kind: 'image'; uri: string; width?: number; height?: number; /** Arquivo embutido no app (só no demo). */ asset?: number }
   | { kind: 'video'; uri: string; duration_s: number; title?: string }
-  | { kind: 'document'; uri: string; name: string; size_bytes: number; pages?: number }
+  | { kind: 'document'; uri: string; name: string; size_bytes: number; pages?: number; /** Arquivo embutido no app (só no demo). */ asset?: number }
   | { kind: 'audio'; uri: string; duration_s: number; /** Arquivo embutido no app (só no demo). */ asset?: number };
 
 export type ChatMessage = {

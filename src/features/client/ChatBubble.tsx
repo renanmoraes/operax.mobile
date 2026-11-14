@@ -4,12 +4,19 @@ import { colors, radii, text, typography } from '@/src/design-system/tokens';
 import { formatHour } from '@/src/shared/format';
 import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, MessageMeta, TextWithMeta } from '@/src/features/chat/MessageParts';
 import { AudioBubble } from '@/src/features/chat/AudioBubble';
+import { assetUri, openViewer } from '@/src/features/media/viewer';
 import type { ChatAttachment, ChatMessage } from './types';
 
+/** Endereço do arquivo: o link real ou, no demo, o arquivo embutido no app. */
+function fileUri(a: ChatAttachment): string | undefined {
+  if (a.uri) return a.uri;
+  return 'asset' in a && a.asset ? assetUri(a.asset) : undefined;
+}
+
 function toMedia(a: ChatAttachment): ChatMediaData | null {
-  if (a.kind === 'image') return { kind: 'image', uri: a.uri || undefined, width: a.width, height: a.height };
+  if (a.kind === 'image') return { kind: 'image', uri: fileUri(a), width: a.width, height: a.height };
   if (a.kind === 'video') return { kind: 'video', uri: a.uri || undefined, durationS: a.duration_s, title: a.title };
-  if (a.kind === 'document') return { kind: 'document', uri: a.uri || undefined, name: a.name, sizeBytes: a.size_bytes, pages: a.pages };
+  if (a.kind === 'document') return { kind: 'document', uri: fileUri(a), name: a.name, sizeBytes: a.size_bytes, pages: a.pages };
   return null;
 }
 
@@ -17,7 +24,13 @@ export function ChatBubble({ m }: { m: ChatMessage }) {
   const mine = m.from === 'me';
   const at = formatHour(m.at);
   const media = m.attachment ? toMedia(m.attachment) : null;
-  const uri = m.attachment?.uri;
+  const uri = m.attachment ? fileUri(m.attachment) : undefined;
+  const open = () => {
+    if (!uri || !m.attachment) return;
+    if (m.attachment.kind === 'image') openViewer({ kind: 'image', uri, title: m.author_name ? `Foto de ${m.author_name}` : 'Sua foto' });
+    else if (m.attachment.kind === 'document') openViewer({ kind: 'pdf', uri, title: m.attachment.name });
+    else void Linking.openURL(uri);
+  };
 
   return (
     <View style={[styles.wrap, { alignSelf: mine ? 'flex-end' : 'flex-start' }]}>
@@ -45,7 +58,7 @@ export function ChatBubble({ m }: { m: ChatMessage }) {
           status={m.status}
         />
       ) : media ? (
-        <MediaBubble media={media} caption={m.text} at={at} mine={mine} status={m.status} onOpen={uri ? () => void Linking.openURL(uri) : undefined} />
+        <MediaBubble media={media} caption={m.text} at={at} mine={mine} status={m.status} onOpen={uri ? open : undefined} />
       ) : (
         <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
           <TextWithMeta at={at} mine={mine} status={m.status} tone={mine ? 'onBubbleMine' : 'onBubbleTheirs'} style={[styles.text, mine && { color: '#fff' }]}>
