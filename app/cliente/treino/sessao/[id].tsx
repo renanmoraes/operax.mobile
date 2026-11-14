@@ -8,6 +8,7 @@ import * as Speech from 'expo-speech';
 import Svg, { Circle, Polyline } from 'react-native-svg';
 import { ActionRow, IconButton, Muted, Num, PressableScale, ProgressRing, Screen } from '@/src/design-system/ui';
 import { Toast, useToast } from '@/src/design-system/Toast';
+import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { colors, gradients, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { flattenWorkout } from '@/src/features/fitness/flatten';
 import { LOAD_HISTORY, WORKOUTS } from '@/src/features/fitness/mockData';
@@ -65,6 +66,7 @@ export default function WorkoutSessionScreen() {
   const [restTotal, setRestTotal] = useState(60);
   const [voice, setVoice] = useState(true);
   const { toast, show } = useToast(2600);
+  const [listOpen, setListOpen] = useState(false);
 
   const row = rows[idx];
   const done = logs[idx] ?? [];
@@ -162,45 +164,61 @@ export default function WorkoutSessionScreen() {
         </PressableScale>
       </View>
 
-      <View style={styles.segments} accessible accessibilityLabel={`Exercício ${idx + 1} de ${rows.length}`}>
+      <View style={styles.segments}>
         {rows.map((r, i) => {
-          const frac = i < idx ? 1 : i === idx ? Math.min(1, done.length / r.sets.length) : 0;
+          const frac = i < idx ? 1 : i === idx ? Math.min(1, done.length / r.sets.length) : (logs[i]?.length ?? 0) >= r.sets.length ? 1 : 0;
           return (
-            <View key={r.key} style={styles.segment}>
-              <View style={[styles.segmentFill, { width: `${frac * 100}%` }]} />
-            </View>
-          );
-        })}
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={styles.chips}>
-        {rows.map((r, i) => {
-          const isDone = (logs[i]?.length ?? 0) >= r.sets.length;
-          const on = i === idx;
-          return (
-            <Pressable key={r.key} onPress={() => goTo(i)} accessibilityRole="button" accessibilityState={{ selected: on }} style={[styles.chip, on ? styles.chipOn : isDone ? styles.chipDone : styles.chipOff]}>
-              <Text style={[styles.chipText, { color: on ? '#fff' : isDone ? colors.primaryDeep : colors.textMuted }]} numberOfLines={1}>
-                {`${isDone && !on ? 'Feito · ' : `${i + 1}  `}${r.name.split(' ').slice(0, 2).join(' ')}`}
-              </Text>
+            <Pressable
+              key={r.key}
+              onPress={() => goTo(i)}
+              hitSlop={{ top: 10, bottom: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={`Ir para o exercício ${i + 1}, ${r.name}`}
+              accessibilityState={{ selected: i === idx }}
+              style={styles.segmentHit}
+            >
+              <View style={[styles.segment, i === idx && styles.segmentNow]}>
+                <View style={[styles.segmentFill, { width: `${frac * 100}%` }]} />
+              </View>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
+      <View style={styles.navRow}>
+        <Text style={styles.navCount}>
+          {'Exercício '}
+          <Text style={styles.navCountStrong}>{idx + 1}</Text>
+          {` de ${rows.length}`}
+        </Text>
+        <PressableScale onPress={() => setListOpen(true)} accessibilityRole="button" accessibilityLabel="Ver todos os exercícios do treino" style={styles.navList}>
+          <Ionicons name="list" size={16} color={colors.primary} />
+          <Text style={styles.navListText}>Ver treino</Text>
+        </PressableScale>
+      </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16 }}>
-        <PressableScale onPress={() => router.push(`/cliente/exercicio/${row.exerciseId}?treino=${workout.id}`)} accessibilityRole="button" accessibilityLabel={`Ver execução de ${row.name}`}>
-          <LinearGradient colors={gradients.media} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.media}>
-            <View style={styles.mediaBtn}>
-              <View style={styles.mediaPlay}>
-                <Ionicons name="play" size={12} color={colors.text} />
+        <View style={styles.exHead}>
+          <PressableScale
+            onPress={() => router.push(`/cliente/exercicio/${row.exerciseId}?treino=${workout.id}`)}
+            accessibilityRole="button"
+            accessibilityLabel={`Ver como executar ${row.name}`}
+          >
+            <LinearGradient colors={gradients.media} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.thumb}>
+              <View style={styles.thumbPlay}>
+                <Ionicons name="play" size={14} color={colors.primary} style={{ marginLeft: 2 }} />
               </View>
-              <Text style={styles.mediaText}>{row.snapshot?.media.length ? 'Vídeo do seu personal' : 'Como executar'}</Text>
-            </View>
-          </LinearGradient>
-        </PressableScale>
-
-        <Text style={styles.name}>{row.name}</Text>
-        <Muted style={{ marginTop: 4, fontSize: 14 }}>{`${row.snapshot?.muscle_group ?? ''} · ${row.prescription}${row.tag === 'Drop set' ? ` · ${row.loadLabel}` : ''}`}</Muted>
+            </LinearGradient>
+          </PressableScale>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.name}>{row.name}</Text>
+            <Text style={styles.prescription} numberOfLines={2}>
+              {[row.snapshot?.muscle_group, row.prescription, row.tag === 'Drop set' ? row.loadLabel : null].filter(Boolean).join(' · ')}
+            </Text>
+            <Pressable onPress={() => router.push(`/cliente/exercicio/${row.exerciseId}?treino=${workout.id}`)} hitSlop={8} accessibilityRole="link">
+              <Text style={styles.howTo}>{row.snapshot?.media.length ? 'Vídeo do seu personal' : 'Como executar'}</Text>
+            </Pressable>
+          </View>
+        </View>
 
         <View style={styles.pills}>
           {row.sets.map((_, i) => {
@@ -256,6 +274,19 @@ export default function WorkoutSessionScreen() {
             ) : null}
           </>
         )}
+
+        {!isLast ? (
+          <Pressable
+            onPress={() => goTo(idx + 1)}
+            accessibilityRole="button"
+            accessibilityLabel={`A seguir: ${rows[idx + 1].name}. Ir agora`}
+            style={({ pressed }) => [styles.nextRow, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={styles.nextLabel}>A seguir</Text>
+            <Text style={styles.nextName} numberOfLines={1}>{rows[idx + 1].name}</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          </Pressable>
+        ) : null}
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 18 }]}>
@@ -285,6 +316,36 @@ export default function WorkoutSessionScreen() {
         />
       </View>
 
+      <BottomSheet visible={listOpen} onClose={() => setListOpen(false)} title={workout.title} contentStyle={{ gap: 0 }}>
+        {rows.map((r, i) => {
+          const count = logs[i]?.length ?? 0;
+          const isDone = count >= r.sets.length;
+          const on = i === idx;
+          return (
+            <Pressable
+              key={r.key}
+              onPress={() => {
+                goTo(i);
+                setListOpen(false);
+              }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={`${i + 1}. ${r.name}${isDone ? ', feito' : on ? ', agora' : ''}`}
+              style={({ pressed }) => [styles.listRow, i < rows.length - 1 && styles.listBorder, pressed && { opacity: 0.7 }]}
+            >
+              <View style={[styles.listIndex, isDone ? styles.listIndexDone : on ? styles.listIndexNow : null]}>
+                {isDone ? <Ionicons name="checkmark" size={15} color="#fff" /> : <Text style={[styles.listIndexText, on && { color: '#fff' }]}>{i + 1}</Text>}
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[styles.listName, on && { color: colors.primary }]} numberOfLines={1}>{r.name}</Text>
+                <Text style={styles.listMeta} numberOfLines={1}>{count > 0 && !isDone ? `${count} de ${r.sets.length} séries · ${r.prescription}` : r.prescription}</Text>
+              </View>
+              {on ? <Text style={styles.listNow}>agora</Text> : null}
+            </Pressable>
+          );
+        })}
+      </BottomSheet>
+
       <Toast toast={toast} top={insets.top + 72} />
     </Screen>
   );
@@ -293,20 +354,34 @@ export default function WorkoutSessionScreen() {
 const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingBottom: 8 },
   voice: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  segments: { flexDirection: 'row', gap: 4, paddingHorizontal: 16, paddingTop: 4 },
-  segment: { flex: 1, height: 5, borderRadius: 3, backgroundColor: colors.track, overflow: 'hidden' },
+  segments: { flexDirection: 'row', gap: 4, paddingHorizontal: 16, paddingTop: 6 },
+  segmentHit: { flex: 1, paddingVertical: 4 },
+  segment: { height: 5, borderRadius: 3, backgroundColor: colors.track, overflow: 'hidden' },
+  segmentNow: { height: 5, backgroundColor: '#c9d6f2' },
   segmentFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 3 },
-  chips: { gap: 8, paddingHorizontal: 16, paddingTop: 12 },
-  chip: { height: 34, paddingHorizontal: 13, borderRadius: 999, justifyContent: 'center' },
-  chipOn: { backgroundColor: colors.primary, ...shadows.button },
-  chipDone: { backgroundColor: colors.primaryTint },
-  chipOff: { backgroundColor: 'rgba(255,255,255,0.88)' },
-  chipText: { fontFamily: typography.fontFamilySemiBold, fontSize: 12.5 },
-  media: { height: 132, borderRadius: radii.xl - 2, alignItems: 'center', justifyContent: 'center' },
-  mediaBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 44, paddingLeft: 6, paddingRight: 16, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.2)' },
-  mediaPlay: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  mediaText: { color: '#fff', fontFamily: typography.fontFamilySemiBold, fontSize: 13.5 },
-  name: { marginTop: 16, ...text.headline, color: colors.text },
+  navRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 6 },
+  navCount: { ...text.callout, color: colors.textMuted },
+  navCountStrong: { ...text.calloutStrong, color: colors.text },
+  navList: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.primaryWash },
+  navListText: { ...text.calloutStrong, color: colors.primary },
+  exHead: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  thumb: { width: 76, height: 76, borderRadius: radii.lg - 2, alignItems: 'center', justifyContent: 'center' },
+  thumbPlay: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  name: { ...text.title, color: colors.text },
+  prescription: { ...text.callout, marginTop: 3, color: colors.textMuted },
+  howTo: { ...text.calloutStrong, marginTop: 6, color: colors.primary },
+  nextRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, paddingVertical: 14, paddingHorizontal: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  nextLabel: { ...text.captionStrong, color: colors.textMuted },
+  nextName: { ...text.calloutStrong, flex: 1, color: colors.text },
+  listRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  listBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderSoft },
+  listIndex: { width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, borderColor: colors.track, alignItems: 'center', justifyContent: 'center' },
+  listIndexDone: { backgroundColor: colors.success, borderColor: colors.success },
+  listIndexNow: { backgroundColor: colors.primary, borderColor: colors.primary },
+  listIndexText: { ...text.captionStrong, color: colors.textMuted },
+  listName: { ...text.bodyStrong, color: colors.text },
+  listMeta: { ...text.caption, marginTop: 1, color: colors.textMuted },
+  listNow: { ...text.captionStrong, color: colors.primary },
   pills: { flexDirection: 'row', gap: 8, marginTop: 14 },
   pill: { flex: 1, minWidth: 0, paddingVertical: 9, paddingHorizontal: 10, borderRadius: radii.md + 4 },
   pillDone: { backgroundColor: colors.primaryTint },
