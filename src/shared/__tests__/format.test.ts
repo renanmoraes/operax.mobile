@@ -3,7 +3,8 @@ import { formatClock, formatDistance, formatDuration, formatKg, minutesUntilLabe
 describe('format', () => {
   it('formatDuration em minutos e horas', () => {
     expect(formatDuration(1860)).toBe('31 min');
-    expect(formatDuration(3720)).toBe('1h 02');
+    expect(formatDuration(3720)).toBe('62 min');
+    expect(formatDuration(6000)).toBe('1h 40');
     expect(formatDuration(null)).toBe('—');
   });
 

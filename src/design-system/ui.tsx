@@ -122,6 +122,9 @@ export function Rise({
   return <Animated.View style={[animated, style]}>{children}</Animated.View>;
 }
 
+// O Pressable externo precisa receber o layout (flex, largura, margem), senão `flex: 1` só afeta a camada animada.
+const OUTER_LAYOUT_KEYS = ['flex', 'flexGrow', 'flexShrink', 'flexBasis', 'alignSelf', 'width', 'minWidth', 'maxWidth', 'margin', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight', 'marginHorizontal', 'marginVertical', 'position', 'top', 'left', 'right', 'bottom'] as const;
+
 /** Pressable com resposta ao toque (escala 0.97). */
 export function PressableScale({
   children,
@@ -131,9 +134,20 @@ export function PressableScale({
 }: PressableProps & { children: ReactNode; style?: StyleProp<ViewStyle>; scaleTo?: number }) {
   const scale = useSharedValue(1);
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const flat = (StyleSheet.flatten(style) ?? {}) as Record<string, unknown>;
+  const outer: Record<string, unknown> = {};
+  const inner: Record<string, unknown> = { ...flat };
+  for (const k of OUTER_LAYOUT_KEYS) {
+    if (flat[k] !== undefined) {
+      outer[k] = flat[k];
+      delete inner[k];
+    }
+  }
+  if (outer.flex !== undefined || outer.flexGrow !== undefined) inner.flexGrow = 1;
   return (
     <Pressable
       {...rest}
+      style={outer as ViewStyle}
       onPressIn={(e) => {
         scale.value = withTiming(scaleTo, { duration: motion.pressMs, easing: easeOut });
         rest.onPressIn?.(e);
@@ -143,7 +157,7 @@ export function PressableScale({
         rest.onPressOut?.(e);
       }}
     >
-      <Animated.View style={[animated, style]}>{children}</Animated.View>
+      <Animated.View style={[animated, inner as ViewStyle]}>{children}</Animated.View>
     </Pressable>
   );
 }
@@ -251,8 +265,22 @@ export function Body({
 }
 
 /** Número grande com dígitos tabulares. */
-export function Num({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) {
-  return <Text style={[styles.num, style]}>{children}</Text>;
+export function Num({
+  children,
+  style,
+  accessibilityLabel,
+  accessibilityLiveRegion,
+}: {
+  children: ReactNode;
+  style?: StyleProp<TextStyle>;
+  accessibilityLabel?: string;
+  accessibilityLiveRegion?: 'none' | 'polite' | 'assertive';
+}) {
+  return (
+    <Text style={[styles.num, style]} accessibilityLabel={accessibilityLabel} accessibilityLiveRegion={accessibilityLiveRegion}>
+      {children}
+    </Text>
+  );
 }
 
 export function Label({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) {

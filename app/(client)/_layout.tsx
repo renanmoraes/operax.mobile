@@ -5,10 +5,12 @@ import { GlassTabBar } from '@/src/design-system/GlassTabBar';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { useClientUnread } from '@/src/features/client/useClientData';
 import { hasSeenClientOnboarding } from '@/src/features/permissions/permissions';
+import { useFlushResultsQueue } from '@/src/features/fitness/useFitness';
 
 export default function ClientLayout() {
   const { isAuthenticated, user } = useAuth();
   const unread = useClientUnread();
+  useFlushResultsQueue();
   const [onboarded, setOnboarded] = useState<boolean | null>(null);
   useEffect(() => {
     void hasSeenClientOnboarding().then(setOnboarded);

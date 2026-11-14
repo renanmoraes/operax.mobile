@@ -3,7 +3,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 export function formatDuration(seconds: number | null | undefined): string {
   if (seconds == null) return '—';
   const m = Math.round(seconds / 60);
-  if (m < 60) return `${m} min`;
+  if (m < 100) return `${m} min`;
   return `${Math.floor(m / 60)}h ${pad(m % 60)}`;
 }
 

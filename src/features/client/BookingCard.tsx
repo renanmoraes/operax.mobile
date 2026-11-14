@@ -1,0 +1,74 @@
+import { router } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Badge, Button, Card, Muted } from '@/src/design-system/ui';
+import { colors, radii, typography } from '@/src/design-system/tokens';
+import { formatHour } from '@/src/shared/format';
+import type { ClientBooking } from './types';
+import { useConfirmBooking } from './useClientData';
+
+export const bookingKindLabel: Record<ClientBooking['category'], string> = {
+  session: 'Sessão',
+  class: 'Aula em grupo',
+  evaluation: 'Avaliação',
+  service: 'Serviço',
+};
+
+export function bookingPill(b: ClientBooking): { label: string; tone: 'warn' | 'primary' | 'success' | 'neutral' | 'danger' } {
+  switch (b.status) {
+    case 'pending':
+      return { label: 'Falta confirmar sua presença', tone: 'warn' };
+    case 'offer':
+      return { label: 'Abriu uma vaga para você', tone: 'primary' };
+    case 'confirmed':
+      return { label: 'Presença confirmada', tone: 'success' };
+    case 'cancelled':
+      return { label: 'Cancelado', tone: 'danger' };
+    default:
+      return { label: 'Realizado', tone: 'neutral' };
+  }
+}
+
+export function bookingHref(b: ClientBooking) {
+  return b.category === 'class' ? `/cliente/aula/${b.id}` : `/cliente/compromisso/${b.id}`;
+}
+
+export function BookingCard({ booking: b }: { booking: ClientBooking }) {
+  const confirm = useConfirmBooking();
+  const pill = bookingPill(b);
+  const strong = b.status === 'pending';
+  const muted = b.status === 'done' || b.status === 'cancelled';
+  return (
+    <Card style={{ padding: 16 }}>
+      <Pressable onPress={() => router.push(bookingHref(b) as never)} accessibilityRole="button" accessibilityLabel={`${b.service_name}, ${formatHour(b.starts_at)}`} style={styles.top}>
+        <View style={[styles.time, strong ? { backgroundColor: colors.primary } : muted ? { backgroundColor: '#f0f2f5' } : { backgroundColor: colors.primarySoft }]}>
+          <Text style={[styles.timeMain, { color: strong ? '#fff' : muted ? colors.textMuted : colors.primaryDeep }]}>{formatHour(b.starts_at)}</Text>
+          <Text style={[styles.timeEnd, { color: strong ? 'rgba(255,255,255,0.8)' : colors.textMuted }]}>{formatHour(b.ends_at)}</Text>
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Muted style={{ fontFamily: typography.fontFamilySemiBold, fontSize: 12 }} numberOfLines={1}>{`${bookingKindLabel[b.category]} · ${b.tenant_name}`}</Muted>
+          <Text style={[styles.title, muted && { color: colors.textMuted }]} numberOfLines={1}>{b.service_name}</Text>
+          <Muted style={{ marginTop: 3 }} numberOfLines={1}>{`com ${b.provider_name}`}</Muted>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} style={{ marginTop: 4 }} />
+      </Pressable>
+      <View style={styles.bottom}>
+        <Badge label={pill.label} tone={pill.tone} />
+        {b.status === 'pending' ? (
+          <Button label="Confirmar" compact loading={confirm.isPending} onPress={() => confirm.mutate(b.id)} />
+        ) : b.status === 'offer' ? (
+          <Button label="Ver vaga" compact onPress={() => router.push(bookingHref(b) as never)} />
+        ) : null}
+      </View>
+    </Card>
+  );
+}
+
+const styles = StyleSheet.create({
+  top: { flexDirection: 'row', gap: 14 },
+  time: { width: 58, borderRadius: radii.md + 4, paddingVertical: 10, alignItems: 'center' },
+  timeMain: { fontFamily: typography.fontFamilyHeavy, fontSize: 16, fontVariant: ['tabular-nums'] },
+  timeEnd: { marginTop: 1, fontFamily: typography.fontFamily, fontSize: 11.5, fontVariant: ['tabular-nums'] },
+  title: { marginTop: 3, fontFamily: typography.fontFamilyBold, fontSize: 16, color: colors.text, letterSpacing: -0.2 },
+  bottom: { marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+});

@@ -10,7 +10,8 @@ function at(dayOffset: number, hh: number, mm = 0) {
 }
 
 function minutesFromNow(m: number) {
-  return new Date(Date.now() + m * 60_000).toISOString();
+  const fiveMin = 5 * 60_000;
+  return new Date(Math.round((Date.now() + m * 60_000) / fiveMin) * fiveMin).toISOString();
 }
 
 export const mockCompanies: ClientCompany[] = [
