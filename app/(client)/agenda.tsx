@@ -18,8 +18,9 @@ function dayKey(iso: string) {
 }
 
 const STRIP_GAP = 6;
-const EDGE_FAST = { duration: 260, easing: Easing.bezier(0.22, 1, 0.36, 1) };
-const EDGE_SLOW = { duration: 460, easing: Easing.bezier(0.22, 1, 0.36, 1) };
+// Borda da frente e borda de trás: devagar e com folga entre as duas, para ver a pílula esticar e preencher.
+const EDGE_FAST = { duration: 560, easing: Easing.bezier(0.45, 0, 0.2, 1) };
+const EDGE_SLOW = { duration: 920, easing: Easing.bezier(0.45, 0, 0.2, 1) };
 
 /**
  * Semana em pílulas. O destaque azul "escorre" de um dia para o outro: a borda que vai na
@@ -163,7 +164,7 @@ export default function ClientAgendaScreen() {
               <DayStrip selected={selected} onSelect={setSelected} items={items} />
               <Animated.View
                 key={isoDate(selected)}
-                entering={(dir > 0 ? FadeInRight : FadeInLeft).duration(300)}
+                entering={(dir > 0 ? FadeInRight : FadeInLeft).duration(520)}
               >
                 <Text style={styles.dayTitle}>{`${sameDay(selected, today) ? 'Hoje, ' : ''}${weekdayFull(selected)} ${selected.getDate()}`}</Text>
                 {dayItems.length === 0 ? (
