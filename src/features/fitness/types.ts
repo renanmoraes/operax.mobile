@@ -50,7 +50,7 @@ export interface FitnessCombinedItem {
 }
 
 export type FitnessPart =
-  | { type: 'strength'; name: string; items: Array<FitnessExerciseItem | FitnessCombinedItem> }
+  | { type: 'strength'; name: string; items: (FitnessExerciseItem | FitnessCombinedItem)[] }
   | {
       type: 'metcon';
       name: string;
@@ -58,7 +58,7 @@ export type FitnessPart =
       time_cap_seconds?: number;
       interval_seconds?: number;
       result_type: 'time' | 'rounds_reps' | 'reps' | 'load' | 'calories' | 'distance';
-      movements: Array<{ exercise_id: string; reps: string; load_rx?: string; notes?: string }>;
+      movements: { exercise_id: string; reps: string; load_rx?: string; notes?: string }[];
     }
   | { type: 'free_text'; name: string; text: string };
 
@@ -93,15 +93,15 @@ export interface FitnessWorkoutView {
 export interface WeekView {
   start: string;
   today: string;
-  days: Array<{
+  days: {
     date: string;
     planned: number;
     done: number;
     extra: number;
-    items?: Array<{ id: string; title: string; modality: FitnessModality; parts: FitnessPart[] }>;
-  }>;
+    items?: { id: string; title: string; modality: FitnessModality; parts: FitnessPart[] }[];
+  }[];
   summary: { planned: number; done: number; extra: number; distance_meters: number; duration_seconds: number };
-  done: Array<{ id: string; date: string; kind: 'prescribed' | 'free'; title: string; modality: string | null; distance_meters: number | null; duration_seconds: number | null }>;
+  done: { id: string; date: string; kind: 'prescribed' | 'free'; title: string; modality: string | null; distance_meters: number | null; duration_seconds: number | null }[];
   next: { date: string; workout: FitnessWorkoutView } | null;
 }
 
@@ -110,7 +110,7 @@ export type FitnessResultData =
   | { kind: 'rounds_reps'; rounds: number; reps: number }
   | { kind: 'reps'; reps: number }
   | { kind: 'load'; kg: number }
-  | { kind: 'sets'; sets: Array<{ item: number; set: number; done: boolean; load_kg?: number; reps?: number }> }
+  | { kind: 'sets'; sets: { item: number; set: number; done: boolean; load_kg?: number; reps?: number }[] }
   | { kind: 'done' };
 
 export type FitnessFeeling = 'great' | 'good' | 'ok' | 'bad' | 'awful';
@@ -156,7 +156,7 @@ export interface FitnessHistoryEntry {
   volume_kg?: number;
   sets_done?: number;
   record?: boolean;
-  sources: Array<{ origin: FitnessHistoryOrigin; label: string; device?: string | null }>;
+  sources: { origin: FitnessHistoryOrigin; label: string; device?: string | null }[];
 }
 
 export interface FitnessHistory {
@@ -167,13 +167,13 @@ export interface FitnessHistory {
 }
 
 export interface FitnessEvolution {
-  strength: Array<{
+  strength: {
     exercise_id: string;
     name: string;
-    points: Array<{ date: string; top_load_kg: number; volume_kg: number }>;
+    points: { date: string; top_load_kg: number; volume_kg: number }[];
     record: { load_kg: number; reps: number | null; date: string } | null;
-  }>;
-  weekly: Array<{ week_start: string; sessions: number }>;
+  }[];
+  weekly: { week_start: string; sessions: number }[];
   total_sessions: number;
   weekly_goal: number | null;
 }
@@ -205,7 +205,7 @@ export interface ImportedSessionView {
   distance_meters: number | null;
   avg_hr: number | null;
   status: 'imported' | 'unmatched';
-  sources: Array<{ provider: string; device: string | null; duration_seconds: number | null; distance_meters: number | null; avg_hr: number | null }>;
+  sources: { provider: string; device: string | null; duration_seconds: number | null; distance_meters: number | null; avg_hr: number | null }[];
 }
 
 /** Registros corporais (peso, medidas, fotos de evolução) — visão do app; ainda sem rota no portal. */

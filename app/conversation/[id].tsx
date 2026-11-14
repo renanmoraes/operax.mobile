@@ -108,11 +108,9 @@ export default function ConversationScreen() {
 
   const conversation = mode === 'live' ? liveQuery.data?.conversation : mockConv;
   const thread = mode === 'live' ? liveQuery.data?.messages ?? [] : [...mockThread, ...localMsgs];
-  const [ownership, setOwnership] = useState(conversation?.ownership ?? 'queue');
-
-  useEffect(() => {
-    if (conversation?.ownership) setOwnership(conversation.ownership);
-  }, [conversation?.ownership]);
+  // No modo demo as ações mudam a posse só aqui; no real, a posse vem sempre do servidor.
+  const [ownershipOverride, setOwnership] = useState<NonNullable<typeof conversation>['ownership'] | null>(null);
+  const ownership = ownershipOverride ?? conversation?.ownership ?? 'queue';
 
   const showToast = (msg: string) => show(msg, msg.startsWith('Falha') ? 'error' : 'success');
 

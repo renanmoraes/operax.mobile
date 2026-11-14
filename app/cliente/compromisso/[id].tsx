@@ -9,6 +9,7 @@ import { bookingKindLabel, bookingPill } from '@/src/features/client/BookingCard
 import { useBooking, useConfirmBooking, useUnconfirmBooking } from '@/src/features/client/useClientData';
 import { useWeek } from '@/src/features/fitness/useFitness';
 import { formatHour, minutesUntilLabel, sameDay, weekdayShort } from '@/src/shared/format';
+import { useNow } from '@/src/shared/useNow';
 
 function ActionTile({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
   return (
@@ -21,6 +22,7 @@ function ActionTile({ icon, label, onPress }: { icon: IconName; label: string; o
 
 export default function BookingDetailScreen() {
   const insets = useSafeAreaInsets();
+  const now = useNow(60_000);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: b, isLoading } = useBooking(id);
   const { data: week } = useWeek();
@@ -33,10 +35,10 @@ export default function BookingDetailScreen() {
 
   const start = new Date(b.starts_at);
   const isToday = sameDay(start, new Date());
-  const upcoming = start.getTime() > Date.now();
+  const upcoming = start.getTime() > now;
   const pill = bookingPill(b);
   const workout = b.category === 'session' && isToday ? week?.days.find((d) => d.date === week.today)?.items?.[0] : undefined;
-  const hoursAway = (start.getTime() - Date.now()) / 3_600_000;
+  const hoursAway = (start.getTime() - now) / 3_600_000;
 
   return (
     <Screen backdrop="none">

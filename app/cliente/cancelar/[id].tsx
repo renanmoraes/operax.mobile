@@ -7,11 +7,13 @@ import { Body, Button, Display, Field, IconTile, Muted, Rise, Screen, TopBar } f
 import { colors, radii, typography } from '@/src/design-system/tokens';
 import { useBooking, useCancelBooking } from '@/src/features/client/useClientData';
 import { formatHour, weekdayShort } from '@/src/shared/format';
+import { useNow } from '@/src/shared/useNow';
 
 const REASONS = ['Imprevisto no trabalho', 'Não estou me sentindo bem', 'Problema com transporte', 'Prefiro remarcar', 'Outro motivo'];
 
 export default function CancelBookingScreen() {
   const insets = useSafeAreaInsets();
+  const now = useNow();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: b } = useBooking(id);
   const cancel = useCancelBooking();
@@ -22,7 +24,7 @@ export default function CancelBookingScreen() {
 
   if (!b) return <Screen>{null}</Screen>;
   const start = new Date(b.starts_at);
-  const late = (start.getTime() - Date.now()) / 3_600_000 < 12;
+  const late = (start.getTime() - now) / 3_600_000 < 12;
 
   if (done) {
     return (

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, TextInput, TextInputContentSizeChangeEvent, View } from 'react-native';
 import { colors, typography } from '@/src/design-system/tokens';
 
@@ -22,12 +22,9 @@ export function ChatInput({
   editable?: boolean;
   accessibilityLabel?: string;
 }) {
-  const [height, setHeight] = useState(LINE);
-
-  // Depois de enviar, o campo volta para uma linha mesmo que o evento de tamanho não venha.
-  useEffect(() => {
-    if (!value) setHeight(LINE);
-  }, [value]);
+  const [measured, setHeight] = useState(LINE);
+  // Depois de enviar (campo vazio), volta para uma linha mesmo que o evento de tamanho não venha.
+  const height = value ? measured : LINE;
 
   const onSize = (e: TextInputContentSizeChangeEvent) => {
     const h = Math.ceil(e.nativeEvent.contentSize.height);

@@ -25,6 +25,8 @@ export function useVoiceRecorder() {
     // metering vem em dB (-160 a 0); sem metering (web), uma oscilação leve mostra que está gravando.
     const db = state.metering;
     const level = db == null ? 0.25 + Math.random() * 0.35 : Math.max(0.08, Math.min(1, (db + 55) / 55));
+    // O nível vem do gravador (fora do React) a cada atualização dele; aqui só guardamos o histórico das barras.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLevels((prev) => [...prev.slice(-(BARS - 1)), level]);
   }, [state.durationMillis, state.metering, recording]);
 

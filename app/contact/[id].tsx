@@ -36,7 +36,7 @@ export default function ContactScreen() {
   }
 
   const tags = Array.isArray((contact as { tags?: unknown[] }).tags)
-    ? (contact as { tags: Array<string | { tag?: string; name?: string }> }).tags
+    ? (contact as { tags: (string | { tag?: string; name?: string })[] }).tags
         .map((t) => (typeof t === 'string' ? t : t.tag || t.name || ''))
         .filter(Boolean)
     : [];

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { router, usePathname } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -25,44 +25,42 @@ export function IncomingBanner() {
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const pathname = usePathname();
-  const [shown, setShown] = useState<IncomingNotice | null>(null);
+  // O que está na tela: o aviso atual (se não for da conversa aberta) ou o que está saindo.
+  const displayed = notice && pathname !== `/equipe/${notice.channelId}` ? notice : null;
+  const [exiting, setExiting] = useState<IncomingNotice | null>(null);
+  const shown = displayed ?? exiting;
   const y = useSharedValue(-160);
   const drag = useSharedValue(0);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const hide = () => {
-    if (timer.current) clearTimeout(timer.current);
-    y.value = reduced ? -160 : withTiming(-160, { duration: 200, easing: easeOut });
-    setTimeout(
-      () => {
-        setShown(null);
-        dismissNotice();
-      },
-      reduced ? 0 : 210,
-    );
-  };
+  const hide = useCallback(() => {
+    if (!displayed) return;
+    setExiting(displayed);
+    dismissNotice();
+    y.set(reduced ? -160 : withTiming(-160, { duration: 200, easing: easeOut }));
+    setTimeout(() => setExiting(null), reduced ? 0 : 210);
+  }, [displayed, dismissNotice, reduced, y]);
 
+  // Entra com mola e some sozinho depois de alguns segundos (o efeito limpa o tempo ao trocar).
   useEffect(() => {
-    if (!notice || pathname === `/equipe/${notice.channelId}`) return;
-    setShown(notice);
-    drag.value = 0;
-    y.value = reduced ? 0 : withSpring(0, SPRING);
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(hide, SHOW_MS);
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notice?.key]);
+    if (!displayed) return;
+    drag.set(0);
+    y.set(reduced ? 0 : withSpring(0, SPRING));
+    const t = setTimeout(hide, SHOW_MS);
+    return () => clearTimeout(t);
+  }, [displayed, hide, reduced, drag, y]);
 
-  const pan = Gesture.Pan()
-    .onUpdate((e) => {
-      drag.value = Math.min(e.translationY, 0) + Math.max(e.translationY, 0) * 0.15;
-    })
-    .onEnd((e) => {
-      if (e.translationY < -24 || e.velocityY < -400) runOnJS(hide)();
-      else drag.value = withSpring(0, SPRING);
-    });
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .onUpdate((e) => {
+          drag.set(Math.min(e.translationY, 0) + Math.max(e.translationY, 0) * 0.15);
+        })
+        .onEnd((e) => {
+          if (e.translationY < -24 || e.velocityY < -400) runOnJS(hide)();
+          else drag.set(withSpring(0, SPRING));
+        }),
+    [drag, hide],
+  );
 
   const style = useAnimatedStyle(() => ({
     transform: [{ translateY: y.value + drag.value }],

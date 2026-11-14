@@ -2,6 +2,8 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_URL, MOBILE_CLIENT_HEADER } from '@/src/shared/config';
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from './token-store';
 
+// `axios.create` é o uso documentado da biblioteca; o aviso de import nomeado não se aplica.
+// eslint-disable-next-line import/no-named-as-default-member
 export const api = axios.create({
   baseURL: API_URL,
   timeout: 30_000,

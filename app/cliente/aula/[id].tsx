@@ -18,7 +18,7 @@ export default function ClassDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: b } = useBooking(id);
   const action = useClassAction();
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   // Tamanho da vaga pela largura real do cartão: círculos iguais em qualquer celular.
   const [gridW, setGridW] = useState(0);
   const seatSize = gridW ? Math.floor((gridW - SEAT_GAP * (SEATS_PER_ROW - 1)) / SEATS_PER_ROW) : 0;

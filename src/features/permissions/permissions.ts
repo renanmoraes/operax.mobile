@@ -91,6 +91,8 @@ export function usePermissions(keys: PermissionKey[], live: boolean) {
   }, [signature]);
 
   useEffect(() => {
+    // Lê o estado das permissões no sistema ao abrir e sempre que o app volta para a frente.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active') void refresh();

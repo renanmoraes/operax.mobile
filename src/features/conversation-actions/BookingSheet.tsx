@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Button, Chip, Field, PressableScale } from '@/src/design-system/ui';
@@ -48,28 +48,25 @@ export function BookingSheet({
   const providers = (live ? providersQ.data ?? [] : DEMO_PROVIDERS).filter((p) => p.is_active !== false);
   const allServices = live ? servicesQ.data ?? [] : DEMO_SERVICES;
 
-  const [providerId, setProviderId] = useState<string | null>(null);
-  const [serviceId, setServiceId] = useState<string | null>(null);
+  const [pickedProvider, setProviderId] = useState<string | null>(null);
+  const [pickedService, setServiceId] = useState<string | null>(null);
   const days = useMemo(() => nextDays(DAYS), [visible]); // eslint-disable-line react-hooks/exhaustive-deps
   const [dayIdx, setDayIdx] = useState(0);
-  const [slot, setSlot] = useState<SchedSlot | null>(null);
+  const [picked, setPicked] = useState<{ key: string; slot: SchedSlot } | null>(null);
   const [note, setNote] = useState('');
 
+  // Um só profissional ou serviço: já vem escolhido (padrão derivado, sem efeito).
+  const providerId = pickedProvider ?? (providers.length === 1 ? providers[0].id : null);
   const provider = providers.find((p) => p.id === providerId);
   const services = servicesFor(provider, allServices);
+  const serviceId = pickedService && services.some((s) => s.id === pickedService) ? pickedService : services.length === 1 ? services[0].id : null;
   const service = services.find((s) => s.id === serviceId);
 
-  // Um só profissional ou serviço: já vem escolhido.
-  useEffect(() => {
-    if (!providerId && providers.length === 1) setProviderId(providers[0].id);
-  }, [providers, providerId]);
-  useEffect(() => {
-    if (serviceId && !services.some((s) => s.id === serviceId)) setServiceId(null);
-    else if (!serviceId && services.length === 1) setServiceId(services[0].id);
-  }, [services, serviceId]);
-  useEffect(() => setSlot(null), [providerId, serviceId, dayIdx]);
-
   const day = days[dayIdx];
+  // O horário escolhido só vale para o profissional, serviço e dia em que foi escolhido.
+  const slotKey = `${providerId}|${serviceId}|${dayIdx}`;
+  const slot = picked?.key === slotKey ? picked.slot : null;
+  const setSlot = (s: SchedSlot | null) => setPicked(s ? { key: slotKey, slot: s } : null);
   const slotsQ = useQuery({
     queryKey: ['sched', 'slots', providerId, serviceId, day.toDateString(), live],
     enabled: visible && !!providerId && !!service,

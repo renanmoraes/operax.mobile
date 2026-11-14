@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Button, Chip, Field, PressableScale } from '@/src/design-system/ui';
@@ -7,6 +7,9 @@ import { colors, radii, text, typography } from '@/src/design-system/tokens';
 import { listSavedPixKeys, PixData, PixKeyType, pixKeyTypeLabel, PIX_KEY_TYPES } from '@/src/shared/api/conversation-actions.api';
 import { DEMO_PIX_KEYS, formatPixKey, pixKeyError } from './logic';
 import { PixCard } from './PixCard';
+
+type PixForm = { type: PixKeyType; key: string; holder: string; savedId: string | null };
+const EMPTY_FORM: PixForm = { type: 'cnpj', key: '', holder: '', savedId: null };
 
 const KEYBOARD: Record<PixKeyType, 'default' | 'email-address' | 'number-pad' | 'phone-pad'> = {
   cpf: 'number-pad',
@@ -33,25 +36,16 @@ export function PixSheet({
 }) {
   const saved = useQuery({ queryKey: ['pix-keys'], enabled: live && visible, queryFn: listSavedPixKeys, staleTime: 60_000 });
   const keys = live ? saved.data ?? [] : DEMO_PIX_KEYS;
-  const [type, setType] = useState<PixKeyType>('cnpj');
-  const [key, setKey] = useState('');
-  const [holder, setHolder] = useState('');
   const [save, setSave] = useState(false);
   const [touched, setTouched] = useState(false);
-  const [usingSaved, setUsingSaved] = useState<string | null>(null);
 
-  // Abre já com a chave mais usada, como no web.
-  useEffect(() => {
-    if (!visible) return;
-    const first = [...keys].sort((a, b) => (b.use_count ?? 0) - (a.use_count ?? 0))[0];
-    if (first && !key) {
-      setType(first.key_type);
-      setKey(first.key);
-      setHolder(first.holder_name);
-      setUsingSaved(first.id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, keys.length]);
+  // Enquanto a pessoa não mexe, o formulário mostra a chave mais usada (como no web), sem efeito.
+  const [form, setForm] = useState<PixForm | null>(null);
+  const mostUsed = [...keys].sort((a, b) => (b.use_count ?? 0) - (a.use_count ?? 0))[0];
+  const f: PixForm = form ?? (mostUsed ? { type: mostUsed.key_type, key: mostUsed.key, holder: mostUsed.holder_name, savedId: mostUsed.id } : EMPTY_FORM);
+  const { type, key, holder, savedId: usingSaved } = f;
+  const update = (patch: Partial<PixForm>) => setForm({ ...f, ...patch });
+  const setHolder = (v: string) => update({ holder: v });
 
   const keyErr = pixKeyError(type, key);
   const holderErr = holder.trim().length >= 2 ? null : 'Informe o nome de quem recebe';
@@ -85,10 +79,7 @@ export function PixSheet({
                   <PressableScale
                     key={k.id}
                     onPress={() => {
-                      setType(k.key_type);
-                      setKey(k.key);
-                      setHolder(k.holder_name);
-                      setUsingSaved(k.id);
+                      setForm({ type: k.key_type, key: k.key, holder: k.holder_name, savedId: k.id });
                     }}
                     accessibilityRole="button"
                     accessibilityState={{ selected: on }}
@@ -114,8 +105,7 @@ export function PixSheet({
                 label={t.label}
                 selected={type === t.value}
                 onPress={() => {
-                  setType(t.value);
-                  setUsingSaved(null);
+                  update({ type: t.value, savedId: null });
                 }}
               />
             ))}
@@ -127,8 +117,7 @@ export function PixSheet({
             label={type === 'copy_paste' ? 'Código Pix copia e cola' : 'Chave'}
             value={key}
             onChangeText={(v) => {
-              setKey(v);
-              setUsingSaved(null);
+              update({ key: v, savedId: null });
             }}
             placeholder={type === 'email' ? 'nome@empresa.com' : type === 'phone' ? '(11) 98765-4321' : ''}
             keyboardType={KEYBOARD[type]}

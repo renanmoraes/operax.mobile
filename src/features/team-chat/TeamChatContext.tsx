@@ -37,7 +37,7 @@ export function TeamChatProvider({ children }: { children: ReactNode }) {
   const [notice, setNotice] = useState<IncomingNotice | null>(null);
 
   // ---------- demo ----------
-  useSyncExternalStore(demoTeamChat.subscribe, demoTeamChat.version, demoTeamChat.version);
+  const demoVersion = useSyncExternalStore(demoTeamChat.subscribe, demoTeamChat.version, demoTeamChat.version);
   useEffect(() => {
     if (!demo) return;
     demoTeamChat.start(() => openRef.current);
@@ -110,10 +110,13 @@ export function TeamChatProvider({ children }: { children: ReactNode }) {
     [markRead],
   );
 
+  const dismissNotice = useCallback(() => setNotice(null), []);
+
   const channels = useMemo(
     () => sortChannels(demo ? demoTeamChat.channels() : live ? query.data ?? [] : []),
+    // demoVersion muda a cada mensagem do demo: é o que faz a lista se refazer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [demo, live, query.data, demo ? demoTeamChat.version() : 0],
+    [demo, live, query.data, demoVersion],
   );
 
   const value: TeamChatValue = {
@@ -122,7 +125,7 @@ export function TeamChatProvider({ children }: { children: ReactNode }) {
     loading: live && query.isLoading,
     unread: unreadTotal(channels),
     notice: enabled ? notice : null,
-    dismissNotice: () => setNotice(null),
+    dismissNotice,
     setOpenChannel,
     markRead,
     refresh: () => void query.refetch(),

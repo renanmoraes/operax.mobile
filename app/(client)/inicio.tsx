@@ -25,6 +25,7 @@ import { useAuth } from '@/src/features/auth/AuthContext';
 import { useBookings, useChats, useCompanies, useConfirmBooking, useUnconfirmBooking } from '@/src/features/client/useClientData';
 import { useFitnessSummary, useWeek } from '@/src/features/fitness/useFitness';
 import { formatDuration, formatHour, greeting, longDate, minutesUntilLabel } from '@/src/shared/format';
+import { useNow } from '@/src/shared/useNow';
 
 function Shortcut({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
   return (
@@ -37,6 +38,7 @@ function Shortcut({ icon, label, onPress }: { icon: IconName; label: string; onP
 
 export default function ClientHomeScreen() {
   const insets = useSafeAreaInsets();
+  const now = useNow(60_000);
   const { user } = useAuth();
   const { data: bookings } = useBookings();
   const { data: chats } = useChats();
@@ -49,7 +51,6 @@ export default function ClientHomeScreen() {
   const client = user?.kind === 'client' ? user : null;
   const tenant = client?.memberships.find((m) => m.tenant_id === client.active_tenant_id);
   const firstName = client?.name?.split(' ')[0] ?? '';
-  const now = Date.now();
   const next = bookings?.find((b) => new Date(b.ends_at).getTime() > now && (b.status === 'pending' || b.status === 'confirmed'));
   const today = week?.days.find((d) => d.date === week.today);
   const todayWorkout = today?.items?.[0];

@@ -70,18 +70,18 @@ export default function BodyEvolutionScreen() {
       .failOffsetY([-14, 14])
       .onTouchesDown(() => {
         runOnJS(lockBack)(true);
-        active.value = withTiming(1, { duration: 140 });
+        active.set(withTiming(1, { duration: 140 }));
       })
       .onStart(() => {
-        startPos.value = pos.value;
+        startPos.set(pos.value);
         runOnJS(onDragStart)();
       })
       .onUpdate((e) => {
         const w = widthSV.value || 1;
-        pos.value = Math.max(0, Math.min(1, startPos.value + e.translationX / w));
+        pos.set(Math.max(0, Math.min(1, startPos.value + e.translationX / w)));
       })
       .onFinalize(() => {
-        active.value = withTiming(0, { duration: 180 });
+        active.set(withTiming(0, { duration: 180 }));
         runOnJS(onDragEnd)();
       });
     // Toque simples leva a divisória até o ponto tocado.
@@ -89,7 +89,7 @@ export default function BodyEvolutionScreen() {
       .maxDuration(250)
       .onEnd((e) => {
         const w = widthSV.value || 1;
-        pos.value = withTiming(Math.max(0, Math.min(1, e.x / w)), { duration: 320, easing: Easing.bezier(0.23, 1, 0.32, 1) });
+        pos.set(withTiming(Math.max(0, Math.min(1, e.x / w)), { duration: 320, easing: Easing.bezier(0.23, 1, 0.32, 1) }));
         runOnJS(setView)('split');
       });
     return Gesture.Race(pan, tap);
@@ -97,7 +97,7 @@ export default function BodyEvolutionScreen() {
 
   const showView = (v: CompareView) => {
     setView(v);
-    pos.value = withTiming(v === 'before' ? 1 : v === 'after' ? 0 : 0.5, { duration: 520, easing: Easing.bezier(0.45, 0, 0.15, 1) });
+    pos.set(withTiming(v === 'before' ? 1 : v === 'after' ? 0 : 0.5, { duration: 520, easing: Easing.bezier(0.45, 0, 0.15, 1) }));
   };
 
   const beforeClip = useAnimatedStyle(() => ({ width: pos.value * widthSV.value }));
@@ -137,14 +137,14 @@ export default function BodyEvolutionScreen() {
               style={styles.compare}
               onLayout={(e: LayoutChangeEvent) => {
                 setWidth(e.nativeEvent.layout.width);
-                widthSV.value = e.nativeEvent.layout.width;
+                widthSV.set(e.nativeEvent.layout.width);
               }}
               accessible
               accessibilityRole="adjustable"
               accessibilityLabel="Comparar antes e depois. Arraste para os lados."
               accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
               onAccessibilityAction={(e) => {
-                pos.value = withTiming(Math.max(0, Math.min(1, pos.value + (e.nativeEvent.actionName === 'increment' ? 0.1 : -0.1))), { duration: 200 });
+                pos.set(withTiming(Math.max(0, Math.min(1, pos.value + (e.nativeEvent.actionName === 'increment' ? 0.1 : -0.1))), { duration: 200 }));
               }}
             >
               {width ? (

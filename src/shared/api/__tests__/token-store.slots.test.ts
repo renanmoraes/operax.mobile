@@ -1,10 +1,3 @@
-const mockMem = new Map<string, string>();
-jest.mock('../../storage', () => ({
-  getItem: jest.fn(async (k: string) => mockMem.get(k) ?? null),
-  setItem: jest.fn(async (k: string, v: string) => void mockMem.set(k, v)),
-  deleteItem: jest.fn(async (k: string) => void mockMem.delete(k)),
-}));
-
 import {
   clearTokens,
   getAccessToken,
@@ -16,6 +9,13 @@ import {
   setSavedRole,
   setTokens,
 } from '../token-store';
+
+const mockMem = new Map<string, string>();
+jest.mock('../../storage', () => ({
+  getItem: jest.fn(async (k: string) => mockMem.get(k) ?? null),
+  setItem: jest.fn(async (k: string, v: string) => void mockMem.set(k, v)),
+  deleteItem: jest.fn(async (k: string) => void mockMem.delete(k)),
+}));
 
 beforeEach(() => mockMem.clear());
 

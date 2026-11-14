@@ -6,7 +6,7 @@ export type ApiContact = {
   phone_e164?: string | null;
   email?: string | null;
   lead_score?: number | null;
-  tags?: Array<string | { tag?: string; name?: string }>;
+  tags?: (string | { tag?: string; name?: string })[];
   notes?: string | null;
 };
 

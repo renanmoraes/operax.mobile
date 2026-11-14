@@ -1,10 +1,10 @@
 import type { ClientBooking, ClientChat, ClientCompany } from './types';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 const DEMO_VOICE: number = require('@/assets/audio/demo-recado.wav');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 const DEMO_PHOTO: number = require('@/assets/demo/foto-joelho.jpg');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 const DEMO_PDF: number = require('@/assets/demo/avaliacao-outubro.pdf');
 
 /** Dados de exemplo até existir o login mobile de cliente (/auth/client/*). Datas relativas a hoje. */

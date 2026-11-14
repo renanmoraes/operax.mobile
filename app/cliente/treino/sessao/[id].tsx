@@ -90,7 +90,9 @@ export default function WorkoutSessionScreen() {
 
   useEffect(() => {
     if (ready) void saveDraft({ workoutId: workout.id, idx, logs, elapsed });
-  }, [ready, idx, logs]);
+    // Salva ao mudar de exercício ou série; o cronômetro (elapsed) fica de fora para não gravar a cada segundo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, idx, logs, workout.id]);
 
   useEffect(() => {
     const t = setInterval(() => {

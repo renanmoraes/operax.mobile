@@ -1,8 +1,8 @@
-jest.mock('../client', () => ({ api: { get: jest.fn(), post: jest.fn() } }));
-jest.mock('../token-store', () => ({ setTokens: jest.fn(), clearTokens: jest.fn() }));
-
 import { api } from '../client';
 import { clientLoginApi, getClientMeApi, getMeApi, loginApi } from '../auth.api';
+
+jest.mock('../client', () => ({ api: { get: jest.fn(), post: jest.fn() } }));
+jest.mock('../token-store', () => ({ setTokens: jest.fn(), clearTokens: jest.fn() }));
 
 describe('normalização de kind (o backend não devolve esse campo)', () => {
   it('getMeApi marca kind: staff', async () => {

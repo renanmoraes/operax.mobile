@@ -34,9 +34,9 @@ export default function ClientChatScreen() {
   const { data: companies } = useCompanies();
   const { data: booking } = useBooking(remarcar);
   const send = useSendChat(slug);
-  const markRead = useMarkChatRead();
+  const { mutate: markRead } = useMarkChatRead();
   const scrollRef = useRef<ScrollViewInstance>(null);
-  const [text, setText] = useState(pedido ? 'Oi! Queria marcar um horário.' : '');
+  const [text, setText] = useState(pedido ? 'Oi! Queria marcar um horário.' : remarcar ? 'Consigo em outro dia? Surgiu um imprevisto.' : '');
   const [sheet, setSheet] = useState(false);
   const [info, setInfo] = useState(false);
   const [draft, setDraft] = useState<OutgoingAttachment | null>(null);
@@ -46,12 +46,8 @@ export default function ClientChatScreen() {
   const voice = useVoiceRecorder();
 
   useEffect(() => {
-    if (slug) markRead.mutate(slug);
-  }, [slug]);
-
-  useEffect(() => {
-    if (remarcar && booking && !text) setText('Consigo em outro dia? Surgiu um imprevisto.');
-  }, [remarcar, booking]);
+    if (slug) markRead(slug);
+  }, [slug, markRead]);
 
   const company = companies?.find((c) => c.slug === slug);
 

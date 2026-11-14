@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, Button, IconName, Muted, Rise, Screen, ScreenHeader, SettingsGroup, SettingsRow } from '@/src/design-system/ui';
@@ -35,23 +35,21 @@ export default function NotificationPrefsScreen() {
   const { mode, user } = useAuth();
   const { states, request } = usePermissions(['notifications'], mode === 'live');
   const permission = states.notifications;
-  const [prefs, setPrefs] = useState<NotificationPrefsState>(defaultNotificationPrefs);
-  const [saved, setSaved] = useState<string | null>(null);
-
-  useEffect(() => {
-    const remote = (user?.kind === 'staff' ? user.notification_prefs : undefined) as
-      | Partial<NotificationPrefsState>
-      | undefined;
-    if (!remote) return;
-    setPrefs((prev) => ({
+  // Começa com o que já veio do servidor junto com o usuário (sem efeito para copiar depois).
+  const [prefs, setPrefs] = useState<NotificationPrefsState>(() => {
+    const remote = (user?.kind === 'staff' ? user.notification_prefs : undefined) as Partial<NotificationPrefsState> | undefined;
+    const prev = defaultNotificationPrefs();
+    if (!remote) return prev;
+    return {
       ...prev,
       sound: remote.sound ?? prev.sound,
       push: remote.push ?? prev.push,
       desktop: remote.desktop ?? prev.desktop,
       email_digest: remote.email_digest ?? prev.email_digest,
       categories: { ...prev.categories, ...(remote.categories as Record<PushCategoryId, boolean>) },
-    }));
-  }, [user]);
+    };
+  });
+  const [saved, setSaved] = useState<string | null>(null);
 
   const saveMut = useMutation({
     mutationFn: () => updateNotificationPrefs(prefs, user?.name || 'Usuário'),

@@ -24,7 +24,7 @@ export function xpFrom(input: { sessions: number; records: number; goalWeeks: nu
 }
 
 const LEVEL_STEP = 200;
-const LABELS: Array<[number, string]> = [
+const LABELS: [number, string][] = [
   [1, 'Iniciante'],
   [4, 'Em ritmo'],
   [6, 'Intermediário'],

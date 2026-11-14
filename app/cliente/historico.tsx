@@ -6,8 +6,9 @@ import { colors, numbers, radii, typography } from '@/src/design-system/tokens';
 import { workoutForWeekday } from '@/src/features/fitness/mockData';
 import { useFitnessSummary, useHistory } from '@/src/features/fitness/useFitness';
 import { formatDuration, isoDate, monthFull, weekdayShort } from '@/src/shared/format';
+import { useNow } from '@/src/shared/useNow';
 
-const GROUPS: Record<string, Array<[string, number]>> = {
+const GROUPS: Record<string, [string, number][]> = {
   'w-a': [['Peito', 13], ['Braços', 9]],
   'w-b': [['Costas', 14], ['Braços', 5]],
   'w-c': [['Pernas e glúteos', 24]],
@@ -15,6 +16,7 @@ const GROUPS: Record<string, Array<[string, number]>> = {
 
 export default function FitnessHistoryScreen() {
   const insets = useSafeAreaInsets();
+  const now = useNow();
   const { data: history } = useHistory();
   const { data: summary } = useFitnessSummary();
   const today = new Date();
@@ -24,7 +26,7 @@ export default function FitnessHistoryScreen() {
   const daysIn = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
 
   const groupTotals = new Map<string, number>();
-  const cutoff = isoDate(new Date(Date.now() - 30 * 86_400_000));
+  const cutoff = isoDate(new Date(now - 30 * 86_400_000));
   history
     ?.filter((e) => e.date >= cutoff)
     .forEach((e) => {

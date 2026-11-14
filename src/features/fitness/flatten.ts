@@ -23,7 +23,7 @@ export type ExerciseRow = {
   exerciseId: string;
   name: string;
   snapshot?: FitnessExerciseSnapshot;
-  sets: Array<{ reps: number; kg: number }>;
+  sets: { reps: number; kg: number }[];
   restSeconds: number;
   kg: number;
   reps: number;

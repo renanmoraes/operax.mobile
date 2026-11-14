@@ -119,7 +119,7 @@ export function Rise({
 }) {
   const progress = useSharedValue(0);
   useEffect(() => {
-    progress.value = withDelay(index * motion.stagger, withTiming(1, { duration: 520, easing: easeOut }));
+    progress.set(withDelay(index * motion.stagger, withTiming(1, { duration: 520, easing: easeOut })));
   }, [index, progress]);
   const animated = useAnimatedStyle(() => ({
     opacity: progress.value,
@@ -155,11 +155,11 @@ export function PressableScale({
       {...rest}
       style={outer as ViewStyle}
       onPressIn={(e) => {
-        scale.value = withTiming(scaleTo, { duration: motion.pressMs, easing: easeOut });
+        scale.set(withTiming(scaleTo, { duration: motion.pressMs, easing: easeOut }));
         rest.onPressIn?.(e);
       }}
       onPressOut={(e) => {
-        scale.value = withTiming(1, { duration: motion.pressMs, easing: easeOut });
+        scale.set(withTiming(1, { duration: motion.pressMs, easing: easeOut }));
         rest.onPressOut?.(e);
       }}
     >
@@ -959,7 +959,7 @@ export function Segmented({
   useEffect(() => {
     if (!measured) return;
     const target = index * segW;
-    x.value = reduced ? target : withSpring(target, SEGMENT_SPRING);
+    x.set(reduced ? target : withSpring(target, SEGMENT_SPRING));
   }, [index, segW, measured, reduced, x]);
 
   const pill = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
@@ -972,7 +972,7 @@ export function Segmented({
       onLayout={(e) => {
         const w = e.nativeEvent.layout.width - SEGMENT_PAD * 2;
         if (w > 0 && Math.abs(w - inner) > 0.5) {
-          if (!inner) x.value = (Math.max(0, options.findIndex((o) => o.key === value)) * w) / Math.max(1, options.length);
+          if (!inner) x.set((Math.max(0, options.findIndex((o) => o.key === value)) * w) / Math.max(1, options.length));
           setInner(w);
         }
       }}

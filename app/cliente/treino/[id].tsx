@@ -7,9 +7,11 @@ import { colors, radii, shadows, text, typography } from '@/src/design-system/to
 import { estimateMinutes, flattenWorkout, totalSets } from '@/src/features/fitness/flatten';
 import { LOAD_HISTORY, WORKOUTS } from '@/src/features/fitness/mockData';
 import { formatKg, weekdayFull } from '@/src/shared/format';
+import { useNow } from '@/src/shared/useNow';
 
 export default function WorkoutSheetScreen() {
   const insets = useSafeAreaInsets();
+  const now = useNow();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [current, setCurrent] = useState(id);
   const [pdfNote, setPdfNote] = useState(false);
@@ -18,7 +20,7 @@ export default function WorkoutSheetScreen() {
   const today = new Date().getDay();
   const isToday = workout.schedule.weekdays?.includes(today);
   const nextDay = workout.schedule.weekdays?.map((d) => (d - today + 7) % 7).filter((d) => d > 0).sort((a, b) => a - b)[0];
-  const when = isToday ? 'Hoje' : nextDay === 1 ? 'Amanhã' : nextDay != null ? `Próxima ${weekdayFull(new Date(Date.now() + nextDay * 86_400_000))}` : '';
+  const when = isToday ? 'Hoje' : nextDay === 1 ? 'Amanhã' : nextDay != null ? `Próxima ${weekdayFull(new Date(now + nextDay * 86_400_000))}` : '';
 
   return (
     <Screen>

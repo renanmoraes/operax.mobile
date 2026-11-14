@@ -56,7 +56,7 @@ function TabItem({
   const [labelW, setLabelW] = useState(0);
 
   useEffect(() => {
-    p.value = reduced ? (focused ? 1 : 0) : withTiming(focused ? 1 : 0, focused ? OPEN : CLOSE);
+    p.set(reduced ? (focused ? 1 : 0) : withTiming(focused ? 1 : 0, focused ? OPEN : CLOSE));
   }, [focused, reduced, p]);
 
   const expanded = PAD_LEFT + ICON + GAP + labelW + PAD_RIGHT;
@@ -91,8 +91,8 @@ function TabItem({
   return (
     <Pressable
       onPress={onPress}
-      onPressIn={() => (press.value = withTiming(0.96, { duration: motion.pressMs, easing: easeOut }))}
-      onPressOut={() => (press.value = withTiming(1, { duration: motion.pressMs, easing: easeOut }))}
+      onPressIn={() => press.set(withTiming(0.96, { duration: motion.pressMs, easing: easeOut }))}
+      onPressOut={() => press.set(withTiming(1, { duration: motion.pressMs, easing: easeOut }))}
       accessibilityRole="tab"
       accessibilityState={{ selected: focused }}
       accessibilityLabel={typeof badge === 'number' && badge > 0 ? `${label}, ${badge} ${badge === 1 ? 'mensagem nova' : 'mensagens novas'}` : badge ? `${label}, novas mensagens` : label}

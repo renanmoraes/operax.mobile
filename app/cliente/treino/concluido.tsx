@@ -14,7 +14,7 @@ import type { FitnessFeeling } from '@/src/features/fitness/types';
 import { useHistory, useRecordResult } from '@/src/features/fitness/useFitness';
 import { formatClock, formatKg, isoDate } from '@/src/shared/format';
 
-const FEELINGS: Array<{ key: FitnessFeeling; label: string; icon: IconName }> = [
+const FEELINGS: { key: FitnessFeeling; label: string; icon: IconName }[] = [
   { key: 'great', label: 'Ótimo', icon: 'happy-outline' },
   { key: 'good', label: 'Bom', icon: 'thumbs-up-outline' },
   { key: 'ok', label: 'Ok', icon: 'remove-circle-outline' },
@@ -43,7 +43,7 @@ export default function WorkoutDoneScreen() {
       const prev = LOAD_HISTORY[r.exerciseId] ? Math.max(...LOAD_HISTORY[r.exerciseId]) : null;
       return prev != null && top > prev ? { name: r.name, kg: top, diff: top - prev } : null;
     })
-    .filter(Boolean) as Array<{ name: string; kg: number; diff: number }>;
+    .filter(Boolean) as { name: string; kg: number; diff: number }[];
 
   const past = (history ?? []).filter((e) => e.title === workout.title).slice(0, 5).reverse();
   const bars = [...past.map((e) => ({ label: e.date.slice(8, 10) + '/' + e.date.slice(5, 7), v: e.volume_kg ?? 0 })), { label: 'Hoje', v: volume }];

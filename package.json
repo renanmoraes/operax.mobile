@@ -9,6 +9,7 @@
     "@likashefqet/react-native-image-zoom": "^4.3.0",
     "@tanstack/react-query": "^5.101.4",
     "axios": "^1.18.1",
+    "eslint-config-expo": "~58.0.4",
     "expo": "^58.0.0",
     "expo-audio": "~58.0.12",
     "expo-blur": "~58.0.6",
@@ -49,6 +50,7 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/react": "~19.3.0",
+    "eslint": "^9.39.5",
     "jest": "~30.5.2",
     "jest-expo": "~58.0.14",
     "playwright": "^1.62.0",
@@ -68,7 +70,8 @@
     "test:ci": "npm run test:unit && npm run test:api",
     "eas:init": "bash scripts/eas-bootstrap.sh",
     "eas:build:prod": "eas-cli build --platform all --profile production",
-    "eas:login": "eas-cli login"
+    "eas:login": "eas-cli login",
+    "lint": "expo lint"
   },
   "private": true
 }
