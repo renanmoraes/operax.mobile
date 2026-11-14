@@ -34,6 +34,7 @@ MODIFICAR
   app/(app)/profile.tsx                corrige acesso a role_code pós-union
   app/notification-prefs.tsx           corrige acesso a notification_prefs pós-union
   app/(auth)/login.tsx                 + link "Entrar como cliente"
+  app/_layout.tsx                       registra o grupo (client) sem header nativo
   docs/00-produto.md, 03-auth-sessao.md, 07-mapa-telas.md, 08-api-contrato.md, README.md
 
 CRIAR
@@ -1664,6 +1665,17 @@ git commit -m "feat: tela de seleção de empresa ativa do cliente"
 - Create: `app/(client)/conversas.tsx`
 - Create: `app/(client)/fitness.tsx`
 - Create: `app/(client)/perfil.tsx`
+- Modify: `app/_layout.tsx`
+
+- [ ] **Step 0: Registrar o grupo `(client)` no Stack raiz**
+
+`app/_layout.tsx` declara `headerShown: false` pra `(auth)` e `(app)`, mas não vai declarar nada pra `(client)` — sem isso o Stack raiz mostra um header extra com o nome literal do grupo por cima do header de cada tela. Adicione, ao lado das outras duas linhas:
+
+```tsx
+<Stack.Screen name="(client)" options={{ headerShown: false }} />
+```
+
+(Achado validando visualmente no preview — não dá pra ver isso só lendo o código, por isso virou passo explícito.)
 
 - [ ] **Step 1: Layout das tabs**
 
