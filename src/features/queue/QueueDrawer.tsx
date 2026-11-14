@@ -15,9 +15,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { Button, ListRow, Muted } from '@/src/design-system/ui';
-import { colors, radii, spacing, typography, zIndex } from '@/src/design-system/tokens';
+import { Avatar, Badge, Button, Card, EmptyState, IconButton, Muted } from '@/src/design-system/ui';
+import { initialsOf } from '@/src/features/inbox/ConversationCard';
+import { colors, radii, shadows, spacing, typography, zIndex } from '@/src/design-system/tokens';
 import type { Conversation } from '@/src/mocks/data';
 import { useQueueDrawer } from './QueueDrawerContext';
 
@@ -68,52 +68,50 @@ export function QueueDrawer({ items, claimingId, onClaim }: Props) {
           ]}
         >
           <View style={styles.header}>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.title}>Fila</Text>
-              <Muted>
+              <Muted style={{ marginTop: 2 }}>
                 {items.length === 0
                   ? 'Ninguém aguardando'
-                  : `${items.length} aguardando · Assuma para atender`}
+                  : `${items.length} aguardando · assuma para atender`}
               </Muted>
             </View>
-            <Pressable
-              onPress={close}
-              accessibilityRole="button"
-              accessibilityLabel="Fechar fila"
-              hitSlop={10}
-              style={styles.closeBtn}
-            >
-              <Ionicons name="close" size={24} color={colors.text} />
-            </Pressable>
+            <IconButton icon="close" accessibilityLabel="Fechar fila" onPress={close} />
           </View>
 
           <FlatList
             data={items}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={items.length === 0 ? styles.emptyWrap : undefined}
+            contentContainerStyle={items.length === 0 ? styles.emptyWrap : styles.list}
             ListEmptyComponent={
               <View style={styles.empty}>
-                <Muted style={{ textAlign: 'center' }}>Ninguém na fila agora</Muted>
-                <Button label="Fechar" variant="secondary" onPress={close} />
+                <EmptyState icon="checkmark-done-outline" title="Fila zerada" subtitle="Ninguém esperando atendimento agora." />
+                <Button label="Fechar" variant="soft" onPress={close} />
               </View>
             }
             renderItem={({ item }) => (
-              <View style={styles.item}>
-                <ListRow
-                  title={item.contactName}
-                  subtitle={item.lastMessage}
-                  meta={`${item.queue} · ${channelLabel[item.channel] ?? item.channel}`}
-                  trailing={<Muted>{item.updatedAt}</Muted>}
-                  onPress={() => onClaim(item.id)}
-                />
-                <View style={styles.claimWrap}>
+              <Card style={styles.item}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Avatar initials={initialsOf(item.contactName)} size={42} />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.name} numberOfLines={1}>{item.contactName}</Text>
+                      <Muted style={{ fontSize: 12 }}>{item.updatedAt}</Muted>
+                    </View>
+                    <Muted numberOfLines={1} style={{ marginTop: 2 }}>{item.lastMessage}</Muted>
+                  </View>
+                </View>
+                <View style={styles.itemFoot}>
+                  <Badge label={`${item.queue} · ${channelLabel[item.channel] ?? item.channel}`} />
                   <Button
-                    label={claimingId === item.id ? 'Assumindo…' : 'Assumir'}
+                    label="Assumir"
+                    compact
+                    loading={claimingId === item.id}
                     disabled={claimingId === item.id}
                     onPress={() => onClaim(item.id)}
                   />
                 </View>
-              </View>
+              </Card>
             )}
           />
         </Animated.View>
@@ -136,47 +134,29 @@ const styles = StyleSheet.create({
     width: DRAWER_WIDTH,
     maxWidth: '86%',
     height: '100%',
-    backgroundColor: colors.cardBg,
+    backgroundColor: colors.pageBg,
     borderTopRightRadius: radii.sheet,
     borderBottomRightRadius: radii.sheet,
     zIndex: zIndex.drawer + 1,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: { width: 2, height: 0 },
+    ...shadows.hero,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    gap: spacing.md,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+    gap: 12,
   },
   title: {
-    fontFamily: typography.fontFamilyBold,
-    fontSize: 22,
+    fontFamily: typography.fontFamilyHeavy,
+    fontSize: 26,
     color: colors.text,
-    letterSpacing: -0.3,
+    letterSpacing: -0.6,
   },
-  closeBtn: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  item: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  claimWrap: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.cardBg,
-  },
+  list: { paddingHorizontal: 16, gap: 10, paddingBottom: spacing.md },
+  item: { padding: 14, gap: 12 },
+  itemFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  name: { flex: 1, fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text },
   emptyWrap: { flexGrow: 1, justifyContent: 'center' },
   empty: {
     padding: spacing.xl,

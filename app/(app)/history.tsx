@@ -1,20 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
-import { ListRow, Loading, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { FlatList, RefreshControl, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EmptyState, Loading, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { conversations as mockConversations } from '@/src/mocks/data';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { getMyHistory } from '@/src/shared/api/conversations.api';
 import { mapApiConversation } from '@/src/features/inbox/mapConversation';
-
-const channelLabel = {
-  whatsapp: 'WhatsApp',
-  instagram: 'Instagram',
-  messenger: 'Messenger',
-} as const;
+import { ConversationCard } from '@/src/features/inbox/ConversationCard';
 
 export default function HistoryScreen() {
+  const insets = useSafeAreaInsets();
   const { mode, user } = useAuth();
 
   const query = useQuery({
@@ -38,30 +36,19 @@ export default function HistoryScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title="Histórico" />
+      <View style={{ paddingTop: insets.top }}>
+        <ScreenHeader title="Histórico" subtitle="Atendimentos encerrados" onBack={() => router.back()} />
+      </View>
       {mode === 'live' && query.isLoading ? (
         <Loading />
       ) : (
         <FlatList
           data={data}
           keyExtractor={(item) => item.id}
-          refreshControl={
-            mode === 'live' ? (
-              <RefreshControl refreshing={query.isFetching} onRefresh={() => query.refetch()} />
-            ) : undefined
-          }
-          ListEmptyComponent={
-            <Muted style={{ textAlign: 'center', marginTop: 48 }}>Nenhum histórico ainda.</Muted>
-          }
-          renderItem={({ item }) => (
-            <ListRow
-              title={item.contactName}
-              subtitle={item.lastMessage}
-              meta={`${item.queue} · ${channelLabel[item.channel] ?? item.channel}`}
-              trailing={<Muted>{item.updatedAt}</Muted>}
-              onPress={() => router.push(`/conversation/${item.id}`)}
-            />
-          )}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom, gap: 10 }}
+          refreshControl={mode === 'live' ? <RefreshControl refreshing={query.isFetching} onRefresh={() => query.refetch()} /> : undefined}
+          ListEmptyComponent={<EmptyState icon="time-outline" title="Nenhum histórico ainda" subtitle="Atendimentos encerrados aparecem aqui." />}
+          renderItem={({ item }) => <ConversationCard item={item} onPress={() => router.push(`/conversation/${item.id}`)} />}
         />
       )}
     </Screen>

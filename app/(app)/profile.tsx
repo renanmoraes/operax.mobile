@@ -1,81 +1,89 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Body, Button, Card, Muted, Screen, Title } from '@/src/design-system/ui';
-import { colors, spacing, typography } from '@/src/design-system/tokens';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Avatar, Badge, Button, Card, HeroCard, IconTile, Muted, Rise, Screen, ScreenHeader, SettingsGroup, SettingsRow } from '@/src/design-system/ui';
+import { colors, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
-import { registerForPushNotificationsAsync } from '@/src/features/notifications/push';
+import { initialsOf } from '@/src/features/inbox/ConversationCard';
+import { openSystemSettings, usePermissions } from '@/src/features/permissions/permissions';
 import { API_URL } from '@/src/shared/config';
 
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
   const { logout, user, mode } = useAuth();
-  const [pushStatus, setPushStatus] = useState('Verificando…');
-
-  useEffect(() => {
-    let alive = true;
-    registerForPushNotificationsAsync().then((result) => {
-      if (!alive) return;
-      if (result.status === 'granted') setPushStatus('Permissão OK — token obtido');
-      else if (result.status === 'denied') setPushStatus('Permissão negada no aparelho');
-      else setPushStatus(`Indisponível: ${result.reason}`);
-    });
-    return () => {
-      alive = false;
-    };
-  }, []);
+  const { states, request } = usePermissions(['notifications'], mode === 'live');
+  const push = states.notifications;
 
   return (
-    <Screen style={{ padding: spacing.lg, gap: spacing.md }}>
-      <Card style={{ gap: spacing.xs }}>
-        <Title>{user?.name || 'Usuário'}</Title>
-        <Muted>{user?.email}</Muted>
-        <Body style={styles.meta}>
-          {mode === 'live' ? 'Online' : 'Mock'} · {(user?.kind === 'staff' && user.role_code) || '—'}
-        </Body>
-        <Muted>API {API_URL}</Muted>
-      </Card>
+    <Screen>
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 40 }}>
+        <ScreenHeader title="Perfil" onBack={() => router.back()} />
+        <View style={{ paddingHorizontal: 20, gap: 12 }}>
+          <Rise>
+            <HeroCard>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                <Avatar initials={initialsOf(user?.name || 'Usuário')} size={72} tone="brand" />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.name} numberOfLines={1}>{user?.name || 'Usuário'}</Text>
+                  <Muted numberOfLines={1} style={{ marginTop: 3 }}>{user?.email}</Muted>
+                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
+                    <Badge label={mode === 'live' ? 'Online' : 'Demo'} tone={mode === 'live' ? 'success' : 'primary'} />
+                    {user?.kind === 'staff' && user.role_code ? <Badge label={user.role_code} /> : null}
+                  </View>
+                </View>
+              </View>
+            </HeroCard>
+          </Rise>
 
-      <Card style={{ gap: spacing.sm }}>
-        <Body style={styles.section}>Push</Body>
-        <Muted>{pushStatus}</Muted>
-      </Card>
+          <Rise index={1}>
+            <Card style={{ gap: 12 }}>
+              <View style={{ flexDirection: 'row', gap: 14 }}>
+                <IconTile icon="notifications-outline" size={46} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>Notificações neste aparelho</Text>
+                  <Muted style={{ marginTop: 4, lineHeight: 19 }}>Avisamos quando alguém entra na fila, quando te mencionam e quando um horário muda.</Muted>
+                </View>
+              </View>
+              <View style={{ paddingLeft: 60 }}>
+                {push === 'granted' ? (
+                  <Badge label="Ativadas" tone="success" icon="checkmark" />
+                ) : push === 'blocked' ? (
+                  <Button label="Abrir ajustes do celular" variant="soft" compact onPress={openSystemSettings} style={{ alignSelf: 'flex-start' }} />
+                ) : push === 'unavailable' ? (
+                  <Badge label="Disponível no app do celular" />
+                ) : (
+                  <Button label="Ativar notificações" compact onPress={() => void request('notifications')} style={{ alignSelf: 'flex-start' }} />
+                )}
+              </View>
+            </Card>
+          </Rise>
 
-      <Card style={{ gap: spacing.sm, padding: 0 }}>
-        <LinkRow label="Preferências de notificação" onPress={() => router.push('/notification-prefs')} />
-        <LinkRow label="Respostas rápidas" onPress={() => router.push('/quick-replies')} />
-        <LinkRow label="Templates Meta" onPress={() => router.push('/templates')} />
-      </Card>
+          <Rise index={2}>
+            <SettingsGroup>
+              <SettingsRow icon="options-outline" title="Preferências de notificação" onPress={() => router.push('/notification-prefs')} />
+              <SettingsRow icon="flash-outline" title="Respostas rápidas" onPress={() => router.push('/quick-replies')} />
+              <SettingsRow icon="document-text-outline" title="Templates Meta" onPress={() => router.push('/templates')} last />
+            </SettingsGroup>
+          </Rise>
 
-      <Button
-        label="Sair"
-        variant="danger"
-        onPress={async () => {
-          await logout();
-          router.replace('/(auth)/login');
-        }}
-      />
+          <Rise index={3}>
+            <Button
+              label="Sair da conta"
+              variant="danger"
+              onPress={async () => {
+                await logout();
+                router.replace('/(auth)/login');
+              }}
+            />
+          </Rise>
+          {__DEV__ ? <Muted style={{ textAlign: 'center', fontSize: 11 }}>{`API ${API_URL}`}</Muted> : null}
+        </View>
+      </ScrollView>
     </Screen>
   );
 }
 
-function LinkRow({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} style={styles.link}>
-      <Body>{label}</Body>
-      <Muted>›</Muted>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  meta: { marginTop: 4, fontFamily: typography.fontFamilyMedium },
-  section: { fontFamily: typography.fontFamilySemiBold },
-  link: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
+  name: { fontFamily: typography.fontFamilyHeavy, fontSize: 20, letterSpacing: -0.4, color: colors.text },
+  cardTitle: { fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text },
 });

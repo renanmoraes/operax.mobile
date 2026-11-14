@@ -1,8 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
-import { Body, Button, Card, Muted, Screen, Title } from '@/src/design-system/ui';
-import { colors, spacing, typography } from '@/src/design-system/tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Badge, Button, IconName, Muted, Rise, Screen, ScreenHeader, SettingsGroup, SettingsRow } from '@/src/design-system/ui';
+import { colors, typography } from '@/src/design-system/tokens';
 import {
   defaultNotificationPrefs,
   PUSH_CATEGORIES,
@@ -10,10 +12,29 @@ import {
   NotificationPrefsState,
 } from '@/src/features/notifications/catalog';
 import { useAuth } from '@/src/features/auth/AuthContext';
+import { openSystemSettings, usePermissions } from '@/src/features/permissions/permissions';
 import { updateNotificationPrefs } from '@/src/shared/api/profile.api';
 
+const CATEGORY_ICONS: Record<PushCategoryId, IconName> = {
+  queue_new: 'people-outline',
+  claimed_message: 'chatbubble-ellipses-outline',
+  ownership_expiring: 'hourglass-outline',
+  assignment_expired: 'alert-circle-outline',
+  chat_message: 'chatbubbles-outline',
+  chat_mention: 'at-outline',
+  booking_new: 'calendar-outline',
+  booking_reschedule: 'swap-horizontal-outline',
+  reminder: 'alarm-outline',
+  transfer: 'arrow-redo-outline',
+  urgency: 'flame-outline',
+  kanban_followup: 'grid-outline',
+};
+
 export default function NotificationPrefsScreen() {
+  const insets = useSafeAreaInsets();
   const { mode, user } = useAuth();
+  const { states, request } = usePermissions(['notifications'], mode === 'live');
+  const permission = states.notifications;
   const [prefs, setPrefs] = useState<NotificationPrefsState>(defaultNotificationPrefs);
   const [saved, setSaved] = useState<string | null>(null);
 
@@ -48,89 +69,101 @@ export default function NotificationPrefsScreen() {
     }));
   };
 
+  const toggle = (value: boolean, onChange: (v: boolean) => void, label: string, disabled?: boolean) => (
+    <Switch
+      value={value}
+      onValueChange={onChange}
+      disabled={disabled}
+      accessibilityLabel={label}
+      trackColor={{ true: colors.primary, false: colors.track }}
+      thumbColor="#fff"
+      // react-native-web pinta o polegar ligado de verde-água sem esta prop
+      {...({ activeThumbColor: '#fff' } as object)}
+    />
+  );
+
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
-        <View style={{ gap: spacing.xs }}>
-          <Title>Notificações push</Title>
-          <Muted>Por padrão tudo fica ligado — inclusive com o telefone bloqueado.</Muted>
-          {saved ? <Muted>{saved}</Muted> : null}
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 40 }}>
+        <ScreenHeader title="Notificações" subtitle="Tudo ligado por padrão, inclusive com a tela bloqueada" onBack={() => router.back()} />
+        <View style={{ paddingHorizontal: 20 }}>
+          <Rise>
+            <SettingsGroup>
+              <SettingsRow
+                icon="phone-portrait-outline"
+                title="Permissão do celular"
+                subtitle={
+                  permission === 'granted'
+                    ? 'Ativada'
+                    : permission === 'blocked'
+                      ? 'Bloqueada nos ajustes'
+                      : permission === 'unavailable'
+                        ? 'Disponível no app do celular'
+                        : 'Ainda não ativada'
+                }
+                subtitleTone={permission === 'granted' ? 'success' : permission === 'blocked' ? 'warn' : undefined}
+                right={
+                  permission === 'granted' || permission === 'unavailable' ? (
+                    <View />
+                  ) : permission === 'blocked' ? (
+                    <Button label="Ajustes" variant="soft" compact onPress={openSystemSettings} />
+                  ) : (
+                    <Button label="Ativar" compact onPress={() => void request('notifications')} />
+                  )
+                }
+              />
+              <SettingsRow
+                icon="notifications-outline"
+                title="Push no aparelho"
+                subtitle="Liga ou desliga todas as categorias"
+                right={toggle(prefs.push, (v) => setPrefs((p) => ({ ...p, push: v })), 'Push no aparelho')}
+              />
+              <SettingsRow
+                icon="volume-medium-outline"
+                title="Som no app"
+                subtitle="Quando o app estiver aberto"
+                right={toggle(prefs.sound, (v) => setPrefs((p) => ({ ...p, sound: v })), 'Som no app')}
+                last
+              />
+            </SettingsGroup>
+          </Rise>
+
+          <Muted style={styles.groupLabel}>Categorias</Muted>
+          <Rise index={1}>
+            <View style={!prefs.push && { opacity: 0.5 }}>
+              <SettingsGroup>
+                {PUSH_CATEGORIES.map((cat, i) => (
+                  <SettingsRow
+                    key={cat.id}
+                    icon={CATEGORY_ICONS[cat.id] ?? 'notifications-outline'}
+                    title={cat.label}
+                    subtitle={cat.description}
+                    right={toggle(prefs.categories[cat.id], (v) => setCategory(cat.id, v), cat.label, !prefs.push)}
+                    last={i === PUSH_CATEGORIES.length - 1}
+                  />
+                ))}
+              </SettingsGroup>
+            </View>
+          </Rise>
+
+          <View style={{ marginTop: 18, gap: 10 }}>
+            {saved ? (
+              <View style={{ alignSelf: 'center' }}>
+                <Badge label={saved} tone={saved.startsWith('Falha') ? 'danger' : 'success'} />
+              </View>
+            ) : null}
+            {mode === 'live' ? (
+              <Button label="Salvar preferências" loading={saveMut.isPending} onPress={() => saveMut.mutate()} disabled={saveMut.isPending} />
+            ) : (
+              <Muted style={{ textAlign: 'center' }}>No modo demonstração as preferências ficam só neste aparelho.</Muted>
+            )}
+          </View>
         </View>
-
-        <Card style={{ gap: spacing.md }}>
-          <Row
-            label="Push no aparelho"
-            hint="Master"
-            value={prefs.push}
-            onChange={(v) => setPrefs((p) => ({ ...p, push: v }))}
-          />
-          <Row
-            label="Som no app"
-            hint="App aberto"
-            value={prefs.sound}
-            onChange={(v) => setPrefs((p) => ({ ...p, sound: v }))}
-          />
-        </Card>
-
-        <Body style={styles.section}>Categorias</Body>
-        <Card style={{ gap: spacing.lg }}>
-          {PUSH_CATEGORIES.map((cat) => (
-            <Row
-              key={cat.id}
-              label={cat.label}
-              hint={cat.description}
-              value={prefs.categories[cat.id]}
-              onChange={(v) => setCategory(cat.id, v)}
-              disabled={!prefs.push}
-            />
-          ))}
-        </Card>
-
-        {mode === 'live' ? (
-          <Button
-            label={saveMut.isPending ? 'Salvando…' : 'Salvar na API'}
-            onPress={() => saveMut.mutate()}
-            disabled={saveMut.isPending}
-          />
-        ) : (
-          <Muted>Modo mock — preferências só locais.</Muted>
-        )}
       </ScrollView>
     </Screen>
   );
 }
 
-function Row({
-  label,
-  hint,
-  value,
-  onChange,
-  disabled,
-}: {
-  label: string;
-  hint: string;
-  value: boolean;
-  onChange: (v: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <View style={[styles.row, disabled && { opacity: 0.45 }]}>
-      <View style={{ flex: 1, paddingRight: spacing.md, gap: 2 }}>
-        <Body style={styles.label}>{label}</Body>
-        <Muted>{hint}</Muted>
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onChange}
-        disabled={disabled}
-        trackColor={{ true: colors.primary }}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  section: { fontFamily: typography.fontFamilySemiBold, marginTop: spacing.xs },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  label: { fontFamily: typography.fontFamilyMedium },
+  groupLabel: { marginTop: 22, marginBottom: 10, fontFamily: typography.fontFamilySemiBold },
 });

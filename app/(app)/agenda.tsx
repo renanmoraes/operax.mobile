@@ -1,10 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
-import { FlatList, StyleSheet, View } from 'react-native';
-import { Badge, Body, Muted, Screen, Title } from '@/src/design-system/ui';
-import { colors, spacing, typography } from '@/src/design-system/tokens';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Badge, Card, EmptyState, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
+import { colors, radii, typography } from '@/src/design-system/tokens';
 import { listBookings } from '@/src/shared/api/bookings.api';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { agendaEvents } from '@/src/mocks/data';
+import { longDate } from '@/src/shared/format';
 
 function dayBounds() {
   const start = new Date();
@@ -20,7 +23,25 @@ function hhmm(iso: string) {
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
+const STATUS_TONE: Record<string, 'success' | 'warn' | 'danger' | 'primary' | 'neutral'> = {
+  confirmed: 'success',
+  confirmado: 'success',
+  pending: 'warn',
+  pendente: 'warn',
+  cancelled: 'danger',
+  cancelado: 'danger',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  confirmed: 'Confirmado',
+  pending: 'Aguardando confirmação',
+  cancelled: 'Cancelado',
+  completed: 'Realizado',
+  no_show: 'Faltou',
+};
+
 export default function AgendaScreen() {
+  const insets = useSafeAreaInsets();
   const { mode } = useAuth();
   const bounds = dayBounds();
   const query = useQuery({
@@ -29,17 +50,17 @@ export default function AgendaScreen() {
     queryFn: () => listBookings({ from: bounds.from, to: bounds.to, limit: 50 }),
   });
 
+  const header = (
+    <View style={{ paddingTop: insets.top }}>
+      <ScreenHeader title="Agenda" subtitle={`Hoje, ${longDate(new Date()).toLowerCase()}`} right={<Badge label={mode === 'live' ? 'Ao vivo' : 'Demo'} tone="primary" />} />
+    </View>
+  );
+
   if (mode === 'live' && query.data && query.data.ok === false) {
     return (
       <Screen>
-        <View style={styles.header}>
-          <Title>Agenda</Title>
-          <Muted>Recurso do plano</Muted>
-        </View>
-        <View style={{ padding: spacing.xl }}>
-          <Body style={{ marginBottom: spacing.sm }}>Agenda indisponível neste tenant</Body>
-          <Muted>{query.data.message}</Muted>
-        </View>
+        {header}
+        <EmptyState icon="calendar-outline" title="Agenda indisponível nesta empresa" subtitle={query.data.message} />
       </Screen>
     );
   }
@@ -67,56 +88,44 @@ export default function AgendaScreen() {
 
   return (
     <Screen>
-      <View style={styles.header}>
-        <Title>Agenda</Title>
-        <Muted>{mode === 'live' ? 'Hoje · API' : 'Hoje · mock'}</Muted>
-      </View>
+      {header}
       <FlatList
         data={data}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom, gap: 10 }}
         ListEmptyComponent={
-          <Muted style={{ textAlign: 'center', marginTop: 40 }}>
-            {query.isLoading ? 'Carregando…' : 'Nenhum compromisso hoje.'}
-          </Muted>
+          query.isLoading ? <Muted style={{ textAlign: 'center', marginTop: 40 }}>Carregando…</Muted> : <EmptyState icon="calendar-outline" title="Nenhum compromisso hoje" subtitle="Quando alguém marcar, aparece aqui." />
         }
-        renderItem={({ item }) => (
-          <View style={styles.row}>
-            <View style={styles.timeCol}>
-              <Body style={styles.time}>{item.startsAt}</Body>
-              <Muted>{item.endsAt}</Muted>
+        renderItem={({ item }) => {
+          const status = String(item.status).toLowerCase();
+          const tone = STATUS_TONE[status] ?? 'primary';
+          return (
+            <View style={styles.row}>
+              <View style={styles.timeCol}>
+                <Text style={styles.time}>{item.startsAt}</Text>
+                <Muted style={{ fontSize: 11.5 }}>{item.endsAt}</Muted>
+              </View>
+              <Card style={[styles.card, tone === 'warn' && styles.cardWarn]}>
+                <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+                <Muted style={{ marginTop: 3 }} numberOfLines={1}>{item.contactName}</Muted>
+                {item.location ? <Muted style={{ marginTop: 2, fontSize: 12 }} numberOfLines={1}>{item.location}</Muted> : null}
+                <View style={{ marginTop: 10 }}>
+                  <Badge label={STATUS_LABEL[status] ?? String(item.status)} tone={tone} />
+                </View>
+              </Card>
             </View>
-            <View style={{ flex: 1, gap: 4 }}>
-              <Body style={styles.title}>{item.title}</Body>
-              <Muted>{item.contactName}</Muted>
-              {item.location ? <Muted>{item.location}</Muted> : null}
-              <Badge label={String(item.status)} tone="primary" />
-            </View>
-          </View>
-        )}
+          );
+        }}
       />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    padding: spacing.lg,
-    gap: spacing.xs,
-    backgroundColor: colors.cardBg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    backgroundColor: colors.cardBg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: spacing.md,
-  },
-  timeCol: { width: 56, alignItems: 'flex-start' },
-  time: { fontFamily: typography.fontFamilySemiBold, color: colors.primary },
-  title: { fontFamily: typography.fontFamilySemiBold },
+  row: { flexDirection: 'row', gap: 10 },
+  timeCol: { width: 52, paddingTop: 16 },
+  time: { fontFamily: typography.fontFamilyHeavy, fontSize: 14, color: colors.text, fontVariant: ['tabular-nums'] },
+  card: { flex: 1, padding: 16, borderRadius: radii.lg + 2 },
+  cardWarn: { borderWidth: 1.5, borderColor: colors.warn },
+  title: { fontFamily: typography.fontFamilyBold, fontSize: 15.5, color: colors.text },
 });

@@ -12,8 +12,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Badge, Body, Button, Muted } from '@/src/design-system/ui';
-import { colors, radii, spacing, typography, zIndex } from '@/src/design-system/tokens';
+import { Avatar, Backdrop, Badge, Body, Button, IconButton, IconTile, Muted } from '@/src/design-system/ui';
+import { colors, radii, shadows, typography, zIndex } from '@/src/design-system/tokens';
+import { initialsOf } from '@/src/features/inbox/ConversationCard';
 import { getConversation as getMockConv, getMessages as getMockMessages } from '@/src/mocks/data';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import {
@@ -102,7 +103,9 @@ export default function ConversationScreen() {
   if (!conversation) {
     return (
       <View style={styles.center}>
+        <Backdrop variant="chat" />
         <Muted>{liveQuery.isLoading ? 'Carregando…' : 'Conversa não encontrada.'}</Muted>
+        {!liveQuery.isLoading ? <Button label="Voltar" variant="soft" compact onPress={() => router.back()} style={{ marginTop: 14 }} /> : null}
       </View>
     );
   }
@@ -171,34 +174,38 @@ export default function ConversationScreen() {
 
   return (
     <View style={styles.root}>
-      <View style={styles.topBar}>
+      <Backdrop variant="chat" />
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <IconButton icon="chevron-back" accessibilityLabel="Voltar" onPress={() => router.back()} />
         <Pressable
           style={styles.contactBlock}
           onPress={() => conversation.contactId && router.push(`/contact/${conversation.contactId}`)}
           accessibilityRole="button"
           accessibilityLabel="Ver contato"
         >
-          <Body style={styles.contactName}>{conversation.contactName}</Body>
-          <Muted>
-            {conversation.queue} · {statusLabel}
-          </Muted>
+          <Avatar initials={initialsOf(conversation.contactName)} size={42} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.contactName} numberOfLines={1}>{conversation.contactName}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              <View style={[styles.statusDot, ownership === 'mine' ? { backgroundColor: colors.success } : ownership === 'queue' ? { backgroundColor: colors.warn } : null]} />
+              <Muted numberOfLines={1} style={{ fontSize: 12.5 }}>
+                {conversation.queue} · {statusLabel}
+              </Muted>
+            </View>
+          </View>
         </Pressable>
-        <Pressable
-          onPress={() => setSheet('actions')}
-          style={styles.iconBtn}
-          accessibilityRole="button"
-          accessibilityLabel="Ações do atendimento"
-        >
-          <Ionicons name="ellipsis-horizontal" size={22} color={colors.text} />
-        </Pressable>
+        <IconButton icon="ellipsis-horizontal" accessibilityLabel="Ações do atendimento" onPress={() => setSheet('actions')} />
       </View>
 
       {!conversation.within24h ? (
         <View style={styles.windowBanner}>
-          <Body style={{ color: '#fff', fontSize: 13, flex: 1 }}>
-            Fora da janela 24h — use um template aprovado.
-          </Body>
-          <Pressable onPress={() => router.push({ pathname: '/templates', params: { conversationId: id } })}>
+          <Ionicons name="time-outline" size={18} color={colors.warnText} />
+          <Text style={styles.windowText}>Fora da janela de 24 h. Responda com um template aprovado.</Text>
+          <Pressable
+            onPress={() => router.push({ pathname: '/templates', params: { conversationId: id } })}
+            accessibilityRole="button"
+            hitSlop={8}
+          >
             <Text style={styles.link}>Templates</Text>
           </Pressable>
         </View>
@@ -206,15 +213,16 @@ export default function ConversationScreen() {
 
       {ownership === 'queue' ? (
         <View style={styles.claimBanner}>
-          <Muted style={{ flex: 1 }}>Assuma para responder este contato.</Muted>
-          <Button label="Assumir" onPress={() => runAction('claim')} style={styles.claimBtn} />
+          <IconTile icon="hand-left-outline" size={38} />
+          <Text style={styles.claimText}>Este contato está na fila. Assuma para responder.</Text>
+          <Button label="Assumir" compact onPress={() => runAction('claim')} />
         </View>
       ) : null}
 
       <FlatList
         data={thread}
         keyExtractor={(m) => m.id}
-        contentContainerStyle={{ padding: spacing.md, gap: spacing.sm, paddingBottom: 12 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, gap: 8, paddingBottom: 16 }}
         renderItem={({ item }) => {
           const out = item.direction === 'out';
           return (
@@ -223,23 +231,23 @@ export default function ConversationScreen() {
                 <Badge label={item.type.toUpperCase()} tone={out ? 'neutral' : 'primary'} />
               ) : null}
               <Text style={[styles.bubbleText, out && { color: '#fff' }]}>{item.body}</Text>
-              <Text style={[styles.meta, out && { color: '#d7e2ff' }]}>
+              <Text style={[styles.meta, out && { color: 'rgba(255,255,255,0.72)' }]}>
                 {item.at}
-                {item.status ? ` · ${item.status}` : ''}
+                {item.status ? ` · ${STATUS_LABEL[item.status] ?? item.status}` : ''}
               </Text>
             </View>
           );
         }}
       />
 
-      <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+      <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <Pressable
           onPress={() => setSheet('attach')}
           style={styles.attachBtn}
           accessibilityRole="button"
           accessibilityLabel="Anexar mídia"
         >
-          <Ionicons name="add" size={24} color={colors.text} />
+          <Ionicons name="add" size={24} color={colors.primary} />
         </Pressable>
         <Pressable
           onPress={() => router.push({ pathname: '/quick-replies', params: { conversationId: id } })}
@@ -282,14 +290,20 @@ export default function ConversationScreen() {
       </View>
 
       {toast ? (
-        <View style={styles.toast}>
-          <Text style={{ color: '#fff', fontFamily: typography.fontFamilyMedium }}>{toast}</Text>
+        <View style={styles.toast} accessibilityLiveRegion="polite">
+          <Ionicons
+            name={toast.startsWith('Falha') ? 'alert-circle' : 'checkmark-circle'}
+            size={18}
+            color={toast.startsWith('Falha') ? colors.danger : colors.success}
+          />
+          <Text style={{ color: colors.text, fontFamily: typography.fontFamilySemiBold, fontSize: 14 }}>{toast}</Text>
         </View>
       ) : null}
 
       <Modal visible={sheet === 'actions'} transparent animationType="slide" onRequestClose={() => setSheet(null)}>
         <Pressable style={styles.overlay} onPress={() => setSheet(null)} />
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
+          <View style={styles.handle} />
           <Body style={styles.sheetTitle}>Posse e atendimento</Body>
           <Button label="Assumir" onPress={() => runAction('claim')} />
           <Button label="Liberar para a fila" variant="secondary" onPress={() => runAction('release')} />
@@ -311,6 +325,7 @@ export default function ConversationScreen() {
       <Modal visible={sheet === 'transfer'} transparent animationType="slide" onRequestClose={() => setSheet(null)}>
         <Pressable style={styles.overlay} onPress={() => setSheet(null)} />
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
+          <View style={styles.handle} />
           <Body style={styles.sheetTitle}>Transferir</Body>
           <Muted>No mobile, libere para a fila ou use o web para escolher atendente.</Muted>
           <Button label="Liberar para a fila" onPress={() => runAction('release')} />
@@ -320,6 +335,7 @@ export default function ConversationScreen() {
       <Modal visible={sheet === 'attach'} transparent animationType="slide" onRequestClose={() => setSheet(null)}>
         <Pressable style={styles.overlay} onPress={() => setSheet(null)} />
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
+          <View style={styles.handle} />
           <Body style={styles.sheetTitle}>Anexar mídia</Body>
           <Button label="Foto / Vídeo" variant="secondary" onPress={() => pickAndSend('image')} />
           <Button label="Documento" variant="secondary" onPress={() => pickAndSend('document')} />
@@ -337,71 +353,83 @@ export default function ConversationScreen() {
   );
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  queued: 'na fila',
+  sent: 'enviada',
+  delivered: 'entregue',
+  read: 'lida',
+  failed: 'falhou',
+};
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.pageBg },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.pageBg },
   topBar: {
     backgroundColor: colors.cardBg,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    borderBottomLeftRadius: radii.xl,
+    borderBottomRightRadius: radii.xl,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 10,
+    zIndex: 2,
+    ...shadows.card,
   },
-  contactBlock: { flex: 1, gap: 2 },
-  contactName: { fontFamily: typography.fontFamilySemiBold, fontSize: 17 },
-  iconBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.pageBg,
-  },
+  contactBlock: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 0 },
+  contactName: { fontFamily: typography.fontFamilyBold, fontSize: 16, color: colors.text, letterSpacing: -0.2 },
+  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#9aa6bd' },
   windowBanner: {
-    backgroundColor: colors.warn,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    marginHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: colors.warnSoft,
+    borderRadius: radii.md + 2,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: 10,
   },
+  windowText: { flex: 1, fontFamily: typography.fontFamilyMedium, fontSize: 13, lineHeight: 18, color: colors.warnText },
   claimBanner: {
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    marginHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: colors.cardBg,
+    borderRadius: radii.lg,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: 12,
+    ...shadows.card,
   },
-  claimBtn: { minHeight: 40, paddingHorizontal: spacing.md },
-  link: { color: '#fff', fontFamily: typography.fontFamilySemiBold, textDecorationLine: 'underline' },
-  bubble: { maxWidth: '82%', borderRadius: radii.lg, padding: spacing.md, gap: 4 },
+  claimText: { flex: 1, fontFamily: typography.fontFamilyMedium, fontSize: 13.5, lineHeight: 19, color: colors.textSoft },
+  link: { color: colors.warnText, fontFamily: typography.fontFamilyBold, fontSize: 13, textDecorationLine: 'underline' },
+  bubble: { maxWidth: '82%', borderRadius: radii.lg, paddingHorizontal: 14, paddingVertical: 10, gap: 4 },
   bubbleIn: {
     alignSelf: 'flex-start',
     backgroundColor: colors.cardBg,
+    borderBottomLeftRadius: 8,
+    ...shadows.card,
   },
-  bubbleOut: { alignSelf: 'flex-end', backgroundColor: colors.primary },
-  bubbleText: { fontFamily: typography.fontFamily, fontSize: typography.body, color: colors.text },
-  meta: { fontFamily: typography.fontFamily, fontSize: 11, color: colors.textMuted },
+  bubbleOut: { alignSelf: 'flex-end', backgroundColor: colors.primary, borderBottomRightRadius: 8, ...shadows.button },
+  bubbleText: { fontFamily: typography.fontFamily, fontSize: 15, lineHeight: 21, color: colors.text },
+  meta: { fontFamily: typography.fontFamilyMedium, fontSize: 11, color: colors.textMuted, alignSelf: 'flex-end' },
   composer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.sm,
-    paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
     backgroundColor: colors.cardBg,
+    ...shadows.nav,
   },
   attachBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.pageBg,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: colors.primaryWash,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -413,42 +441,50 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    minHeight: 40,
+    minWidth: 0,
+    minHeight: 44,
     maxHeight: 100,
-    borderRadius: radii.control,
+    borderRadius: 22,
     backgroundColor: colors.pageBg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     fontFamily: typography.fontFamily,
     color: colors.text,
-    fontSize: typography.body,
+    fontSize: 15,
   },
   send: {
     backgroundColor: colors.primary,
-    borderRadius: 20,
-    width: 40,
-    height: 40,
+    borderRadius: 22,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    ...shadows.button,
   },
   overlay: { flex: 1, backgroundColor: colors.overlay },
   sheet: {
     backgroundColor: colors.cardBg,
     borderTopLeftRadius: radii.sheet,
     borderTopRightRadius: radii.sheet,
-    padding: spacing.lg,
-    gap: spacing.sm,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    gap: 10,
     zIndex: zIndex.sheet,
   },
-  sheetTitle: { fontFamily: typography.fontFamilySemiBold, marginBottom: 4, fontSize: 17 },
+  handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: colors.track, marginBottom: 8 },
+  sheetTitle: { fontFamily: typography.fontFamilyHeavy, marginBottom: 4, fontSize: 19, letterSpacing: -0.3, color: colors.text },
   toast: {
     position: 'absolute',
-    bottom: 96,
+    bottom: 104,
     alignSelf: 'center',
-    backgroundColor: colors.chromeNavy,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.cardBg,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderRadius: 999,
     zIndex: zIndex.toast,
+    ...shadows.hero,
   },
 });

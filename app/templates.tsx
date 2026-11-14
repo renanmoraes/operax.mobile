@@ -1,16 +1,17 @@
-import { useMutation } from '@tanstack/react-query';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
-import { Badge, Body, Muted, Screen, Title } from '@/src/design-system/ui';
-import { colors, spacing, typography } from '@/src/design-system/tokens';
+import { useState } from 'react';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Badge, Card, EmptyState, Loading, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { colors, radii, typography } from '@/src/design-system/tokens';
 import { listTemplates, sendTemplateMessage } from '@/src/shared/api/templates.api';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { templates as mockTemplates } from '@/src/mocks/data';
-import { useState } from 'react';
 
 export default function TemplatesScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId?: string }>();
+  const insets = useSafeAreaInsets();
   const { mode } = useAuth();
   const [toast, setToast] = useState<string | null>(null);
   const query = useQuery({
@@ -42,66 +43,62 @@ export default function TemplatesScreen() {
 
   return (
     <Screen>
-      <View style={styles.header}>
-        <Title>Templates</Title>
-        <Muted>Fora da janela 24h — apenas aprovados. {toast ? `· ${toast}` : ''}</Muted>
+      <View style={{ paddingTop: insets.top }}>
+        <ScreenHeader title="Templates Meta" subtitle="Fora da janela de 24 h, só aprovados" onBack={() => router.back()} />
       </View>
-      <FlatList
-        data={data}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}
-        ListEmptyComponent={
-          <Muted style={{ textAlign: 'center', marginTop: 40 }}>
-            {query.isLoading ? 'Carregando…' : 'Nenhum template.'}
-          </Muted>
-        }
-        renderItem={({ item }) => {
-          const approved = item.status === 'approved';
-          return (
-            <Pressable
-              disabled={!approved}
-              style={[styles.row, !approved && { opacity: 0.55 }]}
-              onPress={() => {
-                if (mode === 'live' && conversationId) {
-                  sendMut.mutate(item.id);
-                  return;
+      {toast ? (
+        <View style={{ alignSelf: 'center', marginBottom: 8 }}>
+          <Badge label={toast} tone={toast.startsWith('Falha') ? 'danger' : 'success'} />
+        </View>
+      ) : null}
+      {mode === 'live' && query.isLoading ? (
+        <Loading />
+      ) : (
+        <FlatList
+          data={data}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: insets.bottom + 32, gap: 10 }}
+          ListEmptyComponent={<EmptyState icon="document-text-outline" title="Nenhum template" subtitle="Templates aprovados pela Meta aparecem aqui." />}
+          renderItem={({ item }) => {
+            const approved = item.status === 'approved';
+            return (
+              <Card
+                style={[{ gap: 8 }, !approved && { opacity: 0.6 }]}
+                onPress={
+                  approved
+                    ? () => {
+                        if (mode === 'live' && conversationId) {
+                          sendMut.mutate(item.id);
+                          return;
+                        }
+                        if (conversationId) router.back();
+                        else router.replace('/(app)/inbox');
+                      }
+                    : undefined
                 }
-                if (conversationId) router.back();
-                else router.replace('/(app)/inbox');
-              }}
-            >
-              <View style={styles.rowTop}>
-                <Body style={styles.title}>{item.name}</Body>
-                <Badge label={approved ? 'Aprovado' : item.status} tone={approved ? 'success' : 'warn'} />
-              </View>
-              <Muted>
-                {item.category} · {item.language}
-              </Muted>
-              <Body style={{ marginTop: 6 }}>{item.preview}</Body>
-            </Pressable>
-          );
-        }}
-      />
+              >
+                <View style={styles.rowTop}>
+                  <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
+                  <Badge label={approved ? 'Aprovado' : 'Em análise'} tone={approved ? 'success' : 'warn'} />
+                </View>
+                <Muted style={{ fontSize: 12.5 }}>
+                  {item.category} · {item.language}
+                </Muted>
+                <View style={styles.preview}>
+                  <Text style={styles.previewText} numberOfLines={4}>{item.preview}</Text>
+                </View>
+              </Card>
+            );
+          }}
+        />
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    padding: spacing.lg,
-    gap: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.cardBg,
-  },
-  row: {
-    backgroundColor: colors.cardBg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: spacing.md,
-    gap: 4,
-  },
-  rowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontFamily: typography.fontFamilySemiBold },
+  rowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
+  title: { flex: 1, fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text },
+  preview: { backgroundColor: colors.primaryWash, borderRadius: radii.md, borderBottomLeftRadius: 6, padding: 12 },
+  previewText: { fontFamily: typography.fontFamily, fontSize: 14, lineHeight: 20, color: colors.text },
 });

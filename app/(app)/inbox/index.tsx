@@ -2,7 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
-import { Badge, EmptyState, ListRow, Loading, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Badge, EmptyState, Loading, Screen, ScreenHeader, StatTile } from '@/src/design-system/ui';
+import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
+import { ConversationCard } from '@/src/features/inbox/ConversationCard';
 import { conversations as mockConversations, type Conversation } from '@/src/mocks/data';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { claimConversation, getMyHistory, listConversations } from '@/src/shared/api/conversations.api';
@@ -12,13 +15,8 @@ import { getSocket } from '@/src/shared/realtime/socket';
 import { useQueueDrawer } from '@/src/features/queue/QueueDrawerContext';
 import { QueueDrawer } from '@/src/features/queue/QueueDrawer';
 
-const channelLabel = {
-  whatsapp: 'WhatsApp',
-  instagram: 'Instagram',
-  messenger: 'Messenger',
-} as const;
-
 export default function InboxScreen() {
+  const insets = useSafeAreaInsets();
   const { mode, user } = useAuth();
   const { open, close, setQueueCount } = useQueueDrawer();
   const [claimingId, setClaimingId] = useState<string | null>(null);
@@ -93,18 +91,19 @@ export default function InboxScreen() {
 
   return (
     <Screen>
-      <ScreenHeader
-        title="Atendimento"
-        onMenuPress={open}
-        menuBadge={queue.length}
-        right={
-          mode === 'live' ? (
-            <Muted>{query.isFetching ? 'Atualizando…' : 'Online'}</Muted>
-          ) : (
-            <Muted>Demo</Muted>
-          )
-        }
-      />
+      <View style={{ paddingTop: insets.top }}>
+        <ScreenHeader
+          title="Atendimento"
+          onMenuPress={open}
+          menuBadge={queue.length}
+          right={<Badge label={mode === 'live' ? (query.isFetching ? 'Atualizando…' : 'Online') : 'Demo'} tone={mode === 'live' ? 'success' : 'primary'} />}
+        />
+      </View>
+      <View style={styles.stats}>
+        <StatTile value={String(queue.length)} label="na fila" accent />
+        <StatTile value={String(active.length)} label="com você" />
+        <StatTile value={String(active.reduce((n, c) => n + (c.unread > 0 ? 1 : 0), 0))} label="não lidas" />
+      </View>
 
       {mode === 'live' && query.isLoading ? (
         <Loading />
@@ -112,6 +111,7 @@ export default function InboxScreen() {
         <FlatList
           data={active}
           keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom, gap: 10 }}
           refreshControl={
             mode === 'live' ? (
               <RefreshControl refreshing={query.isFetching} onRefresh={() => query.refetch()} />
@@ -125,23 +125,7 @@ export default function InboxScreen() {
               onAction={open}
             />
           }
-          renderItem={({ item }) => (
-            <ListRow
-              title={item.contactName}
-              subtitle={item.lastMessage}
-              meta={`${item.queue} · ${channelLabel[item.channel] ?? item.channel}`}
-              urgencyLabel={
-                item.urgency === 'critical' || item.urgency === 'high' ? 'Posse · atenção' : undefined
-              }
-              trailing={
-                <View style={styles.trailing}>
-                  <Muted>{item.updatedAt}</Muted>
-                  {item.unread > 0 ? <Badge label={`${item.unread}`} tone="primary" /> : null}
-                </View>
-              }
-              onPress={() => router.push(`/conversation/${item.id}`)}
-            />
-          )}
+          renderItem={({ item }) => <ConversationCard item={item} onPress={() => router.push(`/conversation/${item.id}`)} />}
         />
       )}
 
@@ -151,5 +135,5 @@ export default function InboxScreen() {
 }
 
 const styles = StyleSheet.create({
-  trailing: { alignItems: 'flex-end', gap: 4 },
+  stats: { flexDirection: 'row', gap: 8, paddingHorizontal: 20 },
 });

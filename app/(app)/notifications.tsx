@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
-import { Badge, Body, ListRow, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
-import { colors, spacing, typography } from '@/src/design-system/tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Badge, Body, IconButton, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
+import { colors, radii, shadows, spacing, typography } from '@/src/design-system/tokens';
 import { notifications as mockNotifications } from '@/src/mocks/data';
 import { categoryForType, PUSH_CATEGORIES } from '@/src/features/notifications/catalog';
 import { useAuth } from '@/src/features/auth/AuthContext';
@@ -16,6 +18,7 @@ function formatTime(iso?: string) {
 }
 
 export default function NotificationsScreen() {
+  const insets = useSafeAreaInsets();
   const { mode } = useAuth();
   const query = useQuery({
     queryKey: ['notifications', mode],
@@ -59,16 +62,12 @@ export default function NotificationsScreen() {
 
   return (
     <Screen>
-      <ScreenHeader
-        title="Avisos"
-        right={
-          <Pressable onPress={() => router.push('/notification-prefs')} hitSlop={8}>
-            <Body style={{ color: colors.primary, fontFamily: typography.fontFamilySemiBold, fontSize: 13 }}>
-              Preferências
-            </Body>
-          </Pressable>
-        }
-      />
+      <View style={{ paddingTop: insets.top }}>
+        <ScreenHeader
+          title="Avisos"
+          right={<IconButton icon="options-outline" accessibilityLabel="Preferências de notificação" onPress={() => router.push('/notification-prefs')} />}
+        />
+      </View>
       <FlatList
         data={data}
         keyExtractor={(item) => item.id}
@@ -77,7 +76,7 @@ export default function NotificationsScreen() {
             <RefreshControl refreshing={query.isFetching} onRefresh={() => query.refetch()} />
           ) : undefined
         }
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom, gap: 10 }}
         ListEmptyComponent={
           <Muted style={{ textAlign: 'center', marginTop: 40 }}>
             {query.isLoading ? 'Carregando…' : 'Nenhum aviso.'}
@@ -102,7 +101,8 @@ export default function NotificationsScreen() {
               }}
             >
               <View style={styles.rowTop}>
-                <Body style={styles.title}>{item.title}</Body>
+                {!item.read ? <View style={styles.dot} /> : null}
+                <Body style={styles.title} numberOfLines={2}>{item.title}</Body>
                 <Muted>{item.at}</Muted>
               </View>
               <Muted>{item.body}</Muted>
@@ -125,13 +125,13 @@ const styles = StyleSheet.create({
   },
   row: {
     backgroundColor: colors.cardBg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: spacing.md,
-    gap: 6,
+    borderRadius: radii.lg + 2,
+    padding: 16,
+    gap: 8,
+    ...shadows.card,
   },
-  unread: { borderColor: colors.primary, backgroundColor: '#f5f8ff' },
-  rowTop: { flexDirection: 'row', justifyContent: 'space-between' },
-  title: { fontFamily: typography.fontFamilySemiBold },
+  unread: { backgroundColor: '#f7f9ff', borderWidth: 1.5, borderColor: 'rgba(30,78,216,0.25)' },
+  rowTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
+  title: { flex: 1, fontFamily: typography.fontFamilyBold, fontSize: 14.5 },
 });

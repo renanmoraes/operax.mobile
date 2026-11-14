@@ -50,11 +50,11 @@ export default function RootLayout() {
           <Stack.Screen name="(app)" options={{ headerShown: false }} />
           <Stack.Screen name="(client)" options={{ headerShown: false }} />
           <Stack.Screen name="cliente" options={{ headerShown: false }} />
-          <Stack.Screen name="conversation/[id]" options={{ title: 'Conversa' }} />
-          <Stack.Screen name="contact/[id]" options={{ title: 'Contato' }} />
-          <Stack.Screen name="quick-replies" options={{ title: 'Respostas rápidas', presentation: 'modal' }} />
-          <Stack.Screen name="templates" options={{ title: 'Templates', presentation: 'modal' }} />
-          <Stack.Screen name="notification-prefs" options={{ title: 'Notificações push' }} />
+          <Stack.Screen name="conversation/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="contact/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="quick-replies" options={{ headerShown: false, presentation: 'modal' }} />
+          <Stack.Screen name="templates" options={{ headerShown: false, presentation: 'modal' }} />
+          <Stack.Screen name="notification-prefs" options={{ headerShown: false }} />
         </Stack>
       </AuthProvider>
     </QueryClientProvider>

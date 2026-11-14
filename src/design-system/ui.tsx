@@ -839,6 +839,50 @@ export function Segmented({
   );
 }
 
+export function SettingsGroup({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  return <View style={[styles.group, style]}>{children}</View>;
+}
+
+export function SettingsRow({
+  icon,
+  title,
+  subtitle,
+  subtitleTone,
+  right,
+  onPress,
+  last,
+  danger,
+}: {
+  icon: IconName;
+  title: string;
+  subtitle?: string;
+  subtitleTone?: 'success' | 'warn';
+  right?: ReactNode;
+  onPress?: () => void;
+  last?: boolean;
+  danger?: boolean;
+}) {
+  const subColor = subtitleTone === 'success' ? colors.success : subtitleTone === 'warn' ? colors.warn : colors.textMuted;
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
+      style={({ pressed }) => [styles.settingsRow, !last && styles.settingsBorder, pressed && onPress ? { backgroundColor: colors.rowPress } : null]}
+    >
+      <View style={[styles.settingsIcon, danger && { backgroundColor: colors.dangerSoft }]}>
+        <Ionicons name={icon} size={19} color={danger ? colors.dangerText : colors.primary} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[styles.settingsTitle, danger && { color: colors.dangerText }]}>{title}</Text>
+        {subtitle ? <Text style={[styles.settingsSub, { color: subColor }, subtitleTone && { fontFamily: typography.fontFamilySemiBold }]}>{subtitle}</Text> : null}
+      </View>
+      {right ?? (onPress ? <Ionicons name="chevron-forward" size={16} color={colors.textMuted} /> : null)}
+    </Pressable>
+  );
+}
+
 export function Divider() {
   return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.border }} />;
 }
@@ -1062,6 +1106,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: typography.fontFamilySemiBold,
   },
+  group: { borderRadius: radii.xl, backgroundColor: colors.cardBg, overflow: 'hidden', ...shadows.card },
+  settingsRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: 16, minHeight: 64 },
+  settingsBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderSoft },
+  settingsIcon: { width: 40, height: 40, borderRadius: 14, backgroundColor: colors.primaryWash, alignItems: 'center', justifyContent: 'center' },
+  settingsTitle: { fontFamily: typography.fontFamilySemiBold, fontSize: 14.5, color: colors.text },
+  settingsSub: { marginTop: 2, fontFamily: typography.fontFamily, fontSize: 12.5 },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
