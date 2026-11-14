@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import Animated, { Easing, FadeInLeft, FadeInRight, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Card, Chip, HeroCard, IconTile, Muted, Rise, Screen, ScreenHeader, Segmented } from '@/src/design-system/ui';
@@ -16,15 +17,69 @@ function dayKey(iso: string) {
   return isoDate(new Date(iso));
 }
 
+const STRIP_GAP = 6;
+const EDGE_FAST = { duration: 260, easing: Easing.bezier(0.22, 1, 0.36, 1) };
+const EDGE_SLOW = { duration: 460, easing: Easing.bezier(0.22, 1, 0.36, 1) };
+
+/**
+ * Semana em pílulas. O destaque azul "escorre" de um dia para o outro: a borda que vai na
+ * frente corre primeiro e a de trás alcança depois, então a pílula estica, sai do dia antigo e
+ * preenche o novo. Os números ficam brancos exatamente onde o azul passa (camada recortada).
+ */
 function DayStrip({ selected, onSelect, items }: { selected: Date; onSelect: (d: Date) => void; items: ClientBooking[] }) {
+  const reduced = useReducedMotion();
   const start = startOfWeek(new Date());
   const today = startOfDay(new Date());
+  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const index = Math.max(
+    0,
+    days.findIndex((d) => sameDay(d, selected)),
+  );
+  const [w, setW] = useState(0);
+  const cell = w ? (w - STRIP_GAP * 6) / 7 : 0;
+  const left = useSharedValue(0);
+  const right = useSharedValue(0);
+  const prevIndex = useRef(index);
+
+  useEffect(() => {
+    if (!cell) return;
+    const l = index * (cell + STRIP_GAP);
+    const r = l + cell;
+    const forward = index >= prevIndex.current;
+    prevIndex.current = index;
+    if (reduced) {
+      left.set(l);
+      right.set(r);
+      return;
+    }
+    // Indo para a direita, a borda direita lidera; indo para a esquerda, a esquerda.
+    left.set(withTiming(l, forward ? EDGE_SLOW : EDGE_FAST));
+    right.set(withTiming(r, forward ? EDGE_FAST : EDGE_SLOW));
+  }, [index, cell, reduced, left, right]);
+
+  const pill = useAnimatedStyle(() => ({ transform: [{ translateX: left.value }], width: Math.max(0, right.value - left.value) }));
+  const counter = useAnimatedStyle(() => ({ transform: [{ translateX: -left.value }] }));
+
+  const hasOn = (d: Date) => items.some((b) => dayKey(b.starts_at) === isoDate(d));
+
   return (
-    <View style={styles.strip}>
-      {Array.from({ length: 7 }, (_, i) => {
-        const d = addDays(start, i);
-        const on = sameDay(d, selected);
-        const has = items.some((b) => dayKey(b.starts_at) === isoDate(d));
+    <View
+      style={styles.strip}
+      onLayout={(e) => {
+        const nw = e.nativeEvent.layout.width;
+        if (Math.abs(nw - w) < 0.5) return;
+        const c = (nw - STRIP_GAP * 6) / 7;
+        // Primeira medida: já nasce no dia certo, sem animar.
+        if (!w) {
+          left.set(index * (c + STRIP_GAP));
+          right.set(index * (c + STRIP_GAP) + c);
+        }
+        setW(nw);
+      }}
+    >
+      {days.map((d, i) => {
+        const on = i === index;
+        const has = hasOn(d);
         return (
           <Pressable
             key={i}
@@ -32,14 +87,29 @@ function DayStrip({ selected, onSelect, items }: { selected: Date; onSelect: (d:
             accessibilityRole="button"
             accessibilityState={{ selected: on }}
             accessibilityLabel={`${weekdayFull(d)} ${d.getDate()}${has ? ', com compromisso' : ', livre'}`}
-            style={[styles.stripDay, on ? styles.stripOn : styles.stripOff]}
+            style={[styles.stripDay, styles.stripOff]}
           >
-            <Text style={[styles.stripWd, on && { color: 'rgba(255,255,255,0.8)' }]}>{weekdayShort(d)}</Text>
-            <Text style={[styles.stripNum, on && { color: '#fff' }, !on && sameDay(d, today) && { color: colors.primary }]}>{d.getDate()}</Text>
-            <View style={[styles.stripDot, { backgroundColor: has ? (on ? '#fff' : colors.primary) : 'transparent' }]} />
+            <Text style={styles.stripWd}>{weekdayShort(d)}</Text>
+            <Text style={[styles.stripNum, sameDay(d, today) && { color: colors.primary }]}>{d.getDate()}</Text>
+            <View style={[styles.stripDot, { backgroundColor: has ? colors.primary : 'transparent' }]} />
           </Pressable>
         );
       })}
+      {cell ? (
+        <Animated.View pointerEvents="none" style={[styles.stripPill, pill]}>
+          <View style={styles.stripClip}>
+            <Animated.View style={[{ flexDirection: 'row', gap: STRIP_GAP, width: w }, counter]}>
+              {days.map((d, i) => (
+                <View key={i} style={[styles.stripLabel, { width: cell }]}>
+                  <Text style={[styles.stripWd, { color: 'rgba(255,255,255,0.8)' }]}>{weekdayShort(d)}</Text>
+                  <Text style={[styles.stripNum, { color: '#fff' }]}>{d.getDate()}</Text>
+                  <View style={[styles.stripDot, { backgroundColor: hasOn(d) ? '#fff' : 'transparent' }]} />
+                </View>
+              ))}
+            </Animated.View>
+          </View>
+        </Animated.View>
+      ) : null}
     </View>
   );
 }
@@ -50,7 +120,12 @@ export default function ClientAgendaScreen() {
   const { data: companies } = useCompanies();
   const [view, setView] = useState<View_>('planilha');
   const [company, setCompany] = useState<string>('all');
-  const [selected, setSelected] = useState(startOfDay(new Date()));
+  const [selected, setSelectedDay] = useState(startOfDay(new Date()));
+  const [dir, setDir] = useState<1 | -1>(1);
+  const setSelected = (d: Date) => {
+    setDir(d.getTime() >= selected.getTime() ? 1 : -1);
+    setSelectedDay(d);
+  };
 
   const items = useMemo(() => (all ?? []).filter((b) => company === 'all' || b.tenant_slug === company), [all, company]);
   const dayItems = items.filter((b) => dayKey(b.starts_at) === isoDate(selected));
@@ -86,19 +161,24 @@ export default function ClientAgendaScreen() {
           {view === 'planilha' ? (
             <Rise>
               <DayStrip selected={selected} onSelect={setSelected} items={items} />
-              <Text style={styles.dayTitle}>{`${sameDay(selected, today) ? 'Hoje, ' : ''}${weekdayFull(selected)} ${selected.getDate()}`}</Text>
-              {dayItems.length === 0 ? (
-                <Card style={{ alignItems: 'center', paddingVertical: 24 }}>
-                  <Text style={styles.emptyTitle}>Dia livre</Text>
-                  <Muted style={{ marginTop: 4 }}>Nada marcado por aqui.</Muted>
-                </Card>
-              ) : (
-                <View style={{ gap: 10 }}>
-                  {dayItems.map((b) => (
-                    <BookingCard key={b.id} booking={b} />
-                  ))}
-                </View>
-              )}
+              <Animated.View
+                key={isoDate(selected)}
+                entering={(dir > 0 ? FadeInRight : FadeInLeft).duration(300)}
+              >
+                <Text style={styles.dayTitle}>{`${sameDay(selected, today) ? 'Hoje, ' : ''}${weekdayFull(selected)} ${selected.getDate()}`}</Text>
+                {dayItems.length === 0 ? (
+                  <Card style={{ alignItems: 'center', paddingVertical: 24 }}>
+                    <Text style={styles.emptyTitle}>Dia livre</Text>
+                    <Muted style={{ marginTop: 4 }}>Nada marcado por aqui.</Muted>
+                  </Card>
+                ) : (
+                  <View style={{ gap: 10 }}>
+                    {dayItems.map((b) => (
+                      <BookingCard key={b.id} booking={b} />
+                    ))}
+                  </View>
+                )}
+              </Animated.View>
             </Rise>
           ) : null}
 
@@ -118,9 +198,18 @@ export default function ClientAgendaScreen() {
                       <View style={{ flex: 1, gap: 6 }}>
                         {its.length === 0 ? <Muted style={{ paddingTop: 9 }}>Livre</Muted> : null}
                         {its.map((b) => (
-                          <Pressable key={b.id} onPress={() => router.push(bookingHref(b) as never)} accessibilityRole="button" style={[styles.weekItem, { backgroundColor: b.status === 'pending' ? colors.warnSoft : '#f0f2f5' }]}>
-                            <Text style={[styles.weekTime, { color: b.status === 'pending' ? colors.warn : colors.primaryDeep }]}>{formatHour(b.starts_at)}</Text>
-                            <Text style={styles.weekTitle} numberOfLines={1}>{b.service_name}</Text>
+                          <Pressable
+                            key={b.id}
+                            onPress={() => router.push(bookingHref(b) as never)}
+                            accessibilityRole="button"
+                            style={[styles.weekItem, { backgroundColor: b.status === 'pending' ? colors.warnSoft : '#f0f2f5' }]}
+                          >
+                            <Text style={[styles.weekTime, { color: b.status === 'pending' ? colors.warn : colors.primaryDeep }]}>
+                              {formatHour(b.starts_at)}
+                            </Text>
+                            <Text style={styles.weekTitle} numberOfLines={1}>
+                              {b.service_name}
+                            </Text>
                           </Pressable>
                         ))}
                       </View>
@@ -140,7 +229,9 @@ export default function ClientAgendaScreen() {
                 </View>
                 <View style={styles.monthGrid}>
                   {['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((l, i) => (
-                    <Text key={i} style={styles.monthWd}>{l}</Text>
+                    <Text key={i} style={styles.monthWd}>
+                      {l}
+                    </Text>
                   ))}
                   {(() => {
                     const first = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -196,7 +287,9 @@ export default function ClientAgendaScreen() {
                           <View style={styles.breakLine} />
                         </View>
                       ) : null}
-                      <Text style={styles.groupLabel}>{sameDay(d, today) ? `Hoje · ${weekdayFull(d)} ${d.getDate()}` : `${weekdayFull(d)} ${d.getDate()}`}</Text>
+                      <Text style={styles.groupLabel}>
+                        {sameDay(d, today) ? `Hoje · ${weekdayFull(d)} ${d.getDate()}` : `${weekdayFull(d)} ${d.getDate()}`}
+                      </Text>
                       {sameDay(d, today) ? (
                         <View style={styles.nowRow}>
                           <Text style={styles.nowText}>{`Agora · ${formatHour(new Date().toISOString())}`}</Text>
@@ -233,7 +326,9 @@ const styles = StyleSheet.create({
   chips: { gap: 8, paddingHorizontal: 20, paddingVertical: 12 },
   strip: { flexDirection: 'row', gap: 6 },
   stripDay: { flex: 1, height: 74, borderRadius: radii.lg - 2, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  stripOn: { backgroundColor: colors.primary, ...shadows.button },
+  stripPill: { position: 'absolute', top: 0, left: 0, height: 74, borderRadius: radii.lg - 2, backgroundColor: colors.primary, ...shadows.button },
+  stripClip: { flex: 1, borderRadius: radii.lg - 2, overflow: 'hidden' },
+  stripLabel: { height: 74, alignItems: 'center', justifyContent: 'center', gap: 2 },
   stripOff: { backgroundColor: 'rgba(255,255,255,0.88)' },
   stripWd: { fontFamily: typography.fontFamilySemiBold, fontSize: 11.5, color: colors.textMuted },
   stripNum: { ...numbers.sm, color: colors.text },

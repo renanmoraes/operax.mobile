@@ -9,7 +9,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { LogBox, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '@/src/features/auth/AuthContext';
@@ -18,6 +18,10 @@ import { TeamChatProvider } from '@/src/features/team-chat/TeamChatContext';
 import { colors } from '@/src/design-system/tokens';
 
 SplashScreen.preventAutoHideAsync();
+
+// Aviso só de desenvolvimento do expo-router 58 ao montar abas com telas escondidas; não afeta o app
+// e o aviso ficava por cima da barra de abas no Expo Go.
+LogBox.ignoreLogs(["The action 'ROUTE_NAMES_CHANGED'"]);
 
 // No navegador (inclusive Safari do iPhone), tira o contorno azul de foco dos campos e o
 // clarão cinza do toque: no app nativo nada disso existe.
