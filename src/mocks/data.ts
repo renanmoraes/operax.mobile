@@ -387,6 +387,10 @@ export const kanbanCards: KanbanCard[] = [
 ];
 
 export const agendaEvents: AgendaEvent[] = [
+  { id: 'a-m1', title: 'Avaliação física', contactName: 'Bruno Lima', startsAt: '08:30', endsAt: '09:15', status: 'done', location: 'Sala 1' },
+  { id: 'a-m2', title: 'Consulta', contactName: 'Fernanda Rocha', startsAt: '10:00', endsAt: '10:50', status: 'done', location: 'Sala 2' },
+  { id: 'a-m3', title: 'Retorno', contactName: 'Paulo Nunes', startsAt: '11:45', endsAt: '12:40', status: 'confirmed', location: 'Sala 2' },
+  { id: 'a-m4', title: 'Primeira consulta', contactName: 'Lívia Torres', startsAt: '15:15', endsAt: '16:00', status: 'confirmed', location: 'Sala 2' },
   {
     id: 'a1',
     title: 'Consulta — retorno',

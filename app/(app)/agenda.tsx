@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Badge, Card, EmptyState, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { Badge, EmptyState, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
-import { colors, numbers, radii, typography } from '@/src/design-system/tokens';
+import { colors, text, typography } from '@/src/design-system/tokens';
+import { DayEvent, DayTimeline } from '@/src/features/agenda/DayTimeline';
+import { toMinutes } from '@/src/features/agenda/timeline';
 import { listBookings } from '@/src/shared/api/bookings.api';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { agendaEvents } from '@/src/mocks/data';
@@ -17,19 +19,16 @@ function dayBounds() {
   return { from: start.toISOString(), to: end.toISOString() };
 }
 
-function hhmm(iso: string) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
-
-const STATUS_TONE: Record<string, 'success' | 'warn' | 'danger' | 'primary' | 'neutral'> = {
+const STATUS_TONE: Record<string, DayEvent['tone']> = {
   confirmed: 'success',
   confirmado: 'success',
   pending: 'warn',
   pendente: 'warn',
   cancelled: 'danger',
   cancelado: 'danger',
+  done: 'neutral',
+  completed: 'neutral',
+  no_show: 'danger',
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -37,6 +36,7 @@ const STATUS_LABEL: Record<string, string> = {
   pending: 'Aguardando confirmação',
   cancelled: 'Cancelado',
   completed: 'Realizado',
+  done: 'Realizado',
   no_show: 'Faltou',
 };
 
@@ -63,67 +63,56 @@ export default function AgendaScreen() {
     );
   }
 
-  const data =
+  const now = new Date();
+  const events: DayEvent[] =
     mode === 'live' && query.data && query.data.ok
-      ? query.data.items.map((b) => ({
-          id: b.id,
-          title: b.service_name || 'Compromisso',
-          contactName: b.client_name || b.provider_name || '—',
-          startsAt: hhmm(b.starts_at),
-          endsAt: hhmm(b.ends_at),
-          status: b.status,
-          location: b.location_name || undefined,
-        }))
-      : agendaEvents.map((e) => ({
-          id: e.id,
-          title: e.title,
-          contactName: e.contactName,
-          startsAt: e.startsAt,
-          endsAt: e.endsAt,
-          status: e.status as string,
-          location: e.location,
-        }));
+      ? query.data.items.map((b) => toEvent(b.id, b.service_name || 'Compromisso', b.client_name || b.provider_name || '—', b.starts_at, b.ends_at, b.status, b.location_name || undefined))
+      : agendaEvents.map((e) => toEvent(e.id, e.title, e.contactName, e.startsAt, e.endsAt, e.status, e.location));
+  const upcoming = events.filter((e) => e.endMin > now.getHours() * 60 + now.getMinutes()).length;
 
   return (
     <Screen>
-      {header}
-      <FlatList
-        data={data}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom, gap: 10 }}
-        ListEmptyComponent={
-          query.isLoading ? <Muted style={{ textAlign: 'center', marginTop: 40 }}>Carregando…</Muted> : <EmptyState icon="calendar-outline" title="Nenhum compromisso hoje" subtitle="Quando alguém marcar, aparece aqui." />
-        }
-        renderItem={({ item }) => {
-          const status = String(item.status).toLowerCase();
-          const tone = STATUS_TONE[status] ?? 'primary';
-          return (
-            <View style={styles.row}>
-              <View style={styles.timeCol}>
-                <Text style={styles.time}>{item.startsAt}</Text>
-                <Muted style={{ fontSize: 11.5 }}>{item.endsAt}</Muted>
-              </View>
-              <Card style={[styles.card, tone === 'warn' && styles.cardWarn]}>
-                <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
-                <Muted style={{ marginTop: 3 }} numberOfLines={1}>{item.contactName}</Muted>
-                {item.location ? <Muted style={{ marginTop: 2, fontSize: 12 }} numberOfLines={1}>{item.location}</Muted> : null}
-                <View style={{ marginTop: 10 }}>
-                  <Badge label={STATUS_LABEL[status] ?? String(item.status)} tone={tone} />
-                </View>
-              </Card>
-            </View>
-          );
-        }}
-      />
+      {query.isLoading && mode === 'live' ? (
+        <>
+          {header}
+          <Muted style={{ textAlign: 'center', marginTop: 40 }}>Carregando…</Muted>
+        </>
+      ) : events.length === 0 ? (
+        <>
+          {header}
+          <EmptyState icon="calendar-outline" title="Nenhum compromisso hoje" subtitle="Quando alguém marcar, aparece aqui." />
+        </>
+      ) : (
+        <DayTimeline
+          events={events}
+          bottomInset={GLASS_TAB_BAR_SPACE + insets.bottom}
+          header={
+            <>
+              {header}
+              <Text style={styles.summary}>{upcoming ? `${upcoming} ${upcoming === 1 ? 'compromisso pela frente' : 'compromissos pela frente'} · ${events.length} no dia` : `${events.length} no dia · todos já passaram`}</Text>
+            </>
+          }
+        />
+      )}
     </Screen>
   );
 }
 
+function toEvent(id: string, title: string, person: string, start: string, end: string, status: string, location?: string): DayEvent {
+  const st = String(status).toLowerCase();
+  const startMin = toMinutes(start);
+  return {
+    id,
+    title,
+    person,
+    location,
+    startMin,
+    endMin: Math.max(startMin + 15, toMinutes(end)),
+    statusLabel: STATUS_LABEL[st] ?? String(status),
+    tone: STATUS_TONE[st] ?? 'primary',
+  };
+}
+
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 10 },
-  timeCol: { width: 52, paddingTop: 16 },
-  time: { ...numbers.xs, color: colors.text },
-  card: { flex: 1, padding: 16, borderRadius: radii.lg + 2 },
-  cardWarn: { borderWidth: 1.5, borderColor: colors.warn },
-  title: { fontFamily: typography.fontFamilyBold, fontSize: 15.5, color: colors.text },
+  summary: { ...text.caption, color: colors.textMuted, marginHorizontal: 20, marginTop: -4, fontFamily: typography.fontFamilyMedium },
 });
