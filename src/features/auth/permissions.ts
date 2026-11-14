@@ -37,6 +37,9 @@ export const PERMS = {
   sendMessage: 'conversations:send_message',
   sendMedia: 'conversations:send_media',
   comment: 'conversations:comment_internal',
+  pixKeysManage: 'conversations:manage_pix_keys',
+  // Kanban
+  kanbanMove: 'kanban:move_card',
   // Agenda
   bookingCreate: ['scheduling:create', 'scheduling:create_own'],
   bookingApprove: 'scheduling:approve',

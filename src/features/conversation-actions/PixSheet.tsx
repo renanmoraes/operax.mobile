@@ -8,6 +8,7 @@ import { useAuth } from '@/src/features/auth/AuthContext';
 import { listSavedPixKeys, PixData, PixKeyType, pixKeyTypeLabel, PIX_KEY_TYPES } from '@/src/shared/api/conversation-actions.api';
 import { DEMO_PIX_KEYS, formatPixKey, pixKeyError } from './logic';
 import { PixCard } from './PixCard';
+import { useCan } from '@/src/features/auth/useCan';
 
 type PixForm = { type: PixKeyType; key: string; holder: string; savedId: string | null };
 const EMPTY_FORM: PixForm = { type: 'cnpj', key: '', holder: '', savedId: null };
@@ -40,6 +41,7 @@ export function PixSheet({
   const saved = useQuery({ queryKey: ['pix-keys', user?.id, user?.kind === 'staff' ? user.tenant_id : null], enabled: live && visible, queryFn: listSavedPixKeys, staleTime: 60_000 });
   const keys = live ? saved.data ?? [] : DEMO_PIX_KEYS;
   const [save, setSave] = useState(false);
+  const canSaveKeys = useCan()('pixKeysManage');
   const [touched, setTouched] = useState(false);
 
   // Enquanto a pessoa não mexe, o formulário mostra a chave mais usada (como no web), sem efeito.
@@ -135,7 +137,8 @@ export function PixSheet({
           {touched && holderErr ? <Text style={styles.error}>{holderErr}</Text> : null}
         </View>
 
-        {isNewKey && key.trim() ? (
+        {/* Guardar chave para a equipe exige a permissão de gerenciar chaves Pix (mesma do web). */}
+        {isNewKey && key.trim() && canSaveKeys ? (
           <View style={styles.saveRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.saveTitle}>Salvar esta chave</Text>

@@ -10,7 +10,7 @@ import { getPipeline, listPipelines, listStageCards, moveCard } from '@/src/shar
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
 import { kanbanCards, kanbanStages } from '@/src/mocks/data';
-import { RequirePermission } from '@/src/features/auth/useCan';
+import { RequirePermission , useCan } from '@/src/features/auth/useCan';
 
 const STAGE_DOTS = [colors.warn, colors.primary, '#8c99b0', colors.success];
 
@@ -23,6 +23,8 @@ export default function KanbanScreenGuarded() {
 }
 
 function KanbanScreen() {
+  // Mover cartão exige kanban:move_card (quem só lê vê o funil sem as setas).
+  const canMove = useCan()('kanbanMove');
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();
   const qc = useQueryClient();
@@ -131,10 +133,12 @@ function KanbanScreen() {
                   </View>
                   <View style={styles.actions}>
                     {card.value ? <Badge label={card.value} tone="success" /> : <View />}
+                    {canMove ? (
                     <View style={{ flexDirection: 'row', gap: 6 }}>
                       <IconButton icon="arrow-back" size={36} tone="soft" accessibilityLabel={`Mover ${card.title} para a etapa anterior`} onPress={() => moveCardLocal(card.id, -1)} />
                       <IconButton icon="arrow-forward" size={36} tone="primary" accessibilityLabel={`Mover ${card.title} para a próxima etapa`} onPress={() => moveCardLocal(card.id, 1)} />
                     </View>
+                    ) : null}
                   </View>
                 </Card>
               ))}
