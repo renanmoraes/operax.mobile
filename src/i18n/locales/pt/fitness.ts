@@ -86,8 +86,8 @@ const fitness = {
     },
     david: {
       desc: 'Gigantes caem com coragem e treino (1 Samuel 17).',
-      how: 'Bata 3 recordes pessoais.',
-      name: 'Davi e Golias',
+      how: 'Bata um recorde pessoal.',
+      name: 'Davi e o gigante',
     },
     emmaus: {
       desc: 'Sessenta estádios de Jerusalém a Emaús, cerca de 11 km (Lucas 24).',
@@ -126,8 +126,8 @@ const fitness = {
     },
     nehemiah: {
       desc: 'O muro de Jerusalém foi reconstruído em 52 dias (Neemias 6.15).',
-      how: 'Faça 52 treinos em 52 dias.',
-      name: 'Muro de Neemias',
+      how: 'Complete 52 treinos.',
+      name: 'Muralha de Neemias',
     },
     newYear: {
       desc: 'Começar o ano treinando.',

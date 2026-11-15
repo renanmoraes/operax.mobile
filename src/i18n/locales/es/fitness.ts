@@ -88,7 +88,7 @@ const fitness: Shape<typeof pt> = {
     },
     david: {
       desc: 'Los gigantes caen con coraje y entreno (1 Samuel 17).',
-      how: 'Bate 3 récords personales.',
+      how: 'Bate un récord personal.',
       name: 'David y Goliat',
     },
     emmaus: {
@@ -128,7 +128,7 @@ const fitness: Shape<typeof pt> = {
     },
     nehemiah: {
       desc: 'El muro de Jerusalén fue reconstruido en 52 días (Nehemías 6:15).',
-      how: 'Haz 52 entrenos en 52 días.',
+      how: 'Completa 52 entrenos.',
       name: 'Muro de Nehemías',
     },
     newYear: {

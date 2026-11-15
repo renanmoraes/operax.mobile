@@ -88,7 +88,7 @@ const fitness: Shape<typeof pt> = {
     },
     david: {
       desc: 'Giants fall to courage and training (1 Samuel 17).',
-      how: 'Set 3 personal records.',
+      how: 'Set a personal record.',
       name: 'David and Goliath',
     },
     emmaus: {
@@ -128,7 +128,7 @@ const fitness: Shape<typeof pt> = {
     },
     nehemiah: {
       desc: 'Jerusalem\'s wall was rebuilt in 52 days (Nehemiah 6:15).',
-      how: 'Do 52 workouts in 52 days.',
+      how: 'Complete 52 workouts.',
       name: 'Nehemiah\'s wall',
     },
     newYear: {

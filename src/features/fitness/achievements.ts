@@ -119,7 +119,7 @@ async function demoAchievements(): Promise<AchievementsResponse> {
     item('christmas', { theme: 'dates', tier: 3, icon: 'tree-pine', current: inDec ? Math.min(5, s.monthCount) : 0, target: 12, period: natal, editions: [year - 1] }),
     item('newYear', { theme: 'dates', tier: 2, icon: 'party-popper', current: 1, target: 1, period: { kind: 'annual', active: false, starts_on: md(1, 1), ends_on: md(1, 1), next_starts_on: `${year + 1}-01-01` }, editions: [year] }),
     item('jericho', { theme: 'bible', tier: 3, icon: 'brick-wall', current: s.bestStreak, target: 7 }),
-    item('david', { theme: 'bible', tier: 3, icon: 'sling', current: s.records, target: 3 }),
+    item('david', { theme: 'bible', tier: 3, icon: 'sling', current: s.records, target: 1 }),
     item('emmaus', { theme: 'bible', tier: 3, icon: 'route', current: 8, target: 11 }),
     item('sinai', { theme: 'bible', tier: 4, icon: 'mountain-snow', current: 1240, target: 2285 }),
     item('nehemiah', { theme: 'bible', tier: 5, icon: 'castle', current: 31, target: 52 }),

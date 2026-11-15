@@ -33,13 +33,16 @@ export function AchievementPin({ item, size = 64, style }: { item: Pick<Achievem
             strokeDasharray={`${c} ${c}`} strokeDashoffset={c * (1 - p)} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
         ) : null}
       </Svg>
-      {item.icon.url ? (
-        <Image source={{ uri: item.icon.url }} style={{ width: size - ring * 4, height: size - ring * 4, borderRadius: size, opacity: won ? 1 : 0.45 }} />
-      ) : xml ? (
-        <SvgXml xml={xml} width={inner} height={inner} />
-      ) : (
-        <Ionicons name="medal-outline" size={inner} color={color} />
-      )}
+      {/* Numa View: na web o SVG solto ficaria por baixo do fundo (que é absoluto). */}
+      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+        {item.icon.url ? (
+          <Image source={{ uri: item.icon.url }} style={{ width: size - ring * 4, height: size - ring * 4, borderRadius: size, opacity: won ? 1 : 0.45 }} />
+        ) : xml ? (
+          <SvgXml xml={xml} width={inner} height={inner} />
+        ) : (
+          <Ionicons name="medal-outline" size={inner} color={color} />
+        )}
+      </View>
     </View>
   );
 }

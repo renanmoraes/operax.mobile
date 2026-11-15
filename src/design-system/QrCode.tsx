@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { View } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import QRCode from 'qrcode';
 
@@ -12,9 +13,12 @@ export function QrCode({ value, size = 240, color = '#0c1222', background = '#ff
     return { d: path, n: count + 4 };
   }, [value]);
   return (
-    <Svg width={size} height={size} viewBox={`0 0 ${n} ${n}`} accessible accessibilityRole="image" accessibilityLabel={accessibilityLabel}>
-      <Rect x={0} y={0} width={n} height={n} fill={background} />
-      <Path d={d} fill={color} />
-    </Svg>
+    // A acessibilidade fica na View: no Svg, a web repassaria `accessible` cru para o DOM.
+    <View accessible accessibilityRole="image" accessibilityLabel={accessibilityLabel}>
+      <Svg width={size} height={size} viewBox={`0 0 ${n} ${n}`}>
+        <Rect x={0} y={0} width={n} height={n} fill={background} />
+        <Path d={d} fill={color} />
+      </Svg>
+    </View>
   );
 }

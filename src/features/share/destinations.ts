@@ -1,13 +1,21 @@
 import type { ComponentRef, RefObject } from 'react';
 import { Linking, Platform, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
-import Share, { Social } from 'react-native-share';
+import type ShareModule from 'react-native-share';
+
 import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
 import * as Clipboard from 'expo-clipboard';
 import i18n from '@/src/i18n';
 import { confirmDialog, showDialog } from '@/src/design-system/Dialog';
 import { CANVAS } from './types';
+
+/**
+ * `react-native-share` só existe no celular: carregar no topo derruba a versão web (inclusive a renderização no servidor,
+ * que é onde os prints da loja são feitos). Aqui ela só é carregada na hora de usar.
+ */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const native = () => require('react-native-share') as { default: typeof ShareModule; Social: typeof import('react-native-share').Social };
 
 export type CanvasRef = RefObject<ComponentRef<typeof View> | null>;
 
@@ -28,7 +36,7 @@ export function captureDataUri(ref: CanvasRef): Promise<string> {
 /** O app de destino está no aparelho? Sem ele o react-native-share não falha: abre outra coisa. */
 async function hasApp(androidPackage: string, iosScheme: string): Promise<boolean> {
   try {
-    if (Platform.OS === 'android') return (await Share.isPackageInstalled(androidPackage)).isInstalled;
+    if (Platform.OS === 'android') return (await native().default.isPackageInstalled(androidPackage)).isInstalled;
     return await Linking.canOpenURL(iosScheme);
   } catch {
     return false;
@@ -51,6 +59,7 @@ async function story(ref: CanvasRef, transparent: boolean) {
   if (!META_APP_ID || !(await hasApp('com.instagram.android', 'instagram-stories://share'))) return more(file);
   const image = await captureDataUri(ref);
   try {
+    const { default: Share, Social } = native();
     await Share.shareSingle({
       social: Social.InstagramStories,
       appId: META_APP_ID,
@@ -68,6 +77,7 @@ async function whatsapp(ref: CanvasRef) {
   const file = await captureFile(ref);
   if (!(await hasApp('com.whatsapp', 'whatsapp://send'))) return more(file);
   try {
+    const { default: Share, Social } = native();
     await Share.shareSingle({ social: Social.Whatsapp, url: file, type: 'image/png', useInternalStorage: true });
   } catch (e) {
     if (isCancel(e)) return;
