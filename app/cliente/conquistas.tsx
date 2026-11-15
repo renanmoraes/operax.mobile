@@ -47,7 +47,7 @@ export default function AchievementsScreen() {
     if (!i.period.next_starts_on) return null;
     return i.period.kind === 'annual' ? t('ach.backEveryYear', { date: fmtDate(i.period.next_starts_on) }) : t('ach.backOn', { date: fmtDate(i.period.next_starts_on) });
   };
-  const closeCelebration = () => { setDismissed(true); seen.mutate(); };
+  const closeCelebration = () => { setDismissed(true); seen.mutate(fresh.map((f) => f.ref)); };
 
   if (isLoading || !data || !level) {
     return (
@@ -184,9 +184,9 @@ export default function AchievementsScreen() {
                 {open.requirements.map((r) => {
                   const target = items.find((x) => x.ref === r.ref);
                   return (
-                    <PressableScale key={r.ref} disabled={!target} onPress={() => target && setOpen(target)} accessibilityRole="button" accessibilityLabel={`${r.name}, ${t('ach.reqProgress', { have: Math.min(r.have, r.times), times: r.times })}`} style={styles.reqRow}>
+                    <PressableScale key={r.ref} disabled={!target} onPress={() => target && setOpen(target)} accessibilityRole="button" accessibilityLabel={`${r.hidden || !r.name ? t('ach.secretRequirement') : r.name}, ${t('ach.reqProgress', { have: Math.min(r.have, r.times), times: r.times })}`} style={styles.reqRow}>
                       {target ? <AchievementPin item={target} size={34} /> : <Ionicons name="medal-outline" size={26} color={colors.textMuted} />}
-                      <Text style={styles.reqName} numberOfLines={1}>{r.name}</Text>
+                      <Text style={styles.reqName} numberOfLines={1}>{r.hidden || !r.name ? t('ach.secretRequirement') : r.name}</Text>
                       <Text style={[styles.reqCount, r.have >= r.times && { color: colors.success }]}>{t('ach.reqProgress', { have: Math.min(r.have, r.times), times: r.times })}</Text>
                       {target ? <Ionicons name="chevron-forward" size={16} color={colors.textMuted} /> : null}
                     </PressableScale>

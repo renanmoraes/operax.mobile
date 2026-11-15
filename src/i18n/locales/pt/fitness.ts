@@ -1,6 +1,7 @@
 /** Textos em português (base). As chaves valem para todos os idiomas. */
 const fitness = {
   ach: {
+    secretRequirement: 'Medalha secreta',
     backEveryYear: 'Volta todo ano em {{date}}',
     prize: 'Prêmio: {{prize}}',
     prizeDelivered: 'Prêmio entregue',

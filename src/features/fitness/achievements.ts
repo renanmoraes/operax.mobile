@@ -39,7 +39,7 @@ export interface AchievementView {
   prize: string | null;
   prize_status: 'none' | 'pending' | 'delivered';
   /** Medalha que depende de outras: cada exigida com quantas vezes o aluno tem e quantas precisa. */
-  requirements: { ref: string; name: string; have: number; times: number }[];
+  requirements: { ref: string; name: string; have: number; times: number; hidden?: boolean }[];
 }
 
 export interface AchievementProfile { xp: number; workout_xp: number; achievement_xp: number; level: number; level_xp: number; next_level_xp: number; earned: number }
@@ -144,8 +144,9 @@ export async function fetchAchievements(): Promise<AchievementsResponse> {
   return demoAchievements();
 }
 
-export async function markAchievementsSeen() {
-  if (live()) { await api.post(`${F}/achievements/seen`, {}); return; }
+/** Marca como vistas só as que o app comemorou (`refs`): a que chegou depois continua nova. */
+export async function markAchievementsSeen(refs: string[]) {
+  if (live()) { await api.post(`${F}/achievements/seen`, { refs }); return; }
   seenDemo = true;
 }
 

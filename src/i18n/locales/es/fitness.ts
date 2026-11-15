@@ -3,6 +3,7 @@ import type pt from '../pt/fitness';
 
 const fitness: Shape<typeof pt> = {
   ach: {
+    secretRequirement: 'Logro secreto',
     backEveryYear: 'Vuelve cada año el {{date}}',
     prize: 'Premio: {{prize}}',
     prizeDelivered: 'Premio entregado',
