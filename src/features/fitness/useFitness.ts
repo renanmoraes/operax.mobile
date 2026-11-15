@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { AppState } from 'react-native';
+import * as Network from 'expo-network';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from './fitnessApi';
 import { isAxiosError } from 'axios';
@@ -9,7 +10,7 @@ import type { BodyCheckin, FreeActivityBody, RecordResultBody } from './types';
 /** Status HTTP para a fila: 4xx descarta (o servidor recusou ou já tem), sem resposta ou 5xx tenta depois. */
 const statusOf = (e: unknown) => (isAxiosError(e) ? (e.response?.status ?? 0) : 0);
 
-/** Reenvia resultados guardados sem conexão ao abrir o app e quando ele volta ao primeiro plano. */
+/** Reenvia resultados guardados sem conexão: ao abrir o app, ao voltar ao primeiro plano, quando a internet volta e a cada minuto. */
 export function useFlushResultsQueue() {
   const qc = useQueryClient();
   useEffect(() => {
@@ -30,7 +31,24 @@ export function useFlushResultsQueue() {
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active') void run();
     });
-    return () => sub.remove();
+    // A internet voltou com o app aberto: reenvia na hora (não precisa sair e voltar para o app).
+    let net: { remove: () => void } | null = null;
+    try {
+      net = Network.addNetworkStateListener((st) => {
+        if (st.isConnected && st.isInternetReachable !== false) void run();
+      });
+    } catch {
+      // sem módulo de rede (web antigo): fica o reenvio periódico abaixo
+    }
+    // Reserva: tenta de novo a cada minuto com o app na frente (fila vazia sai na hora, sem rede nenhuma).
+    const timer = setInterval(() => {
+      if (AppState.currentState === 'active') void run();
+    }, 60_000);
+    return () => {
+      sub.remove();
+      net?.remove();
+      clearInterval(timer);
+    };
   }, [qc]);
 }
 
