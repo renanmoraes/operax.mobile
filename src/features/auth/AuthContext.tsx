@@ -21,6 +21,7 @@ import {
   clearSavedRole,
   clearTokens,
   getAccountSummary,
+  getAccessToken,
   getRefreshToken,
   getSavedRole,
   hasSession,
@@ -305,8 +306,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      */
     async function enterPortal(result: PortalLoginResult): Promise<'blocked' | 'ok'> {
       const resumeOwner = suspendFitnessOwner();
+      // O que estava instalado antes: se a empresa nova não abrir, volta tudo como era (token, conta e modo),
+      // para a fila nunca reenviar os treinos da conta antiga com o token da nova.
+      const before = {
+        access: await getAccessToken('client'),
+        refresh: await getRefreshToken('client'),
+        role: await getSavedRole(),
+        identity: portalIdentity.current,
+        mode,
+      };
       try {
         return await enterPortalNow(result);
+      } catch (e) {
+        if (before.access) await setTokens(before.access, before.refresh ?? '', 'client');
+        else await clearTokens('client');
+        if (before.role) await setSavedRole(before.role);
+        portalIdentity.current = before.identity;
+        setMode(before.mode);
+        throw e;
       } finally {
         releaseAfterCommit(resumeOwner);
       }
