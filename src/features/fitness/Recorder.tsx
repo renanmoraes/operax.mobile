@@ -587,6 +587,7 @@ export function Recorder({
   const guideCard = guide?.length && active ? (
     <StepGuideCard steps={guide} index={guideAt.i} doneSeconds={elapsed - guideAt.s0} doneMeters={run.distanceM - guideAt.m0} pace={now} onNext={() => advanceGuide(elapsed, run.distanceM)} compact={showMap} />
   ) : null;
+  const draftFirst = phase === 'ready' && !!draft;
   return (
     <Screen backdrop="none" style={{ backgroundColor: '#fff' }}>
       <NoSwipeBack phase={phase} />
@@ -653,9 +654,14 @@ export function Recorder({
         )}
 
         <ScrollView contentContainerStyle={{ paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
-          <Text style={styles.label}>{t('rec.time')}</Text>
-          <Text style={styles.clock} accessibilityLabel={t('rec.timeA11y', { time: formatClock(elapsed) })}>{formatClock(elapsed)}</Text>
-          {subtitle ? <Muted style={styles.subtitle} numberOfLines={1}>{subtitle}</Muted> : null}
+          {/* Na largada com treino não salvo, os números zerados saem e o rascunho fica inteiro à vista. */}
+          {draftFirst ? null : (
+            <>
+              <Text style={styles.label}>{t('rec.time')}</Text>
+              <Text style={styles.clock} accessibilityLabel={t('rec.timeA11y', { time: formatClock(elapsed) })}>{formatClock(elapsed)}</Text>
+              {subtitle ? <Muted style={styles.subtitle} numberOfLines={1}>{subtitle}</Muted> : null}
+            </>
+          )}
 
           {sport.gps && !showMap && phase !== 'ready' ? (
             <View style={styles.bigDistance}>
@@ -664,7 +670,7 @@ export function Recorder({
             </View>
           ) : null}
 
-          {sport.gps ? (
+          {sport.gps && !draftFirst ? (
             <View style={styles.pair}>
               <View style={styles.pairCell}>
                 <Text style={styles.label}>{speed ? (showMap || phase === 'ready' ? t('rec.speed') : t('rec.average')) : t('rec.avgPace')}</Text>
@@ -712,7 +718,7 @@ export function Recorder({
             </View>
           ) : null}
           {phase === 'ready' && draft ? (
-            <View style={styles.draft}>
+            <View style={[styles.draft, draftFirst && { marginTop: 6 }]}>
               <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
                 <Ionicons name="time-outline" size={20} color={colors.primary} />
                 <View style={{ flex: 1 }}>
