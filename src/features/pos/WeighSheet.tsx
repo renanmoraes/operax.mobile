@@ -5,7 +5,7 @@ import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Button, IconButton, Segmented } from '@/src/design-system/ui';
 import { colors, radii, typography } from '@/src/design-system/tokens';
 import { changeQuantity, detalhesDoCarrinho, quantidadePeloValorNaLinha, vendidoEmQuilo, type CartLine } from './cart';
-import { formatMoney, gramsText, keypadNumber, keypadPress, moneyPlain, quantityText, type KeypadKey } from './checkout';
+import { formatMoney, gramsText, keypadNumber, keypadPress, keypadText, quantityText, type KeypadKey } from './checkout';
 import { Keypad, OfferTag, PriceFromTo } from './parts';
 
 type Mode = 'weight' | 'value';
@@ -62,8 +62,8 @@ export function WeighSheet({
   const switchMode = (m: Mode) => {
     if (m === mode) return;
     // Troca o que está sendo digitado pelo valor equivalente, para a pessoa continuar de onde estava.
-    if (m === 'value') setRaw(detail ? moneyPlain(detail.liquido).replace(/\./g, '') : '');
-    else setRaw(quantity != null ? String(kg ? Math.round(quantity * 10000) / 10 : quantity).replace('.', ',') : '');
+    if (m === 'value') setRaw(detail ? keypadText(detail.liquido, 2) : '');
+    else setRaw(quantity != null ? (kg ? keypadText(quantity * 1000, 1) : keypadText(quantity, 4)) : '');
     setMode(m);
   };
   const press = (k: KeypadKey) => setRaw((v) => keypadPress(v, k, decimals, mode === 'value' ? 5 : kg ? 5 : 4));

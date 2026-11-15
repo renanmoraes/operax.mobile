@@ -8,6 +8,7 @@ import {
   gramsText,
   keypadNumber,
   keypadPress,
+  keypadText,
   quickCash,
   shiftMonth,
   syncSingle,
@@ -48,6 +49,14 @@ describe('teclado da pesagem', () => {
     expect(decimalDigitado('10.5')).toBe(10.5);
     expect(decimalDigitado('1,2,3')).toBeNull();
     expect(decimalDigitado('abc')).toBeNull();
+  });
+
+  it('número para o teclado não depende do idioma', () => {
+    expect(keypadText(10, 2)).toBe('10');
+    expect(keypadText(1000.5, 2)).toBe('1000,5');
+    expect(keypadText(29.326, 2)).toBe('29,33');
+    expect(keypadNumber(keypadText(10, 2))).toBe(10);
+    expect(keypadText(0.2504 * 1000, 1)).toBe('250,4');
   });
 
   it('quilo mostrado em gramas', () => {

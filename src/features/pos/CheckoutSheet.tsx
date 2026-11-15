@@ -7,7 +7,7 @@ import { Button, IconButton, PressableScale } from '@/src/design-system/ui';
 import { colors, radii, typography } from '@/src/design-system/tokens';
 import { locale } from '@/src/i18n';
 import { BASE_PAYMENT_METHODS, type PosPaymentMethod } from '@/src/shared/api/pos.api';
-import { addPaymentRow, changeDue, checkoutState, decimalDigitado, formatMoney, moneyPlain, quickCash, round2, shiftMonth, todayYmd, uid, type PaymentRow } from './checkout';
+import { addPaymentRow, changeDue, checkoutState, decimalDigitado, formatMoney, keypadText, quickCash, round2, shiftMonth, todayYmd, uid, type PaymentRow } from './checkout';
 import { METHOD_ICON, Pills, SumRow } from './parts';
 import { primeiroVencimentoSugerido } from './primeiroVencimento';
 
@@ -70,7 +70,9 @@ export function CheckoutSheet({
     const base = rows.length === 1 ? [{ ...rows[0], amount: total }] : rows;
     const next = addPaymentRow(base, total, method, uid());
     setRows(next);
-    setRaw((m) => ({ ...m, ...Object.fromEntries(next.map((r) => [r.id, m[r.id] ?? moneyPlain(r.amount)])) }));
+    // Saindo de uma forma só, o valor da que fica foi refeito (passou a ser o total): o texto do campo acompanha.
+    const fromSingle = rows.length === 1;
+    setRaw((m) => ({ ...m, ...Object.fromEntries(next.map((r) => [r.id, fromSingle || m[r.id] == null ? keypadText(r.amount, 2) : m[r.id]])) }));
   };
   const remove = (id: string) => setRows((rs) => rs.filter((r) => r.id !== id));
   const onAccountRow = effective.find((r) => r.method === 'on_account');
@@ -100,7 +102,7 @@ export function CheckoutSheet({
               {effective.length > 1 ? (
                 <MoneyInput
                   label={t('checkout.amount')}
-                  value={raw[row.id] ?? moneyPlain(row.amount)}
+                  value={raw[row.id] ?? keypadText(row.amount, 2)}
                   onChange={(v) => {
                     setRaw((m) => ({ ...m, [row.id]: v }));
                     update(row.id, { amount: decimalDigitado(v) ?? 0 });
@@ -122,7 +124,7 @@ export function CheckoutSheet({
                       <PressableScale
                         key={v}
                         onPress={() => {
-                          setTenderedRaw((m) => ({ ...m, [row.id]: moneyPlain(v) }));
+                          setTenderedRaw((m) => ({ ...m, [row.id]: keypadText(v, 2) }));
                           update(row.id, { tendered: v });
                         }}
                         accessibilityRole="button"

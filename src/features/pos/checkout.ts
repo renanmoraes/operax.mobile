@@ -25,9 +25,13 @@ export function formatMoney(reais: number): string {
   return new Intl.NumberFormat(locale(), { style: 'currency', currency: 'BRL' }).format(round2(reais));
 }
 
-/** Valor sem o "R$", para dentro de campo. */
-export function moneyPlain(reais: number): string {
-  return new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(round2(reais));
+/**
+ * Número para dentro de campo ou do teclado: sempre vírgula decimal e sem separador de milhar ("1000,5").
+ * A pontuação do idioma não entra aqui: em inglês "10.00" sem os pontos virava 1000.
+ */
+export function keypadText(n: number, decimals: number): string {
+  const f = 10 ** decimals;
+  return String(Math.round((n + Number.EPSILON) * f) / f).replace('.', ',');
 }
 
 /** Quilos mostrados em gramas, com uma casa só quando existe ("735", "120,5"). */
