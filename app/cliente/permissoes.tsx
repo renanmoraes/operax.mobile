@@ -19,7 +19,7 @@ export default function ClientPermissionsScreen() {
   const keys: PermissionKey[] = ['notifications', 'location', 'camera', 'photos'];
   const { states, request } = usePermissions(keys, false); // cliente: só a permissão do sistema (o portal não registra aparelho)
   const caps = useClientCapabilities();
-  const { data: providers } = useProviders();
+  const { data: providers } = useProviders(caps.training);
   // Relógio só com treino liberado; câmera serve ao treino (fotos de evolução) e ao chat com anexos (só no demo por enquanto).
   const showWatch = caps.training;
   const showMedia = caps.training || (mode !== 'live' && caps.chat);
@@ -72,9 +72,10 @@ export default function ClientPermissionsScreen() {
             icon="watch-outline"
             title={t('onboarding.watch.title')}
             body={t('onboarding.watch.body')}
+            onPress={() => router.push('/cliente/relogios')}
             action={
               connected.length ? (
-                <Button label={t('onboarding.watch.connected', { names: connected.join(', ') })} variant="soft" compact icon="checkmark" onPress={() => router.push('/cliente/relogios')} />
+                <Button label={t('onboarding.watch.connected', { count: connected.length })} variant="soft" compact icon="checkmark" onPress={() => router.push('/cliente/relogios')} />
               ) : (
                 <Button label={t('onboarding.watch.connect')} compact onPress={() => router.push('/cliente/relogios')} />
               )

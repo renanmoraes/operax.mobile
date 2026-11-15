@@ -8,7 +8,7 @@ import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { AccountSwitcher } from '@/src/features/auth/AccountSwitcher';
-import { useCompanies } from '@/src/features/client/useClientData';
+import { useClientCapabilities, useCompanies } from '@/src/features/client/useClientData';
 import { useProviders } from '@/src/features/fitness/connections';
 import { providerDisplayName } from '@/src/features/fitness/brands';
 import { useFitnessSummary } from '@/src/features/fitness/useFitness';
@@ -21,7 +21,9 @@ export default function ClientPerfilScreen() {
   const { user, logout, switchTenant } = useAuth();
   const { data: companies } = useCompanies();
   const { data: summary } = useFitnessSummary();
-  const { data: providers } = useProviders();
+  // Relógios é do Fitness: empresa sem Fitness não vê a linha nem consulta as conexões.
+  const caps = useClientCapabilities();
+  const { data: providers } = useProviders(caps.training);
   const { states, request } = usePermissions(['notifications'], false); // cliente: só a permissão do sistema (o portal não registra aparelho)
   const client = user?.kind === 'client' ? user : null;
   const memberships = client?.memberships ?? [];
@@ -96,13 +98,15 @@ export default function ClientPerfilScreen() {
               onPress={() => router.push('/cliente/permissoes')}
             />
             <SettingsRow icon="calendar-outline" title={t('profile.calendar')} subtitle={t('profile.calendarSub')} onPress={() => router.push('/cliente/calendario')} />
-            <SettingsRow
-              icon="watch-outline"
-              title={t('profile.watches')}
-              subtitle={connected.length ? t('onboarding.watch.connected', { names: connected.join(', ') }) : t('profile.watchesSub')}
-              subtitleTone={connected.length ? 'success' : undefined}
-              onPress={() => router.push('/cliente/relogios')}
-            />
+            {caps.training ? (
+              <SettingsRow
+                icon="watch-outline"
+                title={t('profile.watches')}
+                subtitle={connected.length ? connected.join(', ') : t('profile.watchesSub')}
+                subtitleTone={connected.length ? 'success' : undefined}
+                onPress={() => router.push('/cliente/relogios')}
+              />
+            ) : null}
             <SettingsRow icon="shield-checkmark-outline" title={t('profile.privacy')} subtitle={t('profile.privacySub')} onPress={() => router.push('/cliente/permissoes')} />
             <LanguageRow syncProfile={false} last />
           </SettingsGroup>

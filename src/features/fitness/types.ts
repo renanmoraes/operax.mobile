@@ -265,6 +265,18 @@ export interface ProviderView {
   last_sync_at: string | null;
   last_error: string | null;
   imported: number;
+  /** O provedor recebe treino do Operax (Garmin). Ausente em versões antigas da API. */
+  can_push?: boolean;
+  /** Preferências de envio ao relógio do aluno: mandar sozinho e quais tipos de treino. */
+  push?: WatchPushPrefs | null;
+}
+
+/** Tipos de treino que podem ir para o relógio (corrida, bike, natação e remo são resistência; funcional junta metcon e hyrox). */
+export type WatchKind = 'run' | 'bike' | 'swim' | 'row' | 'strength' | 'functional';
+
+export interface WatchPushPrefs {
+  auto: boolean;
+  kinds: WatchKind[];
 }
 
 export interface ImportedSessionView {

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as WebBrowser from 'expo-web-browser';
 import { api } from '@/src/shared/api/client';
 import { clientDataMode } from '@/src/features/client/dataMode';
-import type { ImportedSessionView, ProviderView } from './types';
+import type { ImportedSessionView, ProviderView, WatchPushPrefs } from './types';
 
 const C = '/api/public/portal/fitness/connections';
 const live = () => clientDataMode() === 'live';
@@ -17,7 +17,7 @@ const live = () => clientDataMode() === 'live';
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
 
 let providers: ProviderView[] = [
-  { id: 'garmin', label: 'Garmin', state: 'available', connected: true, status: 'connected', last_sync_at: hoursAgo(2), last_error: null, imported: 38 },
+  { id: 'garmin', label: 'Garmin', state: 'available', connected: true, status: 'connected', last_sync_at: hoursAgo(2), last_error: null, imported: 38, can_push: true, push: { auto: true, kinds: ['run', 'bike', 'swim', 'row', 'strength', 'functional'] } },
   { id: 'strava', label: 'Strava', state: 'available', connected: false, status: null, last_sync_at: null, last_error: null, imported: 0 },
   { id: 'polar', label: 'Polar', state: 'available', connected: false, status: null, last_sync_at: null, last_error: null, imported: 0 },
   { id: 'apple', label: 'Apple Watch', state: 'soon', connected: false, status: null, last_sync_at: null, last_error: null, imported: 0 },
@@ -80,10 +80,20 @@ async function disconnect(id: ProviderView['id']) {
   patch(id, { connected: false, status: null, last_sync_at: null, imported: 0 });
 }
 
+async function savePush(id: ProviderView['id'], prefs: WatchPushPrefs) {
+  if (live()) {
+    await api.put(`${C}/${id}/push`, prefs);
+    return;
+  }
+  await tick();
+  patch(id, { push: prefs });
+}
+
 const key = ['fitness', 'connections'] as const;
 
-export function useProviders() {
-  return useQuery({ queryKey: key, queryFn: fetchProviders });
+/** `enabled` falso para empresa sem Fitness: as rotas de relógio são do Fitness e responderiam 403. */
+export function useProviders(enabled = true) {
+  return useQuery({ queryKey: key, queryFn: fetchProviders, enabled });
 }
 
 export function useImportedSessions() {
@@ -98,3 +108,21 @@ function useProviderMutation(fn: (id: ProviderView['id']) => Promise<unknown>) {
 export const useConnectProvider = () => useProviderMutation(connect);
 export const useSyncProvider = () => useProviderMutation(sync);
 export const useDisconnectProvider = () => useProviderMutation(disconnect);
+
+/** Salva o que vai para o relógio. Atualiza a lista na hora e desfaz se a API recusar. */
+export function useSavePushPrefs() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, prefs }: { id: ProviderView['id']; prefs: WatchPushPrefs }) => savePush(id, prefs),
+    onMutate: async ({ id, prefs }) => {
+      await qc.cancelQueries({ queryKey: key });
+      const before = qc.getQueryData<ProviderView[]>(key);
+      qc.setQueryData<ProviderView[]>(key, (list) => list?.map((p) => (p.id === id ? { ...p, push: prefs } : p)));
+      return { before };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.before) qc.setQueryData(key, ctx.before);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
