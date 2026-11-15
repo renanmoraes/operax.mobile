@@ -88,8 +88,8 @@ export const loadActivityQueue = () => read<FreeActivityBody>(ACTIVITIES_KEY);
 /** Guarda resultados para enviar depois (sem duplicar pela chave). */
 // A conta é fixada na hora do pedido: se ela mudar enquanto a fila é lida, a escrita continua na fila de
 // quem pediu (nunca copia o treino de uma pessoa para a fila de outra).
-export function queueResults(bodies: RecordResultBody[]) {
-  const who = fitnessOwner();
+/** `who`: de quem são os treinos (quem começou a salvar); por padrão o dono atual. */
+export function queueResults(bodies: RecordResultBody[], who: string = fitnessOwner()) {
   return serial(async () => write(KEY, bodies.reduce(enqueue, await read<RecordResultBody>(KEY, who)), who));
 }
 

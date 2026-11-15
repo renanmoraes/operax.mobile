@@ -14,6 +14,7 @@ import { buildResultBodies, flattenWorkout, personalRecords, totalSets } from '@
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { queueResults } from '@/src/features/fitness/resultsQueue';
 import { isAxiosError } from 'axios';
+import { fitnessOwner } from '@/src/features/fitness/owner';
 import { clearFinishedSession, FinishedSession, getFinishedSession, loadFinishedSession, resultKeyOf } from '@/src/features/fitness/sessionStore';
 import type { FitnessFeeling, FitnessWorkoutView } from '@/src/features/fitness/types';
 import { useHistory, useLoadHistory, useRecordResult } from '@/src/features/fitness/useFitness';
@@ -75,32 +76,42 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
       feeling: feeling ?? undefined,
       notes: comment.trim() || undefined,
     });
+    // De quem é este treino: fixado antes do primeiro envio. Se a pessoa trocar de conta ou de empresa no
+    // meio, as partes que faltam não saem com o token da conta nova; vão para a fila de quem treinou.
+    const who = fitnessOwner();
+    if (!who) return;
     let sent = 0;
+    let failure: unknown = null;
     try {
       for (const body of bodies) {
+        if (fitnessOwner() !== who) break;
         await record.mutateAsync(body);
         sent += 1;
       }
-      await clearFinishedSession(workout.id);
-      router.replace('/(client)/fitness');
     } catch (e) {
-      // Recusado pelo servidor (dado inválido, sem acesso): guardar não adianta, a pessoa precisa saber.
-      const status = isAxiosError(e) ? (e.response?.status ?? 0) : 0;
-      if (status >= 400 && status < 500) {
-        void showDialog({ title: t('rec.saveFailTitle'), message: t('done.rejected'), tone: 'warn' });
-        return;
-      }
-      try {
-        await queueResults(bodies.slice(sent));
-      } catch {
-        // Nem no celular deu para guardar (armazenamento cheio…): o treino fica aqui para tentar de novo.
-        void showDialog({ title: t('rec.saveFailTitle'), message: t('offline.storeFail'), tone: 'warn' });
-        return;
-      }
-      // Já está guardado na fila para enviar depois: pode liberar o rascunho e não envia de novo daqui.
-      await clearFinishedSession(workout.id);
-      setQueued(true);
+      failure = e;
     }
+    if (!failure && sent === bodies.length) {
+      await clearFinishedSession(workout.id, who);
+      router.replace('/(client)/fitness');
+      return;
+    }
+    // Recusado pelo servidor (dado inválido, sem acesso): guardar não adianta, a pessoa precisa saber.
+    const status = isAxiosError(failure) ? (failure.response?.status ?? 0) : 0;
+    if (status >= 400 && status < 500) {
+      void showDialog({ title: t('rec.saveFailTitle'), message: t('done.rejected'), tone: 'warn' });
+      return;
+    }
+    try {
+      await queueResults(bodies.slice(sent), who);
+    } catch {
+      // Nem no celular deu para guardar (armazenamento cheio…): o treino fica aqui para tentar de novo.
+      void showDialog({ title: t('rec.saveFailTitle'), message: t('offline.storeFail'), tone: 'warn' });
+      return;
+    }
+    // Já está guardado na fila para enviar depois: pode liberar o rascunho e não envia de novo daqui.
+    await clearFinishedSession(workout.id, who);
+    setQueued(true);
   }
 
   return (

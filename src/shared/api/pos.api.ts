@@ -1,4 +1,5 @@
 import { api } from './client';
+import { appendUpload } from './upload';
 import type { PosProduct } from '@/src/features/pos/cart';
 
 /**
@@ -228,7 +229,8 @@ export async function createPosContact(input: NewContactInput): Promise<PosConta
 /** Foto do documento: multipart com o arquivo da câmera/galeria. */
 export async function uploadContactDocument(contactId: string, file: { uri: string; name: string; type: string }, description?: string) {
   const form = new FormData();
-  form.append('file', file as unknown as Blob);
+  // No navegador o descritor { uri, name, type } viraria "[object Object]": o helper lê o arquivo como Blob.
+  await appendUpload(form, 'file', file);
   const { data } = await api.post(`/api/contacts/${contactId}/documents/upload`, form, {
     params: description ? { description } : undefined,
     headers: { 'Content-Type': 'multipart/form-data' },

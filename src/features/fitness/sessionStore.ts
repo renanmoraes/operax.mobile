@@ -18,7 +18,7 @@ export type FinishedSession = SessionDraft & { finishedAt: string; resultKey?: s
 export const resultKeyOf = (s: Pick<FinishedSession, 'workoutId' | 'finishedAt' | 'resultKey'>) => s.resultKey ?? `${s.workoutId}-${s.finishedAt}`;
 
 /** Por conta: o rascunho de um aluno nunca aparece para outro que entrar no mesmo celular (treino coletivo). */
-const draftKey = (workoutId: string) => ownedKey(`operax_workout_draft_${workoutId}_${isoDate(new Date())}`);
+const draftKey = (workoutId: string, who: string = fitnessOwner()) => ownedKey(`operax_workout_draft_${workoutId}_${isoDate(new Date())}`, who);
 
 /** Rascunho do treino do dia no banco local do aparelho (como o portal): fechar o app não perde as séries. */
 export async function loadDraft(workoutId: string): Promise<SessionDraft | null> {
@@ -35,8 +35,8 @@ export async function saveDraft(d: SessionDraft) {
   if (key) await kvSet(key, d);
 }
 
-export async function clearDraft(workoutId: string) {
-  const key = draftKey(workoutId);
+export async function clearDraft(workoutId: string, who: string = fitnessOwner()) {
+  const key = draftKey(workoutId, who);
   if (key) await kvSet(key, null);
 }
 
@@ -76,10 +76,13 @@ export async function loadFinishedSession(): Promise<FinishedSession | null> {
   return session;
 }
 
-/** Depois de salvar (ou guardar na fila): apaga o treino terminado e o rascunho do dia. */
-export async function clearFinishedSession(workoutId: string) {
-  finished = null;
-  const key = finishedKey();
+/**
+ * Depois de salvar (ou guardar na fila): apaga o treino terminado e o rascunho do dia de `who` (quem
+ * terminou o treino; por padrão o dono atual). Se a conta mudou no meio do salvamento, o da conta nova fica.
+ */
+export async function clearFinishedSession(workoutId: string, who: string = fitnessOwner()) {
+  if (finished?.who === who) finished = null;
+  const key = finishedKey(who);
   if (key) await kvSet(key, null);
-  await clearDraft(workoutId);
+  await clearDraft(workoutId, who);
 }
