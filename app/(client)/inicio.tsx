@@ -32,7 +32,9 @@ function Shortcut({ icon, label, onPress }: { icon: IconName; label: string; onP
   return (
     <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={styles.shortcut}>
       <IconTile icon={icon} size={40} />
-      <Text style={styles.shortcutLabel}>{label}</Text>
+      <Text style={styles.shortcutLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+        {label}
+      </Text>
     </PressableScale>
   );
 }

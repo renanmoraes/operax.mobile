@@ -21,6 +21,7 @@ import { addPoint, averagePace, currentPace, decimateTrack, defaultTitle, emptyR
 import { kmCue, stepCue, stepProgress, type GuideStep } from './coach';
 import { StepGuideCard } from './recorder/StepGuideCard';
 import { RestTimer } from './recorder/RestTimer';
+import { SlideToUnlock } from './recorder/SlideToUnlock';
 import { ownedKey } from './owner';
 import { FEELINGS, SPORTS, WORKOUT_TAGS, effortWord, type SportInfo } from './sports';
 import type { FitnessFeeling, FreeSport } from './types';
@@ -139,6 +140,7 @@ export function Recorder({
   const resumeRef = useRef<(auto?: boolean) => void>(() => undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [locked, setLocked] = useState(false);
+  const unlock = useCallback(() => setLocked(false), []);
   const [title, setTitle] = useState('');
   const [feeling, setFeeling] = useState<FitnessFeeling | undefined>();
   const [effort, setEffort] = useState<number | undefined>();
@@ -755,12 +757,10 @@ export function Recorder({
       </View>
 
       {locked ? (
-        <Pressable style={StyleSheet.absoluteFill} onLongPress={() => setLocked(false)} delayLongPress={700} accessibilityLabel={t('rec.lockedA11y')}>
-          <View style={[styles.lockPill, { bottom: insets.bottom + 40 }]}>
-            <Ionicons name="lock-closed" size={16} color="#fff" />
-            <Text style={styles.lockText}>{t('rec.locked')}</Text>
-          </View>
-        </Pressable>
+        // A tela inteira engole os toques; só o trilho do cadeado destrava.
+        <View style={StyleSheet.absoluteFill} onStartShouldSetResponder={() => true}>
+          <SlideToUnlock label={t('rec.locked')} a11yLabel={t('rec.lockedA11y')} onUnlock={unlock} style={[styles.lockSlider, { bottom: insets.bottom + 28 }]} />
+        </View>
       ) : null}
 
       <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)}>
@@ -964,8 +964,7 @@ const styles = StyleSheet.create({
   bigLabel: { fontFamily: typography.fontFamilyBold, fontSize: 13.5, color: colors.text },
   side: { width: 64, height: 84, alignItems: 'center', justifyContent: 'center', gap: 4 },
   sideLabel: { fontFamily: typography.fontFamilySemiBold, fontSize: 12, color: colors.textSoft },
-  lockPill: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, height: 44, borderRadius: 999, backgroundColor: 'rgba(5,10,20,0.88)' },
-  lockText: { fontFamily: typography.fontFamilySemiBold, fontSize: 13, color: '#fff' },
+  lockSlider: { position: 'absolute', left: 24, right: 24 },
   backdrop: { flex: 1, backgroundColor: colors.overlay },
   settings: { backgroundColor: '#fff', borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet, paddingHorizontal: 22, paddingTop: 10 },
   settingsTitle: { ...text.title, color: colors.text, marginBottom: 6 },
