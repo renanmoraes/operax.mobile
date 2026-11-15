@@ -12,7 +12,7 @@ import { openSystemSettings } from '@/src/features/permissions/permissions';
 /** Tipos de código do balcão: EAN/UPC da embalagem, Code 128/39 de etiqueta interna, ITF de caixa, QR do Operax. */
 const TYPES = ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'itf14', 'qr'] as const;
 
-/** O mesmo código lido de novo dentro deste tempo é a câmera vendo a mesma embalagem, não outra unidade. */
+/** O mesmo código visto de novo antes de sumir por este tempo é a câmera vendo a mesma embalagem, não outra unidade. */
 const SAME_CODE_MS = 1800;
 
 export type ScanFeedback = { text: string; tone: 'ok' | 'warn' | 'error' } | null;
@@ -43,6 +43,8 @@ export function ScannerModal({
 
   useEffect(() => {
     if (!visible) return;
+    // Abrir a câmera de novo é pedido do operador: o mesmo produto pode entrar outra vez.
+    last.current = null;
     sweep.value = 0;
     sweep.value = withRepeat(withTiming(1, { duration: 1600, easing: Easing.inOut(Easing.quad) }), -1, true);
   }, [visible, sweep]);
@@ -52,8 +54,12 @@ export function ScannerModal({
     const code = r.data?.trim();
     if (!code) return;
     const now = Date.now();
-    if (last.current && last.current.code === code && now - last.current.at < SAME_CODE_MS) return;
+    const same = last.current?.code === code;
+    const seenRecently = same && now - last.current!.at < SAME_CODE_MS;
+    // A janela desliza: enquanto a mesma embalagem continua na frente da câmera, cada leitura renova o
+    // "visto agora" e nada soma. Só conta de novo depois de o código sumir por SAME_CODE_MS (ou outro código).
     last.current = { code, at: now };
+    if (seenRecently) return;
     onCode(code);
   };
 

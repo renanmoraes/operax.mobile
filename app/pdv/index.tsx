@@ -107,6 +107,10 @@ function PosSaleScreen() {
   const [q, setQ] = useState('');
   const [term, setTerm] = useState('');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  // Leituras de código esperando o servidor: o receber só abre depois que todas voltam, para nenhum item
+  // chegar ao carrinho com a venda já enviada (e ser apagado quando ela fecha). O ref vale dentro de await.
+  const [lookups, setLookups] = useState(0);
+  const lookupsRef = useRef(0);
   const searchRef = useRef<TextInputInstance>(null);
 
   const seller = sellerId ?? boot.data?.operator_user_id ?? null;
@@ -125,7 +129,7 @@ function PosSaleScreen() {
   const details = useMemo(() => detalhesDoCarrinho(cart), [cart]);
   const subtotal = useMemo(() => cartTotal(cart), [cart]);
   const total = useMemo(() => cartTotalWithOrderDiscount(cart, orderDiscount?.type ?? null, orderDiscount?.value ?? null), [cart, orderDiscount]);
-  const ready = isCartReady(cart);
+  const ready = isCartReady(cart) && lookups === 0;
   const pendingWeigh = cart.filter((l) => l.quantity == null);
   const units = cart.reduce((s, l) => s + (l.is_weighed ? 1 : (l.quantity ?? 0)), 0);
 
@@ -173,6 +177,8 @@ function PosSaleScreen() {
   });
 
   const lookup = async (code: string, fromScanner: boolean) => {
+    lookupsRef.current += 1;
+    setLookups(lookupsRef.current);
     try {
       const p = await resolve.mutateAsync(code);
       const line = push(p, p.quantity ?? (p.is_weighed ? null : 1));
@@ -187,6 +193,9 @@ function PosSaleScreen() {
       const msg = apiStatus(e) === 404 ? t('search.notFound', { code }) : (apiMessage(e) ?? t('search.failed'));
       if (fromScanner) setScanFeedback({ text: msg, tone: 'error' });
       else show(msg, 'error');
+    } finally {
+      lookupsRef.current -= 1;
+      setLookups(lookupsRef.current);
     }
   };
 
@@ -251,7 +260,7 @@ function PosSaleScreen() {
     setOpening(false);
     if (mudou) show(t('cart.pricesChanged'), 'info');
     // Algo entrou sem peso durante a consulta: a venda ainda não está pronta para receber.
-    if (isCartReady(cartRef.current)) setSheet({ kind: 'checkout' });
+    if (isCartReady(cartRef.current) && lookupsRef.current === 0) setSheet({ kind: 'checkout' });
   };
 
   const finish = useMutation({
