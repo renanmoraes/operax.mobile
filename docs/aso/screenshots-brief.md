@@ -10,27 +10,26 @@
 Público na loja: gestor/atendente que busca **Operax** ou “atendimento fila CRM”.  
 Tempo de decisão: 3–6s → **slots 1–3 decidem**.
 
-## Ordem recomendada (iPhone 6.7" + Android phone)
+## Ordem final (gerada em 15/11/2026, pt-BR)
 
-| Slot | Headline (≤6 palavras) | Tela do app | Nota |
-|------|------------------------|-------------|------|
-| 1 | Assuma a fila agora | Drawer Fila + Assumir | Hook do job-to-be-done |
-| 2 | Seus atendimentos no bolso | Home Atendimento (lista) | Clareza do dia a dia |
-| 3 | Responda sem perder a posse | Conversa + status “Com você” | Prova de uso |
-| 4 | Avisos que chegam a tempo | Avisos | Push / urgência |
-| 5 | Preferências sob controle | Prefs push | Confiança LGPD-ish |
-| 6 | Tudo em Mais | Hub Mais | Densidade sem assustar |
-| 7 | Agenda do dia | Agenda | Secundário |
-| 8 | Entre com sua empresa | Login (opcional) | Só se necessário; preferir evitar login como #1 |
+Entrega pronta em `store-assets/loja/` (ver `store-assets/loja/LEIA-ME.md`). Estilo: navy `#050a14`/`#0c1222`,
+cobalto `#1e4ed8`, ciano `#4fd8ff`, Inter; uma palavra de destaque por título; selos com números reais da tela.
 
-### Telas novas para considerar (redesign tonal, nov/2026)
+| # | iPhone 6,9" / 6,5" | Android (8) | Tela do app |
+|---|--------------------|-------------|-------------|
+| 1 | Atendimento no bolso. | 1 | Fila (na fila 1, com você 2) |
+| 2 | Resumo e resposta prontos. | 2 | Conversa com sugestões e resumo da IA |
+| 3 | Transfira para quem está online. | — | Folha de transferir com presença |
+| 4 | Pese por valor. Venda no kg. | 3 | PDV, R$ 20 = 501,3 g |
+| 5 | Receba e dê o troco. | 4 | PDV, troco R$ 8,10 e venda registrada |
+| 6 | O dia todo em uma linha. (claro) | 5 | Agenda em linha do tempo |
+| 7 | Avisos que chegam a tempo. | — | Avisos |
+| 8 | Aceite a vaga na hora. (claro) | 7 | Cliente, aula em grupo |
+| 9 | Treino com cronômetro. | 6 | Ficha e sessão |
+| 10 | E muito mais. | 8 | Mosaico: GPS, evolução, conquistas, chat da equipe |
 
-| Tela | Por quê |
-|------|---------|
-| Agenda em linha do tempo (linha da hora atual) | Mostra o dia de relance, muito visual |
-| Conversa com "+" (Pix, agendar) | Prova de que se resolve tudo pelo app |
-| Chat da equipe com aviso de mensagem | Diferencial: CRM + comunicação interna |
-| Cliente: Início, Treino e Evolução (antes/depois) | Lado do cliente final, se a listagem cobrir os dois públicos |
+Momento entre telas: o fio de luz ciano passa do slide 4 para o 5 (PDV). Feature graphic: ícone, nome e
+"Atendimento, PDV e treino no bolso." com três telas do app.
 
 ## Regras criativas
 

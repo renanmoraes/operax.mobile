@@ -1,0 +1,1459 @@
+{
+  "schemaVersion": 3,
+  "appName": "Operax",
+  "themeId": "operax",
+  "fontId": "template-default",
+  "connectedCanvas": true,
+  "locales": [
+    "pt-BR"
+  ],
+  "locale": "pt-BR",
+  "device": "iphone",
+  "orientation": "portrait",
+  "appIcon": "/app-icon.png",
+  "slidesByDevice": {
+    "iphone": [
+      {
+        "id": "s1",
+        "layout": "hero",
+        "label": {
+          "pt-BR": "Atendimento"
+        },
+        "headline": {
+          "pt-BR": "Atendimento\n*no bolso.*"
+        },
+        "screenshot": "/screenshots/apple/iphone/pt-BR/staff-01-atendimento.png",
+        "transforms": {
+          "device": {
+            "x": 150,
+            "y": 790,
+            "width": 1020,
+            "height": 2078,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 79,
+            "y": 170,
+            "width": 1162,
+            "height": 560,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-0-0",
+            "src": "/chips/fila.png",
+            "transform": {
+              "x": 52,
+              "y": 1806,
+              "width": 411,
+              "height": 306,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          },
+          {
+            "id": "chip-0-1",
+            "src": "/chips/comvoce.png",
+            "transform": {
+              "x": 620,
+              "y": 2035,
+              "width": 487,
+              "height": 306,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          }
+        ]
+      },
+      {
+        "id": "s2",
+        "layout": "two-devices",
+        "label": {
+          "pt-BR": "IA no atendimento"
+        },
+        "headline": {
+          "pt-BR": "Resumo e resposta\n*prontos.*"
+        },
+        "screenshot": "/screenshots/apple/iphone/pt-BR/staff-04-resumo-ia.png",
+        "transforms": {
+          "device": {
+            "x": 330,
+            "y": 930,
+            "width": 960,
+            "height": 1956,
+            "rotation": 0,
+            "zIndex": 4
+          },
+          "deviceSecondary": {
+            "x": -50,
+            "y": 850,
+            "width": 840,
+            "height": 1711,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 79,
+            "y": 170,
+            "width": 1162,
+            "height": 560,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-1-0",
+            "src": "/chips/humor.png",
+            "transform": {
+              "x": -40,
+              "y": 1691,
+              "width": 638,
+              "height": 313,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          },
+          {
+            "id": "chip-1-1",
+            "src": "/chips/quer.png",
+            "transform": {
+              "x": 514,
+              "y": 1404,
+              "width": 662,
+              "height": 313,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          }
+        ],
+        "screenshotSecondary": "/screenshots/apple/iphone/pt-BR/staff-03-conversa-ia.png"
+      },
+      {
+        "id": "s3",
+        "layout": "device-top",
+        "label": {
+          "pt-BR": "Equipe"
+        },
+        "headline": {
+          "pt-BR": "Transfira para\nquem *está online.*"
+        },
+        "screenshot": "/screenshots/apple/iphone/pt-BR/staff-05-transferir.png",
+        "transforms": {
+          "device": {
+            "x": 140,
+            "y": -190,
+            "width": 1040,
+            "height": 2119,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 79,
+            "y": 2000,
+            "width": 1162,
+            "height": 600,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-2-0",
+            "src": "/chips/carla.png",
+            "transform": {
+              "x": 224,
+              "y": 544,
+              "width": 795,
+              "height": 314,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          }
+        ]
+      },
+      {
+        "id": "s4",
+        "layout": "device-bottom",
+        "label": {
+          "pt-BR": "PDV no celular"
+        },
+        "headline": {
+          "pt-BR": "Pese por *valor.*\nVenda no kg."
+        },
+        "screenshot": "/screenshots/apple/iphone/pt-BR/staff-06b-pdv-teclado.png",
+        "transforms": {
+          "device": {
+            "x": 130,
+            "y": 800,
+            "width": 1060,
+            "height": 2159,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 79,
+            "y": 170,
+            "width": 1162,
+            "height": 560,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-3-0",
+            "src": "/chips/peso.png",
+            "transform": {
+              "x": 620,
+              "y": 1037,
+              "width": 604,
+              "height": 356,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          },
+          {
+            "id": "comet",
+            "src": "/chips/comet.png",
+            "transform": {
+              "x": 686,
+              "y": 706,
+              "width": 1700,
+              "height": 120,
+              "rotation": 0,
+              "zIndex": 2
+            }
+          }
+        ]
+      },
+      {
+        "id": "s5",
+        "layout": "two-devices",
+        "label": {
+          "pt-BR": "PDV no celular"
+        },
+        "headline": {
+          "pt-BR": "Receba e dê\no *troco.*"
+        },
+        "screenshot": "/screenshots/apple/iphone/pt-BR/staff-06c-pdv-troco.png",
+        "transforms": {
+          "device": {
+            "x": 330,
+            "y": 930,
+            "width": 960,
+            "height": 1956,
+            "rotation": 0,
+            "zIndex": 4
+          },
+          "deviceSecondary": {
+            "x": -50,
+            "y": 850,
+            "width": 840,
+            "height": 1711,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 79,
+            "y": 170,
+            "width": 1162,
+            "height": 560,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-4-0",
+            "src": "/chips/troco.png",
+            "transform": {
+              "x": -40,
+              "y": 2035,
+              "width": 518,
+              "height": 345,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          }
+        ],
+        "screenshotSecondary": "/screenshots/apple/iphone/pt-BR/staff-06d-pdv-registrada.png"
+      },
+      {
+        "id": "s6",
+        "layout": "hero",
+        "label": {
+          "pt-BR": "Agenda"
+        },
+        "headline": {
+          "pt-BR": "O dia todo em\n*uma linha.*"
+        },
+        "screenshot": "/screenshots/apple/iphone/pt-BR/staff-07-agenda.png",
+        "transforms": {
+          "device": {
+            "x": 150,
+            "y": 790,
+            "width": 1020,
+            "height": 2078,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 79,
+            "y": 170,
+            "width": 1162,
+            "height": 560,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-5-0",
+            "src": "/chips/compromissos.png",
+            "transform": {
+              "x": 554,
+              "y": 1074,
+              "width": 679,
+              "height": 345,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          }
+        ],
+        "inverted": true
+      },
+      {
+        "id": "s7",
+        "layout": "device-bottom",
+        "label": {
+          "pt-BR": "Avisos"
+        },
+        "headline": {
+          "pt-BR": "Avisos que chegam\n*a tempo.*"
+        },
+        "screenshot": "/screenshots/apple/iphone/pt-BR/staff-07b-avisos.png",
+        "transforms": {
+          "device": {
+            "x": 130,
+            "y": 800,
+            "width": 1060,
+            "height": 2159,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 79,
+            "y": 170,
+            "width": 1162,
+            "height": 560,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-6-0",
+            "src": "/chips/venc.png",
+            "transform": {
+              "x": 758,
+              "y": 1509,
+              "width": 480,
+              "height": 293,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          }
+        ]
+      },
+      {
+        "id": "s8",
+        "layout": "device-top",
+        "label": {
+          "pt-BR": "Para o cliente"
+        },
+        "headline": {
+          "pt-BR": "Aceite a vaga\n*na hora.*"
+        },
+        "screenshot": "/screenshots/apple/iphone/pt-BR/client-03-aula.png",
+        "transforms": {
+          "device": {
+            "x": 140,
+            "y": -190,
+            "width": 1040,
+            "height": 2119,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 79,
+            "y": 2000,
+            "width": 1162,
+            "height": 600,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-7-0",
+            "src": "/chips/inscritos.png",
+            "transform": {
+              "x": 620,
+              "y": 830,
+              "width": 564,
+              "height": 345,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          }
+        ],
+        "inverted": true
+      },
+      {
+        "id": "s9",
+        "layout": "two-devices",
+        "label": {
+          "pt-BR": "Treino"
+        },
+        "headline": {
+          "pt-BR": "Treino com\n*cronômetro.*"
+        },
+        "screenshot": "/screenshots/apple/iphone/pt-BR/client-06-sessao.png",
+        "transforms": {
+          "device": {
+            "x": 330,
+            "y": 930,
+            "width": 960,
+            "height": 1956,
+            "rotation": 0,
+            "zIndex": 4
+          },
+          "deviceSecondary": {
+            "x": -50,
+            "y": 850,
+            "width": 840,
+            "height": 1711,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 79,
+            "y": 170,
+            "width": 1162,
+            "height": 560,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-8-0",
+            "src": "/chips/ficha.png",
+            "transform": {
+              "x": -40,
+              "y": 1748,
+              "width": 599,
+              "height": 345,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          },
+          {
+            "id": "chip-8-1",
+            "src": "/chips/serie.png",
+            "transform": {
+              "x": 435,
+              "y": 1978,
+              "width": 634,
+              "height": 313,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          }
+        ],
+        "screenshotSecondary": "/screenshots/apple/iphone/pt-BR/client-05-ficha.png"
+      },
+      {
+        "id": "s10",
+        "layout": "no-device",
+        "label": {
+          "pt-BR": "GPS · Evolução · Conquistas · Chat"
+        },
+        "headline": {
+          "pt-BR": "E muito\n*mais.*"
+        },
+        "screenshot": "",
+        "transforms": {
+          "caption": {
+            "x": 79,
+            "y": 170,
+            "width": 1162,
+            "height": 560,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "mosaic",
+            "src": "/chips/mosaic.png",
+            "transform": {
+              "x": 79,
+              "y": 932,
+              "width": 1162,
+              "height": 1452,
+              "rotation": 0,
+              "zIndex": 4
+            }
+          }
+        ]
+      }
+    ],
+    "android": [
+      {
+        "id": "s1",
+        "layout": "hero",
+        "label": {
+          "pt-BR": "Atendimento"
+        },
+        "headline": {
+          "pt-BR": "Atendimento\n*no bolso.*"
+        },
+        "screenshot": "/screenshots/android/phone/pt-BR/staff-01-atendimento.png",
+        "transforms": {
+          "device": {
+            "x": 180,
+            "y": 450,
+            "width": 720,
+            "height": 1560,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 65,
+            "y": 100,
+            "width": 950,
+            "height": 340,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-0-0",
+            "src": "/chips/fila.png",
+            "transform": {
+              "x": 44,
+              "y": 1205,
+              "width": 321,
+              "height": 239,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          },
+          {
+            "id": "chip-0-1",
+            "src": "/chips/comvoce.png",
+            "transform": {
+              "x": 509,
+              "y": 1359,
+              "width": 380,
+              "height": 239,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          }
+        ]
+      },
+      {
+        "id": "s2",
+        "layout": "two-devices",
+        "label": {
+          "pt-BR": "IA no atendimento"
+        },
+        "headline": {
+          "pt-BR": "Resumo e resposta\n*prontos.*"
+        },
+        "screenshot": "/screenshots/android/phone/pt-BR/staff-04-resumo-ia.png",
+        "transforms": {
+          "device": {
+            "x": 400,
+            "y": 590,
+            "width": 640,
+            "height": 1387,
+            "rotation": 0,
+            "zIndex": 4
+          },
+          "deviceSecondary": {
+            "x": 40,
+            "y": 520,
+            "width": 560,
+            "height": 1213,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 65,
+            "y": 100,
+            "width": 950,
+            "height": 340,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-1-0",
+            "src": "/chips/humor.png",
+            "transform": {
+              "x": -31,
+              "y": 1129,
+              "width": 498,
+              "height": 244,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          },
+          {
+            "id": "chip-1-1",
+            "src": "/chips/quer.png",
+            "transform": {
+              "x": 422,
+              "y": 937,
+              "width": 516,
+              "height": 244,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          }
+        ],
+        "screenshotSecondary": "/screenshots/android/phone/pt-BR/staff-03-conversa-ia.png"
+      },
+      {
+        "id": "s3",
+        "layout": "device-bottom",
+        "label": {
+          "pt-BR": "PDV no celular"
+        },
+        "headline": {
+          "pt-BR": "Pese por *valor.*\nVenda no kg."
+        },
+        "screenshot": "/screenshots/android/phone/pt-BR/staff-06b-pdv-teclado.png",
+        "transforms": {
+          "device": {
+            "x": 190,
+            "y": 470,
+            "width": 700,
+            "height": 1517,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 65,
+            "y": 100,
+            "width": 950,
+            "height": 340,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-2-0",
+            "src": "/chips/peso.png",
+            "transform": {
+              "x": 509,
+              "y": 691,
+              "width": 471,
+              "height": 278,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          },
+          {
+            "id": "comet",
+            "src": "/chips/comet.png",
+            "transform": {
+              "x": 562,
+              "y": 472,
+              "width": 1391,
+              "height": 98,
+              "rotation": 0,
+              "zIndex": 2
+            }
+          }
+        ]
+      },
+      {
+        "id": "s4",
+        "layout": "two-devices",
+        "label": {
+          "pt-BR": "PDV no celular"
+        },
+        "headline": {
+          "pt-BR": "Receba e dê\no *troco.*"
+        },
+        "screenshot": "/screenshots/android/phone/pt-BR/staff-06c-pdv-troco.png",
+        "transforms": {
+          "device": {
+            "x": 400,
+            "y": 590,
+            "width": 640,
+            "height": 1387,
+            "rotation": 0,
+            "zIndex": 4
+          },
+          "deviceSecondary": {
+            "x": 40,
+            "y": 520,
+            "width": 560,
+            "height": 1213,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 65,
+            "y": 100,
+            "width": 950,
+            "height": 340,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-3-0",
+            "src": "/chips/troco.png",
+            "transform": {
+              "x": -31,
+              "y": 1359,
+              "width": 404,
+              "height": 269,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          }
+        ],
+        "screenshotSecondary": "/screenshots/android/phone/pt-BR/staff-06d-pdv-registrada.png"
+      },
+      {
+        "id": "s5",
+        "layout": "hero",
+        "label": {
+          "pt-BR": "Agenda"
+        },
+        "headline": {
+          "pt-BR": "O dia todo em\n*uma linha.*"
+        },
+        "screenshot": "/screenshots/android/phone/pt-BR/staff-07-agenda.png",
+        "transforms": {
+          "device": {
+            "x": 180,
+            "y": 450,
+            "width": 720,
+            "height": 1560,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 65,
+            "y": 100,
+            "width": 950,
+            "height": 340,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-4-0",
+            "src": "/chips/compromissos.png",
+            "transform": {
+              "x": 455,
+              "y": 716,
+              "width": 530,
+              "height": 269,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          }
+        ],
+        "inverted": true
+      },
+      {
+        "id": "s6",
+        "layout": "two-devices",
+        "label": {
+          "pt-BR": "Treino"
+        },
+        "headline": {
+          "pt-BR": "Treino com\n*cronômetro.*"
+        },
+        "screenshot": "/screenshots/android/phone/pt-BR/client-06-sessao.png",
+        "transforms": {
+          "device": {
+            "x": 400,
+            "y": 590,
+            "width": 640,
+            "height": 1387,
+            "rotation": 0,
+            "zIndex": 4
+          },
+          "deviceSecondary": {
+            "x": 40,
+            "y": 520,
+            "width": 560,
+            "height": 1213,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 65,
+            "y": 100,
+            "width": 950,
+            "height": 340,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-5-0",
+            "src": "/chips/ficha.png",
+            "transform": {
+              "x": -31,
+              "y": 1167,
+              "width": 467,
+              "height": 269,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          },
+          {
+            "id": "chip-5-1",
+            "src": "/chips/serie.png",
+            "transform": {
+              "x": 358,
+              "y": 1321,
+              "width": 495,
+              "height": 244,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          }
+        ],
+        "screenshotSecondary": "/screenshots/android/phone/pt-BR/client-05-ficha.png"
+      },
+      {
+        "id": "s7",
+        "layout": "device-top",
+        "label": {
+          "pt-BR": "Para o cliente"
+        },
+        "headline": {
+          "pt-BR": "Aceite a vaga\n*na hora.*"
+        },
+        "screenshot": "/screenshots/android/phone/pt-BR/client-03-aula.png",
+        "transforms": {
+          "device": {
+            "x": 190,
+            "y": -140,
+            "width": 700,
+            "height": 1517,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 65,
+            "y": 1400,
+            "width": 950,
+            "height": 420,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "chip-6-0",
+            "src": "/chips/inscritos.png",
+            "transform": {
+              "x": 509,
+              "y": 553,
+              "width": 440,
+              "height": 269,
+              "rotation": 0,
+              "zIndex": 7
+            }
+          }
+        ],
+        "inverted": true
+      },
+      {
+        "id": "s8",
+        "layout": "no-device",
+        "label": {
+          "pt-BR": "GPS · Evolução · Conquistas · Chat"
+        },
+        "headline": {
+          "pt-BR": "E muito\n*mais.*"
+        },
+        "screenshot": "",
+        "transforms": {
+          "caption": {
+            "x": 65,
+            "y": 100,
+            "width": 950,
+            "height": 340,
+            "rotation": 0,
+            "zIndex": 5
+          }
+        },
+        "imageElements": [
+          {
+            "id": "mosaic",
+            "src": "/chips/mosaic-a.png",
+            "transform": {
+              "x": 65,
+              "y": 624,
+              "width": 950,
+              "height": 1188,
+              "rotation": 0,
+              "zIndex": 4
+            }
+          }
+        ]
+      }
+    ],
+    "ipad": [
+      {
+        "id": "s_mwhs6tji_a",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Made for\nthe big screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_b",
+        "layout": "device-bottom",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Built for\nfocus."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_c",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Always within reach."
+        },
+        "screenshot": "",
+        "inverted": true
+      }
+    ],
+    "tvos": [
+      {
+        "id": "s_mwhs6tji_d",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Made for\nthe living room."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_e",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "One idea\nper screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_f",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Flip the contrast."
+        },
+        "screenshot": "",
+        "inverted": true
+      },
+      {
+        "id": "s_mwhs6tji_g",
+        "layout": "no-device",
+        "label": {
+          "en": "MORE"
+        },
+        "headline": {
+          "en": "And so\nmuch more."
+        },
+        "screenshot": ""
+      }
+    ],
+    "watchos": [
+      {
+        "id": "s_mwhs6tji_h",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "On your\nwrist."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_i",
+        "layout": "device-bottom",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "One glance.\nDone."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_j",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Always\nwith you."
+        },
+        "screenshot": "",
+        "inverted": true
+      }
+    ],
+    "carplay": [
+      {
+        "id": "s_mwhs6tji_k",
+        "layout": "split-landscape",
+        "label": {
+          "en": "CARPLAY"
+        },
+        "headline": {
+          "en": "Eyes on\nthe road."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_l",
+        "layout": "device-bottom",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Everything, one tap away."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_m",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Made for every drive."
+        },
+        "screenshot": "",
+        "inverted": true
+      }
+    ],
+    "mac": [
+      {
+        "id": "s_mwhs6tji_n",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Made for\nyour Mac."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_o",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Everything in\none window."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_p",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "One shortcut away."
+        },
+        "screenshot": "",
+        "inverted": true
+      },
+      {
+        "id": "s_mwhs6tji_q",
+        "layout": "two-devices",
+        "label": {
+          "en": "FEATURE 03"
+        },
+        "headline": {
+          "en": "Work across windows."
+        },
+        "screenshot": "",
+        "screenshotSecondary": ""
+      },
+      {
+        "id": "s_mwhs6tji_r",
+        "layout": "no-device",
+        "label": {
+          "en": "MORE"
+        },
+        "headline": {
+          "en": "And so\nmuch more."
+        },
+        "screenshot": ""
+      }
+    ],
+    "android-7": [
+      {
+        "id": "s_mwhs6tji_s",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Pocket-sized\npower."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_t",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Wide canvas,\nbigger ideas."
+        },
+        "screenshot": ""
+      }
+    ],
+    "android-10": [
+      {
+        "id": "s_mwhs6tji_u",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Made for\nthe big screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_v",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Wide canvas,\nbigger ideas."
+        },
+        "screenshot": ""
+      }
+    ],
+    "feature-graphic": [
+      {
+        "id": "fg1",
+        "layout": "feature-graphic",
+        "label": {},
+        "headline": {
+          "pt-BR": "Atendimento, PDV\ne treino no *bolso.*"
+        },
+        "screenshot": "",
+        "inverted": false
+      }
+    ],
+    "duo-outer": [
+      {
+        "id": "s_mwhs6tji_x",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Everything,\none hand."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_y",
+        "layout": "device-bottom",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "One idea\nper screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_z",
+        "layout": "two-devices",
+        "label": {
+          "en": "OPEN IT"
+        },
+        "headline": {
+          "en": "Open it for\nthe full view."
+        },
+        "screenshot": "",
+        "screenshotSecondary": ""
+      },
+      {
+        "id": "s_mwhs6tji_10",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Flip the contrast."
+        },
+        "screenshot": "",
+        "inverted": true
+      },
+      {
+        "id": "s_mwhs6tji_11",
+        "layout": "no-device",
+        "label": {
+          "en": "MORE"
+        },
+        "headline": {
+          "en": "And so\nmuch more."
+        },
+        "screenshot": ""
+      }
+    ],
+    "duo-outer-landscape": [
+      {
+        "id": "s_mwhs6tji_12",
+        "layout": "hero",
+        "label": {
+          "en": "TURN IT"
+        },
+        "headline": {
+          "en": "Made for the wide view."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_13",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "One idea\nper screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_14",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Flip the contrast."
+        },
+        "screenshot": "",
+        "inverted": true
+      }
+    ],
+    "duo-inner": [
+      {
+        "id": "s_mwhs6tji_15",
+        "layout": "hero",
+        "label": {
+          "en": "UNFOLD IT"
+        },
+        "headline": {
+          "en": "Room for\nthe whole view."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_16",
+        "layout": "device-bottom",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "One idea\nper screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_17",
+        "layout": "two-devices",
+        "label": {
+          "en": "FOLDED + OPEN"
+        },
+        "headline": {
+          "en": "Turn it, open it,\nkeep going."
+        },
+        "screenshot": "",
+        "screenshotSecondary": ""
+      },
+      {
+        "id": "s_mwhs6tji_18",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Flip the contrast."
+        },
+        "screenshot": "",
+        "inverted": true
+      }
+    ],
+    "duo-inner-landscape": [
+      {
+        "id": "s_mwhs6tji_19",
+        "layout": "hero",
+        "label": {
+          "en": "UNFOLD IT"
+        },
+        "headline": {
+          "en": "Lead with the two-pane view."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_1a",
+        "layout": "two-devices",
+        "label": {
+          "en": "FOLDED + OPEN"
+        },
+        "headline": {
+          "en": "Same moment, closed and open."
+        },
+        "screenshot": "",
+        "screenshotSecondary": ""
+      },
+      {
+        "id": "s_mwhs6tji_1b",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "One idea\nper screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mwhs6tji_1c",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 03"
+        },
+        "headline": {
+          "en": "Show what only the wide screen can."
+        },
+        "screenshot": "",
+        "inverted": true
+      },
+      {
+        "id": "s_mwhs6tji_1d",
+        "layout": "no-device",
+        "label": {
+          "en": "MORE"
+        },
+        "headline": {
+          "en": "And so much more."
+        },
+        "screenshot": ""
+      }
+    ],
+    "creative-universal": [
+      {
+        "id": "s_mwhs6tji_1e",
+        "layout": "split-landscape",
+        "label": {
+          "en": "NEW"
+        },
+        "headline": {
+          "en": "Your app,\nat a glance."
+        },
+        "screenshot": ""
+      }
+    ],
+    "creative-header": [
+      {
+        "id": "s_mwhs6tji_1f",
+        "layout": "split-landscape",
+        "label": {
+          "en": "NEW"
+        },
+        "headline": {
+          "en": "Your app,\nat a glance."
+        },
+        "screenshot": ""
+      }
+    ],
+    "creative-search": [
+      {
+        "id": "s_mwhs6tji_1g",
+        "layout": "split-landscape",
+        "label": {
+          "en": "NEW"
+        },
+        "headline": {
+          "en": "Your app,\nat a glance."
+        },
+        "screenshot": ""
+      }
+    ]
+  },
+  "scene": {
+    "backdrop": "aurora",
+    "span": true,
+    "decoration": "none",
+    "shadow": 70,
+    "glow": 55,
+    "tilt": 0,
+    "headlineWeight": 800,
+    "headlineScale": 1,
+    "headlineCase": "as-typed",
+    "captionAlign": "center"
+  }
+}
