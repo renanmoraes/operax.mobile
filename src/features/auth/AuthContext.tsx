@@ -1,4 +1,5 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { onlineManager, useQueryClient } from '@tanstack/react-query';
 import { AuthUser, ClientUser, StaffUser, getMeApi, loginApi, logoutApi, registerDevicePushToken, verifyMfaApi } from '@/src/shared/api/auth.api';
 import {
   PortalLoginResult,
@@ -146,6 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [needsMfa, setNeedsMfa] = useState(false);
   const [mfaToken, setMfaToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const qc = useQueryClient();
+  // Troca de conta: as consultas ficam pausadas até a tela da conta nova estar no lugar (ver `switchTo`).
+  const resumeAfterSwitch = useRef<(() => void) | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<Accounts>({});
   const [returnRole, setReturnRole] = useState<Role | null>(null);
@@ -250,6 +254,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // A tela da conta nova já está no lugar (a antiga desmontou): as consultas podem voltar.
+  useEffect(() => {
+    resumeAfterSwitch.current?.();
+  }, [role, isAuthenticated, user, mode]);
+
   // As funções de dados do cliente (agenda, chat, treino) seguem o modo do login.
   useEffect(() => {
     setClientDataMode(mode);
@@ -303,9 +312,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      * mais para onde voltar. `returnRole` só é limpo quando a troca dá certo, para "Voltar" poder
      * tentar de novo depois de uma falha passageira.
      */
+    /**
+     * Troca de conta com as consultas pausadas: entre trocar o token e a tela da conta nova aparecer,
+     * a tela da conta anterior continua montada e uma consulta dela (ex.: canais do chat da equipe a
+     * cada 20 s) sairia com o token da outra conta. Um 401 assim apagaria a sessão boa da conta nova.
+     * Pausa tudo antes de trocar o token e só solta depois que a tela trocou (efeito abaixo).
+     */
     async function switchTo(target: Role, known: Accounts, opts?: { leaving?: boolean }): Promise<boolean> {
-      const summary = known[target];
-      if (!summary) return false;
+      if (!known[target]) return false;
+      const wasOnline = onlineManager.isOnline();
+      let resumed = false;
+      const resume = () => {
+        if (resumed) return;
+        resumed = true;
+        resumeAfterSwitch.current = null;
+        onlineManager.setOnline(wasOnline);
+      };
+      onlineManager.setOnline(false);
+      await qc.cancelQueries();
+      try {
+        return await switchAccount(target, known, opts);
+      } finally {
+        // Solta depois do próximo desenho (a tela antiga já desmontou); a reserva cobre quando nada mudou.
+        resumeAfterSwitch.current = resume;
+        setTimeout(resume, 1500);
+      }
+    }
+
+    async function switchAccount(target: Role, known: Accounts, opts?: { leaving?: boolean }): Promise<boolean> {
+      const summary = known[target]!;
       disconnectSocket();
       await setSavedRole(target);
       setNeedsMfa(false);
@@ -620,7 +655,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       cancelAddAccount: async () => (returnRole ? switchTo(returnRole, accounts) : false),
     };
-  }, [ready, mode, role, isAuthenticated, needsMfa, mfaToken, user, error, accounts, returnRole]);
+  }, [ready, mode, role, isAuthenticated, needsMfa, mfaToken, user, error, accounts, returnRole, qc]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
