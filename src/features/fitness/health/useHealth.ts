@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getItem, setItem, deleteItem } from '@/src/shared/storage';
+import { kvGet, kvSet } from '@/src/shared/db/localDb';
+import { ownedKey } from '../owner';
 import { getHealthAvailability, readRecentWorkouts, requestHealthAccess } from './healthStore';
 import type { HealthWorkout } from './mapWorkouts';
 
@@ -9,21 +10,21 @@ import type { HealthWorkout } from './mapWorkouts';
  * por enquanto os treinos lidos ficam no aparelho e aparecem na tela de relógios.
  */
 
-const CONNECTED_KEY = 'operax_health_connected';
+/**
+ * Por conta e no banco local: os treinos do Saúde de um aluno não aparecem para outro que entrar no mesmo
+ * celular, e 30 dias de treinos passam do limite de ~2 KB do armazenamento seguro.
+ */
+const stateKey = () => ownedKey('operax_health_connected');
 const key = ['fitness', 'health'] as const;
 
 export type HealthState = { connected: boolean; lastSyncAt: string | null; workouts: HealthWorkout[] };
 
 async function loadState(): Promise<HealthState> {
-  const raw = await getItem(CONNECTED_KEY);
-  if (!raw) return { connected: false, lastSyncAt: null, workouts: [] };
-  try {
-    // Os treinos da última sincronização ficam guardados: reabrir a tela não zera a lista.
-    const saved = JSON.parse(raw) as { lastSyncAt: string | null; workouts?: HealthWorkout[] };
-    return { connected: true, lastSyncAt: saved.lastSyncAt, workouts: Array.isArray(saved.workouts) ? saved.workouts : [] };
-  } catch {
-    return { connected: false, lastSyncAt: null, workouts: [] };
-  }
+  const k = stateKey();
+  // Os treinos da última sincronização ficam guardados: reabrir a tela não zera a lista.
+  const saved = k ? await kvGet<{ lastSyncAt: string | null; workouts?: HealthWorkout[] }>(k) : null;
+  if (!saved) return { connected: false, lastSyncAt: null, workouts: [] };
+  return { connected: true, lastSyncAt: saved.lastSyncAt, workouts: Array.isArray(saved.workouts) ? saved.workouts : [] };
 }
 
 export function useHealthAvailability() {
@@ -37,7 +38,8 @@ export function useHealthState() {
 async function syncNow(): Promise<HealthState> {
   const workouts = await readRecentWorkouts(30);
   const lastSyncAt = new Date().toISOString();
-  await setItem(CONNECTED_KEY, JSON.stringify({ lastSyncAt, workouts }));
+  const k = stateKey();
+  if (k) await kvSet(k, { lastSyncAt, workouts });
   return { connected: true, lastSyncAt, workouts };
 }
 
@@ -61,7 +63,8 @@ export function useDisconnectHealth() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      await deleteItem(CONNECTED_KEY);
+      const k = stateKey();
+      if (k) await kvSet(k, null);
       return { connected: false, lastSyncAt: null, workouts: [] } satisfies HealthState;
     },
     onSuccess: (state) => qc.setQueryData([...key, 'state'], state),
