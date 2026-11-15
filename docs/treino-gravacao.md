@@ -11,6 +11,16 @@ Quem vê: aluno com o Fitness liberado pela empresa (`capabilities.training`) e 
 
 Esportes sem GPS (musculação, natação, outro) gravam só o tempo e o "como foi".
 
+## O que o Operax faz além do Strava
+
+- **Treino guiado pelo professor**: na parte de corrida/bike da ficha, a gravação mostra a etapa da vez (aquecimento, tiro 2 de 4, recuperação), quanto falta, o alvo (ritmo, zona, esforço) e se o ritmo está no alvo; passa sozinha para a próxima pelo tempo ou pela distância, vibra e fala. Botão **Próxima** para pular.
+- **Avisos de voz**: cada km (bike: a cada 5 km) com parcial e ritmo médio, troca de etapa, pausa e retomada.
+- **Pausa automática** (ligada na bike, opcional na corrida): parado 12 s, pausa; anda, volta. O tempo parado até pausar não conta.
+- **Duas vistas**: mapa ou números grandes, com um toque. Pausado, a faixa fica laranja (visível de longe).
+- **Musculação com descanso**: conta as séries e marca o descanso (1:00, 1:30, 2:00, +15 s, pular), vibra e avisa no fim. As séries vão para o professor.
+- **Tipo de treino** ao salvar (regenerativo, longão, intervalado, ritmo, prova; força, hipertrofia, condicionamento, mobilidade).
+- Hub com um toque por esporte e troca de esporte na tela de largada.
+
 ## Para onde vai
 
 | Origem | Rota | Fica |

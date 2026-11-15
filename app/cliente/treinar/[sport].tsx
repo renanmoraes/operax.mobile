@@ -29,6 +29,8 @@ export default function FreeRecordScreen() {
       ...(r.feeling ? { feeling: r.feeling } : {}),
       ...(r.effort ? { effort: r.effort } : {}),
       ...(r.notes ? { notes: r.notes } : {}),
+      ...(r.tag ? { tag: r.tag } : {}),
+      ...(r.sets ? { sets: r.sets } : {}),
       idempotency_key: key,
       ...(r.track ? { recording: { track: r.track } } : {}),
     };
@@ -50,6 +52,8 @@ export default function FreeRecordScreen() {
       heading={sport.label}
       subtitle="Treino livre"
       askTitle
+      askTag
+      onPickSport={(next) => router.replace(`/cliente/treinar/${next}`)}
       draftKey={`livre:${sport.id}`}
       onSave={save}
       onClose={() => (router.canGoBack() ? router.back() : router.replace('/(client)/fitness'))}

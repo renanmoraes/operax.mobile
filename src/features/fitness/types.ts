@@ -188,6 +188,10 @@ export interface FreeActivityBody {
   feeling?: FitnessFeeling;
   effort?: number;
   notes?: string;
+  /** Tipo do treino (regenerativo, longão, força…). */
+  tag?: string;
+  /** Musculação: séries marcadas. */
+  sets?: number;
   idempotency_key: string;
   recording?: { track?: RecordingTrack };
 }
@@ -221,6 +225,8 @@ export interface FitnessHistoryEntry {
   /** Treino livre do app: como o aluno disse que foi e o que anotou. */
   feeling?: FitnessFeeling | null;
   notes?: string | null;
+  tag?: string | null;
+  sets?: number | null;
   session_id?: string | null;
 }
 

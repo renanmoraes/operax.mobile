@@ -1,14 +1,13 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { Badge, Button, EmptyState, Glow, Loading, Muted, PressableScale, Rise, Screen, SectionHeader, TopBar } from '@/src/design-system/ui';
+import { Badge, EmptyState, Glow, Loading, Muted, PressableScale, Rise, Screen, SectionHeader, TopBar } from '@/src/design-system/ui';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { useClientCapabilities } from '@/src/features/client/useClientData';
 import { workoutChips } from '@/src/features/fitness/parts';
-import { SPORTS, type SportInfo } from '@/src/features/fitness/sports';
+import { SPORTS } from '@/src/features/fitness/sports';
 import { useWeek } from '@/src/features/fitness/useFitness';
 
 /**
@@ -20,7 +19,6 @@ export default function TrainHubScreen() {
   const insets = useSafeAreaInsets();
   const caps = useClientCapabilities();
   const week = useWeek({ enabled: caps.training });
-  const [sport, setSport] = useState<SportInfo>(SPORTS[0]);
 
   if (!caps.loaded || (caps.training && week.isLoading)) {
     return (
@@ -52,7 +50,7 @@ export default function TrainHubScreen() {
   return (
     <Screen>
       <TopBar safe title="Treinar" onBack={() => router.back()} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
         <SectionHeader title="Do seu plano hoje" />
         {items.length ? (
           <View style={{ gap: 10 }}>
@@ -80,27 +78,24 @@ export default function TrainHubScreen() {
 
         <SectionHeader title="Treino livre" />
         <View style={styles.grid}>
-          {SPORTS.map((s, i) => {
-            const on = s.id === sport.id;
-            return (
-              <Rise key={s.id} index={i} style={styles.cellWrap}>
-                <PressableScale onPress={() => setSport(s)} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={s.label} style={[styles.cell, on && styles.cellOn]}>
-                  <MaterialCommunityIcons name={s.icon} size={30} color={on ? '#fff' : colors.primary} />
-                  <Text style={[styles.cellLabel, on && { color: '#fff' }]} numberOfLines={1}>{s.label}</Text>
-                  <Text style={[styles.cellHint, on && { color: 'rgba(255,255,255,0.78)' }]} numberOfLines={1}>{s.gps ? 'GPS e mapa' : 'Cronômetro'}</Text>
-                </PressableScale>
-              </Rise>
-            );
-          })}
+          {SPORTS.map((s, i) => (
+            // Um toque abre a gravação (a tela de largada já é a confirmação, com o GPS se preparando).
+            <Rise key={s.id} index={i} style={styles.cellWrap}>
+              <PressableScale onPress={() => router.push(`/cliente/treinar/${s.id}`)} accessibilityRole="button" accessibilityLabel={`${s.label}. Abrir gravação`} style={styles.cell}>
+                <View style={styles.cellTop}>
+                  <MaterialCommunityIcons name={s.icon} size={30} color={colors.primary} />
+                  <View style={styles.cellPlay}>
+                    <Ionicons name="play" size={11} color="#fff" style={{ marginLeft: 1 }} />
+                  </View>
+                </View>
+                <Text style={styles.cellLabel} numberOfLines={1}>{s.label}</Text>
+                <Text style={styles.cellHint} numberOfLines={1}>{s.gps ? 'GPS e mapa' : s.id === 'swim' ? 'Cronômetro' : 'Séries'}</Text>
+              </PressableScale>
+            </Rise>
+          ))}
         </View>
-        <Muted style={{ marginTop: 12, lineHeight: 19 }}>
-          {sport.gps ? 'Mede distância, ritmo, subida e desenha o caminho. No fim você conta como foi.' : 'Grava o tempo do treino. No fim você conta como foi e o esforço.'}
-        </Muted>
+        <Muted style={{ marginTop: 12, lineHeight: 19 }}>Fica no seu histórico, com o que você contar no fim, e o professor acompanha.</Muted>
       </ScrollView>
-
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
-        <Button label={`Iniciar ${sport.label.toLowerCase()}`} icon="play" onPress={() => router.push(`/cliente/treinar/${sport.id}`)} />
-      </View>
     </Screen>
   );
 }
@@ -114,8 +109,8 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   cellWrap: { width: '31%', flexGrow: 1 },
   cell: { height: 112, padding: 14, borderRadius: radii.lg, backgroundColor: '#fff', justifyContent: 'space-between', ...shadows.card },
-  cellOn: { backgroundColor: colors.primary },
+  cellTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  cellPlay: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   cellLabel: { fontFamily: typography.fontFamilyBold, fontSize: 14, color: colors.text },
   cellHint: { marginTop: -8, fontFamily: typography.fontFamily, fontSize: 11.5, color: colors.textMuted },
-  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 12, backgroundColor: 'rgba(244,247,252,0.96)', borderTopWidth: 1, borderColor: colors.borderSoft },
 });

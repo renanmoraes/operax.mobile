@@ -1,21 +1,25 @@
 import { Stack } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, BackHandler, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, BackHandler, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, Vibration, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { useKeepAwake } from 'expo-keep-awake';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Speech from 'expo-speech';
 import { Button, Field, Muted, PressableScale, ProgressBar, Screen, TopBar } from '@/src/design-system/ui';
 import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { formatClock } from '@/src/shared/format';
 import { kvGet, kvSet } from '@/src/shared/db/localDb';
 import { reportError, trackAction } from '@/src/shared/telemetry/errorReporter';
 import { RouteMap } from './RouteMap';
-import { addPoint, averagePace, currentPace, decimateTrack, defaultTitle, emptyRun, formatKm, formatPace, kmSplits, resumeAt, type RunState, type Track } from './runTracker';
+import { addPoint, averagePace, currentPace, decimateTrack, defaultTitle, emptyRun, formatKm, formatPace, haversine, kmSplits, resumeAt, type RunState, type Track } from './runTracker';
+import { kmCue, stepCue, stepProgress, type GuideStep } from './coach';
+import { StepGuideCard } from './recorder/StepGuideCard';
+import { RestTimer } from './recorder/RestTimer';
 import { ownedKey } from './owner';
-import { FEELINGS, effortWord, type SportInfo } from './sports';
-import type { FitnessFeeling } from './types';
+import { FEELINGS, SPORTS, WORKOUT_TAGS, effortWord, type SportInfo } from './sports';
+import type { FitnessFeeling, FreeSport } from './types';
 
 /** O que a gravação entrega para salvar: os números, a trilha e o "como foi". */
 export type RecorderSave = {
@@ -28,10 +32,16 @@ export type RecorderSave = {
   feeling?: FitnessFeeling;
   effort?: number;
   notes?: string;
+  /** Tipo do treino (regenerativo, longão, força…), para o professor. */
+  tag?: string;
+  /** Musculação: séries marcadas no descanso. */
+  sets?: number;
 };
 
 type Phase = 'ready' | 'running' | 'paused' | 'review' | 'saving' | 'saved' | 'queued';
-type Prefs = { keepAwake: boolean; showMap: boolean; speed: boolean };
+type Prefs = { keepAwake: boolean; showMap: boolean; speed: boolean; voice: boolean; autoPause: boolean };
+/** Parado por mais que isto com pausa automática ligada: pausa sozinho (semáforo, água). */
+const AUTO_PAUSE_MS = 12_000;
 const PREFS_KEY = 'fitness_recorder_prefs';
 
 /**
@@ -43,6 +53,8 @@ const DRAFT_BASE = 'fitness_recording_draft';
 const draftStoreKey = () => ownedKey(DRAFT_BASE);
 const DRAFT_MAX_AGE_MS = 6 * 3600_000;
 type Draft = { key: string; startedAt: number; banked: number; savedAt: number; run: Omit<RunState, 'last' | 'recent'> };
+
+const run0 = () => emptyRun();
 
 function KeepAwake() {
   useKeepAwake();
@@ -64,8 +76,17 @@ export function Recorder({
   onClose,
   onHistory,
   draftKey,
+  guide,
+  onPickSport,
+  askTag,
 }: {
   sport: SportInfo;
+  /** Etapas do treino do professor (ficha): a gravação conduz uma a uma e avisa a troca. */
+  guide?: GuideStep[];
+  /** Treino livre: trocar o esporte na tela de largada. */
+  onPickSport?: (id: FreeSport) => void;
+  /** Pergunta o tipo do treino ao salvar (treino livre). */
+  askTag?: boolean;
   /** Identifica o treino do rascunho (ex.: `livre:run`, `ficha:<id>:<parte>`): só retoma o rascunho do mesmo treino. */
   draftKey: string;
   heading: string;
@@ -89,7 +110,22 @@ export function Recorder({
   const [elapsed, setElapsed] = useState(0);
   const [here, setHere] = useState<{ lat: number; lng: number } | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
-  const [prefs, setPrefs] = useState<Prefs>({ keepAwake: true, showMap: true, speed: sport.rate === 'speed' });
+  // Pausa automática começa ligada na bike (semáforo); na corrida, desligada (parar para respirar também é treino).
+  const [prefs, setPrefs] = useState<Prefs>({ keepAwake: true, showMap: true, speed: sport.rate === 'speed', voice: true, autoPause: sport.id === 'bike' });
+  const prefsRef = useRef(prefs);
+  const [view, setView] = useState<'map' | 'numbers'>('map');
+  const [autoPaused, setAutoPaused] = useState(false);
+  const autoPausedRef = useRef(false);
+  const lastMoveAt = useRef(0);
+  const prevLoc = useRef<{ lat: number; lng: number; at: number } | null>(null);
+  const runRef = useRef(run0());
+  const [guideAt, setGuideAt] = useState({ i: 0, s0: 0, m0: 0 });
+  const guideRef = useRef(guideAt);
+  const [tag, setTag] = useState<string | undefined>();
+  const [sets, setSets] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const pauseRef = useRef<(auto?: boolean) => void>(() => undefined);
+  const resumeRef = useRef<(auto?: boolean) => void>(() => undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [locked, setLocked] = useState(false);
   const [title, setTitle] = useState('');
@@ -147,7 +183,11 @@ export function Recorder({
   }
 
   useEffect(() => {
-    void kvGet<Partial<Prefs>>(PREFS_KEY).then((p) => p && setPrefs((cur) => ({ ...cur, ...p })));
+    void kvGet<Partial<Prefs>>(PREFS_KEY).then((p) => {
+      if (!p) return;
+      setPrefs((cur) => ({ ...cur, ...p }));
+      if (p.showMap === false) setView('numbers');
+    });
   }, []);
   const changePref = (k: keyof Prefs, v: boolean) =>
     setPrefs((cur) => {
@@ -156,12 +196,35 @@ export function Recorder({
       return next;
     });
 
+  useEffect(() => {
+    prefsRef.current = prefs;
+    runRef.current = run;
+    guideRef.current = guideAt;
+  });
+
+  /** Avisos de voz (km, etapa, pausa): dá para treinar sem olhar o celular. */
+  const say = useCallback((t: string) => {
+    if (!prefsRef.current.voice) return;
+    try {
+      Speech.speak(t, { language: 'pt-BR', rate: 1.02 });
+    } catch {
+      // sem voz no aparelho
+    }
+  }, []);
+
   // GPS ligado desde a tela de largada: o sinal já está pronto quando a pessoa toca em Iniciar.
   const watch = useCallback(async () => {
     if (sub.current) return;
     sub.current = await Location.watchPositionAsync({ accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 2 }, (loc) => {
       setAccuracy(loc.coords.accuracy ?? null);
       setHere({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      // Velocidade pelo deslocamento entre leituras: o GPS do celular nem sempre informa.
+      const prev = prevLoc.current;
+      const cur = { lat: loc.coords.latitude, lng: loc.coords.longitude, at: loc.timestamp };
+      prevLoc.current = cur;
+      const ms = prev && cur.at > prev.at ? haversine(prev, cur) / ((cur.at - prev.at) / 1000) : 0;
+      if (ms > 0.9 && (loc.coords.accuracy ?? 0) <= 25) lastMoveAt.current = Date.now();
+      if (phaseRef.current === 'paused' && autoPausedRef.current && ms > 1.4) resumeRef.current(true);
       if (phaseRef.current !== 'running') return;
       setRun((s) =>
         addPoint(s, { at: loc.timestamp, lat: loc.coords.latitude, lng: loc.coords.longitude, altitude: loc.coords.altitude ?? null, accuracy: loc.coords.accuracy ?? null, speed: loc.coords.speed ?? null }, startedAt.current, sport.tracker),
@@ -185,9 +248,43 @@ export function Recorder({
   // Cronômetro: tempo de relógio menos as pausas.
   useEffect(() => {
     if (phase !== 'running') return;
-    const t = setInterval(() => setElapsed(Math.round((banked.current + (Date.now() - (runningSince.current ?? Date.now()))) / 1000)), 500);
+    const t = setInterval(() => {
+      const now = Date.now();
+      const secs = Math.round((banked.current + (now - (runningSince.current ?? now))) / 1000);
+      setElapsed(secs);
+      // Parado com pausa automática ligada: pausa sozinho e volta quando a pessoa anda.
+      if (sport.gps && prefsRef.current.autoPause && now - lastMoveAt.current > AUTO_PAUSE_MS) pauseRef.current(true);
+      // Treino do professor: etapa cumprida (tempo ou distância) passa para a próxima e avisa.
+      const g = guideRef.current;
+      if (guide && g.i < guide.length && stepProgress(guide[g.i], secs - g.s0, runRef.current.distanceM - g.m0).done) advanceGuide(secs, runRef.current.distanceM);
+    }, 500);
     return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intervalo lê o estado vivo por refs
   }, [phase]);
+
+  function advanceGuide(secs: number, meters: number) {
+    if (!guide) return;
+    const i = guideRef.current.i + 1;
+    const next = { i, s0: secs, m0: meters };
+    guideRef.current = next;
+    setGuideAt(next);
+    Vibration.vibrate(200);
+    say(i < guide.length ? stepCue(guide[i]) : 'Treino do professor concluído. Pode finalizar quando quiser.');
+  }
+
+  // Aviso a cada quilômetro (bike: a cada 5 km).
+  const kmCount = run.kmMarks.length;
+  useEffect(() => {
+    if (!kmCount || phaseRef.current !== 'running') return;
+    const r0 = runRef.current;
+    if (sport.rate === 'speed') {
+      if (kmCount % 5 === 0) say(kmCue(kmCount, 0, null, r0.movingMs ? (r0.distanceM / (r0.movingMs / 1000)) * 3.6 : 0));
+      return;
+    }
+    const sp = kmSplits(r0).filter((x) => !x.partial);
+    const last = sp[sp.length - 1];
+    if (last) say(kmCue(kmCount, last.seconds, r0.movingMs ? (r0.movingMs / 1000 / r0.distanceM) * 1000 : null));
+  }, [kmCount, say, sport.rate]);
 
   const discard = useCallback(() => {
     Alert.alert('Descartar treino?', 'O que foi gravado agora não vai para o histórico.', [
@@ -230,26 +327,50 @@ export function Recorder({
     setRun(emptyRun());
     setElapsed(0);
     trackAction('treino iniciado', { sport: sport.id });
+    lastMoveAt.current = Date.now();
+    const g0 = { i: 0, s0: 0, m0: 0 };
+    guideRef.current = g0;
+    setGuideAt(g0);
+    setSets(0);
     go('running');
+    say(guide?.length ? `Treino iniciado. ${stepCue(guide[0])}` : 'Treino iniciado.');
   }
 
-  function pause() {
+  function pause(auto = false) {
+    if (phaseRef.current !== 'running') return;
     banked.current += Date.now() - (runningSince.current ?? Date.now());
+    // Pausa automática: o tempo parado até ela disparar não é treino (tempo em movimento, como nos relógios).
+    if (auto) banked.current = Math.max(0, banked.current - Math.min(AUTO_PAUSE_MS, Date.now() - lastMoveAt.current));
     runningSince.current = null;
     setElapsed(Math.round(banked.current / 1000));
+    autoPausedRef.current = auto;
+    setAutoPaused(auto);
     go('paused');
+    say(auto ? 'Pausa automática.' : 'Treino pausado.');
   }
 
-  function resume() {
+  function resume(auto = false) {
+    if (phaseRef.current !== 'paused') return;
+    autoPausedRef.current = false;
+    setAutoPaused(false);
+    lastMoveAt.current = Date.now();
+    if (!auto) say('Treino retomado.');
+    else say('Retomando.');
     // Voltou da tela de salvar depois de uma falha: o GPS foi desligado ao tentar salvar.
     if (sport.gps) void watch().catch((e) => void reportError(e, { context: 'gps continuar' }));
     runningSince.current = Date.now();
     setRun((s) => resumeAt(s));
     go('running');
   }
+  useEffect(() => {
+    pauseRef.current = pause;
+    resumeRef.current = resume;
+  });
 
   function finish() {
     if (phaseRef.current === 'running') pause();
+    autoPausedRef.current = false;
+    setAutoPaused(false);
     if (askTitle && !title) setTitle(defaultTitle(sport.label, new Date(startedAt.current)));
     go('review');
   }
@@ -269,6 +390,8 @@ export function Recorder({
         feeling,
         effort,
         notes: notes.trim() || undefined,
+        tag,
+        sets: sport.gps ? undefined : sets || undefined,
       });
       dropDraft();
       go(out);
@@ -328,6 +451,7 @@ export function Recorder({
                 </LinearGradient>
               ) : null}
               <SummaryCell label={sport.gps ? 'Tempo' : `${sport.label} · tempo`} value={formatClock(seconds)} />
+              {!sport.gps && sets ? <SummaryCell label="Séries" value={String(sets)} /> : null}
               {sport.gps ? <SummaryCell label="Distância" value={`${formatKm(run.distanceM)} km`} /> : null}
               {sport.gps ? <SummaryCell label={speed ? 'Velocidade' : 'Ritmo'} value={speed ? `${(seconds ? (run.distanceM / seconds) * 3.6 : 0).toFixed(1).replace('.', ',')} km/h` : `${formatPace(averagePace(run, seconds))}/km`} /> : null}
               {sport.gps ? <SummaryCell label="Subida" value={`${Math.round(run.elevationGainM)} m`} /> : null}
@@ -335,6 +459,22 @@ export function Recorder({
           </View>
 
           {askTitle ? <Field label="Nome do treino" value={title} onChangeText={(v) => setTitle(v.slice(0, 80))} placeholder={defaultTitle(sport.label, new Date(startMs))} /> : null}
+
+          {askTag ? (
+            <View style={{ gap: 10 }}>
+              <Text style={styles.ask}>Tipo de treino</Text>
+              <View style={styles.tags}>
+                {WORKOUT_TAGS[sport.gps || sport.id === 'swim' ? 'endurance' : 'gym'].map((t) => {
+                  const on = tag === t.id;
+                  return (
+                    <Pressable key={t.id} onPress={() => setTag(on ? undefined : t.id)} accessibilityRole="button" accessibilityState={{ selected: on }} style={[styles.tag, on && styles.tagOn]}>
+                      <Text style={[styles.tagText, on && { color: '#fff' }]}>{t.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
 
           <View style={{ gap: 10 }}>
             <Text style={styles.ask}>Como foi o treino?</Text>
@@ -383,7 +523,11 @@ export function Recorder({
   }
 
   const active = phase === 'running' || phase === 'paused';
-  const showMap = sport.gps && prefs.showMap;
+  const showMap = sport.gps && view === 'map';
+  const paused = phase === 'paused';
+  const guideCard = guide?.length && active ? (
+    <StepGuideCard steps={guide} index={guideAt.i} doneSeconds={elapsed - guideAt.s0} doneMeters={run.distanceM - guideAt.m0} pace={now} onNext={() => advanceGuide(elapsed, run.distanceM)} compact={showMap} />
+  ) : null;
   return (
     <Screen backdrop="none" style={{ backgroundColor: '#fff' }}>
       <NoSwipeBack phase={phase} />
@@ -393,22 +537,46 @@ export function Recorder({
           <RouteMap route={route} here={here} follow style={StyleSheet.absoluteFill} inset={{ top: insets.top + 96, bottom: 30 }} />
           <LinearGradient colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0)']} style={[styles.mapFade, { height: insets.top + 70 }]} pointerEvents="none" />
         </View>
+      ) : sport.gps ? (
+        // Vista dos números (sem mapa): faixa curta no topo, que vira laranja na pausa.
+        <View style={[styles.numbersTop, { height: insets.top + 90 }, paused && styles.bandPaused]} />
       ) : (
-        <LinearGradient colors={['#e3ecff', '#f4f8ff']} style={[styles.noMap, { paddingTop: insets.top + 64 }]}>
-          <MaterialCommunityIcons name={sport.icon} size={64} color={colors.primary} />
+        <LinearGradient colors={paused ? [colors.warn, '#ea580c'] : ['#e3ecff', '#f4f8ff']} style={[styles.noMap, { paddingTop: insets.top + 64 }]}>
+          <MaterialCommunityIcons name={sport.icon} size={64} color={paused ? '#fff' : colors.primary} />
         </LinearGradient>
       )}
 
+      {/* Pausado: faixa forte, visível de longe (no mapa, embaixo dos botões). */}
+      {paused && showMap ? (
+        <View style={[styles.pausedBand, { top: insets.top + 60 }]}>
+          <Ionicons name="pause" size={15} color="#fff" />
+          <Text style={styles.pausedBandText}>{autoPaused ? 'Pausa automática · ande para continuar' : 'Pausado'}</Text>
+        </View>
+      ) : null}
+
       <View style={[styles.topRow, { top: insets.top + 8 }]}>
-        {phase === 'ready' ? <RoundButton icon="close" onPress={onClose} label="Fechar" /> : <View style={{ width: 44 }} />}
-        <View style={styles.headingPill}>
+        {phase === 'ready' ? (
+          <RoundButton icon="close" onPress={onClose} label="Fechar" />
+        ) : sport.gps ? (
+          <RoundButton icon={view === 'map' ? 'speedometer-outline' : 'map-outline'} onPress={() => setView(view === 'map' ? 'numbers' : 'map')} label={view === 'map' ? 'Ver os números grandes' : 'Ver o mapa'} />
+        ) : (
+          <View style={{ width: 44 }} />
+        )}
+        <Pressable
+          disabled={phase !== 'ready' || !onPickSport}
+          onPress={() => setPickerOpen(true)}
+          accessibilityRole={phase === 'ready' && onPickSport ? 'button' : undefined}
+          accessibilityLabel={phase === 'ready' && onPickSport ? `${heading}. Trocar esporte` : heading}
+          style={styles.headingPill}
+        >
           <MaterialCommunityIcons name={sport.icon} size={16} color={colors.primary} />
           <Text style={styles.headingText} numberOfLines={1}>{heading}</Text>
-        </View>
+          {phase === 'ready' && onPickSport ? <Ionicons name="chevron-down" size={14} color={colors.textMuted} /> : null}
+        </Pressable>
         <RoundButton icon="options-outline" onPress={() => setSettingsOpen(true)} label="Ajustes da gravação" />
       </View>
 
-      {sport.gps ? (
+      {sport.gps && !(paused && showMap) && (showMap || phase === 'ready') ? (
         <View style={[styles.gpsChip, { top: insets.top + 62 }, weak || !here ? styles.gpsWeak : null]}>
           <View style={[styles.gpsDot, { backgroundColor: !here ? colors.textMuted : weak ? colors.warn : colors.success }]} />
           <Text style={styles.gpsText}>{perm === 'denied' ? 'Sem permissão de localização' : !here ? 'Procurando GPS…' : weak ? `GPS fraco · ±${Math.round(accuracy ?? 0)} m` : `GPS pronto · ±${Math.round(accuracy ?? 0)} m`}</Text>
@@ -416,10 +584,10 @@ export function Recorder({
       ) : null}
 
       <View style={[styles.sheet, !showMap && { marginTop: -28 }]}>
-        {phase === 'paused' ? (
+        {paused && !showMap ? (
           <View style={styles.pausedBar}>
-            <Ionicons name="pause" size={14} color={colors.warnText} />
-            <Text style={styles.pausedText}>Pausado</Text>
+            <Ionicons name="pause" size={14} color="#fff" />
+            <Text style={styles.pausedText}>{autoPaused ? 'Pausa automática' : 'Pausado'}</Text>
           </View>
         ) : (
           <View style={styles.handle} />
@@ -430,23 +598,40 @@ export function Recorder({
           <Text style={styles.clock} accessibilityLabel={`Tempo ${formatClock(elapsed)}`}>{formatClock(elapsed)}</Text>
           {subtitle ? <Muted style={styles.subtitle} numberOfLines={1}>{subtitle}</Muted> : null}
 
-          {sport.gps ? (
-            <View style={styles.pair}>
-              <View style={styles.pairCell}>
-                <Text style={styles.label}>{speed ? 'Velocidade' : 'Ritmo médio'}</Text>
-                <Text style={styles.pairValue}>{speed ? kmh.toFixed(1).replace('.', ',') : formatPace(avg)}<Text style={styles.pairUnit}>{speed ? ' km/h' : ' /km'}</Text></Text>
-              </View>
-              <View style={styles.pairDivider} />
-              <View style={styles.pairCell}>
-                <Text style={styles.label}>Distância</Text>
-                <Text style={styles.pairValue}>{formatKm(run.distanceM)}<Text style={styles.pairUnit}> km</Text></Text>
-              </View>
+          {sport.gps && !showMap && phase !== 'ready' ? (
+            <View style={styles.bigDistance}>
+              <Text style={styles.bigDistanceValue} accessibilityLabel={`${formatKm(run.distanceM)} quilômetros`}>{formatKm(run.distanceM)}</Text>
+              <Text style={styles.label}>Distância (km)</Text>
             </View>
           ) : null}
 
+          {sport.gps ? (
+            <View style={styles.pair}>
+              <View style={styles.pairCell}>
+                <Text style={styles.label}>{speed ? (showMap || phase === 'ready' ? 'Velocidade' : 'Média') : 'Ritmo médio'}</Text>
+                <Text style={styles.pairValue}>{speed ? kmh.toFixed(1).replace('.', ',') : formatPace(avg)}<Text style={styles.pairUnit}>{speed ? ' km/h' : ' /km'}</Text></Text>
+              </View>
+              <View style={styles.pairDivider} />
+              {showMap || phase === 'ready' ? (
+                <View style={styles.pairCell}>
+                  <Text style={styles.label}>Distância</Text>
+                  <Text style={styles.pairValue}>{formatKm(run.distanceM)}<Text style={styles.pairUnit}> km</Text></Text>
+                </View>
+              ) : (
+                <View style={styles.pairCell}>
+                  <Text style={styles.label}>{speed ? 'Agora' : 'Ritmo atual'}</Text>
+                  <Text style={styles.pairValue}>{speed ? (now ? 3600 / now : 0).toFixed(1).replace('.', ',') : formatPace(now)}<Text style={styles.pairUnit}>{speed ? ' km/h' : ' /km'}</Text></Text>
+                </View>
+              )}
+            </View>
+          ) : null}
+
+          {guideCard}
+
           {sport.gps && phase !== 'ready' ? (
             <View style={styles.minor}>
-              <Minor label={speed ? 'Máxima' : 'Ritmo atual'} value={speed ? `${(run.maxSpeedMs * 3.6).toFixed(1).replace('.', ',')} km/h` : `${formatPace(now)} /km`} />
+              {/* Nos números grandes o ritmo atual já está no par de cima: aqui fica a máxima (bike) ou nada. */}
+              {showMap || speed ? <Minor label={speed ? 'Máxima' : 'Ritmo atual'} value={speed ? `${(run.maxSpeedMs * 3.6).toFixed(1).replace('.', ',')} km/h` : `${formatPace(now)} /km`} /> : null}
               <Minor label="Subida" value={`${Math.round(run.elevationGainM)} m`} />
               <Minor label="Altitude" value={run.altitudeM != null ? `${Math.round(run.altitudeM)} m` : '–'} />
             </View>
@@ -490,7 +675,7 @@ export function Recorder({
               <Minor label="Situação" value={phase === 'paused' ? 'Pausado' : 'Gravando'} />
             </View>
           ) : null}
-          {!sport.gps && phase === 'running' ? <Muted style={styles.readyHint}>Pode deixar o celular de lado. Toque em pausa quando terminar e conte como foi.</Muted> : null}
+          {!sport.gps && active && (sport.id === 'strength' || sport.id === 'other') ? <RestTimer sets={sets} onSets={setSets} active={phase === 'running'} say={say} /> : null}
           {phase === 'ready' && !sport.gps && !draft ? <Muted style={styles.readyHint}>O cronômetro grava o tempo do treino. No fim você conta como foi, e o professor acompanha.</Muted> : null}
         </ScrollView>
 
@@ -500,12 +685,12 @@ export function Recorder({
           ) : phase === 'running' ? (
             <>
               <SideButton icon="lock-closed-outline" label="Travar" onPress={() => setLocked(true)} />
-              <BigButton icon="pause" tone="dark" accessibilityLabel="Pausar" onPress={pause} />
+              <BigButton icon="pause" tone="dark" accessibilityLabel="Pausar" onPress={() => pause()} />
               <View style={{ width: 64 }} />
             </>
           ) : (
             <>
-              <BigButton label="Continuar" icon="play" onPress={resume} />
+              <BigButton label="Continuar" icon="play" onPress={() => resume()} />
               <BigButton label="Fim" icon="stop" tone="dark" onPress={finish} />
             </>
           )}
@@ -527,12 +712,35 @@ export function Recorder({
           <View style={styles.handle} />
           <Text style={styles.settingsTitle}>Ajustes da gravação</Text>
           <PrefRow title="Manter a tela acesa" subtitle="A tela não apaga enquanto o treino está gravando." value={prefs.keepAwake} onChange={(v) => changePref('keepAwake', v)} />
-          {sport.gps ? <PrefRow title="Mostrar o mapa" subtitle="Sem o mapa, os números ficam maiores." value={prefs.showMap} onChange={(v) => changePref('showMap', v)} /> : null}
+          <PrefRow title="Avisos de voz" subtitle={sport.gps ? 'Fala cada quilômetro, as etapas do professor e as pausas.' : 'Avisa o fim do descanso e as pausas.'} value={prefs.voice} onChange={(v) => changePref('voice', v)} />
+          {sport.gps ? <PrefRow title="Pausa automática" subtitle="Pausa sozinho quando você para (semáforo, água) e volta ao andar." value={prefs.autoPause} onChange={(v) => changePref('autoPause', v)} /> : null}
+          {sport.gps ? <PrefRow title="Começar pelo mapa" subtitle="Desligado, a gravação abre nos números grandes." value={prefs.showMap} onChange={(v) => { changePref('showMap', v); setView(v ? 'map' : 'numbers'); }} /> : null}
           {sport.gps && sport.rate === 'pace' ? <PrefRow title="Velocidade em vez de ritmo" subtitle="km/h no lugar de minutos por quilômetro." value={prefs.speed} onChange={(v) => changePref('speed', v)} /> : null}
           <Muted style={{ marginTop: 6, lineHeight: 18 }}>Com a tela bloqueada o celular pode parar o GPS. Use o botão Travar para guardar o celular no bolso sem tocar em nada.</Muted>
           <Button label="Pronto" onPress={() => setSettingsOpen(false)} style={{ marginTop: 14 }} />
         </View>
       </Modal>
+
+      {onPickSport ? (
+        <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
+          <Pressable style={styles.backdrop} onPress={() => setPickerOpen(false)} accessibilityLabel="Fechar" />
+          <View style={[styles.settings, { paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.handle} />
+            <Text style={styles.settingsTitle}>Qual treino?</Text>
+            <View style={styles.pickGrid}>
+              {SPORTS.map((s2) => {
+                const on = s2.id === sport.id;
+                return (
+                  <Pressable key={s2.id} onPress={() => { setPickerOpen(false); if (!on) onPickSport(s2.id); }} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={s2.label} style={[styles.pick, on && styles.pickOn]}>
+                    <MaterialCommunityIcons name={s2.icon} size={26} color={on ? '#fff' : colors.primary} />
+                    <Text style={[styles.pickText, on && { color: '#fff' }]} numberOfLines={1}>{s2.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </Modal>
+      ) : null}
     </Screen>
   );
 }
@@ -651,8 +859,22 @@ const styles = StyleSheet.create({
   gpsText: { fontFamily: typography.fontFamilySemiBold, fontSize: 12, color: colors.textSoft },
   sheet: { flex: 1, marginTop: -26, backgroundColor: '#fff', borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet, paddingHorizontal: 22, paddingTop: 10, ...shadows.hero },
   handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: colors.track, marginBottom: 12 },
-  pausedBar: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, height: 28, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.warnSoft, marginBottom: 8 },
-  pausedText: { fontFamily: typography.fontFamilyBold, fontSize: 12.5, color: colors.warnText, letterSpacing: 0.3 },
+  pausedBar: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, height: 30, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.warn, marginBottom: 8 },
+  pausedText: { fontFamily: typography.fontFamilyBold, fontSize: 13, color: '#fff', letterSpacing: 0.3 },
+  pausedBand: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 40, borderRadius: radii.md, backgroundColor: colors.warn, ...shadows.card },
+  pausedBandText: { fontFamily: typography.fontFamilyBold, fontSize: 14, color: '#fff' },
+  numbersTop: { backgroundColor: '#eef3fb' },
+  bandPaused: { backgroundColor: colors.warn },
+  bigDistance: { alignItems: 'center', marginTop: 14 },
+  bigDistanceValue: { fontFamily: typography.fontFamilySemiBold, fontSize: 104, lineHeight: 112, letterSpacing: -4, color: colors.text, fontVariant: ['tabular-nums'] },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tag: { height: 38, paddingHorizontal: 14, borderRadius: 999, justifyContent: 'center', backgroundColor: colors.primaryWash },
+  tagOn: { backgroundColor: colors.primary },
+  tagText: { fontFamily: typography.fontFamilySemiBold, fontSize: 13.5, color: colors.primaryDeep },
+  pickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 6 },
+  pick: { width: '31%', flexGrow: 1, height: 92, borderRadius: radii.lg, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.primaryWash },
+  pickOn: { backgroundColor: colors.primary },
+  pickText: { fontFamily: typography.fontFamilyBold, fontSize: 13, color: colors.text },
   label: { fontFamily: typography.fontFamilySemiBold, fontSize: 12, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, textAlign: 'center' },
   clock: { fontFamily: typography.fontFamilySemiBold, fontSize: 68, lineHeight: 76, letterSpacing: -2.5, color: colors.text, textAlign: 'center', fontVariant: ['tabular-nums'] },
   subtitle: { textAlign: 'center', marginTop: -2 },

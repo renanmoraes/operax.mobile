@@ -93,7 +93,8 @@ export function addPoint(state: RunState, p: GpsPoint, startedAt: number, sport:
       altRef = p.altitude;
     } else if (altRef - p.altitude >= ALT_STEP_M) altRef = p.altitude;
   }
-  const speed = p.speed != null && p.speed >= 0 ? p.speed : implied;
+  // Velocidade 0 vinda do GPS com deslocamento real é leitura faltando (comum em alguns aparelhos): usa a calculada.
+  const speed = p.speed != null && p.speed > 0 ? p.speed : implied;
   const recent = [...state.recent, { at: p.at, distanceM }].filter((r) => p.at - r.at <= RECENT_WINDOW_MS);
   const movingMs = state.movingMs + dt * 1000;
   // Fechou um ou mais quilômetros neste trecho: o tempo de cada um sai da interpolação dentro do trecho.

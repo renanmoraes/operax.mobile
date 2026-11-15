@@ -7,7 +7,7 @@ import { Badge, Card, EmptyState, Loading, Muted, Rise, Screen, TopBar } from '@
 import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { RouteMap } from '@/src/features/fitness/RouteMap';
 import { formatKm, formatPace } from '@/src/features/fitness/runTracker';
-import { FEELINGS, effortWord, historySportLabel, sportInfo } from '@/src/features/fitness/sports';
+import { FEELINGS, effortWord, historySportLabel, sportInfo, tagLabel } from '@/src/features/fitness/sports';
 import { useActivityDetail, useHistory } from '@/src/features/fitness/useFitness';
 import type { ActivityDetail } from '@/src/features/fitness/types';
 import { formatClock } from '@/src/shared/format';
@@ -71,6 +71,7 @@ export default function ActivityScreen() {
               <View style={styles.badges}>
                 {entry.sources.map((s) => <Badge key={s.label} label={s.label} tone={s.origin === 'celular' ? 'primary' : 'neutral'} />)}
                 {entry.kind === 'free' ? <Badge label="Treino livre" /> : null}
+                {tagLabel(entry.tag) ? <Badge label={tagLabel(entry.tag)!} tone="primary" /> : null}
               </View>
               <View style={styles.stats}>
                 {entry.distance_meters ? <Stat label="Distância" value={formatKm(entry.distance_meters)} unit="km" /> : null}
@@ -78,6 +79,7 @@ export default function ActivityScreen() {
                 {showSpeed && kmh ? <Stat label="Velocidade" value={kmh.toFixed(1).replace('.', ',')} unit="km/h" /> : pace ? <Stat label="Ritmo" value={formatPace(pace)} unit="/km" /> : null}
                 {d?.summary.elevation_gain_m ? <Stat label="Subida" value={String(d.summary.elevation_gain_m)} unit="m" /> : null}
                 {entry.avg_hr ? <Stat label="FC média" value={String(entry.avg_hr)} unit="bpm" /> : null}
+                {entry.sets ? <Stat label="Séries" value={String(entry.sets)} /> : null}
               </View>
             </View>
           </View>

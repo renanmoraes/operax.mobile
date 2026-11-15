@@ -54,3 +54,21 @@ export function effortWord(n: number): string {
   if (n <= 8) return 'Forte';
   return 'Máximo';
 }
+
+/** Tipo do treino (o professor filtra e entende o histórico por isso). */
+export const WORKOUT_TAGS: Record<'endurance' | 'gym', { id: string; label: string }[]> = {
+  endurance: [
+    { id: 'easy', label: 'Regenerativo' },
+    { id: 'long', label: 'Longão' },
+    { id: 'intervals', label: 'Intervalado' },
+    { id: 'tempo', label: 'Ritmo' },
+    { id: 'race', label: 'Prova' },
+  ],
+  gym: [
+    { id: 'strength', label: 'Força' },
+    { id: 'hypertrophy', label: 'Hipertrofia' },
+    { id: 'conditioning', label: 'Condicionamento' },
+    { id: 'mobility', label: 'Mobilidade' },
+  ],
+};
+export const tagLabel = (id: string | null | undefined) => [...WORKOUT_TAGS.endurance, ...WORKOUT_TAGS.gym].find((t) => t.id === id)?.label ?? null;

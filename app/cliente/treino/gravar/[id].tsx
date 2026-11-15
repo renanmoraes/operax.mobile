@@ -5,6 +5,7 @@ import { Recorder, type RecorderSave } from '@/src/features/fitness/Recorder';
 import { partLabel, plannedMeters } from '@/src/features/fitness/parts';
 import { newIdempotencyKey, queueResults } from '@/src/features/fitness/resultsQueue';
 import { sportInfo } from '@/src/features/fitness/sports';
+import { guideSteps } from '@/src/features/fitness/coach';
 import { useRecordResult } from '@/src/features/fitness/useFitness';
 import type { FitnessWorkoutView, RecordResultBody } from '@/src/features/fitness/types';
 import { isoDate } from '@/src/shared/format';
@@ -49,6 +50,7 @@ function PlannedRecord({ workout, partIndex }: { workout: FitnessWorkoutView; pa
       subtitle={workout.title}
       goalMeters={plannedMeters(part)}
       askTitle={false}
+      guide={guideSteps(part)}
       draftKey={`ficha:${workout.id}:${partIndex}`}
       onSave={save}
       onClose={() => router.replace('/(client)/fitness')}

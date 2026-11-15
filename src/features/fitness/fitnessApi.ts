@@ -156,7 +156,7 @@ export async function recordFreeActivity(body: FreeActivityBody): Promise<{ ok: 
     {
       id, kind: 'free', date: isoDate(new Date(body.started_at)), started_at: body.started_at, title: body.title ?? 'Treino livre', modality: body.sport,
       duration_seconds: body.seconds, distance_meters: body.distance_m ?? null, avg_hr: null, effort: body.effort ?? null,
-      sources: [{ origin: 'celular', label: 'Celular' }], feeling: body.feeling ?? null, notes: body.notes ?? null, session_id: id,
+      sources: [{ origin: 'celular', label: 'Celular' }], feeling: body.feeling ?? null, notes: body.notes ?? null, tag: body.tag ?? null, sets: body.sets ?? null, session_id: id,
     },
     ...getHistory(),
   ];
