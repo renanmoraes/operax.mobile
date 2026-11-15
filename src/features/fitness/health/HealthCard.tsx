@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import i18n from '@/src/i18n';
-import { Button, Card, IconTile, Muted, T } from '@/src/design-system/ui';
+import { Button, Card, Muted, T } from '@/src/design-system/ui';
+import { ProviderMark } from '../brands';
 import { colors, text } from '@/src/design-system/tokens';
 import { formatDistance, formatDuration, timeAgo } from '@/src/shared/format';
 import { HEALTH_PLATFORM, openHealthSetup } from './healthStore';
@@ -31,7 +32,7 @@ export function HealthCard() {
   return (
     <Card style={styles.card}>
       <View style={styles.top}>
-        <IconTile icon="heart" size={44} tone={connected ? 'brand' : 'soft'} />
+        <ProviderMark id={HEALTH_PLATFORM === 'ios' ? 'applehealth' : 'healthconnect'} label={copy.title} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.name}>{copy.title}</Text>
           {connected ? (

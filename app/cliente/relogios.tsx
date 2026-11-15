@@ -13,6 +13,9 @@ import {
 } from '@/src/features/fitness/connections';
 import { HealthCard } from '@/src/features/fitness/health/HealthCard';
 import { DataSourceAttribution, GarminAttribution, ProviderMark, providerDisplayName, StravaConnectButton, WorksWithZepp } from '@/src/features/fitness/brands';
+import { HEALTH_PLATFORM } from '@/src/features/fitness/health/healthStore';
+import { BRAND_WALL, phoneHealthCards, pushProvider, receiveProviders, sendTargets } from '@/src/features/fitness/integrations';
+import { FlowHeader, GalaxyCard, PushPrefsCard, SendCard, SoonCard } from '@/src/features/fitness/watchParts';
 import type { ProviderView } from '@/src/features/fitness/types';
 import { formatDistance, formatDuration, timeAgo } from '@/src/shared/format';
 
@@ -25,7 +28,7 @@ function ProviderCard({ p }: { p: ProviderView }) {
   return (
     <Card style={styles.provider}>
       <View style={styles.providerTop}>
-        <ProviderMark id={p.id} label={p.label} muted={p.state === 'soon'} />
+        <ProviderMark id={p.id} label={p.label} />
         <View style={{ flex: 1, minWidth: 0 }}>
           {/* A Garmin não permite abreviar nem cortar o nome do app: sem numberOfLines aqui. */}
           <Text style={styles.providerName}>{name}</Text>
@@ -36,12 +39,9 @@ function ProviderCard({ p }: { p: ProviderView }) {
               <Muted>{`· ${p.last_sync_at ? timeAgo(p.last_sync_at) : i18n.t('time.now')} · ${i18n.t('fitness:watch.workouts', { count: p.imported })}`}</Muted>
             </View>
           ) : (
-            <Muted style={{ marginTop: 2 }}>
-              {p.id === 'apple' ? i18n.t('fitness:watch.viaHealth') : p.state === 'soon' ? i18n.t('fitness:watch.comingSoon') : i18n.t('fitness:watch.autoImport')}
-            </Muted>
+            <Muted style={{ marginTop: 2 }}>{i18n.t('fitness:watch.autoImport')}</Muted>
           )}
         </View>
-        {p.state === 'soon' && p.id !== 'apple' ? <Badge label={i18n.t('fitness:watch.soon')} /> : null}
       </View>
       {p.id === 'zepp' && p.state === 'available' ? <WorksWithZepp /> : null}
       {p.state === 'available' ? (
@@ -67,6 +67,10 @@ export default function WatchConnectionsScreen() {
   const totalImported = providers?.reduce((n, p) => n + p.imported, 0) ?? 0;
   const garminDevice = sessions?.flatMap((s) => s.sources).find((src) => src.provider === 'garmin')?.device;
   const garminConnected = providers?.some((p) => p.id === 'garmin' && p.connected);
+  const receive = receiveProviders(providers);
+  const pusher = pushProvider(providers);
+  const healthName = HEALTH_PLATFORM === 'ios' ? i18n.t('fitness:health.ios.title') : 'Health Connect';
+  let rise = 1;
 
   return (
     <Screen>
@@ -75,8 +79,19 @@ export default function WatchConnectionsScreen() {
         <Rise>
           <HeroCard>
             <T role="captionStrong" tone="muted">{i18n.t('fitness:watch.heroTitle')}</T>
-            {garminConnected ? <GarminAttribution device={garminDevice} style={{ marginTop: 8 }} /> : null}
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 8 }}>
+            <View style={styles.wall} accessible accessibilityLabel={`${i18n.t('fitness:watch.worksWith')} ${BRAND_WALL.map((b) => b.label).join(', ')}`}>
+              {BRAND_WALL.map((b) => (
+                <View key={b.id} style={styles.wallItem}>
+                  <ProviderMark id={b.id} label={b.label} size={44} />
+                  <Text style={styles.wallLabel} numberOfLines={1}>
+                    {b.label}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            <View style={styles.heroDivider} />
+            {garminConnected ? <GarminAttribution device={garminDevice} /> : null}
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: garminConnected ? 8 : 0 }}>
               <Num size="xl">{totalImported}</Num>
               <T role="callout" tone="muted">{i18n.t('fitness:watch.imported')}</T>
             </View>
@@ -86,21 +101,36 @@ export default function WatchConnectionsScreen() {
           </HeroCard>
         </Rise>
 
-        <SectionHeader title={i18n.t('fitness:tab.watches')} />
+        <FlowHeader direction="out" title={i18n.t('fitness:watch.sendTitle')} body={i18n.t('fitness:watch.sendBody')} />
+        <Rise index={rise++}>
+          <SendCard targets={sendTargets(providers)} />
+        </Rise>
+        {pusher ? (
+          <Rise index={rise++} style={{ marginTop: 10 }}>
+            <PushPrefsCard provider={pusher} />
+          </Rise>
+        ) : null}
+
+        <FlowHeader direction="in" title={i18n.t('fitness:watch.receiveTitle')} body={i18n.t('fitness:watch.receiveBody')} />
         <View style={{ gap: 10 }}>
-          {providers?.map((p, i) => (
-            <Rise key={p.id} index={i + 1}>
+          {receive.ready.map((p) => (
+            <Rise key={p.id} index={rise++}>
               <ProviderCard p={p} />
             </Rise>
           ))}
+          {phoneHealthCards(HEALTH_PLATFORM).map((c) => (
+            <Rise key={c} index={rise++}>
+              {c === 'galaxy' ? <GalaxyCard /> : <HealthCard />}
+            </Rise>
+          ))}
+          <Rise index={rise++}>
+            <SoonCard providers={receive.soon} healthName={healthName} />
+          </Rise>
         </View>
-
-        <SectionHeader title={i18n.t('fitness:watch.phoneHealth')} />
-        <HealthCard />
 
         {sessions?.length ? (
           <>
-            <SectionHeader title={i18n.t('fitness:watch.lastImported')} />
+            <SectionHeader title={i18n.t('fitness:watch.lastImported')} style={{ marginTop: 18 }} />
             <Card style={{ padding: 0, overflow: 'hidden' }}>
               {sessions.map((s, i) => (
                 <View key={s.id} style={[styles.session, i < sessions.length - 1 && styles.sessionBorder]}>
@@ -127,6 +157,10 @@ export default function WatchConnectionsScreen() {
 
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 20, paddingTop: 4 },
+  wall: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 14, marginTop: 16 },
+  wallItem: { width: '25%', alignItems: 'center', gap: 6 },
+  wallLabel: { ...text.caption, fontSize: 11, color: colors.textSoft, maxWidth: '96%' },
+  heroDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginVertical: 14 },
   provider: { padding: 16, gap: 14 },
   providerTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   providerName: { ...text.section, color: colors.text },

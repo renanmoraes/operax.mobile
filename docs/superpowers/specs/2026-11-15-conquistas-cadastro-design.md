@@ -1,168 +1,155 @@
-# Conquistas com cadastro (Operax + academia), objetivos, edições anuais e XP
+# Conquistas com cadastro (Operax + empresa)
 
-Data: 15/11/2026. Status: aprovado com as decisões abaixo.
-
-## Decisões do dono (15/11/2026)
-
-- **XP**: as conquistas dão XP, e cada treino feito também dá 10 XP.
-- **Check-in em evento**: valem as duas formas. O aluno lê o QR do evento pelo app, ou a equipe lê o QR do ingresso do aluno no app da equipe. A equipe também pode marcar na mão.
-- **Consultoria online**: o aluno online ganha as mesmas conquistas pelos treinos que registra, e também existem conquistas próprias da consultoria (`online_checkins`).
-- **Entrega**: backend, portal, app e eventos num release só.
-
-## Hoje
-
-- As 12 conquistas do app estão **fixas no código** (`app/cliente/conquistas.tsx`) e são calculadas no celular a partir do resumo, do histórico e dos check-ins.
-- O backend não tem conquista nem XP.
-- Já existe no backend o molde "catálogo da Operax + catálogo da academia": `fitness_platform_exercises` (global) e `fitness_exercises` (por tenant). As conquistas seguem o mesmo molde.
-- Eventos (`src/apps/events`) têm inscrição (`event_registrations`), mas **não têm check-in**.
-- O aluno tem `attendance_mode` `presencial` ou `online` (consultoria online).
+Data: 15/11/2026. Status: proposta, aguardando aprovação.
 
 ## O cenário
 
-1. **A Operax lança conquistas** para todas as academias com Fitness: as gerais (primeiro treino, 100 treinos, 30 dias seguidos), as de datas (Natal, Ano Novo, Páscoa) e as temáticas de Israel e da Bíblia.
-2. **A academia cadastra as dela** no portal, por exemplo "foi na Corrida da Academia e fez check-in pela Operax".
-3. **O app recebe as duas listas juntas.** Cada conquista diz o objetivo, e o aluno ganha quando cumpre esse objetivo.
-4. Algumas conquistas são **anuais e se renovam**. Natal 2026 e Natal 2027 são edições diferentes, e o aluno ganha um pin por ano.
-5. Cada conquista dá **XP**. O XP sobe o aluno de nível, e cada nível pede mais XP que o anterior.
+Hoje as 12 conquistas do app são fixas no código (`app/cliente/conquistas.tsx`) e calculadas no celular.
+O que muda:
 
-## Cadastro no portal (Fitness › Conquistas)
+1. **A Operax lança conquistas** para todos os alunos de todas as empresas (catálogo da plataforma).
+2. **A empresa (tenant) cadastra as dela** no portal, para os alunos dela.
+3. **O app recebe as duas listas juntas** e mostra o progresso de cada uma, conforme a regra da conquista.
 
-| Campo | Detalhe |
+Toda conquista tem um **objetivo** (o que fazer para ganhar). Algumas valem **sempre**, outras só **num
+período**, e outras são **anuais e se renovam** (Natal, Ano Novo): quem ganhou em 2026 pode ganhar de novo
+em 2027, e o app mostra as duas.
+
+## Cadastro (portal da empresa e painel da Operax)
+
+| Campo | Como funciona |
 | --- | --- |
-| Nome | Até 60 caracteres. |
-| Descrição | O que é a conquista, a história dela (por exemplo "Josué deu 7 voltas em Jericó…"). |
-| Como ganhar | Texto curto mostrado ao aluno ("Treine 7 dias seguidos"). É preenchido sozinho a partir do objetivo e pode ser editado. |
-| Objetivo | Tipo + meta (ver abaixo). É o que o sistema confere. |
-| Nível | 1 a 5. Define a cor padrão do pin e o XP padrão. |
-| Ícone | Da biblioteca da Operax, ou enviado pela academia (PNG ou SVG quadrado, até 512 KB, pelo `media_files`). |
-| Cor do pin | Vem do nível e pode ser trocada por qualquer cor. |
-| XP | "Pelo nível" (padrão) ou um valor manual. |
-| Período | Sempre, de uma data a outra, ou **anual** (ver Edições). |
-| Quem pode ganhar | Todos, só presencial, só consultoria online, ou planos escolhidos. |
-| Secreta | Se marcada, só aparece depois de ganha. |
-| Situação | Rascunho, ativa ou arquivada. Uma conquista arquivada some da lista de quem não ganhou e continua no perfil de quem ganhou. |
+| Nome | "Corrida de Natal" |
+| Descrição | O texto que conta a história da conquista |
+| Como ganhar | O que o aluno precisa fazer, em linguagem simples ("Corra 25 km entre 1 e 25 de dezembro") |
+| Nível | Bronze, Prata, Ouro, Platina, Lendária. **O nível define a cor do pin** |
+| Cor do pin | Opcional. Se preenchida, troca a cor que o nível daria |
+| Ícone | Escolhe da biblioteca de ícones **ou envia um ícone próprio** (PNG/SVG, quadrado) |
+| Objetivo (regra) | Tipo + meta. Ver a lista abaixo |
+| Quando vale | Sempre · Período (de/até) · Todo ano (de dd/mm até dd/mm, renova sozinho) |
+| Prêmio | Opcional, texto livre: "1 consultoria online", "10% na renovação". Fica pendente até a empresa marcar como entregue |
+| XP | Pontos que somam no nível do aluno (padrão pelo nível: 50/100/200/400/800) |
+| Situação | Rascunho · Publicada · Arquivada. Só a publicada aparece no app |
 
-Uma conquista da Operax aparece no portal da academia **só para ler**. A academia pode **desligar** a conquista para os alunos dela, mas não pode editá-la.
+As conquistas da Operax aparecem no portal da empresa só para leitura, com uma chave "Mostrar para meus
+alunos" (a empresa pode esconder uma que não combine com ela, como as bíblicas).
 
-### Níveis (cor e XP padrão)
-
-| Nível | Nome | Cor padrão | XP padrão |
-| --- | --- | --- | --- |
-| 1 | Bronze | `#B87333` | 50 |
-| 2 | Prata | `#8E9AAB` | 100 |
-| 3 | Ouro | `#D4A017` | 200 |
-| 4 | Esmeralda | `#1F9D6B` | 400 |
-| 5 | Diamante | `#3D6BFF` | 800 |
-
-### Tipos de objetivo (tudo com dado que o Operax já tem)
+### Tipos de objetivo (primeira versão)
 
 | Tipo | Meta | Exemplo |
 | --- | --- | --- |
-| `sessions` | N treinos no período | 12 treinos de 1 a 25/12 |
-| `streak` | N dias seguidos com treino | 7 dias (Jericó) |
-| `weekly_goal` | N semanas batendo a meta semanal | 4 semanas |
-| `distance_total` | km somados (corrida, caminhada, bike), opcionalmente por esporte | 40 km em 8 dias |
-| `distance_single` | km numa atividade só | 11 km (Emaús) |
-| `elevation_total` | metros de subida somados | 2.285 m (Sinai) |
-| `duration_total` | minutos somados | 600 min |
-| `early` | N treinos antes de uma hora | 5 antes das 7h |
-| `records` | N recordes pessoais | 1 recorde (Davi e Golias) |
-| `class_attendance` | N aulas com presença confirmada | 10 aulas |
-| `event_checkin` | Check-in num evento escolhido | Corrida da Academia |
-| `online_checkins` | N check-ins semanais da consultoria online | 8 semanas |
-| `checkin_photo` | Mandou foto de evolução | 1 |
-| `watch_connected` | Conectou relógio ou app | 1 |
-| `manual` | O professor concede | Destaque do mês |
+| `sessions` | N treinos no período | 10 treinos em dezembro |
+| `distance` | N km no período (filtro opcional: corrida, bike, natação, caminhada) | 25 km de corrida no Natal |
+| `elevation` | N metros de subida acumulada | Monte Sinai: 2.285 m |
+| `minutes` | N minutos de treino | 300 min no mês |
+| `streak` | N dias seguidos treinando | Jericó: 7 dias |
+| `weekly_goal` | Bater a meta semanal N semanas | 4 semanas perfeitas |
+| `records` | N recordes pessoais | Davi: 1 recorde |
+| `on_date` | Treinar em um dia específico | Treinar no dia 1º de janeiro |
+| `event_checkin` | Fazer check-in num evento da empresa, pela Operax | Corrida da academia 2026 |
+| `achievements` | Ter outras medalhas (ver abaixo) | Natal 5 vezes · todas as bíblicas · 3 sazonais quaisquer |
 
-O que conta como treino é o mesmo que já conta hoje: treino da ficha salvo no app, atividade gravada pelo GPS e atividade importada do relógio. Assim o aluno da **consultoria online** ganha igual ao presencial, sem precisar estar na academia.
+As 12 conquistas que já existem viram registros da Operax com esses tipos (não muda nada para o aluno).
 
-### Edições (conquistas anuais)
+### Medalha que depende de outras medalhas
 
-- **Data fixa**: dia e mês de início e de fim, repetidos todo ano. Exemplos: Natal de 1 a 25/12, Ano Novo de 1 a 7/1.
-- **Data que muda por ano**: Páscoa, Pessach, Chanucá e Sucot. A Operax cadastra as datas de cada ano numa lista de edições (`{ano, início, fim}`), e o sistema avisa quando a edição do ano seguinte ainda não foi cadastrada.
-- O pin ganho leva o ano ("Natal 2026"). Na edição seguinte o objetivo começa do zero, e o aluno pode ganhar de novo.
-- Fora do período, a conquista aparece como "Volta em 1/12". Durante o período, aparece em destaque na home com a contagem regressiva.
+Uma conquista pode ser condicionada a outras. O objetivo `achievements` tem uma lista de condições, e o aluno ganha
+quando **todas** são cumpridas. Cada condição escolhe medalhas e diz quantas vezes:
 
-## XP e nível do aluno
+| Condição | Exemplo |
+| --- | --- |
+| Uma medalha N vezes | "Espírito natalino": ganhar a Corrida de Natal 5 vezes (cinco anos diferentes) |
+| Todas de uma lista | "Peregrino": ter todas as 9 medalhas de Israel e eventos bíblicos |
+| Quaisquer N de uma lista | "Ano inteiro": 3 medalhas quaisquer entre as sazonais |
+| Combinação das anteriores | "Lenda da academia": a medalha 50 treinos **e** a medalha XYZ **e** a Corrida de Natal 2 vezes |
 
-- O XP é a soma das conquistas ganhas mais **10 XP por treino feito** (treino da ficha, atividade gravada ou importada; no máximo 3 por dia contam XP, para não premiar treino picado).
-- O XP total para chegar ao nível L é `100 × (L − 1)^1,6`, arredondado de 10 em 10. A distância até o próximo nível cresce a cada nível:
+Regras:
 
-| Nível | XP total | Até o próximo |
-| --- | --- | --- |
-| 2 | 100 | 200 |
-| 3 | 300 | 280 |
-| 5 | 920 | 390 |
-| 10 | 3.360 | 620 |
-| 20 | 11.120 | 950 |
+- **Contagem:** uma medalha que se renova conta uma vez por ciclo (ano). Uma medalha "sempre" conta uma vez só,
+  então pedir "5 vezes" só faz sentido em medalha anual ou de período que se repete; o formulário avisa.
+- **Quais medalhas entram:** as da Operax e as da própria empresa. A empresa não enxerga as de outra empresa.
+- **Sem ciclo:** A não pode depender de B se B depende de A (direta ou indiretamente). O backend recusa ao salvar,
+  dizendo qual medalha fecha o círculo.
+- **Medalha escondida ou arquivada:** se a empresa esconde uma medalha da Operax que outra medalha exige, o portal avisa
+  antes ("A medalha Peregrino depende desta"). Medalha exigida não pode ser apagada, só arquivada; as já ganhas continuam
+  contando.
+- **Em cascata:** ganhar uma medalha confere na hora as que dependem dela, que podem liberar outras, até parar.
+- **No app:** o detalhe mostra as medalhas exigidas com o progresso de cada uma ("Corrida de Natal 2 de 5") e um toque
+  abre cada uma delas.
 
-- A curva fica num lugar só, no backend (`levelFor(xp)`), e o app só mostra o que o backend devolve.
+## Evento com check-in
 
-## Catálogo inicial da Operax
+A empresa cria a conquista do tipo `event_checkin` e escolhe um evento do módulo **Eventos**. O aluno se
+inscreve no evento e, no dia, faz o **check-in pela Operax**: lendo o QR do evento no app, ou a recepção
+marca a presença no portal. Com o check-in, a conquista sai na hora, com o prêmio (por exemplo, uma
+consultoria online).
 
-**Gerais** (migram as 12 de hoje): primeiro treino, semana perfeita, 10, 50 e 100 treinos, recorde, madrugador, 7 e 30 dias seguidos, foto de evolução, relógio conectado, 20 treinos no mês.
+No backend, a inscrição (`event_registrations`) ganha `checked_in_at` e `checked_in_by` (`qr` ou `staff`).
 
-**Datas**
+## Catálogo da Operax no lançamento
 
-- Natal: "12 dias de Natal", 12 treinos de 1 a 25/12.
-- Ano Novo: "Primeiro do ano", treinar em 1/1. "Largada do ano", 3 treinos na primeira semana.
-- Páscoa: treinar no fim de semana da Páscoa.
+**Datas do ano (renovam todo ano)**
 
-**Israel e Bíblia** (descrição com a passagem, sem pregação)
+- Primeiro treino do ano: treinar em 1º de janeiro
+- Janeiro em dia: 12 treinos em janeiro
+- Corrida de Natal: 25 km entre 1 e 25 de dezembro
+- Fecha o ano: treinar em 31 de dezembro
 
-| Conquista | Objetivo | Referência |
-| --- | --- | --- |
-| Muralhas de Jericó | 7 dias seguidos com treino | Josué 6 |
-| Davi e Golias | Bater um recorde pessoal | 1 Samuel 17 |
-| Caminho de Emaús | 11 km numa atividade (60 estádios) | Lucas 24 |
-| Monte Sinai | 2.285 m de subida somados | Êxodo 19 |
-| Muro de Neemias | 52 treinos em 52 dias | Neemias 6.15 |
-| 40 dias no deserto | 30 treinos em 40 dias | Mateus 4 |
-| Travessia do Mar Vermelho | 40 km somados durante o Pessach (anual) | Êxodo 14 |
-| Luzes de Chanucá | 8 dias seguidos durante Chanucá (anual) | Chanucá |
-| Sucot | 7 treinos durante Sucot (anual) | Levítico 23 |
+**Israel e eventos bíblicos**
 
-Os ícones dessas conquistas entram na biblioteca da Operax como desenhos próprios: menorá, muralha, funda, montanha, tenda, ondas, estrada.
+- Muralhas de Jericó (Js 6): 7 dias seguidos treinando
+- Davi e o gigante (1Sm 17): bater um recorde pessoal
+- Caminho de Emaús (Lc 24): 11 km numa única atividade
+- Monte Sinai (Êx 19): 2.285 m de subida acumulada
+- Muralha de Neemias (Ne 6:15): 52 treinos
+- 40 dias no deserto (Mt 4): treinar em 40 dias diferentes dentro de 60 dias
+- Rio Jordão: 251 km no ano (o comprimento do rio)
+- Pentecostes (At 2): 50 dias de treino entre a Páscoa e Pentecostes (renova todo ano, com a data da Páscoa)
+- As 12 tribos: treinar ao menos 8 vezes em cada um dos 12 meses do ano
 
-## Check-in em evento
+Cada uma com descrição curta contando a passagem e a referência bíblica.
 
-O evento passa a ter "dá conquista": a academia escolhe uma conquista `event_checkin` no cadastro do evento.
+## Como o progresso é calculado
 
-Check-in, três formas (todas gravam `checked_in_at` e `checkin_method` na inscrição, e a conquista sai na hora):
+- O backend calcula, no `GET /api/public/portal/fitness/achievements`, o progresso de cada conquista
+  publicada e visível para o aluno, a partir dos treinos, recordes, metas semanais e check-ins. As que dependem de
+  outras são calculadas por último, na ordem das dependências.
+- Ao passar da meta, grava o prêmio em `fitness_achievement_awards` (aluno, conquista, **ciclo**: `once`
+  ou o ano, data, situação do prêmio). O ciclo é o que permite ganhar a anual de novo no ano seguinte.
+- Salvar um treino ou um check-in também confere as conquistas e manda push "Você ganhou…".
 
-1. **Aluno lê o QR do evento**: um QR assinado que muda a cada 2 minutos, mostrado no app da equipe ou num totem (página do portal em tela cheia). O aluno inscrito lê pelo app. A leitura só vale entre 1 h antes do início e o fim do evento.
-2. **Equipe lê o QR do aluno**: o ingresso no app do aluno mostra um QR assinado com a inscrição, e a equipe lê no app da equipe (Eventos › Check-in).
-3. **Manual**: a equipe procura o nome na lista de inscritos e marca.
+## Tabelas
 
-## Como o backend confere
+- `fitness_achievements`: `tenant_id` (nulo = Operax), nome, descrição, como_ganhar, nível, cor_pin,
+  ícone (`{kind: 'preset', name}` ou `{kind: 'upload', url}`), regra (`{type, target, sport?, event_id?, date?}`;
+  para `achievements`: `{type: 'achievements', all: [{ids: [...], need: 'all' | número, times: número}]}`),
+  janela (`{kind: 'always'|'range'|'annual', from, to}`), prêmio, xp, situação, ordem.
+- `fitness_achievement_visibility`: empresa que escondeu uma conquista da Operax.
+- `fitness_achievement_awards`: único por (aluno, conquista, ciclo); situação do prêmio `none|pending|delivered`.
 
-- Novas tabelas:
-  - `fitness_achievements`: da academia, com `tenant_id`.
-  - `fitness_platform_achievements`: global.
-  - `fitness_achievement_editions`: datas por ano.
-  - `fitness_achievement_settings`: academia desligando uma conquista da Operax.
-  - `fitness_achievement_awards`.
-- `awards` tem chave única `(tenant_id, contact_id, achievement_id, edition)`. A edição é o ano ou `0` para as que não se repetem. Conceder duas vezes não duplica.
-- Quando a conquista é conferida:
-  - na hora, depois de cada treino salvo, atividade importada, presença em aula, check-in em evento e check-in da consultoria;
-  - num job diário, para virada de edição e conquistas de período.
-- O app recebe:
-  - `GET /api/public/portal/fitness/achievements`: lista unificada com progresso (`current/target`), período, edição, pin (ícone, cor, nível), XP e se foi ganha e quando.
-  - `GET .../achievements/profile`: XP, nível e quanto falta para o próximo.
-- O aluno que ganha recebe um push ("Você ganhou Muralhas de Jericó, +100 XP").
+## Telas
 
-## No app
+- **Portal (empresa):** Fitness › Conquistas: lista com filtros (minhas, da Operax, sazonais), formulário com
+  prévia ao vivo do pin (nível → cor, cor própria, ícone ou upload), e a aba "Prêmios a entregar".
+- **Painel da Operax:** o mesmo formulário, gravando com `tenant_id` nulo.
+- **App:** a tela de conquistas passa a ler da API; pin na cor do nível ou na cor própria, ícone da
+  biblioteca ou o enviado; o detalhe mostra descrição, como ganhar, progresso, prêmio e "Volta todo ano em
+  1/12". Seção "Desta temporada" no topo quando há uma sazonal aberta.
 
-- A tela de Conquistas troca a lista fixa pela da API. O pin usa o ícone (da biblioteca ou a imagem enviada) com a cor do pin, e o nível aparece no anel.
-- No topo ficam o nível do aluno, a barra de XP e "faltam X XP para o nível N".
-- Uma faixa "Agora" mostra as conquistas de período ativo (Natal, Pessach), com contagem regressiva.
-- No detalhe da conquista: descrição, como ganhar, barra de progresso, período e o ano das edições já ganhas.
-- No modo demo, o mesmo formato vem de dados de exemplo, como em Relógios.
+## Fora desta versão
 
-## Ordem sugerida
+Ranking entre alunos, conquistas em equipe e regras com OU entre condições ficam para depois (as condições de medalha
+já se combinam com E, e "quaisquer N de uma lista" cobre o caso mais comum de OU).
 
-1. Backend: tabelas, catálogo da Operax, conferência de treino, distância, sequência e recorde, XP e nível, rota do portal do aluno.
-2. App: tela nova lendo a API, nível e XP no topo.
-3. Portal da academia: cadastro, biblioteca de ícones e upload, desligar as da Operax.
-4. Eventos: QR de check-in, check-in manual e conquista `event_checkin`.
-5. Edições móveis: Páscoa, Pessach, Chanucá e Sucot cadastradas para 2027 e 2028.
+## Como ficou na implementação (15/11/2026)
+
+Implementado e solto no backend-v2.172.37 / frontend-v1.169.37, com o app na branch `claude/recursing-goodall-e7098e`. Diferenças em relação ao texto acima:
+
+- **Ícone enviado:** PNG, JPG ou WebP, até 512 KB. SVG ficou de fora, porque pode carregar script.
+- **Treinar num dia:** é "Todo ano" com o mesmo dia no início e no fim (01/01 a 01/01), em vez de um tipo `on_date`.
+- **Situação:** rascunho, ativa ou arquivada ("ativa" é a "publicada").
+- **XP:** além das conquistas, cada treino dá 10 XP (até 3 por dia). O nível L pede `100 × (L−1)^1,6` XP no total.
+- **Objetivos a mais:** dias de treino, meses com N treinos, aulas com presença, semanas com feedback ao professor (consultoria online), avaliações físicas, relógio conectado e dada pelo professor.
+- **Check-in:** vale só para inscrição confirmada, de três formas: o aluno lê o QR do evento (muda a cada 2 minutos), a equipe lê o ingresso do aluno (vale 10 minutos) ou a equipe marca na lista.
+- **Escopo:** só vale para empresa com Fitness ativo no portal. Sem Fitness, nada novo é conferido, e o que já foi ganho fica guardado.
+- **Push "Você ganhou":** ficou de fora, porque o backend ainda não manda push ao aluno. O app comemora as conquistas novas quando o aluno abre a tela.

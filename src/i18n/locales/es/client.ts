@@ -43,8 +43,9 @@ const client: Shape<typeof pt> = {
     },
     watch: {
       title: 'Reloj y apps de entrenamiento',
-      body: 'Conecta Garmin Connect™, Strava o Polar y tus entrenamientos llegan solos, con tiempo, distancia y pulsaciones.',
-      connected: '{{names}} conectado',
+      body: 'Conecta tu reloj (Garmin, Apple Watch, Galaxy Watch, Polar y otros) o Strava: los entrenos llegan solos y el entreno del plan va a tu muñeca.',
+      connected_one: '{{count}} conectado',
+      connected_other: '{{count}} conectados',
       connect: 'Conectar',
     },
     media: {
@@ -211,7 +212,7 @@ const client: Shape<typeof pt> = {
     calendar: 'Calendario del celular',
     calendarSub: 'Suscribirse a la agenda',
     watches: 'Relojes y apps',
-    watchesSub: 'Garmin Connect™, Strava y Polar',
+    watchesSub: 'Garmin, Apple Watch, Galaxy Watch, Strava y más',
     privacy: 'Privacidad',
     privacySub: 'Fotos de progreso: tú y tu entrenador',
     accounts: 'Cuentas',

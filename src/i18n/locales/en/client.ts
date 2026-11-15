@@ -43,8 +43,9 @@ const client: Shape<typeof pt> = {
     },
     watch: {
       title: 'Watch and workout apps',
-      body: 'Connect Garmin Connect™, Strava or Polar and your workouts arrive on their own, with time, distance and heart rate.',
-      connected: '{{names}} connected',
+      body: 'Connect your watch (Garmin, Apple Watch, Galaxy Watch, Polar and more) or Strava: workouts arrive on their own and your plan\'s workout goes to your wrist.',
+      connected_one: '{{count}} connected',
+      connected_other: '{{count}} connected',
       connect: 'Connect',
     },
     media: {
@@ -211,7 +212,7 @@ const client: Shape<typeof pt> = {
     calendar: 'Phone calendar',
     calendarSub: 'Subscribe to your schedule',
     watches: 'Watches and apps',
-    watchesSub: 'Garmin Connect™, Strava and Polar',
+    watchesSub: 'Garmin, Apple Watch, Galaxy Watch, Strava and more',
     privacy: 'Privacy',
     privacySub: 'Progress photos: you and your trainer',
     accounts: 'Accounts',
