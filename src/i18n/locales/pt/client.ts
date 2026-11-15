@@ -41,8 +41,9 @@ const client = {
     },
     watch: {
       title: 'Relógio e apps de treino',
-      body: 'Conecte Garmin Connect™, Strava ou Polar e seus treinos chegam sozinhos, com tempo, distância e batimentos.',
-      connected: '{{names}} conectado',
+      body: 'Conecte seu relógio (Garmin, Apple Watch, Galaxy Watch, Polar e outros) ou o Strava: os treinos chegam sozinhos e o treino do plano vai para o pulso.',
+      connected_one: '{{count}} conectado',
+      connected_other: '{{count}} conectados',
       connect: 'Conectar',
     },
     media: {
@@ -209,7 +210,7 @@ const client = {
     calendar: 'Calendário do celular',
     calendarSub: 'Assinar a agenda',
     watches: 'Relógios e apps',
-    watchesSub: 'Garmin Connect™, Strava e Polar',
+    watchesSub: 'Garmin, Apple Watch, Galaxy Watch, Strava e mais',
     privacy: 'Privacidade',
     privacySub: 'Fotos de evolução: você e seu personal',
     accounts: 'Contas',

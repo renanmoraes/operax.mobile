@@ -99,7 +99,7 @@ export default function ClientPerfilScreen() {
             <SettingsRow
               icon="watch-outline"
               title={t('profile.watches')}
-              subtitle={connected.length ? t('onboarding.watch.connected', { names: connected.join(', ') }) : t('profile.watchesSub')}
+              subtitle={connected.length ? connected.join(', ') : t('profile.watchesSub')}
               subtitleTone={connected.length ? 'success' : undefined}
               onPress={() => router.push('/cliente/relogios')}
             />
