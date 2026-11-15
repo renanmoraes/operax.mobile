@@ -209,18 +209,37 @@ function PosSaleScreen() {
     if (first) setTimeout(() => setSheet({ kind: 'weigh', lineId: first.line_id }), 350);
   };
 
+  /**
+   * Mexe no carrinho a partir do mais recente. Carrinho esvaziado é outra venda: ganha chave nova, para a
+   * próxima não ser tomada pelo servidor como repetição de uma venda que pode ter fechado sem resposta.
+   * Enquanto o carrinho tem itens, a chave fica (repetir o "Confirmar" é a mesma venda).
+   */
+  const editCart = (fn: (cur: CartLine[]) => CartLine[]) => {
+    const next = fn(cartRef.current);
+    cartRef.current = next;
+    setCart(next);
+    if (!next.length) setSaleKey(uid());
+  };
+
   const clearCart = async () => {
     const ok = await confirmDialog({ title: t('cart.clearTitle'), message: t('cart.clearText'), confirmLabel: t('cart.clear'), tone: 'danger', icon: 'trash-outline' });
     if (!ok) return;
-    setCart([]);
+    editCart(() => []);
     setOrderDiscount(null);
   };
 
-  const reread = async (cur: CartLine[]) => {
+  /**
+   * Relê preço e oferta e aplica no carrinho DE AGORA (o operador pode ter mexido enquanto a consulta
+   * corria): nada do que ele tirou volta, nada do que ele pôs some.
+   */
+  const reread = async () => {
     try {
-      return atualizarPrecos(cur, await client.refreshProducts(cur.map((l) => l.variant_id)));
+      const produtos = await client.refreshProducts(cartRef.current.map((l) => l.variant_id));
+      const r = atualizarPrecos(cartRef.current, produtos);
+      if (r.mudou) editCart(() => r.cart);
+      return r.mudou;
     } catch {
-      return { cart: cur, mudou: false };
+      return false;
     }
   };
 
@@ -228,13 +247,11 @@ function PosSaleScreen() {
   const openCheckout = async () => {
     setOpening(true);
     setCheckoutError(null);
-    const { cart: fresh, mudou } = await reread(cart);
+    const mudou = await reread();
     setOpening(false);
-    if (mudou) {
-      setCart(fresh);
-      show(t('cart.pricesChanged'), 'info');
-    }
-    setSheet({ kind: 'checkout' });
+    if (mudou) show(t('cart.pricesChanged'), 'info');
+    // Algo entrou sem peso durante a consulta: a venda ainda não está pronta para receber.
+    if (isCartReady(cartRef.current)) setSheet({ kind: 'checkout' });
   };
 
   const finish = useMutation({
@@ -254,17 +271,14 @@ function PosSaleScreen() {
       ),
     onSuccess: (sale) => {
       setSheet({ kind: 'done', saleId: sale.id, number: sale.human_number ?? null, total, contact });
-      setCart([]);
-      setSaleKey(uid());
+      editCart(() => []);
       setOrderDiscount(null);
       setContact(null);
       void qc.invalidateQueries({ queryKey: ['pos', 'sales'] });
       if (usesShift) void qc.invalidateQueries({ queryKey: ['pos', 'bootstrap'] });
     },
     onError: async (e) => {
-      const { cart: fresh, mudou } = await reread(cart);
-      if (mudou) {
-        setCart(fresh);
+      if (await reread()) {
         setSheet(null);
         show(t('checkout.pricesChanged'), 'error');
         return;
@@ -386,9 +400,9 @@ function PosSaleScreen() {
               flash={flashId === item.line_id}
               canDiscount={can('posDiscountLine') || can('posPriceOverride')}
               onWeigh={() => setSheet({ kind: 'weigh', lineId: item.line_id })}
-              onQty={(qty) => setCart((c) => changeQuantity(c, item.line_id, qty))}
+              onQty={(qty) => editCart((c) => changeQuantity(c, item.line_id, qty))}
               onDiscount={() => setSheet({ kind: 'lineDiscount', lineId: item.line_id })}
-              onRemove={() => setCart((c) => removeLine(c, item.line_id))}
+              onRemove={() => editCart((c) => removeLine(c, item.line_id))}
             />
           )}
         />
@@ -434,11 +448,11 @@ function PosSaleScreen() {
           lineId={sheet.lineId}
           onClose={() => setSheet(null)}
           onRemove={() => {
-            setCart((c) => removeLine(c, sheet.lineId));
+            editCart((c) => removeLine(c, sheet.lineId));
             setSheet(null);
           }}
           onApply={(qty) => {
-            setCart((c) => changeQuantity(c, sheet.lineId, qty));
+            editCart((c) => changeQuantity(c, sheet.lineId, qty));
             const next = cart.find((l) => l.quantity == null && l.line_id !== sheet.lineId);
             setSheet(next ? { kind: 'weigh', lineId: next.line_id } : null);
           }}
@@ -452,7 +466,7 @@ function PosSaleScreen() {
           canOverride={can('posPriceOverride')}
           onClose={() => setSheet(null)}
           onApply={(type, value) => {
-            setCart((c) => setLineDiscount(c, sheet.lineId, type, value));
+            editCart((c) => setLineDiscount(c, sheet.lineId, type, value));
             setSheet(null);
           }}
         />
