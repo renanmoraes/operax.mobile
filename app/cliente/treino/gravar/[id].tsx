@@ -1,10 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import i18n from '@/src/i18n';
-import { useMemo } from 'react';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { Recorder, type RecorderSave } from '@/src/features/fitness/Recorder';
 import { partLabel, plannedMeters } from '@/src/features/fitness/parts';
-import { isRejected, newIdempotencyKey, queueResults } from '@/src/features/fitness/resultsQueue';
+import { isRejected, queueResults, recordingKey } from '@/src/features/fitness/resultsQueue';
 import { sportInfo } from '@/src/features/fitness/sports';
 import { guideSteps } from '@/src/features/fitness/coach';
 import { useRecordResult } from '@/src/features/fitness/useFitness';
@@ -21,7 +20,6 @@ function PlannedRecord({ workout, partIndex }: { workout: FitnessWorkoutView; pa
   const part = workout.parts[partIndex] ?? workout.parts[0];
   const sport = sportInfo(part.type === 'endurance' && part.sport === 'bike' ? 'bike' : 'run');
   const record = useRecordResult();
-  const key = useMemo(() => newIdempotencyKey(), []);
 
   async function save(r: RecorderSave): Promise<'saved' | 'queued'> {
     const body: RecordResultBody = {
@@ -32,7 +30,7 @@ function PlannedRecord({ workout, partIndex }: { workout: FitnessWorkoutView; pa
       ...(r.feeling ? { feeling: r.feeling } : {}),
       ...(r.effort ? { effort: r.effort } : {}),
       ...(r.notes ? { notes: r.notes } : {}),
-      idempotency_key: key,
+      idempotency_key: recordingKey(`ficha.${workout.id}.${partIndex}`, r.startedAt),
       recording: { started_at: new Date(r.startedAt).toISOString(), ...(r.track ? { track: r.track } : {}) },
     };
     try {

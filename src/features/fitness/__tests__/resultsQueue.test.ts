@@ -132,3 +132,15 @@ describe('troca de conta ou empresa em andamento', () => {
     expect(owner.fitnessOwner()).toBe('live:client:h:t2');
   });
 });
+
+describe('chave de envio da gravação', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { recordingKey } = require('../resultsQueue') as typeof import('../resultsQueue');
+  it('é a mesma depois de retomar o rascunho e passa na regra do servidor', () => {
+    const started = 1794700000123;
+    const a = recordingKey('ficha.3f2a9c1e-1111-4222-8333-944455556666.0', started);
+    expect(recordingKey('ficha.3f2a9c1e-1111-4222-8333-944455556666.0', started)).toBe(a);
+    expect(a).toMatch(/^[\w:.-]{6,80}$/);
+    expect(recordingKey('livre.run', started)).not.toBe(recordingKey('livre.run', started + 1));
+  });
+});

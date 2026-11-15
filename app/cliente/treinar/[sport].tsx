@@ -1,9 +1,8 @@
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import i18n from '@/src/i18n';
-import { useMemo } from 'react';
 import { useClientCapabilities } from '@/src/features/client/useClientData';
 import { Recorder, type RecorderSave } from '@/src/features/fitness/Recorder';
-import { newIdempotencyKey, queueActivity } from '@/src/features/fitness/resultsQueue';
+import { queueActivity, recordingKey } from '@/src/features/fitness/resultsQueue';
 import { SPORTS } from '@/src/features/fitness/sports';
 import { useRecordFreeActivity } from '@/src/features/fitness/useFitness';
 import type { FreeActivityBody } from '@/src/features/fitness/types';
@@ -15,7 +14,6 @@ export default function FreeRecordScreen() {
   const caps = useClientCapabilities();
   const sport = SPORTS.find((s) => s.id === id);
   const record = useRecordFreeActivity();
-  const key = useMemo(() => newIdempotencyKey(), []);
 
   if (!sport || (caps.loaded && !caps.training)) return <Redirect href="/cliente/treinar" />;
 
@@ -32,7 +30,7 @@ export default function FreeRecordScreen() {
       ...(r.notes ? { notes: r.notes } : {}),
       ...(r.tag ? { tag: r.tag } : {}),
       ...(r.sets ? { sets: r.sets } : {}),
-      idempotency_key: key,
+      idempotency_key: recordingKey(`livre.${sport!.id}`, r.startedAt),
       ...(r.track ? { recording: { track: r.track } } : {}),
     };
     try {

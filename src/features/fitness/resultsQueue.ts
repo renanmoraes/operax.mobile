@@ -119,6 +119,15 @@ export async function flushAll(senders: { result: QueueSender<RecordResultBody>;
   }
 }
 
+/**
+ * Chave de envio de uma gravação, tirada do que o rascunho guarda (o que foi gravado e quando começou):
+ * se o app fechar com o envio no ar e a gravação for retomada, salvar de novo usa a mesma chave e o
+ * servidor reconhece o primeiro envio, sem criar outra atividade. Só `[A-Za-z0-9_:.-]`, até 80.
+ */
+export function recordingKey(scope: string, startedAt: number) {
+  return `rec.${scope}.${Math.round(startedAt)}`.replace(/[^\w:.-]/g, '_').slice(0, 80);
+}
+
 export function newIdempotencyKey() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
