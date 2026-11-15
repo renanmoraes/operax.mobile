@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
+import { showDialog } from '@/src/design-system/Dialog';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -82,7 +83,7 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
       // Recusado pelo servidor (dado inválido, sem acesso): guardar não adianta, a pessoa precisa saber.
       const status = isAxiosError(e) ? (e.response?.status ?? 0) : 0;
       if (status >= 400 && status < 500) {
-        Alert.alert('Não deu para salvar', 'O servidor recusou este resultado. Confira os dados e tente de novo.');
+        void showDialog({ title: 'Não deu para salvar', message: 'O servidor recusou este resultado. Confira os dados e tente de novo.', tone: 'warn' });
         return;
       }
       await queueResults(bodies.slice(sent));

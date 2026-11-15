@@ -22,6 +22,7 @@ import { resetFinishedSessionMemory } from '@/src/features/fitness/sessionStore'
 import { colors } from '@/src/design-system/tokens';
 import { installErrorReporter, reportError, setReporterSession, trackRoute } from '@/src/shared/telemetry/errorReporter';
 import { Button } from '@/src/design-system/ui';
+import { DialogHost } from '@/src/design-system/Dialog';
 import { useAppUpdates } from '@/src/shared/updates/appVersion';
 import { linkToAppRoute } from '@/src/features/notifications/linkRoute';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -105,6 +106,7 @@ export default function RootLayout() {
           <IncomingBanner />
           <SplashGate />
           <AccountCacheReset />
+          <DialogHost />
           <NotificationRouter />
           <UpdateBanner />
           </TeamChatProvider>

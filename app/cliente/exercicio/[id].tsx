@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { showDialog } from '@/src/design-system/Dialog';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -60,13 +61,13 @@ export default function ExerciseDetailScreen() {
     try {
       const url = await fetchMediaUrl(m.media_file_id);
       if (!url) {
-        Alert.alert('Vídeo indisponível', 'No modo demonstração os vídeos do professor não ficam disponíveis.');
+        void showDialog({ title: 'Vídeo indisponível', message: 'No modo demonstração os vídeos do professor não ficam disponíveis.', tone: 'info', icon: 'videocam-off-outline' });
         return;
       }
       if (m.kind === 'video') await WebBrowser.openBrowserAsync(url);
       else openViewer({ kind: 'image', uri: url, title: m.name });
     } catch {
-      Alert.alert('Não deu para abrir o vídeo', 'Confira a internet e tente de novo.');
+      void showDialog({ title: 'Não deu para abrir o vídeo', message: 'Confira a internet e tente de novo.', tone: 'warn', icon: 'cloud-offline-outline' });
     } finally {
       setOpening(false);
     }

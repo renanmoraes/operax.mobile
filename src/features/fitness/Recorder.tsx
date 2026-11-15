@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
+import { confirmDialog, showDialog } from '@/src/design-system/Dialog';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, BackHandler, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, Vibration, View } from 'react-native';
+import { BackHandler, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, Vibration, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -287,10 +288,12 @@ export function Recorder({
   }, [kmCount, say, sport.rate]);
 
   const discard = useCallback(() => {
-    Alert.alert('Descartar treino?', 'O que foi gravado agora não vai para o histórico.', [
-      { text: 'Voltar', style: 'cancel' },
-      { text: 'Descartar', style: 'destructive', onPress: () => { stopWatch(); dropDraft(); onClose(); } },
-    ]);
+    void confirmDialog({ title: 'Descartar treino?', message: 'O que foi gravado agora não vai para o histórico.', confirmLabel: 'Descartar treino', cancelLabel: 'Continuar treinando', tone: 'danger' }).then((ok) => {
+      if (!ok) return;
+      stopWatch();
+      dropDraft();
+      onClose();
+    });
   }, [onClose]);
 
   // Voltar do Android no meio do treino não sai sem querer.
@@ -398,7 +401,7 @@ export function Recorder({
     } catch (e) {
       void reportError(e, { context: 'salvar treino gravado' });
       go('review');
-      Alert.alert('Não deu para salvar', 'Tente de novo em instantes.');
+      void showDialog({ title: 'Não deu para salvar', message: 'Tente de novo em instantes. O treino continua guardado no celular.', tone: 'warn', icon: 'cloud-offline-outline' });
     }
   }
 

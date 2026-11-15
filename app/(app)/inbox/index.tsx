@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+import { showDialog } from '@/src/design-system/Dialog';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View, Alert } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, EmptyState, Screen, ScreenHeader, StatTile } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
@@ -98,7 +99,7 @@ function InboxScreen() {
       // A fila continua aberta; explica o motivo (outra pessoa assumiu, sem conexão…).
       const status = (e as { response?: { status?: number; data?: { message?: unknown } } })?.response;
       const msg = typeof status?.data?.message === 'string' && (status?.status ?? 500) < 500 ? status.data.message : 'Não foi possível assumir agora. Tente de novo.';
-      Alert.alert('Não deu para assumir', msg);
+      void showDialog({ title: 'Não deu para assumir', message: msg, tone: 'warn' });
       void query.refetch();
     } finally {
       setClaimingId(null);

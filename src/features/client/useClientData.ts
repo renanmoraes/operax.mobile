@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { showDialog } from '@/src/design-system/Dialog';
 import { useIsFocused } from 'expo-router';
 import { isAxiosError } from 'axios';
-import { Alert } from 'react-native';
 import * as api from './clientApi';
 import { clientDataMode } from './dataMode';
 import { useAuth } from '@/src/features/auth/AuthContext';
@@ -70,7 +70,7 @@ function useBookingMutation<A>(fn: (arg: A) => Promise<unknown>) {
   return useMutation({
     mutationFn: fn,
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.bookings }),
-    onError: (e) => Alert.alert('Não deu certo', actionErrorMessage(e)),
+    onError: (e) => void showDialog({ title: 'Não deu certo', message: actionErrorMessage(e), tone: 'warn' }),
   });
 }
 
@@ -93,7 +93,7 @@ export function useClassAction() {
       }
       return qc.invalidateQueries({ queryKey: keys.bookings });
     },
-    onError: (e) => Alert.alert('Não deu certo', actionErrorMessage(e)),
+    onError: (e) => void showDialog({ title: 'Não deu certo', message: actionErrorMessage(e), tone: 'warn' }),
   });
 }
 
