@@ -98,3 +98,31 @@ describe('buildResultBodies', () => {
     expect(r.every((x) => x.key === `${x.partIndex}:${x.itemIndex}`)).toBe(true);
   });
 });
+
+describe('recordes do treino', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { personalRecords } = require('../flatten') as typeof import('../flatten');
+  const superset = {
+    exerciseId: 'press',
+    name: 'Supino',
+    sets: [
+      { reps: 10, kg: 20, exerciseId: 'press', name: 'Supino' },
+      { reps: 10, kg: 80, exerciseId: 'row', name: 'Remada' },
+    ],
+  };
+
+  it('superset: cada série conta para o próprio exercício (sem recorde falso)', () => {
+    const logs = [[{ kg: 20, reps: 10 }, { kg: 80, reps: 10 }]];
+    expect(personalRecords([superset], logs, { press: [30], row: [90] })).toEqual([]);
+  });
+
+  it('melhorou só a remada: o recorde é da remada', () => {
+    const logs = [[{ kg: 20, reps: 10 }, { kg: 95, reps: 10 }]];
+    expect(personalRecords([superset], logs, { press: [30], row: [90] })).toEqual([{ name: 'Remada', kg: 95, diff: 5 }]);
+  });
+
+  it('exercício simples continua igual', () => {
+    const row = { exerciseId: 'squat', name: 'Agachamento', sets: [{ reps: 8, kg: 60 }, { reps: 8, kg: 60 }] };
+    expect(personalRecords([row], [[{ kg: 60, reps: 8 }, { kg: 65, reps: 6 }]], { squat: [62] })).toEqual([{ name: 'Agachamento', kg: 65, diff: 3 }]);
+  });
+});

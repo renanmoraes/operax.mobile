@@ -10,7 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Body, Button, Card, Field, Glow, IconButton, IconName, Muted, Rise, Screen, StatStrip } from '@/src/design-system/ui';
 import { colors, gradients, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
-import { buildResultBodies, flattenWorkout, totalSets } from '@/src/features/fitness/flatten';
+import { buildResultBodies, flattenWorkout, personalRecords, totalSets } from '@/src/features/fitness/flatten';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { queueResults } from '@/src/features/fitness/resultsQueue';
 import { isAxiosError } from 'axios';
@@ -57,13 +57,8 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
   const logs = session?.logs ?? rows.map(() => []);
   const setsDone = logs.reduce((n, l) => n + l.length, 0);
   const volume = Math.round(logs.reduce((n, l) => n + l.reduce((m, s) => m + s.kg * s.reps, 0), 0));
-  const records = rows
-    .map((r, i) => {
-      const top = Math.max(0, ...logs[i].map((s) => s.kg));
-      const prev = LOAD_HISTORY[r.exerciseId] ? Math.max(...LOAD_HISTORY[r.exerciseId]) : null;
-      return prev != null && top > prev ? { name: r.name, kg: top, diff: top - prev } : null;
-    })
-    .filter(Boolean) as { name: string; kg: number; diff: number }[];
+  // Por exercício: num superset cada série é do exercício do seu estágio.
+  const records = personalRecords(rows, logs, LOAD_HISTORY);
 
   const past = (history ?? []).filter((e) => e.title === workout.title).slice(0, 5).reverse();
   const bars = [...past.map((e) => ({ label: e.date.slice(8, 10) + '/' + e.date.slice(5, 7), v: e.volume_kg ?? 0 })), { label: t('sheet.today'), v: volume }];

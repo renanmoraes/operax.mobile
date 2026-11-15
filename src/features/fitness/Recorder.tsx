@@ -145,6 +145,8 @@ export function Recorder({
   const runningSince = useRef<number | null>(null);
   const banked = useRef(0);
   const sub = useRef<Location.LocationSubscription | null>(null);
+  /** Sobe a cada ligar/desligar do GPS: um ligar que termina depois de desligado (ou de sair da tela) é descartado. */
+  const watchGen = useRef(0);
   const [draft, setDraft] = useState<Draft | null>(null);
   const lastDraftAt = useRef(0);
 
@@ -228,7 +230,8 @@ export function Recorder({
   // GPS ligado desde a tela de largada: o sinal já está pronto quando a pessoa toca em Iniciar.
   const watch = useCallback(async () => {
     if (sub.current) return;
-    sub.current = await Location.watchPositionAsync({ accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 2 }, (loc) => {
+    const gen = ++watchGen.current;
+    const started = await Location.watchPositionAsync({ accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 2 }, (loc) => {
       setAccuracy(loc.coords.accuracy ?? null);
       setHere({ lat: loc.coords.latitude, lng: loc.coords.longitude });
       // Velocidade pelo deslocamento entre leituras: o GPS do celular nem sempre informa.
@@ -243,19 +246,31 @@ export function Recorder({
         addPoint(s, { at: loc.timestamp, lat: loc.coords.latitude, lng: loc.coords.longitude, altitude: loc.coords.altitude ?? null, accuracy: loc.coords.accuracy ?? null, speed: loc.coords.speed ?? null }, startedAt.current, sport.tracker),
       );
     });
+    // Saiu da tela (ou desligou) enquanto o GPS ligava: desliga na hora, senão ficaria ligado gastando bateria.
+    if (gen !== watchGen.current) {
+      started.remove();
+      return;
+    }
+    sub.current = started;
   }, [sport.tracker]);
   const stopWatch = () => {
+    watchGen.current += 1;
     sub.current?.remove();
     sub.current = null;
   };
 
   useEffect(() => {
     if (!sport.gps) return;
+    let gone = false;
     void Location.getForegroundPermissionsAsync().then((p) => {
+      if (gone) return; // saiu da tela antes de o sistema responder: não liga o GPS
       setPerm(p.granted ? 'granted' : p.canAskAgain ? 'unknown' : 'denied');
       if (p.granted) void watch().catch((e) => void reportError(e, { context: 'gps preparar' }));
     });
-    return stopWatch;
+    return () => {
+      gone = true;
+      stopWatch();
+    };
   }, [sport.gps, watch]);
 
   // Cronômetro: tempo de relógio menos as pausas.

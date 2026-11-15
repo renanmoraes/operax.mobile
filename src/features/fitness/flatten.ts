@@ -153,3 +153,32 @@ export function totalSets(rows: ExerciseRow[]) {
 export function estimateMinutes(rows: ExerciseRow[]) {
   return Math.round(rows.reduce((n, r) => n + r.sets.length * (45 + r.restSeconds), 0) / 60);
 }
+
+/**
+ * Recordes de carga do treino, por exercício. Num superset/circuito a linha junta exercícios diferentes:
+ * cada série registrada é do exercício do seu estágio (`row.sets[k]`), e só se compara com o histórico dele
+ * (senão 80 kg de remada viraria "recorde" do supino).
+ */
+export function personalRecords(
+  rows: Pick<ExerciseRow, 'exerciseId' | 'name' | 'sets'>[],
+  logs: { kg: number; reps: number }[][],
+  history: Record<string, number[] | undefined>,
+): { name: string; kg: number; diff: number }[] {
+  const top = new Map<string, { name: string; kg: number }>();
+  rows.forEach((row, i) => {
+    (logs[i] ?? []).forEach((set, k) => {
+      const stage = row.sets[k % Math.max(1, row.sets.length)];
+      const id = stage?.exerciseId ?? row.exerciseId;
+      const name = stage?.name ?? row.name;
+      const cur = top.get(id);
+      if (!cur || set.kg > cur.kg) top.set(id, { name, kg: set.kg });
+    });
+  });
+  const out: { name: string; kg: number; diff: number }[] = [];
+  for (const [id, best] of top) {
+    const past = history[id];
+    const prev = past && past.length ? Math.max(...past) : null;
+    if (prev != null && best.kg > prev) out.push({ name: best.name, kg: best.kg, diff: best.kg - prev });
+  }
+  return out;
+}
