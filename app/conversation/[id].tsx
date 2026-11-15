@@ -252,7 +252,9 @@ function ConversationScreen() {
   const canSend = can('sendMessage');
   const canCompose = canSend && conversation.within24h && ownership === 'mine';
   const composeBlock = !conversation.within24h ? t('conversation.blocked24h') : ownership !== 'mine' ? t('conversation.blockedClaim') : undefined;
-  const ownershipActions = { claim: can('claim'), release: can('release'), transfer: can('transfer'), close: can('close') };
+  // Transferir abre a folha com atendente e/ou fila: basta poder uma das duas (fila: mandar para fila + ver filas).
+  const canTransfer = can('transfer') || (can('transferQueue') && can('queuesRead'));
+  const ownershipActions = { claim: can('claim'), release: can('release'), transfer: canTransfer, close: can('close') };
   const hasOwnershipAction = Object.values(ownershipActions).some(Boolean) || (!!conversation.contactId && can('contacts'));
 
   const sendPix = async (pix: PixData & { save?: boolean }) => {
