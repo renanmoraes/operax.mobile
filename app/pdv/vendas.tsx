@@ -15,6 +15,7 @@ import { RequirePermission, useCan } from '@/src/features/auth/useCan';
 import { formatMoney, quantityText, shiftMonth, todayYmd } from '@/src/features/pos/checkout';
 import { METHOD_ICON, Pills, SumRow } from '@/src/features/pos/parts';
 import { usePosClient, type PosClient } from '@/src/features/pos/posClient';
+import { fetchWholeDay } from '@/src/features/pos/salesDay';
 import { primeiroVencimentoSugerido } from '@/src/features/pos/primeiroVencimento';
 import { ReceiptActions } from '@/src/features/pos/ReceiptActions';
 import { locale } from '@/src/i18n';
@@ -48,7 +49,7 @@ function PosSalesScreen() {
   const [day, setDay] = useState(today);
   const [open, setOpen] = useState<PosSaleRow | null>(null);
 
-  const sales = useQuery({ queryKey: ['pos', 'sales', mode, day], queryFn: () => client.sales({ from: day, to: day, page: 1, page_size: 100 }) });
+  const sales = useQuery({ queryKey: ['pos', 'sales', mode, day], queryFn: () => fetchWholeDay(client, day) });
   const rows = sales.data?.rows ?? [];
   const valid = rows.filter((r) => r.status !== 'voided');
   const sum = valid.reduce((s, r) => s + r.amount, 0);
@@ -194,7 +195,12 @@ function SaleDetail({ client, sale, onClose, onMessage }: { client: PosClient; s
           </View>
         </ScrollView>
       ) : panel === 'fix' ? (
-        <FixPayment client={client} sale={sale} snapshot={payment.data ?? null} loading={payment.isPending} onBack={() => setPanel('main')} onDone={() => done(t('sales.fixed'))} />
+        // O formulário só monta com a forma atual em mãos: os campos nascem dela e não se sincronizam depois.
+        payment.isPending ? (
+          <Loading />
+        ) : (
+          <FixPayment client={client} sale={sale} snapshot={payment.data ?? null} onBack={() => setPanel('main')} onDone={() => done(t('sales.fixed'))} />
+        )
       ) : (
         <VoidSale client={client} sale={sale} number={number} onBack={() => setPanel('main')} onDone={() => done(t('sales.voided_ok'))} />
       )}
@@ -206,14 +212,12 @@ function FixPayment({
   client,
   sale,
   snapshot,
-  loading,
   onBack,
   onDone,
 }: {
   client: PosClient;
   sale: PosSaleRow;
   snapshot: Awaited<ReturnType<PosClient['salePayment']>> | null;
-  loading: boolean;
   onBack: () => void;
   onDone: () => void;
 }) {
@@ -229,7 +233,6 @@ function FixPayment({
       }),
     onSuccess: onDone,
   });
-  if (loading) return <Loading />;
   if (snapshot && !snapshot.editable) {
     return (
       <View style={{ gap: 12 }}>
