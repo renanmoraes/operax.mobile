@@ -10,7 +10,16 @@ import type { FreeActivityBody, RecordResultBody } from './types';
  */
 
 type Keyed = { idempotency_key: string };
-export type QueueSender<T extends Keyed = RecordResultBody> = (body: T) => Promise<{ ok: true } | { ok: false; status: number }>;
+/** `retryAfterMs`: o servidor pediu para esperar (`Retry-After`) antes de tentar de novo. */
+export type QueueSender<T extends Keyed = RecordResultBody> = (body: T) => Promise<{ ok: true } | { ok: false; status: number; retryAfterMs?: number }>;
+
+/**
+ * 4xx que é recusa de verdade (dado inválido, sem acesso, já existe). Não são: 401 (sessão a renovar),
+ * 408 (demorou), 425 e 429 (muitas tentativas agora): esses ficam guardados e saem numa próxima vez.
+ */
+export function isPermanentRejection(status: number): boolean {
+  return status >= 400 && status < 500 && ![401, 408, 425, 429].includes(status);
+}
 
 const KEY = 'operax_fitness_results_queue';
 /** Treinos livres gravados sem internet (mesmas regras da fila de resultados). */
@@ -21,22 +30,26 @@ const ACTIVITIES_KEY = 'operax_fitness_activities_queue';
  * depois, em silêncio): quem chama avisa a pessoa e mantém o que ela digitou para corrigir.
  */
 export function isRejected(e: unknown): boolean {
-  const status = isAxiosError(e) ? (e.response?.status ?? 0) : 0;
-  return status >= 400 && status < 500;
+  return isPermanentRejection(isAxiosError(e) ? (e.response?.status ?? 0) : 0);
 }
 
 export function enqueue<T extends Keyed>(queue: T[], body: T): T[] {
   return queue.some((b) => b.idempotency_key === body.idempotency_key) ? queue : [...queue, body];
 }
 
+/** Até quando o servidor pediu para esperar (429 com `Retry-After`): antes disso a fila não reenvia. */
+let waitUntil = 0;
+
 export async function flushQueue<T extends Keyed>(queue: T[], send: QueueSender<T>): Promise<T[]> {
   const rest = [...queue];
   while (rest.length) {
     const res = await send(rest[0]);
-    if (res.ok || (res.status >= 400 && res.status < 500)) {
+    if (res.ok || isPermanentRejection(res.status)) {
       rest.shift();
       continue;
     }
+    // Sem internet, 5xx ou "tente mais tarde": para aqui e guarda o resto (inclusive este) para a próxima vez.
+    if (res.retryAfterMs && res.retryAfterMs > 0) waitUntil = Date.now() + Math.min(res.retryAfterMs, 15 * 60_000);
     break;
   }
   return rest;
@@ -96,7 +109,7 @@ export async function flushAll(senders: { result: QueueSender<RecordResultBody>;
   // O envio fica preso à conta que começou: se a pessoa trocar de conta no meio, para antes do próximo
   // item (o login já é outro) e só mexe na fila de quem começou.
   const who = fitnessOwner();
-  if (flushing || !who) return false;
+  if (flushing || !who || Date.now() < waitUntil) return false;
   flushing = true;
   try {
     let changed = false;

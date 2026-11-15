@@ -144,3 +144,19 @@ describe('chave de envio da gravação', () => {
     expect(recordingKey('livre.run', started)).not.toBe(recordingKey('livre.run', started + 1));
   });
 });
+
+describe('servidor pede para esperar', () => {
+  it('429 guarda o treino e os seguintes, sem mandar o próximo', async () => {
+    const send = jest.fn(async () => ({ ok: false as const, status: 429 }));
+    const rest = await flushQueue([body('r1'), body('r2')], send);
+    expect(rest.map((b) => b.idempotency_key)).toEqual(['r1', 'r2']);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it('401 e 408 também ficam; 422 (dado inválido) sai da fila', async () => {
+    for (const status of [401, 408, 425]) {
+      expect(await flushQueue([body('s1')], async () => ({ ok: false as const, status }))).toHaveLength(1);
+    }
+    expect(await flushQueue([body('s2')], async () => ({ ok: false as const, status: 422 }))).toHaveLength(0);
+  });
+});

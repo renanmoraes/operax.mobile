@@ -7,20 +7,29 @@ import { isAxiosError } from 'axios';
 import { flushAll } from './resultsQueue';
 import type { BodyCheckin, FreeActivityBody, RecordResultBody } from './types';
 
-/** Status HTTP para a fila: 4xx descarta (o servidor recusou ou já tem), sem resposta ou 5xx tenta depois. */
+/** Status HTTP para a fila: recusa de verdade (4xx, menos 401/408/425/429) descarta; o resto tenta depois. */
 const statusOf = (e: unknown) => (isAxiosError(e) ? (e.response?.status ?? 0) : 0);
+/** `Retry-After` do servidor (segundos ou data), em ms; sem ele, nada. */
+function retryAfterOf(e: unknown): number | undefined {
+  const raw = isAxiosError(e) ? (e.response?.headers?.['retry-after'] as string | undefined) : undefined;
+  if (!raw) return undefined;
+  const secs = Number(raw);
+  if (Number.isFinite(secs)) return secs * 1000;
+  const at = Date.parse(raw);
+  return Number.isFinite(at) ? Math.max(0, at - Date.now()) : undefined;
+}
 
 /** Reenvia resultados guardados sem conexão: ao abrir o app, ao voltar ao primeiro plano, quando a internet volta e a cada minuto. */
 export function useFlushResultsQueue() {
   const qc = useQueryClient();
   useEffect(() => {
-    // 4xx vai com o status: a fila descarta o que o servidor recusou em vez de travar nele para sempre.
+    // O status vai junto: a fila descarta o que o servidor recusou de vez e guarda o que é para tentar depois.
     const sender = <T,>(post: (b: T) => Promise<unknown>) => async (body: T) => {
       try {
         await post(body);
         return { ok: true } as const;
       } catch (e) {
-        return { ok: false, status: statusOf(e) } as const;
+        return { ok: false, status: statusOf(e), retryAfterMs: retryAfterOf(e) } as const;
       }
     };
     const run = async () => {
