@@ -43,3 +43,6 @@ yarn-error.*
 
 # nested accidental scaffold (has own node_modules)
 /operax/
+
+# Chaves de conta de serviço do Google (FCM etc.): nunca no git. Sobem para o EAS com `eas credentials`.
+*service-account*.json
