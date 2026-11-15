@@ -5,7 +5,10 @@ Regras combinadas com o dono (2026-11-14):
 
 - Só online.
 - O pagamento é só registrado: o app não cobra nem fala com maquininha.
-- O comprovante vai ao cliente por WhatsApp ou e-mail (sem impressora).
+- O comprovante vai ao cliente por WhatsApp ou e-mail (sem impressora), por dois caminhos:
+  - **Baixar/compartilhar o PDF:** o operador decide o que fazer (WhatsApp dele, e-mail, salvar).
+  - **Enviar pela empresa:** pelo número de WhatsApp e pelo e-mail da empresa, guardado na conversa do cliente.
+    Precisa de rota nova no servidor; fora da janela de 24 h, de modelo de mensagem aprovado pela Meta.
 - Cadastro de cliente em passos, mostrando só o que cada venda exige.
 
 ## Fase 1: venda completa no celular
@@ -46,7 +49,6 @@ Regras combinadas com o dono (2026-11-14):
 - **Crediário:** receber parcelas (uma ou várias), quitar com desconto, cancelar e restaurar, comprovante de recebimento.
 - **Relatórios:** resumo (bruto, desconto, líquido, ticket médio), por forma de pagamento, ofertas, quem está devendo, caixas do período.
 - **Carnê Sicredi** depois de vender plano.
-- **Comprovante enviado pelo Operax:** número e e-mail da empresa, guardado na conversa. Precisa de rota nova no servidor e de modelo de mensagem do WhatsApp.
 
 ## Fica no web
 

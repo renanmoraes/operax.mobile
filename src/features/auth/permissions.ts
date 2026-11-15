@@ -40,6 +40,16 @@ export const PERMS = {
   teamPresence: 'users:view_availability',
   /** Usar a IA (resumo, sugestões, melhorar o texto). Também precisa do app de IA na empresa. */
   aiUse: 'ai:use',
+  // PDV (venda em campo)
+  posSell: 'pos:sell',
+  posRead: 'pos:read',
+  posDiscountLine: 'pos:discount_line',
+  posDiscountOrder: 'pos:discount_order',
+  posPriceOverride: 'pos:price_override',
+  posVoid: 'pos:void',
+  posPaymentEdit: 'pos:payment_edit',
+  posShiftsOpen: 'pos:shifts_open',
+  contactsCreate: 'contacts:create',
   close: 'conversations:close',
   sendMessage: 'conversations:send_message',
   sendMedia: 'conversations:send_media',
