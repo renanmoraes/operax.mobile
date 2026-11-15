@@ -9,5 +9,6 @@ import team from './team';
 import staff from './staff';
 import fitness from './fitness';
 import attendance from './attendance';
+import pos from './pos';
 
-export default { common, nav, settings, auth, client, inbox, agenda, team, staff, fitness, attendance };
+export default { common, nav, settings, auth, client, inbox, agenda, team, staff, fitness, attendance, pos };

@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -10,8 +11,10 @@ import { initialsOf } from '@/src/features/inbox/ConversationCard';
 import { TeamChatCard } from '@/src/features/team-chat/TeamChatCard';
 import { useCan } from '@/src/features/auth/useCan';
 import type { PermKey } from '@/src/features/auth/permissions';
+import { getActiveApps } from '@/src/shared/api/attendance.api';
 
-const WORK: { id: 'patients' | 'kanban' | 'history' | 'quickReplies' | 'templates'; href: string; icon: IconName; perm: PermKey }[] = [
+const WORK: { id: 'pos' | 'patients' | 'kanban' | 'history' | 'quickReplies' | 'templates'; href: string; icon: IconName; perm: PermKey; app?: string }[] = [
+  { id: 'pos', href: '/pdv', icon: 'storefront-outline', perm: 'posSell', app: 'pos' },
   { id: 'patients', href: '/pacientes', icon: 'people-outline', perm: 'contacts' },
   { id: 'kanban', href: '/kanban', icon: 'grid-outline', perm: 'kanban' },
   { id: 'history', href: '/history', icon: 'time-outline', perm: 'history' },
@@ -29,7 +32,9 @@ export default function MoreScreen() {
   const insets = useSafeAreaInsets();
   const { user, mode } = useAuth();
   const can = useCan();
-  const work = WORK.filter((item) => can(item.perm));
+  // Item de app (o PDV) só aparece com o app instalado na empresa; na demonstração aparece sempre.
+  const apps = useQuery({ queryKey: ['active-apps'], enabled: mode === 'live', staleTime: 10 * 60_000, queryFn: getActiveApps });
+  const work = WORK.filter((item) => can(item.perm) && (!item.app || mode !== 'live' || (apps.data ?? []).includes(item.app)));
 
   return (
     <Screen>

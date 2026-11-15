@@ -105,6 +105,8 @@ export default function RootLayout() {
             <Stack.Screen name="pacientes/index" options={{ headerShown: false }} />
             <Stack.Screen name="equipe/index" options={{ headerShown: false }} />
             <Stack.Screen name="equipe/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="pdv/index" options={{ headerShown: false }} />
+            <Stack.Screen name="pdv/vendas" options={{ headerShown: false }} />
             <Stack.Screen name="visualizar" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade' }} />
           </Stack>
           <IncomingBanner />

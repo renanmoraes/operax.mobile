@@ -11,6 +11,7 @@ const staff = {
     work: 'Trabalho',
     account: 'Conta',
     items: {
+      pos: { title: 'Venda (PDV)', hint: 'Leia o código, pese e receba' },
       patients: { title: 'Pacientes', hint: 'Pacientes e clientes da empresa' },
       kanban: { title: 'Kanban', hint: 'Pipeline comercial' },
       history: { title: 'Histórico', hint: 'Atendimentos encerrados' },

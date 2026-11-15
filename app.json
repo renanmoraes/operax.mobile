@@ -15,7 +15,7 @@
           "remote-notification"
         ],
         "NSPhotoLibraryUsageDescription": "O Operax precisa acessar suas fotos para enviar imagens no atendimento.",
-        "NSCameraUsageDescription": "O Operax precisa da câmera para capturar fotos e vídeos do atendimento.",
+        "NSCameraUsageDescription": "O Operax usa a câmera para capturar fotos e vídeos do atendimento e para ler o código de barras dos produtos na venda.",
         "NSMicrophoneUsageDescription": "O Operax precisa do microfone para gravar áudios do atendimento quando disponível.",
         "NSPhotoLibraryAddUsageDescription": "O Operax pode salvar mídias recebidas na sua galeria quando você solicitar.",
         "ITSAppUsesNonExemptEncryption": false,
@@ -83,6 +83,13 @@
         }
       ],
       "expo-image-picker",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "O Operax usa a câmera para capturar fotos e vídeos do atendimento e para ler o código de barras dos produtos na venda.",
+          "recordAudioAndroid": false
+        }
+      ],
       "expo-document-picker",
       [
         "expo-audio",

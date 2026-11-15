@@ -76,14 +76,14 @@ export function variantFromLabelQr(raw: string): string | null {
   }
 }
 
-export type PosContact = { id: string; name: string; phone?: string | null; document_number?: string | null };
+export type PosContact = { id: string; name: string; phone?: string | null; document_number?: string | null; email?: string | null };
 
 export async function searchPosContacts(q: string): Promise<PosContact[]> {
   if (!q.trim()) return [];
-  const { data } = await api.get<{ data: { id: string; name: string | null; phone_e164?: string | null; document_number?: string | null }[] }>('/api/contacts', {
+  const { data } = await api.get<{ data: { id: string; name: string | null; phone_e164?: string | null; document_number?: string | null; email?: string | null }[] }>('/api/contacts', {
     params: { search: q, limit: 8 },
   });
-  return (data.data ?? []).map((c) => ({ id: c.id, name: c.name ?? '', phone: c.phone_e164 ?? null, document_number: c.document_number ?? null }));
+  return (data.data ?? []).map((c) => ({ id: c.id, name: c.name ?? '', phone: c.phone_e164 ?? null, document_number: c.document_number ?? null, email: c.email ?? null }));
 }
 
 export async function fetchContactCredit(contactId: string): Promise<{ balance_cents: number }> {
@@ -185,6 +185,76 @@ export type PosPaymentSnapshot = {
 
 export async function fetchPosSalePayment(saleId: string): Promise<PosPaymentSnapshot> {
   const { data } = await api.get<PosPaymentSnapshot>(`/api/apps/pos/sales/${saleId}/payment`);
+  return data;
+}
+
+/** Mensagem do servidor (a validação do Nest manda lista), ou nula para a tela usar a sua. */
+export function apiMessage(e: unknown): string | null {
+  const m = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
+  if (Array.isArray(m)) return m.filter((x) => typeof x === 'string').join(' ') || null;
+  return typeof m === 'string' && m.trim() ? m : null;
+}
+
+export function apiStatus(e: unknown): number | null {
+  return (e as { response?: { status?: number } })?.response?.status ?? null;
+}
+
+// ---------- Cadastro de cliente na venda ----------
+
+export type NewContactInput = {
+  name: string;
+  /** Só dígitos com DDI ("5511999990000"); o servidor normaliza. */
+  phone: string;
+  email?: string;
+  document_number?: string;
+  birth_date?: string;
+  sex?: 'female' | 'male';
+  address_zip?: string;
+  address_street?: string;
+  address_number?: string;
+  address_complement?: string;
+  address_district?: string;
+  address_city?: string;
+  address_state?: string;
+};
+
+export async function createPosContact(input: NewContactInput): Promise<PosContact> {
+  const { phone, ...rest } = input;
+  const body = Object.fromEntries(Object.entries({ ...rest, wa_id: phone, phone_e164: phone, source: 'pos', lifecycle_stage: 'customer' }).filter(([, v]) => v !== undefined && v !== ''));
+  const { data } = await api.post('/api/contacts', body);
+  return { id: data.id, name: data.name ?? input.name, phone: data.phone_e164 ?? phone, document_number: data.document_number ?? null };
+}
+
+/** Foto do documento: multipart com o arquivo da câmera/galeria. */
+export async function uploadContactDocument(contactId: string, file: { uri: string; name: string; type: string }, description?: string) {
+  const form = new FormData();
+  form.append('file', file as unknown as Blob);
+  const { data } = await api.post(`/api/contacts/${contactId}/documents/upload`, form, {
+    params: description ? { description } : undefined,
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+}
+
+export async function recordContactConsent(contactId: string, input: { consent_type: 'marketing' | 'service' | 'all'; status: 'opted_in' | 'opted_out'; channel?: 'whatsapp' | 'email'; source_description?: string }) {
+  const { data } = await api.post(`/api/contacts/${contactId}/consents`, input);
+  return data;
+}
+
+// ---------- Comprovante pela empresa ----------
+
+export type ReceiptChannel = 'whatsapp' | 'email';
+
+export type ReceiptSendResult = {
+  channel: ReceiptChannel;
+  to: string;
+  /** `session`: mensagem normal (janela de 24 h aberta). `template`: modelo aprovado (janela fechada). */
+  via: 'session' | 'template' | 'email';
+};
+
+/** Manda o comprovante pelo WhatsApp ou pelo e-mail da empresa, para o cliente da venda (ou outro destino). */
+export async function sendPosReceipt(saleId: string, input: { channel: ReceiptChannel; to?: string }): Promise<ReceiptSendResult> {
+  const { data } = await api.post<ReceiptSendResult>(`/api/apps/pos/sales/${saleId}/receipt/send`, input);
   return data;
 }
 

@@ -43,6 +43,19 @@ Regras combinadas com o dono (2026-11-14):
 3. **Dados extras:** endereço e campos personalizados de contato da empresa.
 4. **Consentimento (LGPD):** `POST /contacts/:id/consents`.
 
+### Onde está no app
+
+- Telas: `app/pdv/index.tsx` (venda) e `app/pdv/vendas.tsx` (vendas do dia). Entrada em **Mais › Venda (PDV)**,
+  só com o app `pos` instalado e `pos:sell`.
+- Lógica: `src/features/pos/cart.ts` (cópia do web), `checkout.ts` (receber, troco, teclado), `signup.ts`
+  (CPF, telefone, datas), `receiptHtml.ts` (PDF). Testes em `src/features/pos/__tests__`.
+- Folhas: `WeighSheet` (peso/valor), `DiscountSheet`, `CustomerSheet` (busca + cadastro em passos),
+  `CheckoutSheet`, `ReceiptActions` (PDF e envio pela empresa), `ScannerModal` (câmera, leitura seguida).
+- `posClient.ts` escolhe entre o servidor e a demonstração (produtos de exemplo, vendas na memória).
+- Envio pela empresa: `POST /apps/pos/sales/:id/receipt/send` `{channel: 'whatsapp'|'email', to?}`. Resposta
+  `{channel, to, via: 'session'|'template'|'email'}`; 422 com `code: 'template_required'` quando a janela de
+  24 h está fechada e não há modelo aprovado.
+
 ## Fase 2
 
 - **Caixa completo:** sangria e suprimento, fechar com contagem, corrigir abertura, desfazer lançamento.

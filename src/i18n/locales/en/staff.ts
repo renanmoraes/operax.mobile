@@ -13,6 +13,7 @@ const staff: Shape<typeof pt> = {
     work: 'Work',
     account: 'Account',
     items: {
+      pos: { title: 'Sale (POS)', hint: 'Scan, weigh and take payment' },
       patients: { title: 'Patients', hint: 'Patients and clients of the company' },
       kanban: { title: 'Kanban', hint: 'Sales pipeline' },
       history: { title: 'History', hint: 'Closed conversations' },
