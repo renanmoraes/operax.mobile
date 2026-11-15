@@ -11,6 +11,17 @@ Base: `https://api.operax.digital/api`
 - `POST /auth/logout`
 - `GET /auth/me`
 
+## Auth cliente (proposto — ver seção 7 da spec de auth)
+
+- `POST /auth/client/login` (+ tokens)
+- `POST /auth/client/otp/request`
+- `POST /auth/client/otp/verify` (+ tokens)
+- `GET /auth/client/me`
+- `POST /auth/client/switch-tenant` (+ tokens novos, escopados à empresa escolhida)
+
+Nenhum desses existe ainda no backend — contrato proposto em
+`docs/superpowers/specs/2026-11-13-auth-staff-cliente-design.md`.
+
 ## Inbox
 
 - `GET /conversations`, `/:id`, `/:id/messages`

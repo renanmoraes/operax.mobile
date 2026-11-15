@@ -2,18 +2,34 @@ import { api } from './client';
 import { clearTokens, setTokens } from './token-store';
 import { Platform } from 'react-native';
 import { registerForPushNotificationsAsync } from '@/src/features/notifications/push';
+import { appVersionInfo } from '@/src/shared/updates/appVersion';
 
-export type AuthUser = {
+export type StaffUser = {
+  kind: 'staff';
   id: string;
   name: string;
   email: string;
   tenant_id?: string;
   role_code?: string;
+  permissions?: string[];
   notification_prefs?: Record<string, unknown>;
 };
 
+export type ClientUser = {
+  kind: 'client';
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  active_tenant_id: string | null;
+  /** Empresas do cliente. No portal real, `tenant_id` é o `access_id` daquela empresa. */
+  memberships: { tenant_id: string; tenant_name: string; tenant_slug?: string; logo_url?: string | null }[];
+};
+
+export type AuthUser = StaffUser | ClientUser;
+
 type TokenBundle = {
-  user: AuthUser;
+  user: StaffUser;
   access_token?: string;
   refresh_token?: string;
 };
@@ -32,6 +48,16 @@ type LoginResult =
       available_methods?: string[];
     };
 
+/**
+ * O backend não devolve `kind` (é um discriminante só do app). Essas duas
+ * funções marcam o objeto de usuário com o `kind` certo assim que a resposta
+ * chega — é o único lugar que faz isso, pra não esquecer em nenhuma chamada.
+ */
+function asStaffUser(raw: unknown): StaffUser {
+  return { ...(raw as object), kind: 'staff' } as StaffUser;
+}
+
+
 export async function loginApi(input: {
   email: string;
   password: string;
@@ -43,9 +69,12 @@ export async function loginApi(input: {
     company_code: input.company_code.toUpperCase(),
   });
   if (data?.access_token && data?.refresh_token) {
-    await setTokens(data.access_token, data.refresh_token);
+    await setTokens(data.access_token, data.refresh_token, 'staff');
   }
-  return data as LoginResult;
+  if (data?.user) {
+    return { ...data, user: asStaffUser(data.user) } as LoginResult;
+  }
+  return data as LoginResult; // status: mfa_required | mfa_setup_required
 }
 
 export async function verifyMfaApi(input: {
@@ -54,14 +83,14 @@ export async function verifyMfaApi(input: {
 }): Promise<TokenBundle> {
   const { data } = await api.post('/api/auth/mfa/verify', input);
   if (data?.access_token && data?.refresh_token) {
-    await setTokens(data.access_token, data.refresh_token);
+    await setTokens(data.access_token, data.refresh_token, 'staff');
   }
-  return data as TokenBundle;
+  return { ...data, user: asStaffUser(data.user) } as TokenBundle;
 }
 
-export async function getMeApi(): Promise<AuthUser> {
+export async function getMeApi(): Promise<StaffUser> {
   const { data } = await api.get('/api/auth/me');
-  return data as AuthUser;
+  return asStaffUser(data);
 }
 
 export async function logoutApi(): Promise<void> {
@@ -78,6 +107,7 @@ export async function registerDevicePushToken(): Promise<void> {
   await api.post('/api/auth/device-tokens', {
     token: result.token,
     platform: Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'unknown',
-    app_version: '0.1.0',
+    app_version: appVersionInfo().version,
   });
 }
+

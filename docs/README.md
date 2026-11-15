@@ -19,6 +19,7 @@ Documentação de kickoff do app nativo (iOS/Android). Fonte canônica de produt
 | [10-seguranca-compliance.md](10-seguranca-compliance.md) | Segurança |
 | [11-push-catalogo.md](11-push-catalogo.md) | Push defaults ON (dia zero) |
 | [12-api-gaps.md](12-api-gaps.md) | Gaps do probe automático |
+| [13-saude-do-celular.md](13-saude-do-celular.md) | Apple Saúde e Health Connect (Galaxy): o que lê e o contrato de envio |
 | [adr/](adr/) | ADRs |
 
 ## Estado atual

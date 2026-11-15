@@ -1,0 +1,86 @@
+/** Textos em português (base). As chaves valem para todos os idiomas. */
+const staff = {
+  common: {
+    user: 'Usuário',
+    online: 'Online',
+    demo: 'Demo',
+  },
+  more: {
+    title: 'Mais',
+    team: 'Equipe',
+    work: 'Trabalho',
+    account: 'Conta',
+    items: {
+      pos: { title: 'Venda (PDV)', hint: 'Leia o código, pese e receba' },
+      patients: { title: 'Pacientes', hint: 'Pacientes e clientes da empresa' },
+      kanban: { title: 'Kanban', hint: 'Pipeline comercial' },
+      history: { title: 'Histórico', hint: 'Atendimentos encerrados' },
+      quickReplies: { title: 'Respostas rápidas', hint: 'Atalhos de mensagem' },
+      templates: { title: 'Templates Meta', hint: 'Fora da janela de 24 h' },
+      push: { title: 'Notificações push', hint: 'Categorias e preferências' },
+      profile: { title: 'Perfil', hint: 'Conta, push e sessão' },
+    },
+  },
+  notifications: {
+    title: 'Avisos',
+    prefs: 'Preferências de notificação',
+    empty: 'Nenhum aviso.',
+  },
+  prefs: {
+    title: 'Notificações',
+    subtitle: 'Tudo ligado por padrão, inclusive com a tela bloqueada',
+    saved: 'Preferências salvas',
+    saveFailed: 'Falha ao salvar',
+    devicePermission: 'Permissão do celular',
+    permission: {
+      granted: 'Ativada',
+      blocked: 'Bloqueada nos ajustes',
+      unavailable: 'Disponível no app do celular',
+      notYet: 'Ainda não ativada',
+    },
+    settings: 'Ajustes',
+    enable: 'Ativar',
+    push: { title: 'Push no aparelho', subtitle: 'Liga ou desliga todas as categorias' },
+    sound: { title: 'Som no app', subtitle: 'Quando o app estiver aberto' },
+    categories: 'Categorias',
+    savePrefs: 'Salvar preferências',
+    demoNote: 'No modo demonstração as preferências ficam só neste aparelho.',
+  },
+  permissions: {
+    title: 'Permissões do aparelho',
+    onboardingTitle: 'Deixe o app pronto para o atendimento',
+    onboardingSub: 'Libere o que for usar. Dá para mudar depois em Perfil › Permissões do aparelho.',
+    sub: 'Se você negou alguma permissão, libere aqui ou nos ajustes do celular.',
+    enable: 'Ativar',
+    allow: 'Permitir',
+    notNow: 'Agora não',
+    notifications: {
+      title: 'Notificações',
+      body: 'Mensagem nova de cliente, atendimento transferido para você, chat da equipe, agenda e avisos do Operax.',
+    },
+    camera: {
+      title: 'Câmera e fotos',
+      body: 'Para mandar fotos, vídeos e documentos no atendimento e no chat da equipe.',
+    },
+    microphone: {
+      title: 'Microfone',
+      body: 'Para gravar e mandar áudios no atendimento e no chat da equipe.',
+    },
+  },
+  push: {
+    queue_new: { label: 'Novo atendimento na fila', description: 'Conversa entrou na fila do seu setor e precisa ser assumida.' },
+    claimed_message: { label: 'Nova mensagem no atendimento', description: 'Cliente falou em conversa que você assumiu.' },
+    ownership_expiring: { label: 'Atendimento perto do vencimento', description: 'Sua posse está perto de expirar por inatividade.' },
+    assignment_expired: { label: 'Posse expirada', description: 'A conversa voltou à fila porque o tempo de posse acabou.' },
+    chat_message: { label: 'Mensagem no chat interno', description: 'Nova mensagem em canal interno da equipe.' },
+    chat_mention: { label: 'Marcação no chat interno', description: 'Alguém mencionou você (@) no chat interno.' },
+    booking_new: { label: 'Novo agendamento', description: 'Compromisso criado na agenda.' },
+    booking_reschedule: { label: 'Reagendamento', description: 'Horário alterado ou reagendamento pendente.' },
+    reminder: { label: 'Lembretes', description: 'Lembretes de agenda, follow-up e tarefas.' },
+    transfer: { label: 'Transferência de conversa', description: 'Conversa transferida para você ou para sua fila.' },
+    urgency: { label: 'Urgência no atendimento', description: 'Escalonamento crítico de conversa ativa.' },
+    kanban_followup: { label: 'Follow-up do funil', description: 'Card com follow-up vencendo ou ganho/perda relevante.' },
+  },
+} as const;
+
+export default staff;

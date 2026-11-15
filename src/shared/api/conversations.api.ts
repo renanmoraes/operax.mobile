@@ -1,4 +1,5 @@
 import { api } from './client';
+import { appendUpload } from './upload';
 
 export type ApiConversation = {
   id: string;
@@ -19,6 +20,18 @@ export type ApiConversation = {
   };
   preview?: string | null;
   last_message_preview?: string | null;
+  /** Número/conexão por onde a conversa chegou (empresa com vários números). */
+  connection_id?: string | null;
+  /** Número pelo qual a conversa responde (conversa → fila → principal); só no detalhe. */
+  outbound_connection_id?: string | null;
+  /** Resumo e leitura da IA (só com o app de IA da empresa). */
+  ai_summary?: string | null;
+  ai_summary_status?: 'pending' | 'ready' | 'skipped' | 'failed' | null;
+  ai_summary_at?: string | null;
+  ai_summary_rating?: 'up' | 'down' | null;
+  ai_sentiment?: string | null;
+  ai_sentiment_score?: number | null;
+  ai_primary_intent?: string | null;
 };
 
 export type ApiMessage = {
@@ -30,6 +43,13 @@ export type ApiMessage = {
   status?: string;
   created_at?: string;
   media_id?: string | null;
+  message_type?: string;
+  /** Campos atuais da API (`conversation_messages`); `body`/`type` ficam para respostas antigas. */
+  body_text?: string | null;
+  media_url?: string | null;
+  media_mime?: string | null;
+  template_name?: string | null;
+  payload_json?: ({ pix?: { key: string; key_type: string; holder_name: string }; caption?: string; filename?: string } & Record<string, unknown>) | null;
 };
 
 export async function listConversations(params?: Record<string, unknown>) {
@@ -47,9 +67,13 @@ export async function getConversation(id: string) {
   return data as ApiConversation;
 }
 
+/**
+ * Linha do tempo do contato (mesma rota do Operax web): as mensagens mais recentes, em ordem.
+ * `/messages` só pagina para trás a partir de `before_id` e, sem ele, volta vazio.
+ */
 export async function getConversationMessages(id: string, limit = 50) {
-  const { data } = await api.get(`/api/conversations/${id}/messages`, {
-    params: { limit },
+  const { data } = await api.get(`/api/conversations/${id}/timeline`, {
+    params: { limit: Math.min(limit, 100) },
   });
   // API pode devolver { messages } ou array
   if (Array.isArray(data)) return { messages: data as ApiMessage[], hasMore: false };
@@ -98,11 +122,7 @@ export async function sendMediaMessage(
   caption?: string,
 ) {
   const form = new FormData();
-  form.append('file', {
-    uri: file.uri,
-    name: file.name,
-    type: file.type,
-  } as unknown as Blob);
+  await appendUpload(form, 'file', file);
   if (caption) form.append('caption', caption);
   const { data } = await api.post(`/api/conversations/${conversationId}/messages/media`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },

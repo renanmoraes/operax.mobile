@@ -14,16 +14,29 @@ export type Conversation = {
   segment: ConvSegment;
   ownership: 'mine' | 'queue' | 'other' | 'closed';
   within24h: boolean;
+  /** Número/conexão por onde a conversa chegou (empresa com vários números). */
+  connectionId?: string | null;
 };
 
 export type Message = {
   id: string;
   conversationId: string;
   direction: 'in' | 'out';
-  type: 'text' | 'image' | 'audio' | 'video' | 'document';
+  type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'pix';
   body: string;
   at: string;
   status?: 'sent' | 'delivered' | 'read';
+  /** Legenda real de foto/vídeo/documento (o `body` pode trazer só o nome do arquivo). */
+  caption?: string;
+  /** Nome do arquivo, quando for documento. */
+  fileName?: string;
+  /** Id da mídia no servidor (áudio/foto/documento real); o link assinado é buscado ao tocar/abrir. */
+  mediaId?: string;
+  /** Arquivo local do áudio (gravado agora, antes de a API devolver o link). */
+  audioUri?: string;
+  durationS?: number;
+  /** Chave Pix enviada pela conversa. */
+  pix?: { key: string; key_type: 'cpf' | 'cnpj' | 'phone' | 'email' | 'random' | 'copy_paste'; holder_name: string };
 };
 
 export type Contact = {
@@ -120,6 +133,19 @@ export const contacts: Contact[] = [
     leadScore: 88,
     notes: 'Interessada em plano anual.',
   },
+  { id: 'c4', name: 'Fernanda Rocha', phone: '+55 11 95555-4004', email: 'fernanda@email.com', tags: ['paciente', 'convênio'], leadScore: 64, notes: 'Convênio Unimed. Retorno a cada 3 meses.' },
+  { id: 'c5', name: 'Paulo Nunes', phone: '+55 11 94444-5005', tags: ['paciente'], leadScore: 51, notes: 'Bradesco Saúde.' },
+  { id: 'c6', name: 'Lívia Torres', phone: '+55 11 93333-6006', tags: ['novo', 'particular'], leadScore: 39, notes: 'Primeira consulta marcada pelo app.' },
+  { id: 'c7', name: 'Bruno Lima', phone: '+55 11 92222-7007', email: 'bruno@email.com', tags: ['paciente', 'academia'], leadScore: 70, notes: 'Treina na academia parceira.' },
+  { id: 'c8', name: 'Dr. Ricardo Alves', phone: '+55 11 91111-8008', tags: ['parceiro'], leadScore: 90, notes: 'Médico parceiro, encaminha pacientes.' },
+];
+
+/** Equipe do demo para marcar com @ no chat interno. */
+export const teamUsers = [
+  { id: 'u2', name: 'Juliana Costa', email: 'juliana@clinica.exemplo' },
+  { id: 'u3', name: 'Dr. Ricardo Alves', email: 'ricardo@clinica.exemplo' },
+  { id: 'u4', name: 'Pedro Lima', email: 'pedro@clinica.exemplo' },
+  { id: 'u5', name: 'Camila Rocha', email: 'camila@clinica.exemplo' },
 ];
 
 export const conversations: Conversation[] = [
@@ -212,6 +238,15 @@ export const messages: Message[] = [
     type: 'image',
     body: 'pedido-exame.jpg',
     at: '10:43',
+  },
+  {
+    id: 'm4b',
+    conversationId: 'cv1',
+    direction: 'in',
+    type: 'document',
+    body: 'Pedido de exame.pdf',
+    fileName: 'Pedido de exame.pdf',
+    at: '10:44',
   },
   {
     id: 'm5',
@@ -369,6 +404,10 @@ export const kanbanCards: KanbanCard[] = [
 ];
 
 export const agendaEvents: AgendaEvent[] = [
+  { id: 'a-m1', title: 'Avaliação física', contactName: 'Bruno Lima', startsAt: '08:30', endsAt: '09:15', status: 'done', location: 'Sala 1' },
+  { id: 'a-m2', title: 'Consulta', contactName: 'Fernanda Rocha', startsAt: '10:00', endsAt: '10:50', status: 'done', location: 'Sala 2' },
+  { id: 'a-m3', title: 'Retorno', contactName: 'Paulo Nunes', startsAt: '11:45', endsAt: '12:40', status: 'confirmed', location: 'Sala 2' },
+  { id: 'a-m4', title: 'Primeira consulta', contactName: 'Lívia Torres', startsAt: '15:15', endsAt: '16:00', status: 'confirmed', location: 'Sala 2' },
   {
     id: 'a1',
     title: 'Consulta — retorno',
@@ -408,3 +447,35 @@ export function getMessages(conversationId: string) {
 export function getContact(id: string) {
   return contacts.find((c) => c.id === id);
 }
+
+/** Ficha dos agendamentos do demo (mesmos campos que a API manda para a agenda). */
+export const agendaDetails: Record<string, Record<string, unknown>> = {
+  'a-m1': { provider_name: 'Dr. Ricardo Alves', payment_type: 'private', visit_kind: 'primeira_consulta', client_phone_e164: '+5511981112233', reminder_offsets_minutes: [1440, 120] },
+  'a-m2': { provider_name: 'Dr. Ricardo Alves', payment_type: 'insurance', plan_type_name: 'Unimed', visit_kind: 'retorno', client_phone_e164: '+5511982223344', staff_notes: 'Trazer exames de sangue do mês passado.' },
+  'a-m3': { provider_name: 'Dr. Ricardo Alves', payment_type: 'insurance', plan_type_name: 'Bradesco Saúde', visit_kind: 'retorno', client_phone_e164: '+5511983334455', reminder_offsets_minutes: [1440] },
+  a1: {
+    provider_name: 'Dr. Ricardo Alves',
+    payment_type: 'insurance',
+    plan_type_name: 'SulAmérica',
+    visit_kind: 'retorno',
+    client_phone_e164: '+5511987654321',
+    client_contact_id: 'c1',
+    customer_note: 'Posso chegar uns 10 minutos atrasada, estou vindo do trabalho.',
+    staff_notes: 'Ajustar a dose do anti-inflamatório conforme o retorno.',
+    reminder_offsets_minutes: [1440, 120],
+    series_id: 's-maria',
+    occurrence_index: 3,
+  },
+  a2: {
+    provider_name: 'Ana Ribeiro',
+    visit_kind: 'primeira_consulta',
+    client_phone_e164: '+5511976543210',
+    customer_note: 'Primeira vez, quero entender os planos.',
+    requested_by_contact_name: 'Carla (mãe)',
+    sem_lembrete: true,
+    sem_lembrete_motivo: 'o pedido veio pelo Instagram e o contato não tem WhatsApp',
+  },
+  'a-m4': { provider_name: 'Dr. Ricardo Alves', payment_type: 'private', visit_kind: 'primeira_consulta', is_encaixe: true, encaixe_justification: 'Encaixe pedido pelo Dr. Ricardo: dor aguda.', client_phone_e164: '+5511985556677' },
+  a3: { provider_name: 'Equipe comercial', payment_type: 'private', staff_notes: 'Revisar metas do mês e campanhas de retorno.' },
+};
+

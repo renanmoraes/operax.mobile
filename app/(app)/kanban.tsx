@@ -1,13 +1,35 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import i18n, { locale } from '@/src/i18n';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Badge, Body, Muted, Screen, Title } from '@/src/design-system/ui';
-import { colors, spacing, typography } from '@/src/design-system/tokens';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Avatar, Badge, Card, Chip, IconButton, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
+import { colors, radii, typography } from '@/src/design-system/tokens';
 import { getPipeline, listPipelines, listStageCards, moveCard } from '@/src/shared/api/kanban.api';
 import { useAuth } from '@/src/features/auth/AuthContext';
+import { initialsOf } from '@/src/features/inbox/ConversationCard';
 import { kanbanCards, kanbanStages } from '@/src/mocks/data';
+import { RequirePermission , useCan } from '@/src/features/auth/useCan';
 
-export default function KanbanScreen() {
+const STAGE_DOTS = [colors.warn, colors.primary, '#8c99b0', colors.success];
+
+export default function KanbanScreenGuarded() {
+  const { t } = useTranslation('agenda');
+  return (
+    <RequirePermission need="kanban" title={t('kanban.title')}>
+      <KanbanScreen />
+    </RequirePermission>
+  );
+}
+
+function KanbanScreen() {
+  const { t } = useTranslation('agenda');
+  // Mover cartão exige kanban:move_card (quem só lê vê o funil sem as setas).
+  const canMove = useCan()('kanbanMove');
+  const insets = useSafeAreaInsets();
   const { mode } = useAuth();
   const qc = useQueryClient();
   const [pipelineId, setPipelineId] = useState<string | null>(null);
@@ -40,13 +62,10 @@ export default function KanbanScreen() {
           const cards = await listStageCards(stage.id);
           return cards.map((c) => ({
             id: c.id,
-            title: c.title || c.contact?.name || c.contact_name || 'Card',
+            title: c.title || c.contact?.name || c.contact_name || i18n.t('agenda:kanban.cardFallback'),
             contactName: c.contact?.name || c.contact_name || '—',
             stageId: c.stage_id || stage.id,
-            value:
-              c.value_estimated != null
-                ? `R$ ${Number(c.value_estimated).toLocaleString('pt-BR')}`
-                : undefined,
+            value: c.value_estimated != null ? `R$ ${Number(c.value_estimated).toLocaleString(locale())}` : undefined,
           }));
         }),
       );
@@ -58,8 +77,7 @@ export default function KanbanScreen() {
   const cards = mode === 'live' ? cardsQuery.data ?? [] : mockCards;
 
   const moveMut = useMutation({
-    mutationFn: ({ cardId, stageId }: { cardId: string; stageId: string }) =>
-      moveCard(cardId, stageId),
+    mutationFn: ({ cardId, stageId }: { cardId: string; stageId: string }) => moveCard(cardId, stageId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['kanban-cards'] }),
   });
 
@@ -85,51 +103,50 @@ export default function KanbanScreen() {
 
   return (
     <Screen>
-      <View style={styles.header}>
-        <Title>Kanban</Title>
-        <Muted>
-          {mode === 'live'
-            ? pipelineQuery.data?.name || 'Funil'
-            : 'Mock'}{' '}
-          · setas movem o card
-        </Muted>
-        {mode === 'live' && (pipelinesQuery.data?.length ?? 0) > 1 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {pipelinesQuery.data!.map((p) => (
-                <Pressable key={p.id} onPress={() => setPipelineId(p.id)} style={styles.pipeChip}>
-                  <Muted>{p.name}</Muted>
-                </Pressable>
-              ))}
-            </View>
-          </ScrollView>
-        ) : null}
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.board}>
-        {stages.map((stage) => {
+      <ScreenHeader safe title={t('kanban.title')} subtitle={mode === 'live' ? pipelineQuery.data?.name || t('kanban.funnel') : t('kanban.demoFunnel')} onBack={() => router.back()} />
+      {mode === 'live' && (pipelinesQuery.data?.length ?? 0) > 1 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingBottom: 8 }}>
+          {pipelinesQuery.data!.map((p) => (
+            <Chip key={p.id} label={p.name} selected={p.id === selectedPipelineId} onPress={() => setPipelineId(p.id)} />
+          ))}
+        </ScrollView>
+      ) : null}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.board, { paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom }]}>
+        {stages.map((stage, si) => {
           const stageCards = cards.filter((c) => c.stageId === stage.id);
           return (
-            <View key={stage.id} style={styles.column}>
+            <ScrollView key={stage.id} style={styles.column} contentContainerStyle={{ gap: 8 }} showsVerticalScrollIndicator={false}>
               <View style={styles.colHead}>
-                <Body style={styles.colTitle}>{stage.name}</Body>
+                <View style={[styles.dot, { backgroundColor: STAGE_DOTS[si % STAGE_DOTS.length] }]} />
+                <Text style={styles.colTitle}>{stage.name}</Text>
                 <Badge label={String(stageCards.length)} />
               </View>
-              {stageCards.map((card) => (
-                <View key={card.id} style={styles.card}>
-                  <Body style={styles.cardTitle}>{card.title}</Body>
-                  <Muted>{card.contactName}</Muted>
-                  {card.value ? <Badge label={card.value} tone="success" /> : null}
-                  <View style={styles.actions}>
-                    <Pressable onPress={() => moveCardLocal(card.id, -1)} style={styles.chip}>
-                      <Muted>←</Muted>
-                    </Pressable>
-                    <Pressable onPress={() => moveCardLocal(card.id, 1)} style={styles.chip}>
-                      <Muted>→</Muted>
-                    </Pressable>
-                  </View>
+              {stageCards.length === 0 ? (
+                <View style={styles.empty}>
+                  <Muted>{t('kanban.empty')}</Muted>
                 </View>
+              ) : null}
+              {stageCards.map((card) => (
+                <Card key={card.id} style={styles.card}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Avatar initials={initialsOf(card.contactName)} size={38} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>{card.title}</Text>
+                      <Muted numberOfLines={1}>{card.contactName}</Muted>
+                    </View>
+                  </View>
+                  <View style={styles.actions}>
+                    {card.value ? <Badge label={card.value} tone="success" /> : <View />}
+                    {canMove ? (
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      <IconButton icon="arrow-back" size={36} tone="soft" accessibilityLabel={t('kanban.movePrev', { title: card.title })} onPress={() => moveCardLocal(card.id, -1)} />
+                      <IconButton icon="arrow-forward" size={36} tone="primary" accessibilityLabel={t('kanban.moveNext', { title: card.title })} onPress={() => moveCardLocal(card.id, 1)} />
+                    </View>
+                    ) : null}
+                  </View>
+                </Card>
               ))}
-            </View>
+            </ScrollView>
           );
         })}
       </ScrollView>
@@ -138,45 +155,13 @@ export default function KanbanScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    padding: spacing.lg,
-    gap: spacing.xs,
-    backgroundColor: colors.cardBg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  pipeChip: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  board: { padding: spacing.lg, gap: spacing.md },
-  column: {
-    width: 260,
-    backgroundColor: '#eef2f7',
-    borderRadius: 12,
-    padding: spacing.sm,
-    gap: spacing.sm,
-  },
-  colHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 4 },
-  colTitle: { fontFamily: typography.fontFamilySemiBold },
-  card: {
-    backgroundColor: colors.cardBg,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: 6,
-  },
-  cardTitle: { fontFamily: typography.fontFamilySemiBold },
-  actions: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  chip: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
+  board: { paddingHorizontal: 20, gap: 12, alignItems: 'flex-start' },
+  column: { width: 272 },
+  colHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4, paddingBottom: 4 },
+  dot: { width: 10, height: 10, borderRadius: 5 },
+  colTitle: { flex: 1, fontFamily: typography.fontFamilyBold, fontSize: 14, color: colors.text },
+  empty: { padding: 20, borderRadius: radii.lg, borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#c9d1de', alignItems: 'center' },
+  card: { padding: 14, borderRadius: radii.lg },
+  cardTitle: { fontFamily: typography.fontFamilyBold, fontSize: 14.5, color: colors.text },
+  actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 },
 });

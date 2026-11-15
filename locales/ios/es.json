@@ -1,0 +1,11 @@
+{
+  "ios": {
+    "NSPhotoLibraryUsageDescription": "Operax necesita acceso a tus fotos para enviar imágenes en las conversaciones.",
+    "NSCameraUsageDescription": "Operax necesita la cámara para tomar fotos y videos para tus conversaciones.",
+    "NSMicrophoneUsageDescription": "Operax usa el micrófono para grabar mensajes de voz.",
+    "NSPhotoLibraryAddUsageDescription": "Operax puede guardar en tu galería los archivos que recibas cuando lo pidas.",
+    "NSLocationWhenInUseUsageDescription": "Operax usa tu ubicación durante el entrenamiento para medir distancia, ritmo, velocidad y altitud.",
+    "NSLocationAlwaysAndWhenInUseUsageDescription": "Operax usa tu ubicación durante el entrenamiento, incluso con la pantalla apagada, para medir distancia, ritmo y altitud.",
+    "NSHealthShareUsageDescription": "Operax lee tus entrenamientos de la app Salud (tipo, duración, distancia y frecuencia cardíaca) para marcarlos como hechos en tu plan y compartirlos con tu entrenador."
+  }
+}

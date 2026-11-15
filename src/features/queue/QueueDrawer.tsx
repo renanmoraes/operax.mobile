@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dimensions,
   FlatList,
@@ -15,11 +16,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { Button, ListRow, Muted } from '@/src/design-system/ui';
-import { colors, radii, spacing, typography, zIndex } from '@/src/design-system/tokens';
+import { Avatar, Badge, Button, Card, EmptyState, IconButton, Muted } from '@/src/design-system/ui';
+import { initialsOf } from '@/src/features/inbox/ConversationCard';
+import { colors, radii, shadows, spacing, text, typography, zIndex } from '@/src/design-system/tokens';
 import type { Conversation } from '@/src/mocks/data';
 import { useQueueDrawer } from './QueueDrawerContext';
+import { useCan } from '@/src/features/auth/useCan';
 
 const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.86, 360);
 
@@ -36,6 +38,8 @@ type Props = {
 };
 
 export function QueueDrawer({ items, claimingId, onClaim }: Props) {
+  const { t } = useTranslation(['inbox', 'common']);
+  const canClaim = useCan()('claim');
   const { visible, close } = useQueueDrawer();
   const insets = useSafeAreaInsets();
   const progress = useSharedValue(0);
@@ -58,7 +62,7 @@ export function QueueDrawer({ items, claimingId, onClaim }: Props) {
           style={styles.overlay}
           onPress={close}
           accessibilityRole="button"
-          accessibilityLabel="Fechar fila"
+          accessibilityLabel={t('queue.close')}
         />
         <Animated.View
           style={[
@@ -68,52 +72,52 @@ export function QueueDrawer({ items, claimingId, onClaim }: Props) {
           ]}
         >
           <View style={styles.header}>
-            <View>
-              <Text style={styles.title}>Fila</Text>
-              <Muted>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.title}>{t('queue.title')}</Text>
+              <Muted style={{ marginTop: 2 }}>
                 {items.length === 0
-                  ? 'Ninguém aguardando'
-                  : `${items.length} aguardando · Assuma para atender`}
+                  ? t('queue.none')
+                  : t('queue.waiting', { count: items.length })}
               </Muted>
             </View>
-            <Pressable
-              onPress={close}
-              accessibilityRole="button"
-              accessibilityLabel="Fechar fila"
-              hitSlop={10}
-              style={styles.closeBtn}
-            >
-              <Ionicons name="close" size={24} color={colors.text} />
-            </Pressable>
+            <IconButton icon="close" accessibilityLabel={t('queue.close')} onPress={close} />
           </View>
 
           <FlatList
             data={items}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={items.length === 0 ? styles.emptyWrap : undefined}
+            contentContainerStyle={items.length === 0 ? styles.emptyWrap : styles.list}
             ListEmptyComponent={
               <View style={styles.empty}>
-                <Muted style={{ textAlign: 'center' }}>Ninguém na fila agora</Muted>
-                <Button label="Fechar" variant="secondary" onPress={close} />
+                <EmptyState icon="checkmark-done-outline" title={t('queue.emptyTitle')} subtitle={t('queue.emptySub')} />
+                <Button label={t('common:actions.close')} variant="soft" onPress={close} />
               </View>
             }
             renderItem={({ item }) => (
-              <View style={styles.item}>
-                <ListRow
-                  title={item.contactName}
-                  subtitle={item.lastMessage}
-                  meta={`${item.queue} · ${channelLabel[item.channel] ?? item.channel}`}
-                  trailing={<Muted>{item.updatedAt}</Muted>}
-                  onPress={() => onClaim(item.id)}
-                />
-                <View style={styles.claimWrap}>
-                  <Button
-                    label={claimingId === item.id ? 'Assumindo…' : 'Assumir'}
-                    disabled={claimingId === item.id}
-                    onPress={() => onClaim(item.id)}
-                  />
+              <Card style={styles.item}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Avatar initials={initialsOf(item.contactName)} size={42} />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.name} numberOfLines={1}>{item.contactName}</Text>
+                      <Muted style={{ fontSize: 12 }}>{item.updatedAt}</Muted>
+                    </View>
+                    <Muted numberOfLines={1} style={{ marginTop: 2 }}>{item.lastMessage}</Muted>
+                  </View>
                 </View>
-              </View>
+                <View style={styles.itemFoot}>
+                  <Badge label={`${item.queue} · ${channelLabel[item.channel] ?? t('card.channelOther')}`} />
+                  {canClaim ? (
+                    <Button
+                      label={t('queue.claim')}
+                      compact
+                      loading={claimingId === item.id}
+                      disabled={claimingId === item.id}
+                      onPress={() => onClaim(item.id)}
+                    />
+                  ) : null}
+                </View>
+              </Card>
             )}
           />
         </Animated.View>
@@ -136,47 +140,24 @@ const styles = StyleSheet.create({
     width: DRAWER_WIDTH,
     maxWidth: '86%',
     height: '100%',
-    backgroundColor: colors.cardBg,
+    backgroundColor: colors.pageBg,
     borderTopRightRadius: radii.sheet,
     borderBottomRightRadius: radii.sheet,
     zIndex: zIndex.drawer + 1,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: { width: 2, height: 0 },
+    ...shadows.hero,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    gap: spacing.md,
-  },
-  title: {
-    fontFamily: typography.fontFamilyBold,
-    fontSize: 22,
-    color: colors.text,
-    letterSpacing: -0.3,
-  },
-  closeBtn: {
-    width: 44,
-    height: 44,
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+    gap: 12,
   },
-  item: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  claimWrap: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.cardBg,
-  },
+  title: { ...text.display, color: colors.text },
+  list: { paddingHorizontal: 16, gap: 10, paddingBottom: spacing.md },
+  item: { padding: 14, gap: 12 },
+  itemFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  name: { flex: 1, fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text },
   emptyWrap: { flexGrow: 1, justifyContent: 'center' },
   empty: {
     padding: spacing.xl,

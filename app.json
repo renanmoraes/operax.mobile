@@ -15,10 +15,11 @@
           "remote-notification"
         ],
         "NSPhotoLibraryUsageDescription": "O Operax precisa acessar suas fotos para enviar imagens no atendimento.",
-        "NSCameraUsageDescription": "O Operax precisa da câmera para capturar fotos e vídeos do atendimento.",
+        "NSCameraUsageDescription": "O Operax usa a câmera para capturar fotos e vídeos do atendimento e para ler o código de barras dos produtos na venda.",
         "NSMicrophoneUsageDescription": "O Operax precisa do microfone para gravar áudios do atendimento quando disponível.",
         "NSPhotoLibraryAddUsageDescription": "O Operax pode salvar mídias recebidas na sua galeria quando você solicitar.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDevelopmentRegion": "pt-BR"
       },
       "buildNumber": "1"
     },
@@ -35,7 +36,11 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_TOTAL_CALORIES_BURNED"
       ],
       "versionCode": 1
     },
@@ -45,13 +50,19 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
+      [
+        "expo-router",
+        {
+          "sitemap": false
+        }
+      ],
       [
         "expo-splash-screen",
         {
-          "image": "./assets/brand/operax-mark.png",
+          "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#050a14"
+          "backgroundColor": "#050a14",
+          "imageWidth": 120
         }
       ],
       "expo-font",
@@ -59,15 +70,83 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/brand/operax-mark.png",
+          "icon": "./assets/images/notification-icon.png",
           "color": "#1e4ed8",
           "defaultChannel": "operax-default",
           "sounds": []
         }
       ],
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
       "expo-image-picker",
-      "expo-document-picker"
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "O Operax usa a câmera para capturar fotos e vídeos do atendimento e para ler o código de barras dos produtos na venda.",
+          "recordAudioAndroid": false
+        }
+      ],
+      "expo-document-picker",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "O Operax usa o microfone para você gravar e mandar áudios no chat com a equipe."
+        }
+      ],
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "O Operax lê seus treinos do app Saúde (tipo, duração, distância e batimentos) para marcar como feitos na sua ficha e mostrar ao seu personal.",
+          "NSHealthUpdateUsageDescription": false,
+          "background": false
+        }
+      ],
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "minSdkVersion": 26
+          }
+        }
+      ],
+      "expo-sharing",
+      "expo-sqlite",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "O Operax usa sua localização durante o treino para medir distância, ritmo, velocidade e altitude da corrida ou do pedal.",
+          "locationAlwaysAndWhenInUsePermission": "O Operax usa sua localização durante o treino, mesmo com a tela apagada, para medir distância, ritmo e altitude.",
+          "isAndroidBackgroundLocationEnabled": false,
+          "locationAlwaysPermission": "O Operax usa sua localização durante o treino, mesmo com a tela apagada, para medir distância, ritmo e altitude.",
+          "locationFullAccuracyPermission": "O Operax precisa da localização precisa durante o treino para medir a distância e desenhar o caminho certo.",
+          "motionUsagePermission": false,
+          "isIosBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": [
+              "pt-BR",
+              "en",
+              "es"
+            ],
+            "android": [
+              "pt-BR",
+              "en",
+              "es"
+            ]
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -81,7 +160,20 @@
       "marketingUrl": "https://operax.digital",
       "router": {}
     },
-    "locales": {},
-    "owner": "operaxdigitals-team"
+    "locales": {
+      "pt": "./locales/ios/pt.json",
+      "en": "./locales/ios/en.json",
+      "es": "./locales/ios/es.json"
+    },
+    "owner": "operaxdigitals-team",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/5dcb948b-9371-4830-8324-29ef9a87e4e3",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }

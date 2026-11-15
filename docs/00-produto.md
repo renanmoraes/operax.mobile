@@ -18,4 +18,9 @@ Qualidade aproximada ao WhatsApp no fluxo de atendimento, com a marca, regras e 
 
 - Admin tenant, wiki, billing, bulk templates
 - Modo offline completo de atendimento
-- Portal do cliente
+
+## Cliente final (em desenvolvimento)
+
+Ver `docs/superpowers/specs/2026-11-13-auth-staff-cliente-design.md` — base de auth que
+cliente final do tenant também usa o app, com login próprio e portal/fitness vindo em
+specs seguintes.

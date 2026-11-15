@@ -1,25 +1,33 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { locale } from '@/src/i18n';
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
-import { Badge, Body, ListRow, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
-import { colors, spacing, typography } from '@/src/design-system/tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Badge, Body, IconButton, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
+import { colors, radii, shadows, spacing, typography } from '@/src/design-system/tokens';
 import { notifications as mockNotifications } from '@/src/mocks/data';
 import { categoryForType, PUSH_CATEGORIES } from '@/src/features/notifications/catalog';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { listNotifications, markNotificationRead } from '@/src/shared/api/notifications.api';
+import { SkeletonList } from '@/src/design-system/Skeleton';
 
 function formatTime(iso?: string) {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function NotificationsScreen() {
+  const { t } = useTranslation('staff');
+  const insets = useSafeAreaInsets();
   const { mode } = useAuth();
   const query = useQuery({
     queryKey: ['notifications', mode],
     enabled: mode === 'live',
+    refetchInterval: 60_000,
     queryFn: async () => {
       const page = await listNotifications(1, 40);
       return page.data ?? [];
@@ -60,28 +68,21 @@ export default function NotificationsScreen() {
   return (
     <Screen>
       <ScreenHeader
-        title="Avisos"
-        right={
-          <Pressable onPress={() => router.push('/notification-prefs')} hitSlop={8}>
-            <Body style={{ color: colors.primary, fontFamily: typography.fontFamilySemiBold, fontSize: 13 }}>
-              Preferências
-            </Body>
-          </Pressable>
-        }
+        safe
+        title={t('notifications.title')}
+        right={<IconButton icon="options-outline" accessibilityLabel={t('notifications.prefs')} onPress={() => router.push('/notification-prefs')} />}
       />
       <FlatList
         data={data}
         keyExtractor={(item) => item.id}
         refreshControl={
           mode === 'live' ? (
-            <RefreshControl refreshing={query.isFetching} onRefresh={() => query.refetch()} />
+            <RefreshControl refreshing={query.isFetching} onRefresh={() => void query.refetch()} />
           ) : undefined
         }
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom, gap: 10 }}
         ListEmptyComponent={
-          <Muted style={{ textAlign: 'center', marginTop: 40 }}>
-            {query.isLoading ? 'Carregando…' : 'Nenhum aviso.'}
-          </Muted>
+          query.isLoading ? <SkeletonList variant="conversation" count={5} /> : <Muted style={{ textAlign: 'center', marginTop: 40 }}>{t('notifications.empty')}</Muted>
         }
         renderItem={({ item }) => {
           const catId = categoryForType(item.type);
@@ -102,7 +103,8 @@ export default function NotificationsScreen() {
               }}
             >
               <View style={styles.rowTop}>
-                <Body style={styles.title}>{item.title}</Body>
+                {!item.read ? <View style={styles.dot} /> : null}
+                <Body style={styles.title} numberOfLines={2}>{item.title}</Body>
                 <Muted>{item.at}</Muted>
               </View>
               <Muted>{item.body}</Muted>
@@ -125,13 +127,13 @@ const styles = StyleSheet.create({
   },
   row: {
     backgroundColor: colors.cardBg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: spacing.md,
-    gap: 6,
+    borderRadius: radii.lg + 2,
+    padding: 16,
+    gap: 8,
+    ...shadows.card,
   },
-  unread: { borderColor: colors.primary, backgroundColor: '#f5f8ff' },
-  rowTop: { flexDirection: 'row', justifyContent: 'space-between' },
-  title: { fontFamily: typography.fontFamilySemiBold },
+  unread: { backgroundColor: '#f7f9ff', borderWidth: 1.5, borderColor: 'rgba(30,78,216,0.25)' },
+  rowTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
+  title: { flex: 1, fontFamily: typography.fontFamilyBold, fontSize: 14.5 },
 });

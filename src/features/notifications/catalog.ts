@@ -3,6 +3,8 @@
  * Default: tudo LIGADO. Push deve chegar com tela bloqueada (FCM/APNs).
  */
 
+import i18n from '@/src/i18n';
+
 export type PushCategoryId =
   | 'queue_new'
   | 'claimed_message'
@@ -29,85 +31,133 @@ export type PushCategory = {
 export const PUSH_CATEGORIES: PushCategory[] = [
   {
     id: 'queue_new',
-    label: 'Novo atendimento na fila',
-    description: 'Conversa entrou na fila do seu setor e precisa ser assumida.',
+    get label() {
+      return i18n.t('staff:push.queue_new.label');
+    },
+    get description() {
+      return i18n.t('staff:push.queue_new.description');
+    },
     types: ['queue.new', 'conversation.queued'],
     defaultEnabled: true,
   },
   {
     id: 'claimed_message',
-    label: 'Nova mensagem no atendimento',
-    description: 'Cliente falou em conversa que você assumiu.',
+    get label() {
+      return i18n.t('staff:push.claimed_message.label');
+    },
+    get description() {
+      return i18n.t('staff:push.claimed_message.description');
+    },
     types: ['conversation.message', 'message', 'inbox'],
     defaultEnabled: true,
   },
   {
     id: 'ownership_expiring',
-    label: 'Atendimento perto do vencimento',
-    description: 'Sua posse está perto de expirar por inatividade.',
+    get label() {
+      return i18n.t('staff:push.ownership_expiring.label');
+    },
+    get description() {
+      return i18n.t('staff:push.ownership_expiring.description');
+    },
     types: ['chat_urgency', 'assignment.expiring'],
     defaultEnabled: true,
   },
   {
     id: 'assignment_expired',
-    label: 'Posse expirada',
-    description: 'A conversa voltou à fila porque o tempo de posse acabou.',
+    get label() {
+      return i18n.t('staff:push.assignment_expired.label');
+    },
+    get description() {
+      return i18n.t('staff:push.assignment_expired.description');
+    },
     types: ['assignment.expired'],
     defaultEnabled: true,
   },
   {
     id: 'chat_message',
-    label: 'Mensagem no chat interno',
-    description: 'Nova mensagem em canal interno da equipe.',
+    get label() {
+      return i18n.t('staff:push.chat_message.label');
+    },
+    get description() {
+      return i18n.t('staff:push.chat_message.description');
+    },
     types: ['chat.message'],
     defaultEnabled: true,
   },
   {
     id: 'chat_mention',
-    label: 'Marcação no chat interno',
-    description: 'Alguém mencionou você (@) no chat interno.',
+    get label() {
+      return i18n.t('staff:push.chat_mention.label');
+    },
+    get description() {
+      return i18n.t('staff:push.chat_mention.description');
+    },
     types: ['chat.mention', 'mention'],
     defaultEnabled: true,
   },
   {
     id: 'booking_new',
-    label: 'Novo agendamento',
-    description: 'Compromisso criado na agenda.',
+    get label() {
+      return i18n.t('staff:push.booking_new.label');
+    },
+    get description() {
+      return i18n.t('staff:push.booking_new.description');
+    },
     types: ['scheduling.booking_new', 'booking.created'],
     defaultEnabled: true,
   },
   {
     id: 'booking_reschedule',
-    label: 'Reagendamento',
-    description: 'Horário alterado ou reagendamento pendente.',
+    get label() {
+      return i18n.t('staff:push.booking_reschedule.label');
+    },
+    get description() {
+      return i18n.t('staff:push.booking_reschedule.description');
+    },
     types: ['scheduling.booking_reschedule', 'scheduling.reschedule_pending_manual'],
     defaultEnabled: true,
   },
   {
     id: 'reminder',
-    label: 'Lembretes',
-    description: 'Lembretes de agenda, follow-up e tarefas.',
+    get label() {
+      return i18n.t('staff:push.reminder.label');
+    },
+    get description() {
+      return i18n.t('staff:push.reminder.description');
+    },
     types: ['reminder', 'scheduling.reminder', 'kanban.followup_due'],
     defaultEnabled: true,
   },
   {
     id: 'transfer',
-    label: 'Transferência de conversa',
-    description: 'Conversa transferida para você ou para sua fila.',
+    get label() {
+      return i18n.t('staff:push.transfer.label');
+    },
+    get description() {
+      return i18n.t('staff:push.transfer.description');
+    },
     types: ['assignment.transferred', 'conversation.transferred'],
     defaultEnabled: true,
   },
   {
     id: 'urgency',
-    label: 'Urgência no atendimento',
-    description: 'Escalonamento crítico de conversa ativa.',
+    get label() {
+      return i18n.t('staff:push.urgency.label');
+    },
+    get description() {
+      return i18n.t('staff:push.urgency.description');
+    },
     types: ['chat_urgency'],
     defaultEnabled: true,
   },
   {
     id: 'kanban_followup',
-    label: 'Follow-up do funil',
-    description: 'Card com follow-up vencendo ou ganho/perda relevante.',
+    get label() {
+      return i18n.t('staff:push.kanban_followup.label');
+    },
+    get description() {
+      return i18n.t('staff:push.kanban_followup.description');
+    },
     types: ['kanban.followup_due', 'kanban.card_won', 'kanban.card_lost'],
     defaultEnabled: true,
   },

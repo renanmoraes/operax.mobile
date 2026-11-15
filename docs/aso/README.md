@@ -1,6 +1,8 @@
 # ASO & Store readiness — Operax Mobile
 
-Skills instaladas: [Eronred/aso-skills](https://github.com/Eronred/aso-skills) (39 skills em `~/.agents/skills/`).
+Skills instaladas: [Eronred/aso-skills](https://github.com/Eronred/aso-skills) (39 skills em `~/.agents/skills/`)
+e [app-store-screenshots](https://github.com/ParthJadhav/app-store-screenshots) (`~/.claude/skills/app-store-screenshots`),
+que gera os screenshots finais da loja (molduras, títulos e exportação nas resoluções oficiais).
 
 | Documento | Conteúdo |
 |-----------|----------|

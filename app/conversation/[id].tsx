@@ -1,20 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import {
-  FlatList,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { locale } from '@/src/i18n';
+import { useMemo, useRef, useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInputInstance, View, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Badge, Body, Button, Muted } from '@/src/design-system/ui';
-import { colors, radii, spacing, typography, zIndex } from '@/src/design-system/tokens';
-import { getConversation as getMockConv, getMessages as getMockMessages } from '@/src/mocks/data';
+import { Avatar, Backdrop, Button, IconButton, IconTile, Muted } from '@/src/design-system/ui';
+import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, TextWithMeta } from '@/src/features/chat/MessageParts';
+import { RemoteAudioBubble } from '@/src/features/chat/RemoteAudioBubble';
+import { MicButton, RecordingBar, useVoiceRecorder } from '@/src/features/chat/VoiceRecorder';
+import { ChatInput, focusAtEnd } from '@/src/features/chat/ChatInput';
+import { QuickReplySuggestions } from '@/src/features/chat/QuickReplySuggestions';
+import { applyQuickReply, filterQuickReplies, resolveQuickReplyVariables, slashTerm } from '@/src/features/chat/quickReplyMatch';
+import { listQuickReplies } from '@/src/shared/api/quick-replies.api';
+import { BottomSheet } from '@/src/design-system/BottomSheet';
+import { Toast, useToast } from '@/src/design-system/Toast';
+import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
+import { initialsOf } from '@/src/features/inbox/ConversationCard';
+import { getConversation as getMockConv, getMessages as getMockMessages, quickReplies as mockQuickReplies, type Message } from '@/src/mocks/data';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import {
   claimConversation,
@@ -27,20 +31,62 @@ import {
   sendTextMessage,
 } from '@/src/shared/api/conversations.api';
 import { mapApiConversation, mapApiMessage } from '@/src/features/inbox/mapConversation';
-import { getSocket } from '@/src/shared/realtime/socket';
+import { useConversationRoom, useSocketEvents } from '@/src/shared/realtime/socket';
 import * as DocumentPicker from 'expo-document-picker';
+import { ActionsSheet, ConversationAction } from '@/src/features/conversation-actions/ActionsSheet';
+import { BookingSheet } from '@/src/features/conversation-actions/BookingSheet';
+import { PixCard } from '@/src/features/conversation-actions/PixCard';
+import { PixSheet } from '@/src/features/conversation-actions/PixSheet';
+import { QuickRepliesSheet } from '@/src/features/conversation-actions/QuickRepliesSheet';
+import { PixData, sendPixMessage } from '@/src/shared/api/conversation-actions.api';
 import * as ImagePicker from 'expo-image-picker';
+import { SkeletonList } from '@/src/design-system/Skeleton';
+import { RequirePermission, useCan } from '@/src/features/auth/useCan';
+import type { PermKey } from '@/src/features/auth/permissions';
+import { ChannelChip, useInboxConnections } from '@/src/features/attendance/channels';
+import { TransferSheet } from '@/src/features/attendance/TransferSheet';
+import { AiSummaryButton, AiSummarySheet, ReplySuggestions, useAiEnabled } from '@/src/features/attendance/AiAssist';
 
-type Sheet = 'actions' | 'attach' | 'transfer' | null;
+type Sheet = 'actions' | 'attach' | 'transfer' | 'quick' | 'pix' | 'booking' | 'summary' | null;
 
-export default function ConversationScreen() {
+export default function ConversationScreenGuarded() {
+  const { t } = useTranslation(['inbox', 'common']);
+  return (
+    <RequirePermission need="inbox" title={t('inbox.title')}>
+      <ConversationScreen />
+    </RequirePermission>
+  );
+}
+
+function ConversationScreen() {
+  const { t } = useTranslation(['inbox', 'common']);
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { mode, user } = useAuth();
+  const can = useCan();
   const qc = useQueryClient();
   const [draft, setDraft] = useState('');
+  const inputRef = useRef<TextInputInstance>(null);
+  const qrTerm = slashTerm(draft);
+  const qrQuery = useQuery({
+    queryKey: ['quick-replies', 'search', qrTerm],
+    enabled: mode === 'live' && qrTerm !== null,
+    queryFn: () => listQuickReplies({ search: qrTerm || undefined, limit: 10 }),
+    staleTime: 10_000,
+  });
+  const qrItems = qrTerm === null ? [] : mode === 'live' ? qrQuery.data ?? [] : filterQuickReplies(mockQuickReplies, qrTerm);
+  const [localMsgs, setLocalMsgs] = useState<Message[]>([]);
+  const listRef = useRef<FlatList<Message>>(null);
+  const voice = useVoiceRecorder();
   const [sheet, setSheet] = useState<Sheet>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const { toast, show } = useToast(2200);
+  const { t: ta } = useTranslation('attendance');
+  const aiOn = useAiEnabled();
+  const connections = useInboxConnections();
+  const switchSheet = (next: Sheet) => {
+    setSheet(null);
+    setTimeout(() => setSheet(next), 320);
+  };
 
   const mockConv = getMockConv(id);
   const mockThread = useMemo(() => getMockMessages(id), [id]);
@@ -48,12 +94,15 @@ export default function ConversationScreen() {
   const liveQuery = useQuery({
     queryKey: ['conversation', id],
     enabled: mode === 'live' && !!id,
+    // Reserva se o tempo real cair.
+    refetchInterval: 15_000,
     queryFn: async () => {
       const [conv, page] = await Promise.all([
         getConversation(id),
         getConversationMessages(id, 80),
       ]);
-      await markConversationRead(id).catch(() => undefined);
+      // Só conta como lida com o app na frente (um evento em segundo plano não pode zerar o que ninguém viu).
+      if (AppState.currentState === 'active') await markConversationRead(id).catch(() => undefined);
       return {
         conversation: mapApiConversation(conv, user?.id),
         messages: (page.messages ?? []).map((m) => mapApiMessage(m, id)),
@@ -62,60 +111,83 @@ export default function ConversationScreen() {
     },
   });
 
-  useEffect(() => {
-    if (mode !== 'live' || !id) return;
-    const socket = getSocket();
-    if (!socket) return;
-    const onMsg = () => liveQuery.refetch();
-    socket.emit?.('join', { conversationId: id });
-    socket.on('message.received', onMsg);
-    socket.on('message.sent', onMsg);
-    return () => {
-      socket.off('message.received', onMsg);
-      socket.off('message.sent', onMsg);
-    };
-  }, [mode, id, liveQuery]);
+  // Ao vivo: mensagem nova, status (enviada/entregue/lida), posse ou encerramento desta conversa.
+  useConversationRoom(id, mode === 'live');
+  const onConversationEvent = (payload: unknown) => {
+    const cid = (payload as { conversationId?: string; conversation_id?: string } | undefined)?.conversationId ?? (payload as { conversation_id?: string } | undefined)?.conversation_id;
+    if (!cid || cid === id) void liveQuery.refetch();
+  };
+  useSocketEvents(
+    {
+      'message.received': onConversationEvent,
+      'message.sent': onConversationEvent,
+      'message.updated': onConversationEvent,
+      'conversation.updated': onConversationEvent,
+      'conversation.closed': onConversationEvent,
+      'assignment.claimed': onConversationEvent,
+      'assignment.released': onConversationEvent,
+      // Resumo novo da IA pronto.
+      'conversation.summary': onConversationEvent,
+    },
+    mode === 'live' && !!id,
+  );
 
   const conversation = mode === 'live' ? liveQuery.data?.conversation : mockConv;
-  const thread = mode === 'live' ? liveQuery.data?.messages ?? [] : mockThread;
-  const [ownership, setOwnership] = useState(conversation?.ownership ?? 'queue');
+  const thread = mode === 'live' ? liveQuery.data?.messages ?? [] : [...mockThread, ...localMsgs];
+  // No modo demo as ações mudam a posse só aqui; no real, a posse vem sempre do servidor.
+  const [ownershipOverride, setOwnership] = useState<NonNullable<typeof conversation>['ownership'] | null>(null);
+  const ownership = ownershipOverride ?? conversation?.ownership ?? 'queue';
 
-  useEffect(() => {
-    if (conversation?.ownership) setOwnership(conversation.ownership);
-  }, [conversation?.ownership]);
-
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 1800);
-  };
+  const showToast = (msg: string, tone: 'success' | 'error' = 'success') => show(msg, tone);
 
   const sendMut = useMutation({
     mutationFn: async (text: string) => sendTextMessage(id, text),
     onSuccess: () => {
       setDraft('');
       qc.invalidateQueries({ queryKey: ['conversation', id] });
-      showToast('Mensagem enviada');
+      showToast(t('conversation.sent'));
     },
-    onError: () => showToast('Falha ao enviar'),
+    onError: () => showToast(t('conversation.sendFailed'), 'error'),
   });
 
   if (!conversation) {
+    if (liveQuery.isLoading) {
+      // Carregando: os balões aparecem como esqueleto, no lugar onde a conversa vai surgir.
+      return (
+        <View style={styles.root}>
+          <Backdrop variant="chat" />
+          <SkeletonList variant="bubbles" style={{ paddingTop: insets.top + 80 }} />
+        </View>
+      );
+    }
     return (
       <View style={styles.center}>
-        <Muted>{liveQuery.isLoading ? 'Carregando…' : 'Conversa não encontrada.'}</Muted>
+        <Backdrop variant="chat" />
+        <Muted>{t('conversation.notFound')}</Muted>
+        <Button label={t('common:actions.back')} variant="soft" compact onPress={() => router.back()} style={{ marginTop: 14 }} />
       </View>
     );
   }
 
+  const connId = connections.idOf(conversation);
+  const connection = connId ? connections.byId.get(connId) ?? null : null;
+  const lastInboundId = [...thread].reverse().find((m) => m.direction === 'in')?.id ?? null;
+
   const statusLabel =
-    ownership === 'mine' ? 'Com você' : ownership === 'queue' ? 'Na fila' : 'Encerrada';
+    ownership === 'mine'
+      ? t('conversation.status.mine')
+      : ownership === 'queue'
+        ? t('conversation.status.queue')
+        : ownership === 'other'
+          ? t('conversation.status.other')
+          : t('conversation.status.closed');
 
   const runAction = async (action: 'claim' | 'release' | 'close') => {
     if (mode === 'mock') {
       if (action === 'claim') setOwnership('mine');
       if (action === 'release') setOwnership('queue');
       if (action === 'close') setOwnership('closed');
-      showToast(action === 'claim' ? 'Atendimento assumido' : 'Atualizado');
+      showToast(action === 'claim' ? t('conversation.claimed') : t('conversation.updated'));
       setSheet(null);
       return;
     }
@@ -124,25 +196,34 @@ export default function ConversationScreen() {
       if (action === 'release') await releaseConversation(id);
       if (action === 'close') await closeConversation(id);
       await liveQuery.refetch();
-      showToast('Atualizado');
+      showToast(t('conversation.updated'));
     } catch {
-      showToast('Falha na ação');
+      showToast(t('conversation.actionFailed'), 'error');
     }
     setSheet(null);
   };
 
-  const pickAndSend = async (kind: 'image' | 'document') => {
+  const pickAndSend = async (kind: 'image' | 'document' | 'camera') => {
     setSheet(null);
     if (mode === 'mock') {
-      showToast(kind === 'image' ? 'Mídia (demo)' : 'Documento (demo)');
+      showToast(kind === 'document' ? t('conversation.demoDocument') : t('conversation.demoMedia'));
       return;
     }
     try {
-      if (kind === 'image') {
-        const res = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images', 'videos'],
-          quality: 0.85,
-        });
+      if (kind === 'image' || kind === 'camera') {
+        if (kind === 'camera') {
+          const perm = await ImagePicker.requestCameraPermissionsAsync();
+          if (!perm.granted) {
+            show(t('conversation.allowCamera'), 'error', 'camera-outline');
+            return;
+          }
+        }
+        const res = kind === 'camera'
+          ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images', 'videos'], quality: 0.85 })
+          : await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ['images', 'videos'],
+              quality: 0.85,
+            });
         if (res.canceled || !res.assets?.[0]) return;
         const asset = res.assets[0];
         await sendMediaMessage(id, {
@@ -161,294 +242,449 @@ export default function ConversationScreen() {
         });
       }
       await liveQuery.refetch();
-      showToast('Mídia enviada');
+      showToast(t('conversation.mediaSent'));
     } catch {
-      showToast('Falha no envio de mídia');
+      showToast(t('conversation.mediaFailed'), 'error');
     }
   };
 
-  const canCompose = conversation.within24h && ownership === 'mine';
+  // Perfil sem permissão de enviar: conversa só para leitura (o campo de mensagem nem aparece).
+  const canSend = can('sendMessage');
+  const canCompose = canSend && conversation.within24h && ownership === 'mine';
+  const composeBlock = !conversation.within24h ? t('conversation.blocked24h') : ownership !== 'mine' ? t('conversation.blockedClaim') : undefined;
+  // Transferir abre a folha com atendente e/ou fila: basta poder uma das duas (fila: mandar para fila + ver filas).
+  const canTransfer = can('transfer') || (can('transferQueue') && can('queuesRead'));
+  const ownershipActions = { claim: can('claim'), release: can('release'), transfer: canTransfer, close: can('close') };
+  const hasOwnershipAction = Object.values(ownershipActions).some(Boolean) || (!!conversation.contactId && can('contacts'));
+
+  const sendPix = async (pix: PixData & { save?: boolean }) => {
+    if (mode === 'mock') {
+      appendLocal({ type: 'pix', body: t('mapper.pixKey'), pix });
+      setSheet(null);
+      showToast(t('conversation.pixSent'));
+      return;
+    }
+    try {
+      await sendPixMessage(id, pix);
+      setSheet(null);
+      await liveQuery.refetch();
+      showToast(t('conversation.pixSent'));
+    } catch {
+      showToast(t('conversation.pixFailed'), 'error');
+    }
+  };
+
+  const guarded = (fn: () => void) => () => {
+    if (composeBlock) {
+      setSheet(null);
+      show(composeBlock, 'info');
+      return;
+    }
+    fn();
+  };
+
+  const allActions: (ConversationAction & { perm: PermKey })[] = [
+    { key: 'media', label: t('conversation.action.media'), icon: 'images', tone: 'media', perm: 'sendMedia', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('image')) },
+    { key: 'camera', label: t('conversation.action.camera'), icon: 'camera', tone: 'camera', perm: 'sendMedia', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('camera')) },
+    { key: 'document', label: t('conversation.action.document'), icon: 'document', tone: 'document', perm: 'sendMedia', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('document')) },
+    { key: 'pix', label: t('conversation.action.pix'), icon: 'diamond', tone: 'pix', perm: 'sendMessage', blockedReason: composeBlock, onPress: guarded(() => switchSheet('pix')) },
+    { key: 'booking', label: t('conversation.action.booking'), icon: 'calendar', tone: 'booking', perm: 'bookingCreate', onPress: () => switchSheet('booking') },
+    {
+      key: 'template',
+      label: t('conversation.action.template'),
+      icon: 'document-text',
+      tone: 'template',
+      perm: 'templates',
+      onPress: () => {
+        setSheet(null);
+        router.push({ pathname: '/templates', params: { conversationId: id } });
+      },
+    },
+  ];
+  const actions: ConversationAction[] = allActions.filter((a) => can(a.perm));
+
+  const appendLocal = (m: Omit<Message, 'id' | 'conversationId' | 'direction' | 'at' | 'status'>) =>
+    setLocalMsgs((prev) => [
+      ...prev,
+      {
+        id: `local-${Date.now()}`,
+        conversationId: id,
+        direction: 'out',
+        at: new Date().toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }),
+        status: 'sent',
+        ...m,
+      },
+    ]);
+
+  const startVoice = async () => {
+    if (!canCompose) return;
+    const result = await voice.start();
+    if (result !== 'granted') show(t('conversation.allowMic'), 'error', 'mic-off-outline');
+  };
+
+  const sendVoice = async () => {
+    const audio = await voice.stop();
+    if (!audio) return;
+    if (mode === 'mock') {
+      appendLocal({ type: 'audio', body: t('conversation.audio'), audioUri: audio.uri, durationS: audio.durationS });
+      return;
+    }
+    try {
+      await sendMediaMessage(id, {
+        uri: audio.uri,
+        name: Platform.OS === 'web' ? 'audio.webm' : 'audio.m4a',
+        type: Platform.OS === 'web' ? 'audio/webm' : 'audio/mp4',
+      });
+      await liveQuery.refetch();
+    } catch {
+      showToast(t('conversation.audioFailed'), 'error');
+    }
+  };
 
   return (
-    <View style={styles.root}>
-      <View style={styles.topBar}>
+    // O campo de mensagem sobe junto com o teclado do iPhone (sem esconder o texto e o enviar).
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Backdrop variant="chat" />
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <IconButton icon="chevron-back" accessibilityLabel={t('common:actions.back')} onPress={() => router.back()} />
         <Pressable
           style={styles.contactBlock}
           onPress={() => conversation.contactId && router.push(`/contact/${conversation.contactId}`)}
           accessibilityRole="button"
-          accessibilityLabel="Ver contato"
+          accessibilityLabel={t('conversation.viewContact')}
         >
-          <Body style={styles.contactName}>{conversation.contactName}</Body>
-          <Muted>
-            {conversation.queue} · {statusLabel}
-          </Muted>
+          <Avatar initials={initialsOf(conversation.contactName)} size={42} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.contactName} numberOfLines={1}>{conversation.contactName}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              {/* Vários números: por qual deles o cliente está falando (a resposta sai por ele). */}
+              {connections.multi && connection ? <ChannelChip connection={connection} size="xs" /> : null}
+              <View style={[styles.statusDot, ownership === 'mine' ? { backgroundColor: colors.success } : ownership === 'queue' ? { backgroundColor: colors.warn } : null]} />
+              <Muted numberOfLines={1} style={{ fontSize: 12.5 }}>
+                {conversation.queue} · {statusLabel}
+              </Muted>
+            </View>
+          </View>
         </Pressable>
-        <Pressable
-          onPress={() => setSheet('actions')}
-          style={styles.iconBtn}
-          accessibilityRole="button"
-          accessibilityLabel="Ações do atendimento"
-        >
-          <Ionicons name="ellipsis-horizontal" size={22} color={colors.text} />
-        </Pressable>
+        {aiOn ? <AiSummaryButton onPress={() => setSheet('summary')} /> : null}
+        {hasOwnershipAction ? <IconButton icon="ellipsis-horizontal" accessibilityLabel={t('conversation.moreActions')} onPress={() => setSheet('actions')} /> : null}
       </View>
 
       {!conversation.within24h ? (
         <View style={styles.windowBanner}>
-          <Body style={{ color: '#fff', fontSize: 13, flex: 1 }}>
-            Fora da janela 24h — use um template aprovado.
-          </Body>
-          <Pressable onPress={() => router.push({ pathname: '/templates', params: { conversationId: id } })}>
-            <Text style={styles.link}>Templates</Text>
+          <Ionicons name="time-outline" size={18} color={colors.warnText} />
+          <Text style={styles.windowText}>{t('conversation.windowBanner')}</Text>
+          {can('templates') ? (
+          <Pressable
+            onPress={() => router.push({ pathname: '/templates', params: { conversationId: id } })}
+            accessibilityRole="button"
+            hitSlop={8}
+          >
+            <Text style={styles.link}>{t('conversation.templatesLink')}</Text>
           </Pressable>
+          ) : null}
         </View>
       ) : null}
 
-      {ownership === 'queue' ? (
+      {ownership === 'queue' && ownershipActions.claim && canSend ? (
         <View style={styles.claimBanner}>
-          <Muted style={{ flex: 1 }}>Assuma para responder este contato.</Muted>
-          <Button label="Assumir" onPress={() => runAction('claim')} style={styles.claimBtn} />
+          <IconTile icon="hand-left-outline" size={38} />
+          <Text style={styles.claimText}>{t('conversation.claimBanner')}</Text>
+          <Button label={t('conversation.claim')} compact onPress={() => runAction('claim')} />
         </View>
       ) : null}
 
       <FlatList
+        ref={listRef}
+        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         data={thread}
         keyExtractor={(m) => m.id}
-        contentContainerStyle={{ padding: spacing.md, gap: spacing.sm, paddingBottom: 12 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, gap: 8, paddingBottom: 16 }}
         renderItem={({ item }) => {
           const out = item.direction === 'out';
+          if (item.type === 'image' || item.type === 'video' || item.type === 'document') {
+            const media: ChatMediaData =
+              item.type === 'document' ? { kind: 'document', name: item.fileName ?? item.body } : { kind: item.type };
+            return (
+              <View style={{ alignSelf: out ? 'flex-end' : 'flex-start', maxWidth: '82%' }}>
+                <MediaBubble media={media} caption={item.caption} at={item.at} mine={out} status={item.status} />
+              </View>
+            );
+          }
+          if (item.type === 'pix' && item.pix) {
+            return (
+              <View style={{ alignSelf: out ? 'flex-end' : 'flex-start' }}>
+                <PixCard pix={item.pix} at={item.at} mine={out} status={item.status} />
+              </View>
+            );
+          }
+          if (item.type === 'audio') {
+            return (
+              <View style={{ alignSelf: out ? 'flex-end' : 'flex-start' }}>
+                <RemoteAudioBubble id={item.id} localUri={item.audioUri} mediaId={item.mediaId} durationS={item.durationS} at={item.at} mine={out} status={item.status} />
+              </View>
+            );
+          }
           return (
             <View style={[styles.bubble, out ? styles.bubbleOut : styles.bubbleIn]}>
-              {item.type !== 'text' ? (
-                <Badge label={item.type.toUpperCase()} tone={out ? 'neutral' : 'primary'} />
-              ) : null}
-              <Text style={[styles.bubbleText, out && { color: '#fff' }]}>{item.body}</Text>
-              <Text style={[styles.meta, out && { color: '#d7e2ff' }]}>
-                {item.at}
-                {item.status ? ` · ${item.status}` : ''}
-              </Text>
+              <TextWithMeta at={item.at} mine={out} status={item.status} tone={out ? 'onBubbleMine' : 'onBubbleTheirs'} style={[styles.bubbleText, out && { color: '#fff' }]}>
+                {item.body}
+              </TextWithMeta>
             </View>
           );
         }}
       />
 
-      <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-        <Pressable
-          onPress={() => setSheet('attach')}
-          style={styles.attachBtn}
-          accessibilityRole="button"
-          accessibilityLabel="Anexar mídia"
-        >
-          <Ionicons name="add" size={24} color={colors.text} />
-        </Pressable>
-        <Pressable
-          onPress={() => router.push({ pathname: '/quick-replies', params: { conversationId: id } })}
-          style={styles.qrBtn}
-          accessibilityRole="button"
-          accessibilityLabel="Respostas rápidas"
-        >
-          <Ionicons name="flash-outline" size={20} color={colors.primary} />
-        </Pressable>
-        <TextInput
-          style={styles.input}
-          value={draft}
-          onChangeText={setDraft}
-          placeholder={
-            !conversation.within24h
-              ? 'Use um template'
-              : ownership !== 'mine'
-                ? 'Assuma para responder'
-                : 'Mensagem…'
-          }
-          editable={canCompose}
-          placeholderTextColor={colors.textMuted}
-        />
-        <Pressable
-          onPress={() => {
-            if (!draft.trim() || !canCompose) return;
-            if (mode === 'mock') {
-              showToast('Mensagem enviada');
-              setDraft('');
-              return;
-            }
-            sendMut.mutate(draft.trim());
+      {qrTerm !== null && canCompose && !voice.recording ? (
+        <QuickReplySuggestions
+          term={qrTerm}
+          items={qrItems}
+          loading={qrQuery.isFetching}
+          onPick={(q) => {
+            const next = applyQuickReply(draft, resolveQuickReplyVariables(q.body, { name: conversation.contactName }, user?.name ?? ''));
+            setDraft(next);
+            focusAtEnd(inputRef.current, next);
           }}
-          style={[styles.send, (!canCompose || !draft.trim()) && { opacity: 0.45 }]}
-          accessibilityRole="button"
-          accessibilityLabel="Enviar"
-        >
-          <Ionicons name="send" size={18} color="#fff" />
-        </Pressable>
-      </View>
-
-      {toast ? (
-        <View style={styles.toast}>
-          <Text style={{ color: '#fff', fontFamily: typography.fontFamilyMedium }}>{toast}</Text>
-        </View>
+        />
       ) : null}
 
-      <Modal visible={sheet === 'actions'} transparent animationType="slide" onRequestClose={() => setSheet(null)}>
-        <Pressable style={styles.overlay} onPress={() => setSheet(null)} />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
-          <Body style={styles.sheetTitle}>Posse e atendimento</Body>
-          <Button label="Assumir" onPress={() => runAction('claim')} />
-          <Button label="Liberar para a fila" variant="secondary" onPress={() => runAction('release')} />
-          <Button label="Transferir…" variant="secondary" onPress={() => setSheet('transfer')} />
-          <Button label="Encerrar" variant="danger" onPress={() => runAction('close')} />
-          {conversation.contactId ? (
-            <Button
-              label="Ver contato"
-              variant="ghost"
-              onPress={() => {
-                setSheet(null);
-                router.push(`/contact/${conversation.contactId}`);
-              }}
-            />
+      {aiOn && canCompose && qrTerm === null && !voice.recording ? (
+        <ReplySuggestions
+          conversationId={id}
+          lastInboundId={lastInboundId}
+          draft={draft}
+          onUse={(text) => {
+            setDraft(text);
+            focusAtEnd(inputRef.current, text);
+          }}
+        />
+      ) : null}
+
+      {!canSend ? (
+        <View style={[styles.readOnly, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <Ionicons name="eye-outline" size={18} color={colors.textSoft} />
+          <Text style={styles.readOnlyText}>{t('conversation.readOnly')}</Text>
+        </View>
+      ) : voice.recording ? (
+        <View style={[styles.composer, { paddingHorizontal: 0, paddingTop: 0 }]}>
+          <RecordingBar elapsedS={voice.elapsedS} levels={voice.levels} onCancel={() => void voice.cancel()} onSend={() => void sendVoice()} bottomInset={Math.max(insets.bottom, 12)} />
+        </View>
+      ) : (
+        <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+          {actions.length ? (
+          <Pressable
+            onPress={() => setSheet('attach')}
+            style={styles.attachBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t('conversation.attachA11y')}
+          >
+            <Ionicons name="add" size={24} color={colors.primary} />
+          </Pressable>
           ) : null}
+          {can('quickReplies') ? (
+          <Pressable
+            onPress={() => setSheet('quick')}
+            style={styles.qrBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t('conversation.quickA11y')}
+          >
+            <Ionicons name="flash-outline" size={20} color={colors.primary} />
+          </Pressable>
+          ) : null}
+          <ChatInput
+            inputRef={inputRef}
+            value={draft}
+            onChangeText={setDraft}
+            placeholder={!conversation.within24h ? t('conversation.placeholderTemplate') : ownership !== 'mine' ? t('conversation.placeholderClaim') : t('conversation.placeholderMessage')}
+            editable={canCompose}
+          />
+          {draft.trim() || !canCompose || !can('sendMedia') ? (
+            <Pressable
+              onPress={() => {
+                if (!draft.trim() || !canCompose) return;
+                if (mode === 'mock') {
+                  appendLocal({ type: 'text', body: draft.trim() });
+                  setDraft('');
+                  return;
+                }
+                sendMut.mutate(draft.trim());
+              }}
+              style={[styles.send, (!canCompose || !draft.trim()) && { opacity: 0.45 }]}
+              accessibilityRole="button"
+              accessibilityLabel={t('common:actions.send')}
+            >
+              <Ionicons name="send" size={18} color="#fff" />
+            </Pressable>
+          ) : (
+            <MicButton onPress={() => void startVoice()} />
+          )}
         </View>
-      </Modal>
+      )}
 
-      <Modal visible={sheet === 'transfer'} transparent animationType="slide" onRequestClose={() => setSheet(null)}>
-        <Pressable style={styles.overlay} onPress={() => setSheet(null)} />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
-          <Body style={styles.sheetTitle}>Transferir</Body>
-          <Muted>No mobile, libere para a fila ou use o web para escolher atendente.</Muted>
-          <Button label="Liberar para a fila" onPress={() => runAction('release')} />
-        </View>
-      </Modal>
+      <Toast toast={toast} />
 
-      <Modal visible={sheet === 'attach'} transparent animationType="slide" onRequestClose={() => setSheet(null)}>
-        <Pressable style={styles.overlay} onPress={() => setSheet(null)} />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
-          <Body style={styles.sheetTitle}>Anexar mídia</Body>
-          <Button label="Foto / Vídeo" variant="secondary" onPress={() => pickAndSend('image')} />
-          <Button label="Documento" variant="secondary" onPress={() => pickAndSend('document')} />
+      <BottomSheet visible={sheet === 'actions'} onClose={() => setSheet(null)} title={t('conversation.ownershipTitle')}>
+        {ownershipActions.claim ? <Button label={t('conversation.claim')} onPress={() => runAction('claim')} /> : null}
+        {ownershipActions.release ? <Button label={t('conversation.release')} variant="secondary" onPress={() => runAction('release')} /> : null}
+        {ownershipActions.transfer ? <Button label={t('conversation.transfer')} variant="secondary" onPress={() => setSheet('transfer')} /> : null}
+        {ownershipActions.close ? <Button label={t('conversation.close')} variant="danger" onPress={() => runAction('close')} /> : null}
+        {conversation.contactId && can('contacts') ? (
           <Button
-            label="Áudio (em breve)"
+            label={t('conversation.viewContact')}
             variant="ghost"
             onPress={() => {
               setSheet(null);
-              showToast('Áudio na próxima versão');
+              router.push(`/contact/${conversation.contactId}`);
             }}
           />
-        </View>
-      </Modal>
-    </View>
+        ) : null}
+      </BottomSheet>
+
+      <TransferSheet
+        visible={sheet === 'transfer'}
+        onClose={() => setSheet(null)}
+        conversationId={id}
+        within24h={conversation.within24h}
+        canRelease={ownershipActions.release && ownership === 'mine'}
+        onRelease={() => void runAction('release')}
+        onTransferred={(name, to) => {
+          setSheet(null);
+          if (mode === 'mock') setOwnership(to === 'agent' ? 'other' : 'queue');
+          else void liveQuery.refetch();
+          show(ta('transfer.done', { name }), 'success', 'swap-horizontal');
+        }}
+        onError={(msg) => show(msg, 'error')}
+      />
+
+      <AiSummarySheet visible={sheet === 'summary'} onClose={() => setSheet(null)} conversationId={id} raw={liveQuery.data?.raw} onChanged={() => void liveQuery.refetch()} />
+
+      <ActionsSheet visible={sheet === 'attach'} onClose={() => setSheet(null)} actions={actions} footnote={composeBlock} />
+
+      <QuickRepliesSheet
+        visible={sheet === 'quick'}
+        onClose={() => setSheet(null)}
+        live={mode === 'live'}
+        demoItems={mockQuickReplies}
+        within24h={conversation.within24h}
+        onPick={(q) => {
+          setSheet(null);
+          const body = resolveQuickReplyVariables(q.body, { name: conversation.contactName }, user?.name ?? '');
+          if (!canCompose) {
+            show(composeBlock ?? t('conversation.cannotReply'), 'info');
+            return;
+          }
+          setDraft((d) => (slashTerm(d) !== null ? applyQuickReply(d, body) : d ? `${d}\n${body}` : body));
+        }}
+        onTemplates={() => {
+          setSheet(null);
+          router.push({ pathname: '/templates', params: { conversationId: id } });
+        }}
+      />
+
+      <PixSheet visible={sheet === 'pix'} onClose={() => setSheet(null)} live={mode === 'live'} onSend={(pix) => void sendPix(pix)} />
+
+      <BookingSheet
+        visible={sheet === 'booking'}
+        onClose={() => setSheet(null)}
+        live={mode === 'live'}
+        contactId={conversation.contactId ?? ''}
+        contactName={conversation.contactName}
+        onBooked={(summary) => {
+          setSheet(null);
+          show(t('conversation.booked', { summary }), 'success', 'calendar-outline');
+        }}
+        onError={(msg) => show(msg, 'error')}
+      />
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.pageBg },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.pageBg },
   topBar: {
     backgroundColor: colors.cardBg,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    borderBottomLeftRadius: radii.xl,
+    borderBottomRightRadius: radii.xl,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 10,
+    zIndex: 2,
+    ...shadows.card,
   },
-  contactBlock: { flex: 1, gap: 2 },
-  contactName: { fontFamily: typography.fontFamilySemiBold, fontSize: 17 },
-  iconBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.pageBg,
-  },
+  contactBlock: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 0 },
+  contactName: { ...text.section, color: colors.text },
+  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#9aa6bd' },
   windowBanner: {
-    backgroundColor: colors.warn,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    marginHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: colors.warnSoft,
+    borderRadius: radii.md + 2,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: 10,
   },
+  windowText: { flex: 1, fontFamily: typography.fontFamilyMedium, fontSize: 13, lineHeight: 18, color: colors.warnText },
   claimBanner: {
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    marginHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: colors.cardBg,
+    borderRadius: radii.lg,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: 12,
+    ...shadows.card,
   },
-  claimBtn: { minHeight: 40, paddingHorizontal: spacing.md },
-  link: { color: '#fff', fontFamily: typography.fontFamilySemiBold, textDecorationLine: 'underline' },
-  bubble: { maxWidth: '82%', borderRadius: radii.lg, padding: spacing.md, gap: 4 },
+  readOnly: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingTop: 14, backgroundColor: '#fff', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  readOnlyText: { flex: 1, fontFamily: typography.fontFamilyMedium, fontSize: 13.5, lineHeight: 19, color: colors.textSoft },
+  claimText: { flex: 1, fontFamily: typography.fontFamilyMedium, fontSize: 13.5, lineHeight: 19, color: colors.textSoft },
+  link: { color: colors.warnText, fontFamily: typography.fontFamilyBold, fontSize: 13, textDecorationLine: 'underline' },
+  bubble: { maxWidth: '82%', borderRadius: BUBBLE_RADIUS, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 7 },
   bubbleIn: {
     alignSelf: 'flex-start',
     backgroundColor: colors.cardBg,
+    borderBottomLeftRadius: 8,
+    ...shadows.card,
   },
-  bubbleOut: { alignSelf: 'flex-end', backgroundColor: colors.primary },
-  bubbleText: { fontFamily: typography.fontFamily, fontSize: typography.body, color: colors.text },
-  meta: { fontFamily: typography.fontFamily, fontSize: 11, color: colors.textMuted },
+  bubbleOut: { alignSelf: 'flex-end', backgroundColor: colors.primary, borderBottomRightRadius: 8, ...shadows.button },
+  bubbleText: { ...text.body, color: colors.text },
   composer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.sm,
+    alignItems: 'flex-end',
+    gap: 8,
+    paddingHorizontal: 12,
     paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
     backgroundColor: colors.cardBg,
+    ...shadows.nav,
   },
   attachBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.pageBg,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primaryWash,
     alignItems: 'center',
     justifyContent: 'center',
   },
   qrBtn: {
     width: 36,
-    height: 40,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  input: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    borderRadius: radii.control,
-    backgroundColor: colors.pageBg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    fontFamily: typography.fontFamily,
-    color: colors.text,
-    fontSize: typography.body,
   },
   send: {
     backgroundColor: colors.primary,
-    borderRadius: 20,
-    width: 40,
-    height: 40,
+    borderRadius: 22,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  overlay: { flex: 1, backgroundColor: colors.overlay },
-  sheet: {
-    backgroundColor: colors.cardBg,
-    borderTopLeftRadius: radii.sheet,
-    borderTopRightRadius: radii.sheet,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    zIndex: zIndex.sheet,
-  },
-  sheetTitle: { fontFamily: typography.fontFamilySemiBold, marginBottom: 4, fontSize: 17 },
-  toast: {
-    position: 'absolute',
-    bottom: 96,
-    alignSelf: 'center',
-    backgroundColor: colors.chromeNavy,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-    zIndex: zIndex.toast,
+    ...shadows.button,
   },
 });

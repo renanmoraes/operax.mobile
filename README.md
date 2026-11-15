@@ -8,6 +8,7 @@ App nativo (iOS/Android) do CRM Operax — atendimento em campo com a mesma ess�
 - Auth live (Bearer + SecureStore) + demo mock
 - Inbox / conversa / avisos ligados à API quando logado de verdade
 - Push: permissão + registro de device token; catálogo com defaults ON
+- Seleção de papel (equipe/cliente); login de cliente (senha/OTP) com modo demo — endpoints reais pendentes
 
 Dossiê: [`docs/`](docs/)
 

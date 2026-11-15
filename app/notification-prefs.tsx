@@ -1,8 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
-import { Body, Button, Card, Muted, Screen, Title } from '@/src/design-system/ui';
-import { colors, spacing, typography } from '@/src/design-system/tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Badge, Button, IconName, Muted, Rise, Screen, ScreenHeader, SettingsGroup, SettingsRow } from '@/src/design-system/ui';
+import { colors, typography } from '@/src/design-system/tokens';
 import {
   defaultNotificationPrefs,
   PUSH_CATEGORIES,
@@ -10,33 +13,53 @@ import {
   NotificationPrefsState,
 } from '@/src/features/notifications/catalog';
 import { useAuth } from '@/src/features/auth/AuthContext';
+import { openSystemSettings, usePermissions } from '@/src/features/permissions/permissions';
 import { updateNotificationPrefs } from '@/src/shared/api/profile.api';
 
-export default function NotificationPrefsScreen() {
-  const { mode, user } = useAuth();
-  const [prefs, setPrefs] = useState<NotificationPrefsState>(defaultNotificationPrefs);
-  const [saved, setSaved] = useState<string | null>(null);
+const CATEGORY_ICONS: Record<PushCategoryId, IconName> = {
+  queue_new: 'people-outline',
+  claimed_message: 'chatbubble-ellipses-outline',
+  ownership_expiring: 'hourglass-outline',
+  assignment_expired: 'alert-circle-outline',
+  chat_message: 'chatbubbles-outline',
+  chat_mention: 'at-outline',
+  booking_new: 'calendar-outline',
+  booking_reschedule: 'swap-horizontal-outline',
+  reminder: 'alarm-outline',
+  transfer: 'arrow-redo-outline',
+  urgency: 'flame-outline',
+  kanban_followup: 'grid-outline',
+};
 
-  useEffect(() => {
-    const remote = user?.notification_prefs as Partial<NotificationPrefsState> | undefined;
-    if (!remote) return;
-    setPrefs((prev) => ({
+export default function NotificationPrefsScreen() {
+  const { t } = useTranslation('staff');
+  const insets = useSafeAreaInsets();
+  const { mode, user } = useAuth();
+  const { states, request } = usePermissions(['notifications'], mode === 'live' && user?.kind === 'staff');
+  const permission = states.notifications;
+  // Começa com o que já veio do servidor junto com o usuário (sem efeito para copiar depois).
+  const [prefs, setPrefs] = useState<NotificationPrefsState>(() => {
+    const remote = (user?.kind === 'staff' ? user.notification_prefs : undefined) as Partial<NotificationPrefsState> | undefined;
+    const prev = defaultNotificationPrefs();
+    if (!remote) return prev;
+    return {
       ...prev,
       sound: remote.sound ?? prev.sound,
       push: remote.push ?? prev.push,
       desktop: remote.desktop ?? prev.desktop,
       email_digest: remote.email_digest ?? prev.email_digest,
       categories: { ...prev.categories, ...(remote.categories as Record<PushCategoryId, boolean>) },
-    }));
-  }, [user]);
+    };
+  });
+  const [saved, setSaved] = useState<string | null>(null);
 
   const saveMut = useMutation({
-    mutationFn: () => updateNotificationPrefs(prefs, user?.name || 'Usuário'),
+    mutationFn: () => updateNotificationPrefs(prefs, user?.name || t('common.user')),
     onSuccess: () => {
-      setSaved('Preferências salvas');
+      setSaved(t('prefs.saved'));
       setTimeout(() => setSaved(null), 2000);
     },
-    onError: () => setSaved('Falha ao salvar'),
+    onError: () => setSaved(t('prefs.saveFailed')),
   });
 
   const setCategory = (id: PushCategoryId, value: boolean) => {
@@ -46,89 +69,101 @@ export default function NotificationPrefsScreen() {
     }));
   };
 
+  const toggle = (value: boolean, onChange: (v: boolean) => void, label: string, disabled?: boolean) => (
+    <Switch
+      value={value}
+      onValueChange={onChange}
+      disabled={disabled}
+      accessibilityLabel={label}
+      trackColor={{ true: colors.primary, false: colors.track }}
+      thumbColor="#fff"
+      // react-native-web pinta o polegar ligado de verde-água sem esta prop
+      {...({ activeThumbColor: '#fff' } as object)}
+    />
+  );
+
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
-        <View style={{ gap: spacing.xs }}>
-          <Title>Notificações push</Title>
-          <Muted>Por padrão tudo fica ligado — inclusive com o telefone bloqueado.</Muted>
-          {saved ? <Muted>{saved}</Muted> : null}
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 40 }}>
+        <ScreenHeader title={t('prefs.title')} subtitle={t('prefs.subtitle')} onBack={() => router.back()} />
+        <View style={{ paddingHorizontal: 20 }}>
+          <Rise>
+            <SettingsGroup>
+              <SettingsRow
+                icon="phone-portrait-outline"
+                title={t('prefs.devicePermission')}
+                subtitle={
+                  permission === 'granted'
+                    ? t('prefs.permission.granted')
+                    : permission === 'blocked'
+                      ? t('prefs.permission.blocked')
+                      : permission === 'unavailable'
+                        ? t('prefs.permission.unavailable')
+                        : t('prefs.permission.notYet')
+                }
+                subtitleTone={permission === 'granted' ? 'success' : permission === 'blocked' ? 'warn' : undefined}
+                right={
+                  permission === 'granted' || permission === 'unavailable' ? (
+                    <View />
+                  ) : permission === 'blocked' ? (
+                    <Button label={t('prefs.settings')} variant="soft" compact onPress={openSystemSettings} />
+                  ) : (
+                    <Button label={t('prefs.enable')} compact onPress={() => void request('notifications')} />
+                  )
+                }
+              />
+              <SettingsRow
+                icon="notifications-outline"
+                title={t('prefs.push.title')}
+                subtitle={t('prefs.push.subtitle')}
+                right={toggle(prefs.push, (v) => setPrefs((p) => ({ ...p, push: v })), t('prefs.push.title'))}
+              />
+              <SettingsRow
+                icon="volume-medium-outline"
+                title={t('prefs.sound.title')}
+                subtitle={t('prefs.sound.subtitle')}
+                right={toggle(prefs.sound, (v) => setPrefs((p) => ({ ...p, sound: v })), t('prefs.sound.title'))}
+                last
+              />
+            </SettingsGroup>
+          </Rise>
+
+          <Muted style={styles.groupLabel}>{t('prefs.categories')}</Muted>
+          <Rise index={1}>
+            <View style={!prefs.push && { opacity: 0.5 }}>
+              <SettingsGroup>
+                {PUSH_CATEGORIES.map((cat, i) => (
+                  <SettingsRow
+                    key={cat.id}
+                    icon={CATEGORY_ICONS[cat.id] ?? 'notifications-outline'}
+                    title={cat.label}
+                    subtitle={cat.description}
+                    right={toggle(prefs.categories[cat.id], (v) => setCategory(cat.id, v), cat.label, !prefs.push)}
+                    last={i === PUSH_CATEGORIES.length - 1}
+                  />
+                ))}
+              </SettingsGroup>
+            </View>
+          </Rise>
+
+          <View style={{ marginTop: 18, gap: 10 }}>
+            {saved ? (
+              <View style={{ alignSelf: 'center' }}>
+                <Badge label={saved} tone={saved === t('prefs.saveFailed') ? 'danger' : 'success'} />
+              </View>
+            ) : null}
+            {mode === 'live' ? (
+              <Button label={t('prefs.savePrefs')} loading={saveMut.isPending} onPress={() => saveMut.mutate()} disabled={saveMut.isPending} />
+            ) : (
+              <Muted style={{ textAlign: 'center' }}>{t('prefs.demoNote')}</Muted>
+            )}
+          </View>
         </View>
-
-        <Card style={{ gap: spacing.md }}>
-          <Row
-            label="Push no aparelho"
-            hint="Master"
-            value={prefs.push}
-            onChange={(v) => setPrefs((p) => ({ ...p, push: v }))}
-          />
-          <Row
-            label="Som no app"
-            hint="App aberto"
-            value={prefs.sound}
-            onChange={(v) => setPrefs((p) => ({ ...p, sound: v }))}
-          />
-        </Card>
-
-        <Body style={styles.section}>Categorias</Body>
-        <Card style={{ gap: spacing.lg }}>
-          {PUSH_CATEGORIES.map((cat) => (
-            <Row
-              key={cat.id}
-              label={cat.label}
-              hint={cat.description}
-              value={prefs.categories[cat.id]}
-              onChange={(v) => setCategory(cat.id, v)}
-              disabled={!prefs.push}
-            />
-          ))}
-        </Card>
-
-        {mode === 'live' ? (
-          <Button
-            label={saveMut.isPending ? 'Salvando…' : 'Salvar na API'}
-            onPress={() => saveMut.mutate()}
-            disabled={saveMut.isPending}
-          />
-        ) : (
-          <Muted>Modo mock — preferências só locais.</Muted>
-        )}
       </ScrollView>
     </Screen>
   );
 }
 
-function Row({
-  label,
-  hint,
-  value,
-  onChange,
-  disabled,
-}: {
-  label: string;
-  hint: string;
-  value: boolean;
-  onChange: (v: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <View style={[styles.row, disabled && { opacity: 0.45 }]}>
-      <View style={{ flex: 1, paddingRight: spacing.md, gap: 2 }}>
-        <Body style={styles.label}>{label}</Body>
-        <Muted>{hint}</Muted>
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onChange}
-        disabled={disabled}
-        trackColor={{ true: colors.primary }}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  section: { fontFamily: typography.fontFamilySemiBold, marginTop: spacing.xs },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  label: { fontFamily: typography.fontFamilyMedium },
+  groupLabel: { marginTop: 22, marginBottom: 10, fontFamily: typography.fontFamilySemiBold },
 });

@@ -1,0 +1,88 @@
+import type { Shape } from '../../shape';
+import type pt from '../pt/staff';
+
+const staff: Shape<typeof pt> = {
+  common: {
+    user: 'User',
+    online: 'Online',
+    demo: 'Demo',
+  },
+  more: {
+    title: 'More',
+    team: 'Team',
+    work: 'Work',
+    account: 'Account',
+    items: {
+      pos: { title: 'Sale (POS)', hint: 'Scan, weigh and take payment' },
+      patients: { title: 'Patients', hint: 'Patients and clients of the company' },
+      kanban: { title: 'Kanban', hint: 'Sales pipeline' },
+      history: { title: 'History', hint: 'Closed conversations' },
+      quickReplies: { title: 'Quick replies', hint: 'Message shortcuts' },
+      templates: { title: 'Meta templates', hint: 'Outside the 24 h window' },
+      push: { title: 'Push notifications', hint: 'Categories and preferences' },
+      profile: { title: 'Profile', hint: 'Account, push and session' },
+    },
+  },
+  notifications: {
+    title: 'Alerts',
+    prefs: 'Notification preferences',
+    empty: 'No alerts.',
+  },
+  prefs: {
+    title: 'Notifications',
+    subtitle: 'Everything on by default, even with the screen locked',
+    saved: 'Preferences saved',
+    saveFailed: 'Could not save',
+    devicePermission: 'Phone permission',
+    permission: {
+      granted: 'Enabled',
+      blocked: 'Blocked in settings',
+      unavailable: 'Available in the phone app',
+      notYet: 'Not enabled yet',
+    },
+    settings: 'Settings',
+    enable: 'Enable',
+    push: { title: 'Push on this device', subtitle: 'Turns all categories on or off' },
+    sound: { title: 'Sound in the app', subtitle: 'While the app is open' },
+    categories: 'Categories',
+    savePrefs: 'Save preferences',
+    demoNote: 'In demo mode, preferences stay on this device only.',
+  },
+  permissions: {
+    title: 'Device permissions',
+    onboardingTitle: 'Get the app ready for customer service',
+    onboardingSub: 'Allow what you will use. You can change it later in Profile › Device permissions.',
+    sub: 'If you denied a permission, allow it here or in your phone settings.',
+    enable: 'Enable',
+    allow: 'Allow',
+    notNow: 'Not now',
+    notifications: {
+      title: 'Notifications',
+      body: 'New customer messages, conversations transferred to you, team chat, schedule and Operax alerts.',
+    },
+    camera: {
+      title: 'Camera and photos',
+      body: 'To send photos, videos and documents in conversations and team chat.',
+    },
+    microphone: {
+      title: 'Microphone',
+      body: 'To record and send voice messages in conversations and team chat.',
+    },
+  },
+  push: {
+    queue_new: { label: 'New conversation in the queue', description: 'A conversation entered your department queue and needs to be claimed.' },
+    claimed_message: { label: 'New message in a conversation', description: 'A customer wrote in a conversation you claimed.' },
+    ownership_expiring: { label: 'Conversation about to expire', description: 'Your ownership is about to expire due to inactivity.' },
+    assignment_expired: { label: 'Ownership expired', description: 'The conversation went back to the queue because the ownership time ran out.' },
+    chat_message: { label: 'Team chat message', description: 'New message in a team channel.' },
+    chat_mention: { label: 'Team chat mention', description: 'Someone mentioned you (@) in the team chat.' },
+    booking_new: { label: 'New booking', description: 'Appointment created in the schedule.' },
+    booking_reschedule: { label: 'Reschedule', description: 'Time changed or reschedule pending.' },
+    reminder: { label: 'Reminders', description: 'Schedule, follow-up and task reminders.' },
+    transfer: { label: 'Conversation transfer', description: 'Conversation transferred to you or to your queue.' },
+    urgency: { label: 'Urgent conversation', description: 'Critical escalation of an active conversation.' },
+    kanban_followup: { label: 'Pipeline follow-up', description: 'Card with a follow-up coming due, or a relevant win/loss.' },
+  },
+};
+
+export default staff;

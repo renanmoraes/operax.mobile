@@ -1,0 +1,88 @@
+import type { Shape } from '../../shape';
+import type pt from '../pt/staff';
+
+const staff: Shape<typeof pt> = {
+  common: {
+    user: 'Usuario',
+    online: 'En línea',
+    demo: 'Demo',
+  },
+  more: {
+    title: 'Más',
+    team: 'Equipo',
+    work: 'Trabajo',
+    account: 'Cuenta',
+    items: {
+      pos: { title: 'Venta (PDV)', hint: 'Escanea, pesa y cobra' },
+      patients: { title: 'Pacientes', hint: 'Pacientes y clientes de la empresa' },
+      kanban: { title: 'Kanban', hint: 'Pipeline comercial' },
+      history: { title: 'Historial', hint: 'Atenciones cerradas' },
+      quickReplies: { title: 'Respuestas rápidas', hint: 'Atajos de mensaje' },
+      templates: { title: 'Plantillas Meta', hint: 'Fuera de la ventana de 24 h' },
+      push: { title: 'Notificaciones push', hint: 'Categorías y preferencias' },
+      profile: { title: 'Perfil', hint: 'Cuenta, push y sesión' },
+    },
+  },
+  notifications: {
+    title: 'Avisos',
+    prefs: 'Preferencias de notificación',
+    empty: 'Ningún aviso.',
+  },
+  prefs: {
+    title: 'Notificaciones',
+    subtitle: 'Todo activado por defecto, incluso con la pantalla bloqueada',
+    saved: 'Preferencias guardadas',
+    saveFailed: 'No se pudo guardar',
+    devicePermission: 'Permiso del celular',
+    permission: {
+      granted: 'Activado',
+      blocked: 'Bloqueado en ajustes',
+      unavailable: 'Disponible en la app del celular',
+      notYet: 'Aún no activado',
+    },
+    settings: 'Ajustes',
+    enable: 'Activar',
+    push: { title: 'Push en el dispositivo', subtitle: 'Activa o desactiva todas las categorías' },
+    sound: { title: 'Sonido en la app', subtitle: 'Cuando la app esté abierta' },
+    categories: 'Categorías',
+    savePrefs: 'Guardar preferencias',
+    demoNote: 'En el modo demostración las preferencias quedan solo en este dispositivo.',
+  },
+  permissions: {
+    title: 'Permisos del dispositivo',
+    onboardingTitle: 'Deja la app lista para la atención',
+    onboardingSub: 'Permite lo que vayas a usar. Puedes cambiarlo después en Perfil › Permisos del dispositivo.',
+    sub: 'Si negaste algún permiso, permítelo aquí o en los ajustes del celular.',
+    enable: 'Activar',
+    allow: 'Permitir',
+    notNow: 'Ahora no',
+    notifications: {
+      title: 'Notificaciones',
+      body: 'Mensajes nuevos de clientes, atenciones transferidas a ti, chat del equipo, agenda y avisos de Operax.',
+    },
+    camera: {
+      title: 'Cámara y fotos',
+      body: 'Para enviar fotos, videos y documentos en la atención y en el chat del equipo.',
+    },
+    microphone: {
+      title: 'Micrófono',
+      body: 'Para grabar y enviar audios en la atención y en el chat del equipo.',
+    },
+  },
+  push: {
+    queue_new: { label: 'Nueva atención en la cola', description: 'Una conversación entró en la cola de tu área y debe ser tomada.' },
+    claimed_message: { label: 'Nuevo mensaje en la atención', description: 'El cliente escribió en una conversación que tomaste.' },
+    ownership_expiring: { label: 'Atención por vencer', description: 'Tu asignación está por vencer por inactividad.' },
+    assignment_expired: { label: 'Asignación vencida', description: 'La conversación volvió a la cola porque se acabó el tiempo de asignación.' },
+    chat_message: { label: 'Mensaje en el chat interno', description: 'Nuevo mensaje en un canal interno del equipo.' },
+    chat_mention: { label: 'Mención en el chat interno', description: 'Alguien te mencionó (@) en el chat interno.' },
+    booking_new: { label: 'Nueva cita', description: 'Compromiso creado en la agenda.' },
+    booking_reschedule: { label: 'Reprogramación', description: 'Horario cambiado o reprogramación pendiente.' },
+    reminder: { label: 'Recordatorios', description: 'Recordatorios de agenda, seguimiento y tareas.' },
+    transfer: { label: 'Transferencia de conversación', description: 'Conversación transferida a ti o a tu cola.' },
+    urgency: { label: 'Urgencia en la atención', description: 'Escalamiento crítico de una conversación activa.' },
+    kanban_followup: { label: 'Seguimiento del embudo', description: 'Tarjeta con seguimiento por vencer o ganancia/pérdida relevante.' },
+  },
+};
+
+export default staff;
