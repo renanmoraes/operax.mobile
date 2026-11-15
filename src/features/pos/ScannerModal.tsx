@@ -27,12 +27,19 @@ export function ScannerModal({
   onCode,
   feedback,
   count,
+  title,
+  hint,
+  qrOnly,
 }: {
   visible: boolean;
   onClose: () => void;
   onCode: (code: string) => void;
   feedback: ScanFeedback;
   count: number;
+  /** Outra tela que reusa a câmera (check-in de evento) troca o título e a dica e lê só QR. */
+  title?: string;
+  hint?: string;
+  qrOnly?: boolean;
 }) {
   const { t } = useTranslation('pos');
   const insets = useSafeAreaInsets();
@@ -72,14 +79,14 @@ export function ScannerModal({
             style={StyleSheet.absoluteFill}
             facing="back"
             enableTorch={torch}
-            barcodeScannerSettings={{ barcodeTypes: [...TYPES] }}
+            barcodeScannerSettings={{ barcodeTypes: qrOnly ? ['qr'] : [...TYPES] }}
             onBarcodeScanned={visible ? handle : undefined}
           />
         ) : null}
 
         <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
           <IconButton icon="close" onPress={onClose} accessibilityLabel={t('scanner.done')} tone="glass" />
-          <Text style={styles.title}>{t('scanner.title')}</Text>
+          <Text style={styles.title}>{title ?? t('scanner.title')}</Text>
           {granted ? (
             <IconButton icon={torch ? 'flashlight' : 'flashlight-outline'} onPress={() => setTorch((v) => !v)} accessibilityLabel={t('scanner.torch')} tone="glass" />
           ) : (
@@ -89,14 +96,14 @@ export function ScannerModal({
 
         {granted ? (
           <View style={styles.center} pointerEvents="none">
-            <View style={styles.frame}>
+            <View style={[styles.frame, qrOnly && { width: 250, height: 250 }]}>
               <View style={[styles.corner, { top: 0, left: 0, borderLeftWidth: 4, borderTopWidth: 4, borderTopLeftRadius: 18 }]} />
               <View style={[styles.corner, { top: 0, right: 0, borderRightWidth: 4, borderTopWidth: 4, borderTopRightRadius: 18 }]} />
               <View style={[styles.corner, { bottom: 0, left: 0, borderLeftWidth: 4, borderBottomWidth: 4, borderBottomLeftRadius: 18 }]} />
               <View style={[styles.corner, { bottom: 0, right: 0, borderRightWidth: 4, borderBottomWidth: 4, borderBottomRightRadius: 18 }]} />
               <Animated.View style={[styles.laser, line]} />
             </View>
-            <Text style={styles.hint}>{t('scanner.hint')}</Text>
+            <Text style={styles.hint}>{hint ?? t('scanner.hint')}</Text>
           </View>
         ) : (
           <View style={styles.permBox}>

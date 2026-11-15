@@ -12,6 +12,7 @@ import { useCompanies } from '@/src/features/client/useClientData';
 import { useProviders } from '@/src/features/fitness/connections';
 import { providerDisplayName } from '@/src/features/fitness/brands';
 import { useFitnessSummary } from '@/src/features/fitness/useFitness';
+import { useAchievementLevel } from '@/src/features/fitness/achievements';
 import { usePermissions } from '@/src/features/permissions/permissions';
 import { appVersionLabel } from '@/src/shared/updates/appVersion';
 
@@ -21,6 +22,7 @@ export default function ClientPerfilScreen() {
   const { user, logout, switchTenant } = useAuth();
   const { data: companies } = useCompanies();
   const { data: summary } = useFitnessSummary();
+  const lvl = useAchievementLevel();
   const { data: providers } = useProviders();
   const { states, request } = usePermissions(['notifications'], false); // cliente: só a permissão do sistema (o portal não registra aparelho)
   const client = user?.kind === 'client' ? user : null;
@@ -47,7 +49,7 @@ export default function ClientPerfilScreen() {
                 style={styles.stats}
                 items={[
                   { value: summary.totalSessions, label: t('profile.workouts') },
-                  { value: summary.level.level, label: t('profile.level') },
+                  { value: lvl?.level ?? summary.level.level, label: t('profile.level') },
                   { value: summary.streak, label: t('profile.streakDays'), accent: true },
                 ]}
               />

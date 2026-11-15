@@ -1,5 +1,19 @@
 /** Textos em português (base). As chaves valem para todos os idiomas. */
 const staff = {
+  eventCheckin: {
+    again: '{{name}} já tinha feito check-in.',
+    choose: 'Escolha o evento',
+    count_one: '{{count}} check-in',
+    count_other: '{{count}} check-ins',
+    done: 'Check-in de {{name}} feito.',
+    empty: 'Nenhum evento ativo.',
+    fail: 'Não deu para fazer o check-in.',
+    scan: 'Ler ingressos',
+    scanHint: 'Aponte para o ingresso no app do aluno',
+    someone: 'Aluno',
+    title: 'Check-in de evento',
+    won: 'Ganhou "{{achievement}}".',
+  },
   common: {
     user: 'Usuário',
     online: 'Online',
@@ -11,6 +25,7 @@ const staff = {
     work: 'Trabalho',
     account: 'Conta',
     items: {
+      eventCheckin: { title: 'Check-in de evento', hint: 'Leia o ingresso do aluno na entrada' },
       pos: { title: 'Venda (PDV)', hint: 'Leia o código, pese e receba' },
       patients: { title: 'Pacientes', hint: 'Pacientes e clientes da empresa' },
       kanban: { title: 'Kanban', hint: 'Pipeline comercial' },
