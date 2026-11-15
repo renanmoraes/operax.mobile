@@ -1,6 +1,6 @@
 import { kvGet, kvSet } from '@/src/shared/db/localDb';
 import { isoDate } from '@/src/shared/format';
-import { ownedKey } from './owner';
+import { fitnessOwner, ownedKey } from './owner';
 
 export type SetLog = { kg: number; reps: number };
 
@@ -22,9 +22,12 @@ const draftKey = (workoutId: string) => ownedKey(`operax_workout_draft_${workout
 
 /** Rascunho do treino do dia no banco local do aparelho (como o portal): fechar o app não perde as séries. */
 export async function loadDraft(workoutId: string): Promise<SessionDraft | null> {
+  const who = fitnessOwner();
   const key = draftKey(workoutId);
   if (!key) return null;
-  return kvGet<SessionDraft>(key);
+  const draft = await kvGet<SessionDraft>(key);
+  // Trocou de conta durante a leitura: o rascunho é de quem pediu, não da conta que entrou.
+  return fitnessOwner() === who ? draft : null;
 }
 
 export async function saveDraft(d: SessionDraft) {
@@ -37,18 +40,21 @@ export async function clearDraft(workoutId: string) {
   if (key) await kvSet(key, null);
 }
 
-const finishedKey = () => ownedKey('operax_workout_finished');
-let finished: FinishedSession | null = null;
+const finishedKey = (who: string = fitnessOwner()) => ownedKey('operax_workout_finished', who);
+/** Em memória junto com o dono: só volta para a mesma conta que terminou o treino. */
+let finished: { who: string; session: FinishedSession } | null = null;
+const mine = () => (finished && finished.who === fitnessOwner() ? finished.session : null);
 
 /** Treino terminado e ainda não salvo: fica gravado no aparelho até o resultado ser salvo ou ir para a fila. */
 export function setFinishedSession(s: FinishedSession) {
-  finished = s;
-  const key = finishedKey();
+  const who = fitnessOwner();
+  finished = { who, session: s };
+  const key = finishedKey(who);
   if (key) void kvSet(key, s);
 }
 
 export function getFinishedSession() {
-  return finished;
+  return mine();
 }
 
 /** Troca de conta: esquece o treino terminado que estava em memória (o do aparelho já é por conta). */
@@ -58,11 +64,16 @@ export function resetFinishedSessionMemory() {
 
 /** Recupera o treino terminado se o app foi fechado na tela de conclusão. */
 export async function loadFinishedSession(): Promise<FinishedSession | null> {
-  if (finished) return finished;
-  const key = finishedKey();
+  const cached = mine();
+  if (cached) return cached;
+  // O dono é guardado antes da leitura: se a conta mudar no meio, o resultado é descartado.
+  const who = fitnessOwner();
+  const key = finishedKey(who);
   if (!key) return null;
-  finished = await kvGet<FinishedSession>(key);
-  return finished;
+  const session = await kvGet<FinishedSession>(key);
+  if (fitnessOwner() !== who) return null;
+  finished = session ? { who, session } : null;
+  return session;
 }
 
 /** Depois de salvar (ou guardar na fila): apaga o treino terminado e o rascunho do dia. */
