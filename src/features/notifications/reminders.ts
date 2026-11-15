@@ -137,6 +137,25 @@ async function notifications(): Promise<NotificationsModule | null> {
   }
 }
 
+/** Só para teste: troca o módulo de notificações (o `import()` dinâmico não roda no jest). */
+export function __setNotificationsModuleForTest(m: NotificationsModule | null) {
+  mod = m;
+}
+
+/**
+ * Geração dos lembretes. Limpar (saiu da conta, trocou de empresa) sobe a geração na hora: uma
+ * sincronização da conta anterior que ainda está no meio do caminho vê que ficou velha e para antes de
+ * agendar. A fila única garante que a limpeza só roda depois do que já estava agendando, então nada
+ * da conta anterior sobra no aparelho.
+ */
+let generation = 0;
+let queue: Promise<unknown> = Promise.resolve();
+function serial<T>(fn: () => Promise<T>): Promise<T> {
+  const run = queue.then(fn, fn);
+  queue = run.catch(() => undefined);
+  return run;
+}
+
 let channel: string | undefined;
 let channelTried = false;
 /** Canal "Lembretes" no Android. Se o aparelho recusar, usa o canal padrão (o lembrete não pode deixar de tocar). */
@@ -181,9 +200,15 @@ export async function notifyNow(title: string, body: string, url?: string): Prom
 }
 
 /** Refaz os lembretes agendados para bater com a agenda atual. Nunca lança. */
-export async function syncBookingReminders(bookings: ClientBooking[], now = new Date()): Promise<{ scheduled: number; canceled: number }> {
+export function syncBookingReminders(bookings: ClientBooking[], now = new Date()): Promise<{ scheduled: number; canceled: number }> {
+  const gen = generation;
+  return serial(() => syncNow(bookings, now, gen));
+}
+
+async function syncNow(bookings: ClientBooking[], now: Date, gen: number): Promise<{ scheduled: number; canceled: number }> {
+  const stale = () => gen !== generation;
   const N = await notifications();
-  if (!N || !(await granted(N))) return { scheduled: 0, canceled: 0 };
+  if (!N || stale() || !(await granted(N))) return { scheduled: 0, canceled: 0 };
   try {
     const channelId = await ensureChannel(N);
     const wanted = planReminders(bookings, now);
@@ -192,6 +217,7 @@ export async function syncBookingReminders(bookings: ClientBooking[], now = new 
     let canceled = 0;
     const keep = new Set<string>();
     for (const n of current) {
+      if (stale()) return { scheduled: 0, canceled };
       const w = byId.get(n.identifier);
       if (w && sameReminder(n.content, w)) keep.add(n.identifier);
       else {
@@ -201,6 +227,7 @@ export async function syncBookingReminders(bookings: ClientBooking[], now = new 
     }
     let scheduled = 0;
     for (const r of wanted) {
+      if (stale()) return { scheduled, canceled };
       if (keep.has(r.identifier)) continue;
       await N.scheduleNotificationAsync({
         identifier: r.identifier,
@@ -211,7 +238,9 @@ export async function syncBookingReminders(bookings: ClientBooking[], now = new 
     }
 
     // Horário novo marcado pela empresa: avisa na hora (só depois do primeiro sync).
+    if (stale()) return { scheduled, canceled };
     const known = await loadKnown();
+    if (stale()) return { scheduled, canceled };
     for (const b of newBookings(bookings, known, now).slice(0, 3)) {
       const start = new Date(b.starts_at);
       await notifyNow(i18n.t(b.kind === 'class' ? 'client:reminders.classBooked' : 'client:reminders.newBooking'), describe(b, start, now), urlFor(b));
@@ -226,7 +255,12 @@ export async function syncBookingReminders(bookings: ClientBooking[], now = new 
 }
 
 /** Saiu da conta de cliente: nenhum lembrete dela pode tocar depois. */
-export async function clearBookingReminders(): Promise<void> {
+export function clearBookingReminders(): Promise<void> {
+  generation += 1;
+  return serial(clearNow);
+}
+
+async function clearNow(): Promise<void> {
   const N = await notifications();
   if (!N) return;
   try {

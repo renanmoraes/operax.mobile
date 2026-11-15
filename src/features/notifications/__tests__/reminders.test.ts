@@ -1,5 +1,5 @@
 import type { ClientBooking } from '@/src/features/client/types';
-import { newBookings, planReminders, sameReminder } from '../reminders';
+import { __setNotificationsModuleForTest, clearBookingReminders, newBookings, planReminders, sameReminder, syncBookingReminders } from '../reminders';
 
 jest.mock('@/src/shared/storage', () => ({ getItem: jest.fn(), setItem: jest.fn() }));
 jest.mock('@/src/shared/db/localDb', () => ({ kvGet: jest.fn(), kvSet: jest.fn() }));
@@ -63,5 +63,50 @@ describe('lembrete já agendado', () => {
     expect(changed.at).toBe(old.at);
     expect(sameReminder(scheduled, changed)).toBe(false);
     expect(sameReminder({ ...scheduled, data: { at: old.at, url: '/outro' } }, old)).toBe(false);
+  });
+});
+
+describe('limpar no meio de uma sincronização', () => {
+  afterEach(() => __setNotificationsModuleForTest(null));
+
+  function fakeNotifications(firstReadGate?: Promise<void>) {
+    const scheduled = new Set<string>();
+    let reads = 0;
+    const N = {
+      getPermissionsAsync: async () => ({ granted: true }),
+      setNotificationChannelAsync: async () => undefined,
+      AndroidImportance: { HIGH: 4 },
+      AndroidNotificationVisibility: { PUBLIC: 1 },
+      SchedulableTriggerInputTypes: { DATE: 'date' },
+      getAllScheduledNotificationsAsync: async () => {
+        reads += 1;
+        if (reads === 1 && firstReadGate) await firstReadGate;
+        return [...scheduled].map((identifier) => ({ identifier, content: {} }));
+      },
+      cancelScheduledNotificationAsync: async (id: string) => {
+        scheduled.delete(id);
+      },
+      scheduleNotificationAsync: async ({ identifier }: { identifier?: string }) => {
+        scheduled.add(identifier ?? 'agora');
+      },
+    };
+    __setNotificationsModuleForTest(N as never);
+    return scheduled;
+  }
+
+  it('a sincronização da conta anterior não reagenda depois da limpeza', async () => {
+    let release!: () => void;
+    const scheduled = fakeNotifications(new Promise<void>((r) => (release = r)));
+    const sync = syncBookingReminders([booking({}), booking({ id: 'b2', starts_at: at(19) })], now);
+    const clear = clearBookingReminders();
+    release();
+    await Promise.all([sync, clear]);
+    expect([...scheduled].filter((id) => id.startsWith('reminder:'))).toEqual([]);
+  });
+
+  it('sem limpeza no meio, agenda normalmente', async () => {
+    const scheduled = fakeNotifications();
+    await syncBookingReminders([booking({})], now);
+    expect([...scheduled].filter((id) => id.startsWith('reminder:')).sort()).toEqual(['reminder:b1:10', 'reminder:b1:60']);
   });
 });
