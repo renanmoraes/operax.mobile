@@ -362,7 +362,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthenticated(true);
         setReturnRole(null);
         await connectSocket();
-        void registerDevicePushToken();
+        // Push só existe para a equipe: a rota é da equipe e a sessão do portal não registra aparelho
+        // (um 401 com o token do cliente apagaria a sessão dele, que não tem como renovar).
+        if (target === 'staff') void registerDevicePushToken();
         return true;
       } catch (e) {
         const status = (e as { response?: { status?: number } })?.response?.status;
