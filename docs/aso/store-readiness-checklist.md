@@ -36,8 +36,8 @@ Skills: `app-launch`, `app-rejection-recovery`, `aso-audit`, `android-aso`.
 - [ ] Título + subtítulo / short desc (pt-BR) colados
 - [ ] Descrição completa
 - [ ] Ícone 1024×1024
-- [ ] ≥3 screenshots iPhone + ≥2 Android (brief em `screenshots-brief.md`)
-- [ ] Feature graphic Play 1024×500
+- [x] ≥3 screenshots iPhone + ≥2 Android (10 iPhone 6,9"/6,5" e 8 Android em `store-assets/loja/`, ordem em `screenshots-brief.md`)
+- [x] Feature graphic Play 1024×500 (`store-assets/loja/android/feature-graphic/`)
 - [ ] Categoria Business
 
 ## P1 — Fortemente recomendado no 1º submit
@@ -63,14 +63,14 @@ Skills: `app-launch`, `app-rejection-recovery`, `aso-audit`, `android-aso`.
 | Bundle / package IDs | ✅ `digital.operax.mobile` |
 | Ícone / splash / brand | ✅ assets presentes |
 | Metadados draft | ✅ `docs/aso/metadata-pt-BR.md` |
-| Screenshots de loja (captioned) | ✅ `store-assets/screenshots/` |
-| Feature graphic Play | ✅ `store-assets/feature-graphic/` |
+| Screenshots de loja (captioned) | ✅ `store-assets/loja/` (iOS 6,9"/6,5", Android, GIFs) |
+| Feature graphic Play | ✅ `store-assets/loja/android/feature-graphic/` |
 | Ícone 1024 opaco | ✅ `store-assets/icon/` |
 | Review notes | ✅ `store-assets/review/` |
 | Privacy policy draft | ✅ `docs/aso/privacy-policy-mobile.md` (publicar URL) |
 | Version 1.0.0 | ✅ `app.json` |
 | Screenshots de produto (dev) | ✅ `screenshots/` |
-| Screenshots de loja (captioned) | ✅ `store-assets/screenshots/` |
+| Screenshots de loja (captioned) | ✅ `store-assets/loja/` (iOS 6,9"/6,5", Android, GIFs) |
 | EAS projectId | ✅ `5dcb948b-9371-4830-8324-29ef9a87e4e3` |
 | eas.json | ✅ |
 | Workflow produção | ✅ `.eas/workflows/create-production-builds.yml` |

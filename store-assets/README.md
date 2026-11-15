@@ -7,22 +7,17 @@ Assets e metadados prontos para colar nas lojas. Builds via EAS Workflows.
 | Pasta / arquivo | Uso |
 |-----------------|-----|
 | `icon/icon-1024.png` | Ícone App Store / Play (1024×1024, opaco) |
-| `feature-graphic/feature-graphic-1024x500.png` | Feature graphic Google Play |
-| `screenshots/ios/*-1290x2796.png` | 8 capturas iPhone 6.7" com headline |
-| `screenshots/android/*-1080x1920.png` | 8 capturas Play phone |
+| `loja/android/feature-graphic/feature-graphic-1024x500.png` | Feature graphic Google Play |
+| `loja/ios/iphone-6.9/*.png`, `loja/ios/iphone-6.5/*.png` | 10 capturas iPhone com título (1320×2868 e 1284×2778) |
+| `loja/android/phone/*.png` | 8 capturas Play phone (1080×1920) |
+| `loja/gifs/` | GIFs e MP4 de atendimento, PDV e treino |
+| `loja/LEIA-ME.md` | Ordem de envio e títulos de cada slide |
 | `review/APP_REVIEW_NOTES.md` | Notas + conta demo (preencher senha) |
 | `../docs/aso/metadata-pt-BR.md` | Título, keywords, descrições |
 
-## Ordem das screenshots (já numeradas)
+## Ordem das screenshots
 
-1. Assuma a fila agora  
-2. Seus atendimentos no bolso  
-3. Responda sem perder a posse  
-4. Avisos que chegam a tempo  
-5. Preferências sob controle  
-6. Tudo em um só lugar  
-7. Agenda do dia  
-8. Entre com sua empresa  
+Ver `loja/LEIA-ME.md` (títulos e ordem de cada loja) e `../docs/aso/screenshots-brief.md`.
 
 ## EAS — project & workflow
 
@@ -51,7 +46,7 @@ Workflow: https://expo.dev/accounts/operaxdigitals-team/projects/operax/workflow
 
 - [ ] Upload ícone 1024  
 - [ ] Upload feature graphic (Play)  
-- [ ] Upload screenshots 1–8  
+- [ ] Upload screenshots (iOS 01–10, Android 01–08)  
 - [ ] Colar metadados de `docs/aso/metadata-pt-BR.md`  
 - [ ] Privacy URL live: `https://operax.digital/privacidade-mobile`  
 - [ ] Preencher senha demo em `review/APP_REVIEW_NOTES.md`  
