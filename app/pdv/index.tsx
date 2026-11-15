@@ -211,6 +211,9 @@ function PosSaleScreen() {
     // A lista na tela pode ser da busca anterior (o termo ainda não passou pelo atraso de 250 ms): só
     // vale a do texto enviado. Fora isso, busca esse texto agora (o cache do react-query reaproveita).
     let list: PosProduct[];
+    // Conta como leitura pendente: o receber não abre enquanto esta busca não volta.
+    lookupsRef.current += 1;
+    setLookups(lookupsRef.current);
     try {
       list =
         term === raw && results.isSuccess && !results.isFetching
@@ -218,6 +221,9 @@ function PosSaleScreen() {
           : await qc.fetchQuery({ queryKey: ['pos', 'products', mode, raw], queryFn: () => client.searchProducts(raw), staleTime: 30_000 });
     } catch {
       return show(t('search.failed'), 'error');
+    } finally {
+      lookupsRef.current -= 1;
+      setLookups(lookupsRef.current);
     }
     if (qRef.current.trim() !== raw) return; // a pessoa continuou digitando enquanto buscava
     const exact = list.filter((p) => p.barcode?.toLowerCase() === raw.toLowerCase() || p.sku?.toLowerCase() === raw.toLowerCase());

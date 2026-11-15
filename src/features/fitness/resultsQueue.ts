@@ -93,8 +93,8 @@ export function queueResults(bodies: RecordResultBody[], who: string = fitnessOw
   return serial(async () => write(KEY, bodies.reduce(enqueue, await read<RecordResultBody>(KEY, who)), who));
 }
 
-export function queueActivity(body: FreeActivityBody) {
-  const who = fitnessOwner();
+/** `who`: de quem é a atividade (quem começou a salvar); por padrão o dono atual. */
+export function queueActivity(body: FreeActivityBody, who: string = fitnessOwner()) {
   return serial(async () => write(ACTIVITIES_KEY, enqueue(await read<FreeActivityBody>(ACTIVITIES_KEY, who), body), who));
 }
 

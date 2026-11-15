@@ -8,6 +8,7 @@ import { Badge, Body, Button, Card, Field, Muted, Rise, Screen, Segmented, TopBa
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { partLabel, partLines } from '@/src/features/fitness/parts';
+import { fitnessOwner } from '@/src/features/fitness/owner';
 import { isRejected, newIdempotencyKey, queueResults } from '@/src/features/fitness/resultsQueue';
 import { useRecordResult } from '@/src/features/fitness/useFitness';
 import type { FitnessWodLevel, FitnessWorkoutView } from '@/src/features/fitness/types';
@@ -53,6 +54,9 @@ function RegisterResult({ workout, partIndex }: { workout: FitnessWorkoutView; p
       ...(notes.trim() ? { notes: notes.trim() } : {}),
       idempotency_key: key,
     };
+    // De quem é o resultado: fixado antes de enviar. Se a pessoa trocar de conta no meio, a fila é a dela.
+    const who = fitnessOwner();
+    if (!who) return;
     try {
       await record.mutateAsync(body);
       setState('saved');
@@ -64,7 +68,7 @@ function RegisterResult({ workout, partIndex }: { workout: FitnessWorkoutView; p
       }
       // Sem internet: fica na fila e vai sozinho quando a conexão voltar.
       try {
-        await queueResults([body]);
+        await queueResults([body], who);
       } catch {
         // Nem no celular deu para guardar: mantém o formulário para tentar de novo.
         setError(i18n.t('fitness:offline.storeFail'));

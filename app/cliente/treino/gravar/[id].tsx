@@ -3,6 +3,7 @@ import i18n from '@/src/i18n';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { Recorder, type RecorderSave } from '@/src/features/fitness/Recorder';
 import { partLabel, plannedMeters } from '@/src/features/fitness/parts';
+import { fitnessOwner } from '@/src/features/fitness/owner';
 import { isRejected, queueResults, recordingKey } from '@/src/features/fitness/resultsQueue';
 import { sportInfo } from '@/src/features/fitness/sports';
 import { guideSteps } from '@/src/features/fitness/coach';
@@ -33,13 +34,16 @@ function PlannedRecord({ workout, partIndex }: { workout: FitnessWorkoutView; pa
       idempotency_key: recordingKey(`ficha.${workout.id}.${partIndex}`, r.startedAt),
       recording: { started_at: new Date(r.startedAt).toISOString(), ...(r.track ? { track: r.track } : {}) },
     };
+    // De quem é a gravação: fixado antes de enviar. Trocar de conta no meio não manda para a fila da outra.
+    const who = fitnessOwner();
+    if (!who) throw new Error('sem conta ativa');
     try {
       await record.mutateAsync(body);
       return 'saved';
     } catch (e) {
       // Recusado pelo servidor: a tela de salvar avisa e fica aberta (na fila sumiria em silêncio).
       if (isRejected(e)) throw e;
-      await queueResults([body]);
+      await queueResults([body], who);
       return 'queued';
     }
   }
