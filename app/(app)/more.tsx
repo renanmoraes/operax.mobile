@@ -13,8 +13,9 @@ import { useCan } from '@/src/features/auth/useCan';
 import type { PermKey } from '@/src/features/auth/permissions';
 import { getActiveApps } from '@/src/shared/api/attendance.api';
 
-const WORK: { id: 'pos' | 'patients' | 'kanban' | 'history' | 'quickReplies' | 'templates'; href: string; icon: IconName; perm: PermKey; app?: string }[] = [
+const WORK: { id: 'pos' | 'eventCheckin' | 'patients' | 'kanban' | 'history' | 'quickReplies' | 'templates'; href: string; icon: IconName; perm: PermKey; app?: string }[] = [
   { id: 'pos', href: '/pdv', icon: 'storefront-outline', perm: 'posSell', app: 'pos' },
+  { id: 'eventCheckin', href: '/eventos/checkin', icon: 'qr-code-outline', perm: 'eventsCheckin', app: 'events' },
   { id: 'patients', href: '/pacientes', icon: 'people-outline', perm: 'contacts' },
   { id: 'kanban', href: '/kanban', icon: 'grid-outline', perm: 'kanban' },
   { id: 'history', href: '/history', icon: 'time-outline', perm: 'history' },

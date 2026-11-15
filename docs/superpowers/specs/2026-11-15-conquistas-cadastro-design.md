@@ -140,3 +140,16 @@ Cada uma com descrição curta contando a passagem e a referência bíblica.
 
 Ranking entre alunos, conquistas em equipe e regras com OU entre condições ficam para depois (as condições de medalha
 já se combinam com E, e "quaisquer N de uma lista" cobre o caso mais comum de OU).
+
+## Como ficou na implementação (15/11/2026)
+
+Implementado e solto no backend-v2.172.37 / frontend-v1.169.37, com o app na branch `claude/recursing-goodall-e7098e`. Diferenças em relação ao texto acima:
+
+- **Ícone enviado:** PNG, JPG ou WebP, até 512 KB. SVG ficou de fora, porque pode carregar script.
+- **Treinar num dia:** é "Todo ano" com o mesmo dia no início e no fim (01/01 a 01/01), em vez de um tipo `on_date`.
+- **Situação:** rascunho, ativa ou arquivada ("ativa" é a "publicada").
+- **XP:** além das conquistas, cada treino dá 10 XP (até 3 por dia). O nível L pede `100 × (L−1)^1,6` XP no total.
+- **Objetivos a mais:** dias de treino, meses com N treinos, aulas com presença, semanas com feedback ao professor (consultoria online), avaliações físicas, relógio conectado e dada pelo professor.
+- **Check-in:** vale só para inscrição confirmada, de três formas: o aluno lê o QR do evento (muda a cada 2 minutos), a equipe lê o ingresso do aluno (vale 10 minutos) ou a equipe marca na lista.
+- **Escopo:** só vale para empresa com Fitness ativo no portal. Sem Fitness, nada novo é conferido, e o que já foi ganho fica guardado.
+- **Push "Você ganhou":** ficou de fora, porque o backend ainda não manda push ao aluno. O app comemora as conquistas novas quando o aluno abre a tela.
