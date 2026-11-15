@@ -1,5 +1,5 @@
 import type { ComponentRef, RefObject } from 'react';
-import { Linking, View } from 'react-native';
+import { Linking, Platform, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import Share, { Social } from 'react-native-share';
 import * as Sharing from 'expo-sharing';
@@ -25,6 +25,16 @@ export function captureDataUri(ref: CanvasRef): Promise<string> {
   return captureRef(ref, { ...opts, result: 'data-uri' });
 }
 
+/** O app de destino está no aparelho? Sem ele o react-native-share não falha: abre outra coisa. */
+async function hasApp(androidPackage: string, iosScheme: string): Promise<boolean> {
+  try {
+    if (Platform.OS === 'android') return (await Share.isPackageInstalled(androidPackage)).isInstalled;
+    return await Linking.canOpenURL(iosScheme);
+  } catch {
+    return false;
+  }
+}
+
 /** Cancelar no Instagram/menu do sistema não é erro. */
 export function isCancel(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e ?? '');
@@ -38,7 +48,7 @@ async function more(file: string) {
 /** Story: o PNG transparente vai como adesivo e a pessoa escolhe o fundo no Instagram; o opaco vai como fundo. */
 async function story(ref: CanvasRef, transparent: boolean) {
   const file = await captureFile(ref);
-  if (!META_APP_ID) return more(file);
+  if (!META_APP_ID || !(await hasApp('com.instagram.android', 'instagram-stories://share'))) return more(file);
   const image = await captureDataUri(ref);
   try {
     await Share.shareSingle({
@@ -56,6 +66,7 @@ async function story(ref: CanvasRef, transparent: boolean) {
 
 async function whatsapp(ref: CanvasRef) {
   const file = await captureFile(ref);
+  if (!(await hasApp('com.whatsapp', 'whatsapp://send'))) return more(file);
   try {
     await Share.shareSingle({ social: Social.Whatsapp, url: file, type: 'image/png', useInternalStorage: true });
   } catch (e) {

@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Defs, Pattern, Rect } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
+import { StatusBar } from 'expo-status-bar';
 import { showDialog } from '@/src/design-system/Dialog';
 import { IconName } from '@/src/design-system/ui';
 import { colors, typography } from '@/src/design-system/tokens';
@@ -133,6 +134,7 @@ export default function ShareActivityScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.chromeNavy }}>
       <Stack.Screen options={{ animation: 'slide_from_bottom' }} />
+      <StatusBar style="light" />
       {/* Atrás da tela (coberto por ela): o mapa que vira foto e o modelo em tamanho real que vira a imagem. */}
       {route.length > 1 && !mapDone ? <MapSnapshot route={route} onResult={onMap} /> : null}
       <View ref={canvasRef} collapsable={false} style={styles.canvasLayer} pointerEvents="none">

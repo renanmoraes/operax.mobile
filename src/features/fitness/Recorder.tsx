@@ -486,8 +486,8 @@ export function Recorder({
           </View>
           <View style={{ alignSelf: 'stretch', gap: 10, marginTop: 'auto' }}>
             <Button label={t('done.share')} icon="share-outline" onPress={share} />
-            {phase === 'saved' ? <Button label={t('rec.seeHistory')} icon="time-outline" onPress={onHistory} /> : null}
-            <Button label={t('rec.finishDone')} variant={phase === 'saved' ? 'secondary' : 'primary'} onPress={onClose} />
+            {phase === 'saved' ? <Button label={t('rec.seeHistory')} icon="time-outline" variant="secondary" onPress={onHistory} /> : null}
+            <Button label={t('rec.finishDone')} variant="ghost" onPress={onClose} />
           </View>
         </View>
       </Screen>
