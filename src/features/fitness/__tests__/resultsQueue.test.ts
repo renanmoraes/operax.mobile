@@ -101,4 +101,14 @@ describe('fila por conta', () => {
     mockFail.on = false;
     expect(await q.loadQueue()).toEqual([]);
   });
+
+  it('guardar fica na conta de quem pediu, mesmo se a conta mudar no meio', async () => {
+    owner.setFitnessOwner('live:client:f:t1');
+    const pending = q.queueResults([body('f1')]);
+    owner.setFitnessOwner('live:client:g:t1'); // trocou antes de a fila terminar de ler
+    await pending;
+    expect(await q.loadQueue()).toEqual([]);
+    owner.setFitnessOwner('live:client:f:t1');
+    expect((await q.loadQueue()).map((b) => b.idempotency_key)).toEqual(['f1']);
+  });
 });

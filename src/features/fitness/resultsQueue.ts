@@ -73,12 +73,16 @@ export const loadQueue = () => read<RecordResultBody>(KEY);
 export const loadActivityQueue = () => read<FreeActivityBody>(ACTIVITIES_KEY);
 
 /** Guarda resultados para enviar depois (sem duplicar pela chave). */
+// A conta é fixada na hora do pedido: se ela mudar enquanto a fila é lida, a escrita continua na fila de
+// quem pediu (nunca copia o treino de uma pessoa para a fila de outra).
 export function queueResults(bodies: RecordResultBody[]) {
-  return serial(async () => write(KEY, bodies.reduce(enqueue, await read<RecordResultBody>(KEY))));
+  const who = fitnessOwner();
+  return serial(async () => write(KEY, bodies.reduce(enqueue, await read<RecordResultBody>(KEY, who)), who));
 }
 
 export function queueActivity(body: FreeActivityBody) {
-  return serial(async () => write(ACTIVITIES_KEY, enqueue(await read<FreeActivityBody>(ACTIVITIES_KEY), body)));
+  const who = fitnessOwner();
+  return serial(async () => write(ACTIVITIES_KEY, enqueue(await read<FreeActivityBody>(ACTIVITIES_KEY, who), body), who));
 }
 
 /** Tira da fila do dono só o que já foi resolvido (enviado ou recusado), relendo a fila atual: o que entrou durante o envio fica. */
