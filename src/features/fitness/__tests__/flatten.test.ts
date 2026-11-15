@@ -1,5 +1,28 @@
-import { buildResultBodies, flattenWorkout, nextPrescription, parseKg } from '../flatten';
+import { buildResultBodies, flattenWorkout, nextPrescription, parseKg, stepLoad } from '../flatten';
 import { WORKOUTS } from '../mockData';
+
+describe('stepLoad', () => {
+  it('carga fora do passo vai para o próximo valor do passo, sem pular', () => {
+    expect(stepLoad(12, 2.5, 1)).toBe(12.5);
+    expect(stepLoad(12, 2.5, -1)).toBe(10);
+    expect(stepLoad(13, 2, 1)).toBe(14);
+    expect(stepLoad(13, 2, -1)).toBe(12);
+  });
+
+  it('carga no passo anda um passo inteiro', () => {
+    expect(stepLoad(12.5, 2.5, 1)).toBe(15);
+    expect(stepLoad(12.5, 2.5, -1)).toBe(10);
+    expect(stepLoad(14, 2, 1)).toBe(16);
+  });
+
+  it('não fica negativa nem acumula erro de ponto flutuante', () => {
+    expect(stepLoad(0, 2.5, -1)).toBe(0);
+    expect(stepLoad(1, 2.5, -1)).toBe(0);
+    let v = 0;
+    for (let i = 0; i < 41; i++) v = stepLoad(v, 2.5, 1);
+    expect(v).toBe(102.5);
+  });
+});
 
 describe('parseKg', () => {
   it('lê carga com vírgula e unidade', () => {

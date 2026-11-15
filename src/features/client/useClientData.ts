@@ -48,6 +48,15 @@ export function useActiveCompanySlug(): string {
   return active?.tenant_slug ?? companies?.find((c) => c.name === active?.tenant_name)?.slug ?? companies?.[0]?.slug ?? 'empresa';
 }
 
+/** Nome da empresa ativa da conta logada (o mesmo da home); a lista de empresas só como reserva. */
+export function useActiveCompanyName(): string {
+  const { user } = useAuth();
+  const { data: companies } = useCompanies();
+  const client = user?.kind === 'client' ? user : null;
+  const active = client?.memberships.find((m) => m.tenant_id === client.active_tenant_id);
+  return active?.tenant_name ?? companies?.find((c) => c.slug === active?.tenant_slug)?.name ?? 'Operax';
+}
+
 export function useBookings() {
   return useQuery({ queryKey: keys.bookings, queryFn: api.fetchBookings });
 }

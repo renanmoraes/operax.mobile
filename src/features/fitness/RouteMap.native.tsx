@@ -25,7 +25,7 @@ function loadMaps(): MapsModule | null {
     return null;
   }
 }
-const Maps = loadMaps();
+export const Maps = loadMaps();
 
 export function RouteMap(props: RouteMapProps) {
   if (!Maps) return <RouteSketch {...props} />;

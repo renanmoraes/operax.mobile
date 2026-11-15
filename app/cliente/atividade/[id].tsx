@@ -5,7 +5,10 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Badge, Card, EmptyState, Loading, Muted, Rise, Screen, TopBar } from '@/src/design-system/ui';
+import { Badge, Card, EmptyState, IconButton, Loading, Muted, Rise, Screen, TopBar } from '@/src/design-system/ui';
+import { useActiveCompanyName } from '@/src/features/client/useClientData';
+import { fromHistoryDetail } from '@/src/features/share/fromSources';
+import { setShareActivity } from '@/src/features/share/store';
 import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { RouteMap } from '@/src/features/fitness/RouteMap';
 import { formatKm, formatPace } from '@/src/features/fitness/runTracker';
@@ -23,6 +26,7 @@ export default function ActivityScreen() {
   const history = useHistory();
   const entry = history.data?.find((e) => e.id === id);
   const detail = useActivityDetail(entry?.session_id || entry?.kind === 'free' ? id : undefined);
+  const companyName = useActiveCompanyName();
 
   if (history.isLoading) {
     return (
@@ -56,7 +60,21 @@ export default function ActivityScreen() {
 
   return (
     <Screen>
-      <TopBar safe title={sportLabel ?? t('detail.workout')} onBack={() => router.back()} />
+      <TopBar
+        safe
+        title={sportLabel ?? t('detail.workout')}
+        onBack={() => router.back()}
+        right={
+          <IconButton
+            icon="share-outline"
+            accessibilityLabel={t('done.share')}
+            onPress={() => {
+              setShareActivity(fromHistoryDetail(entry, d, companyName));
+              router.push('/cliente/compartilhar');
+            }}
+          />
+        }
+      />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32, gap: 12 }}>
         <Rise>
           <View style={styles.hero}>

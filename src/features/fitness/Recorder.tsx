@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { isRejected } from './resultsQueue';
 import { confirmDialog, showDialog } from '@/src/design-system/Dialog';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -21,9 +21,13 @@ import { addPoint, averagePace, currentPace, decimateTrack, defaultTitle, emptyR
 import { kmCue, stepCue, stepProgress, type GuideStep } from './coach';
 import { StepGuideCard } from './recorder/StepGuideCard';
 import { RestTimer } from './recorder/RestTimer';
+import { SlideToUnlock } from './recorder/SlideToUnlock';
 import { ownedKey } from './owner';
 import { FEELINGS, SPORTS, WORKOUT_TAGS, effortWord, type SportInfo } from './sports';
 import type { FitnessFeeling, FreeSport } from './types';
+import { useActiveCompanyName } from '@/src/features/client/useClientData';
+import { fromRecording, fromStrength } from '@/src/features/share/fromSources';
+import { setShareActivity } from '@/src/features/share/store';
 
 /** O que a gravação entrega para salvar: os números, a trilha e o "como foi". */
 export type RecorderSave = {
@@ -136,6 +140,7 @@ export function Recorder({
   const resumeRef = useRef<(auto?: boolean) => void>(() => undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [locked, setLocked] = useState(false);
+  const unlock = useCallback(() => setLocked(false), []);
   const [title, setTitle] = useState('');
   const [feeling, setFeeling] = useState<FitnessFeeling | undefined>();
   const [effort, setEffort] = useState<number | undefined>();
@@ -446,6 +451,22 @@ export function Recorder({
   const weak = accuracy != null && accuracy > 25;
   const speed = prefs.speed || sport.rate === 'speed';
 
+  const companyName = useActiveCompanyName();
+  function share() {
+    const base = {
+      title: askTitle ? title.trim() || defaultTitle(sport.label, new Date(startedAt.current)) : heading,
+      company: companyName,
+      date: new Date(startedAt.current).toISOString(),
+      seconds: elapsed,
+    };
+    setShareActivity(
+      sport.gps
+        ? fromRecording(base, { sport: sport.id, preferSpeed: speed, distanceM: run.distanceM, elevationGainM: run.elevationGainM, route, kmMarks: run.kmMarks })
+        : fromStrength(base, { setsDone: sets || null }),
+    );
+    router.push('/cliente/compartilhar');
+  }
+
   if (phase === 'saved' || phase === 'queued') {
     return (
       <Screen>
@@ -463,8 +484,9 @@ export function Recorder({
             {sport.gps && sport.rate === 'pace' ? <DoneStat value={formatPace(averagePace(run, elapsed))} unit="/km" /> : null}
           </View>
           <View style={{ alignSelf: 'stretch', gap: 10, marginTop: 'auto' }}>
-            {phase === 'saved' ? <Button label={t('rec.seeHistory')} icon="time-outline" onPress={onHistory} /> : null}
-            <Button label={t('rec.finishDone')} variant={phase === 'saved' ? 'secondary' : 'primary'} onPress={onClose} />
+            <Button label={t('done.share')} icon="share-outline" onPress={share} />
+            {phase === 'saved' ? <Button label={t('rec.seeHistory')} icon="time-outline" variant="secondary" onPress={onHistory} /> : null}
+            <Button label={t('rec.finishDone')} variant="ghost" onPress={onClose} />
           </View>
         </View>
       </Screen>
@@ -564,6 +586,9 @@ export function Recorder({
   const guideCard = guide?.length && active ? (
     <StepGuideCard steps={guide} index={guideAt.i} doneSeconds={elapsed - guideAt.s0} doneMeters={run.distanceM - guideAt.m0} pace={now} onNext={() => advanceGuide(elapsed, run.distanceM)} compact={showMap} />
   ) : null;
+  const draftFirst = phase === 'ready' && !!draft;
+  const confirmClearDraft = () =>
+    void confirmDialog({ title: t('rec.discardTitle'), message: t('rec.discardBody'), confirmLabel: t('rec.discard'), cancelLabel: t('common:actions.back'), tone: 'danger' }).then((ok) => ok && clearDraft());
   return (
     <Screen backdrop="none" style={{ backgroundColor: '#fff' }}>
       <NoSwipeBack phase={phase} />
@@ -630,9 +655,14 @@ export function Recorder({
         )}
 
         <ScrollView contentContainerStyle={{ paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
-          <Text style={styles.label}>{t('rec.time')}</Text>
-          <Text style={styles.clock} accessibilityLabel={t('rec.timeA11y', { time: formatClock(elapsed) })}>{formatClock(elapsed)}</Text>
-          {subtitle ? <Muted style={styles.subtitle} numberOfLines={1}>{subtitle}</Muted> : null}
+          {/* Na largada com treino não salvo, os números zerados saem e o rascunho fica inteiro à vista. */}
+          {draftFirst ? null : (
+            <>
+              <Text style={styles.label}>{t('rec.time')}</Text>
+              <Text style={styles.clock} accessibilityLabel={t('rec.timeA11y', { time: formatClock(elapsed) })}>{formatClock(elapsed)}</Text>
+              {subtitle ? <Muted style={styles.subtitle} numberOfLines={1}>{subtitle}</Muted> : null}
+            </>
+          )}
 
           {sport.gps && !showMap && phase !== 'ready' ? (
             <View style={styles.bigDistance}>
@@ -641,7 +671,7 @@ export function Recorder({
             </View>
           ) : null}
 
-          {sport.gps ? (
+          {sport.gps && !draftFirst ? (
             <View style={styles.pair}>
               <View style={styles.pairCell}>
                 <Text style={styles.label}>{speed ? (showMap || phase === 'ready' ? t('rec.speed') : t('rec.average')) : t('rec.avgPace')}</Text>
@@ -689,7 +719,7 @@ export function Recorder({
             </View>
           ) : null}
           {phase === 'ready' && draft ? (
-            <View style={styles.draft}>
+            <View style={[styles.draft, draftFirst && { marginTop: 6 }]}>
               <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
                 <Ionicons name="time-outline" size={20} color={colors.primary} />
                 <View style={{ flex: 1 }}>
@@ -698,10 +728,6 @@ export function Recorder({
                     {[t('rec.startedAtTime', { time: new Date(draft.startedAt).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) }), formatClock(Math.round(draft.banked / 1000)), sport.gps ? `${formatKm(draft.run.distanceM)} km` : null].filter(Boolean).join(' · ')}
                   </Muted>
                 </View>
-              </View>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <Button label={t('rec.resume')} compact icon="play" onPress={() => restore(draft)} style={{ flex: 1 }} />
-                <Button label={t('rec.discardShort')} compact variant="secondary" onPress={clearDraft} style={{ flex: 1 }} />
               </View>
             </View>
           ) : null}
@@ -716,7 +742,13 @@ export function Recorder({
         </ScrollView>
 
         <View style={[styles.controls, { paddingBottom: insets.bottom + 18 }, locked && { opacity: 0 }]} pointerEvents={locked ? 'none' : 'auto'}>
-          {phase === 'ready' ? (
+          {phase === 'ready' && draft ? (
+            // Com treino não salvo, só as duas saídas possíveis: retomar ou descartar (sem "Iniciar", que confundia).
+            <>
+              <BigButton label={t('rec.discardShort')} icon="trash-outline" tone="dark" onPress={confirmClearDraft} />
+              <BigButton label={t('rec.resume')} icon="play" onPress={() => restore(draft)} />
+            </>
+          ) : phase === 'ready' ? (
             <BigButton label={t('rec.start')} icon="play" onPress={() => void start()} />
           ) : phase === 'running' ? (
             <>
@@ -734,12 +766,10 @@ export function Recorder({
       </View>
 
       {locked ? (
-        <Pressable style={StyleSheet.absoluteFill} onLongPress={() => setLocked(false)} delayLongPress={700} accessibilityLabel={t('rec.lockedA11y')}>
-          <View style={[styles.lockPill, { bottom: insets.bottom + 40 }]}>
-            <Ionicons name="lock-closed" size={16} color="#fff" />
-            <Text style={styles.lockText}>{t('rec.locked')}</Text>
-          </View>
-        </Pressable>
+        // A tela inteira engole os toques; só o trilho do cadeado destrava.
+        <View style={StyleSheet.absoluteFill} onStartShouldSetResponder={() => true}>
+          <SlideToUnlock label={t('rec.locked')} a11yLabel={t('rec.lockedA11y')} onUnlock={unlock} style={[styles.lockSlider, { bottom: insets.bottom + 28 }]} />
+        </View>
       ) : null}
 
       <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)}>
@@ -943,8 +973,7 @@ const styles = StyleSheet.create({
   bigLabel: { fontFamily: typography.fontFamilyBold, fontSize: 13.5, color: colors.text },
   side: { width: 64, height: 84, alignItems: 'center', justifyContent: 'center', gap: 4 },
   sideLabel: { fontFamily: typography.fontFamilySemiBold, fontSize: 12, color: colors.textSoft },
-  lockPill: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, height: 44, borderRadius: 999, backgroundColor: 'rgba(5,10,20,0.88)' },
-  lockText: { fontFamily: typography.fontFamilySemiBold, fontSize: 13, color: '#fff' },
+  lockSlider: { position: 'absolute', left: 24, right: 24 },
   backdrop: { flex: 1, backgroundColor: colors.overlay },
   settings: { backgroundColor: '#fff', borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet, paddingHorizontal: 22, paddingTop: 10 },
   settingsTitle: { ...text.title, color: colors.text, marginBottom: 6 },
