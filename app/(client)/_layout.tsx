@@ -7,9 +7,11 @@ import { useAuth } from '@/src/features/auth/AuthContext';
 import { useBookingReminders, useClientCapabilities, useClientUnread } from '@/src/features/client/useClientData';
 import { hasSeenClientOnboarding } from '@/src/features/permissions/permissions';
 import { useFlushResultsQueue } from '@/src/features/fitness/useFitness';
+import { useTranslation } from 'react-i18next';
 
 export default function ClientLayout() {
   const { isAuthenticated, user } = useAuth();
+  const { t } = useTranslation('nav');
   const unread = useClientUnread();
   // Abas seguem o que a empresa liberou no portal (sem treino liberado, não existe aba Treino).
   const caps = useClientCapabilities();
@@ -36,7 +38,7 @@ export default function ClientLayout() {
       <Tabs.Screen
         name="inicio"
         options={{
-          title: 'Início',
+          title: t('client.home'),
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color as string} />
           ),
@@ -45,7 +47,7 @@ export default function ClientLayout() {
       <Tabs.Screen
         name="agenda"
         options={{
-          title: 'Agenda',
+          title: t('client.agenda'),
           href: caps.scheduling ? undefined : null,
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={size} color={color as string} />
@@ -55,7 +57,7 @@ export default function ClientLayout() {
       <Tabs.Screen
         name="fitness"
         options={{
-          title: 'Treino',
+          title: t('client.fitness'),
           href: caps.training ? undefined : null,
           tabBarIcon: ({ color, size }) => <Ionicons name="barbell-outline" size={size} color={color as string} />,
         }}
@@ -63,7 +65,7 @@ export default function ClientLayout() {
       <Tabs.Screen
         name="conversas"
         options={{
-          title: 'Conversas',
+          title: t('client.chats'),
           href: caps.chat ? undefined : null,
           tabBarBadge: unread > 0 ? unread : undefined,
           tabBarIcon: ({ color, size, focused }) => (
@@ -74,7 +76,7 @@ export default function ClientLayout() {
       <Tabs.Screen
         name="perfil"
         options={{
-          title: 'Perfil',
+          title: t('client.profile'),
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color as string} />
           ),

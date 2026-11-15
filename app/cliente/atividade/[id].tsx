@@ -1,4 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { locale } from '@/src/i18n';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +17,7 @@ import { formatClock } from '@/src/shared/format';
 /** Um treino do histórico: o caminho no mapa, os números, as parciais e o "como foi". */
 export default function ActivityScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation(['fitness', 'common']);
   const { id: raw } = useLocalSearchParams<{ id: string }>();
   const id = raw ? decodeURIComponent(raw) : undefined;
   const history = useHistory();
@@ -24,16 +27,16 @@ export default function ActivityScreen() {
   if (history.isLoading) {
     return (
       <Screen>
-        <TopBar safe title="Treino" onBack={() => router.back()} />
-        <Loading label="Abrindo o treino" />
+        <TopBar safe title={t('detail.workout')} onBack={() => router.back()} />
+        <Loading label={t('detail.loading')} />
       </Screen>
     );
   }
   if (!entry) {
     return (
       <Screen>
-        <TopBar safe title="Treino" onBack={() => router.back()} />
-        <EmptyState icon="time-outline" title="Treino não encontrado" subtitle="Ele pode ter sido removido do histórico." actionLabel="Voltar" onAction={() => router.back()} />
+        <TopBar safe title={t('detail.workout')} onBack={() => router.back()} />
+        <EmptyState icon="time-outline" title={t('gate.notFound')} subtitle={t('detail.notFoundSub')} actionLabel={t('common:actions.back')} onAction={() => router.back()} />
       </Screen>
     );
   }
@@ -43,8 +46,8 @@ export default function ActivityScreen() {
   const sport = sportInfo(entry.modality);
   const sportLabel = historySportLabel(entry.modality);
   const date = new Date(entry.started_at ?? `${entry.date}T12:00:00`);
-  const day = date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
-  const when = `${day.charAt(0).toUpperCase()}${day.slice(1)}${entry.started_at ? ` · ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}`;
+  const day = date.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
+  const when = `${day.charAt(0).toUpperCase()}${day.slice(1)}${entry.started_at ? ` · ${date.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}` : ''}`;
   const feeling = FEELINGS.find((f) => f.id === entry.feeling);
   const secs = entry.duration_seconds ?? d?.seconds ?? null;
   const pace = entry.distance_meters && secs ? (secs / entry.distance_meters) * 1000 : null;
@@ -53,7 +56,7 @@ export default function ActivityScreen() {
 
   return (
     <Screen>
-      <TopBar safe title={sportLabel ?? 'Treino'} onBack={() => router.back()} />
+      <TopBar safe title={sportLabel ?? t('detail.workout')} onBack={() => router.back()} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32, gap: 12 }}>
         <Rise>
           <View style={styles.hero}>
@@ -62,7 +65,7 @@ export default function ActivityScreen() {
             ) : (
               <LinearGradient colors={['#e3ecff', '#ddf3ff']} style={[styles.map, styles.noMap]}>
                 <MaterialCommunityIcons name={sport.icon} size={52} color={colors.primary} />
-                {detail.isLoading ? <Muted style={{ marginTop: 8 }}>Carregando o caminho…</Muted> : null}
+                {detail.isLoading ? <Muted style={{ marginTop: 8 }}>{t('detail.loadingRoute')}</Muted> : null}
               </LinearGradient>
             )}
             <View style={{ padding: 18 }}>
@@ -70,16 +73,16 @@ export default function ActivityScreen() {
               <Muted style={{ marginTop: 4 }}>{when}</Muted>
               <View style={styles.badges}>
                 {entry.sources.map((s) => <Badge key={s.label} label={s.label} tone={s.origin === 'celular' ? 'primary' : 'neutral'} />)}
-                {entry.kind === 'free' ? <Badge label="Treino livre" /> : null}
+                {entry.kind === 'free' ? <Badge label={t('freeWorkout')} /> : null}
                 {tagLabel(entry.tag) ? <Badge label={tagLabel(entry.tag)!} tone="primary" /> : null}
               </View>
               <View style={styles.stats}>
-                {entry.distance_meters ? <Stat label="Distância" value={formatKm(entry.distance_meters)} unit="km" /> : null}
-                {secs ? <Stat label="Tempo" value={formatClock(secs)} /> : null}
-                {showSpeed && kmh ? <Stat label="Velocidade" value={kmh.toFixed(1).replace('.', ',')} unit="km/h" /> : pace ? <Stat label="Ritmo" value={formatPace(pace)} unit="/km" /> : null}
-                {d?.summary.elevation_gain_m ? <Stat label="Subida" value={String(d.summary.elevation_gain_m)} unit="m" /> : null}
-                {entry.avg_hr ? <Stat label="FC média" value={String(entry.avg_hr)} unit="bpm" /> : null}
-                {entry.sets ? <Stat label="Séries" value={String(entry.sets)} /> : null}
+                {entry.distance_meters ? <Stat label={t('rec.distance')} value={formatKm(entry.distance_meters)} unit="km" /> : null}
+                {secs ? <Stat label={t('rec.time')} value={formatClock(secs)} /> : null}
+                {showSpeed && kmh ? <Stat label={t('rec.speed')} value={new Intl.NumberFormat(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(kmh)} unit="km/h" /> : pace ? <Stat label={t('rec.pace')} value={formatPace(pace)} unit="/km" /> : null}
+                {d?.summary.elevation_gain_m ? <Stat label={t('rec.climb')} value={String(d.summary.elevation_gain_m)} unit="m" /> : null}
+                {entry.avg_hr ? <Stat label={t('detail.avgHr')} value={String(entry.avg_hr)} unit="bpm" /> : null}
+                {entry.sets ? <Stat label={t('rec.sets')} value={String(entry.sets)} /> : null}
               </View>
             </View>
           </View>
@@ -88,7 +91,7 @@ export default function ActivityScreen() {
         {feeling || entry.effort || entry.notes ? (
           <Rise index={1}>
             <Card style={{ gap: 12 }}>
-              <Text style={styles.section}>Como foi</Text>
+              <Text style={styles.section}>{t('detail.howItWent')}</Text>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 {feeling ? (
                   <View style={styles.pill}>
@@ -99,7 +102,7 @@ export default function ActivityScreen() {
                 {entry.effort ? (
                   <View style={styles.pill}>
                     <Text style={styles.pillNum}>{entry.effort}</Text>
-                    <Text style={styles.pillText}>{`Esforço · ${effortWord(entry.effort)}`}</Text>
+                    <Text style={styles.pillText}>{t('detail.effortWord', { word: effortWord(entry.effort) })}</Text>
                   </View>
                 ) : null}
               </View>
@@ -114,7 +117,7 @@ export default function ActivityScreen() {
           </Rise>
         ) : null}
 
-        {entry.kind === 'free' ? <Muted style={{ textAlign: 'center', lineHeight: 18, paddingHorizontal: 12 }}>Seu professor vê este treino, o caminho e o que você contou.</Muted> : null}
+        {entry.kind === 'free' ? <Muted style={{ textAlign: 'center', lineHeight: 18, paddingHorizontal: 12 }}>{t('detail.coachSees')}</Muted> : null}
       </ScrollView>
     </Screen>
   );
@@ -133,6 +136,7 @@ function Stat({ label, value, unit }: { label: string; value: string; unit?: str
 }
 
 function SplitsCard({ detail }: { detail: ActivityDetail }) {
+  const { t } = useTranslation('fitness');
   const kmh = detail.rate_unit === 'kmh';
   const rates = detail.splits.map((s) => s.rate).filter((r): r is number => r != null);
   // Ritmo: menor é melhor. Velocidade: maior é melhor. A barra mais cheia é o trecho mais rápido.
@@ -140,8 +144,8 @@ function SplitsCard({ detail }: { detail: ActivityDetail }) {
   return (
     <Card style={{ gap: 10 }}>
       <View style={styles.rowBetween}>
-        <Text style={styles.section}>{detail.split_basis === 'laps' ? 'Voltas' : 'Parciais'}</Text>
-        <Muted style={{ fontSize: 12 }}>{kmh ? 'km/h' : 'ritmo /km'}</Muted>
+        <Text style={styles.section}>{detail.split_basis === 'laps' ? t('detail.laps') : t('rec.splits')}</Text>
+        <Muted style={{ fontSize: 12 }}>{kmh ? 'km/h' : t('detail.pacePerKm')}</Muted>
       </View>
       {detail.splits.map((s) => {
         const fill = s.rate && best ? (kmh ? s.rate / best : best / s.rate) : 0;

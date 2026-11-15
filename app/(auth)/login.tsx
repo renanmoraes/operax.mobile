@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { Body, Button, Field, Muted } from '@/src/design-system/ui';
 import { colors } from '@/src/design-system/tokens';
@@ -8,6 +9,7 @@ import { AuthShell } from '@/src/features/auth/AuthShell';
 import { ALLOW_MOCK, API_URL } from '@/src/shared/config';
 
 export default function LoginScreen() {
+  const { t } = useTranslation('auth');
   const { login, enterDemo, error, clearError, clearRole, returnRole, cancelAddAccount } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,15 +23,15 @@ export default function LoginScreen() {
   return (
     <AuthShell
       onBack={backToRoles}
-      tag={returnRole ? "Nova conta · Equipe" : "Equipe"}
+      tag={returnRole ? t('login.newAccountTag') : t('shared.team')}
       showLogo
-      title="Bom trabalho hoje"
-      subtitle="Entre com o acesso que a sua empresa liberou para você."
+      title={t('login.title')}
+      subtitle={t('login.subtitle')}
       footer={
         <>
-          <Muted style={styles.notice}>Ao entrar neste aparelho, a sessão no computador é encerrada.</Muted>
+          <Muted style={styles.notice}>{t('login.notice')}</Muted>
           <Button
-            label="Entrar"
+            label={t('shared.signIn')}
             icon="arrow-forward"
             loading={loading}
             onPress={async () => {
@@ -46,7 +48,7 @@ export default function LoginScreen() {
           />
           {ALLOW_MOCK ? (
             <Button
-              label="Entrar direto (demo)"
+              label={t('login.demo')}
               variant="ghost"
               onPress={() => {
                 enterDemo();
@@ -56,7 +58,7 @@ export default function LoginScreen() {
           ) : null}
           <Pressable onPress={backToRoles} accessibilityRole="button" hitSlop={8}>
             <Text style={styles.switch}>
-              É cliente? <Text style={styles.switchLink}>Entrar como cliente</Text>
+              {t('login.isClient')} <Text style={styles.switchLink}>{t('login.signInAsClient')}</Text>
             </Text>
           </Pressable>
           {__DEV__ ? <Muted style={{ textAlign: 'center', fontSize: 11 }}>API {API_URL}</Muted> : null}
@@ -64,15 +66,15 @@ export default function LoginScreen() {
       }
     >
       <Field
-        label="Código da empresa"
+        label={t('fields.companyCode')}
         icon="business-outline"
         value={companyCode}
         autoCapitalize="none"
         onChangeText={(v) => setCompanyCode(v.toUpperCase())}
-        placeholder="Ex.: OPRX"
+        placeholder={t('fields.companyCodePlaceholder')}
       />
       <Field
-        label="E-mail de trabalho"
+        label={t('fields.workEmail')}
         icon="mail-outline"
         value={email}
         autoCapitalize="none"
@@ -82,10 +84,10 @@ export default function LoginScreen() {
           setEmail(v);
         }}
         keyboardType="email-address"
-        placeholder="seu@empresa.com"
+        placeholder={t('fields.workEmailPlaceholder')}
       />
       <Field
-        label="Senha"
+        label={t('fields.password')}
         icon="lock-closed-outline"
         value={password}
         autoComplete="password"
@@ -94,7 +96,7 @@ export default function LoginScreen() {
           setPassword(v);
         }}
         secureTextEntry
-        placeholder="Sua senha"
+        placeholder={t('fields.passwordPlaceholder')}
       />
       {error ? <Body style={styles.error}>{error}</Body> : null}
     </AuthShell>

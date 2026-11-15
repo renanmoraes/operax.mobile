@@ -1,4 +1,5 @@
 import type { FitnessPart, FitnessResultData } from './types';
+import i18n from '@/src/i18n';
 
 /** "12:34" ou "1:02:03" → segundos; aceita também só minutos ("25"). */
 export function parseClock(v: string): number | null {
@@ -36,38 +37,38 @@ export function buildResult(part: FitnessPart, f: { time: string; rounds: string
     switch (part.result_type) {
       case 'time': {
         const s = parseClock(f.time);
-        return s ? { data: { kind: 'time', seconds: s } } : { error: 'Informe o tempo (ex.: 12:34)' };
+        return s ? { data: { kind: 'time', seconds: s } } : { error: i18n.t('fitness:result.time') };
       }
       case 'rounds_reps': {
         const r = num(f.rounds);
-        return r != null ? { data: { kind: 'rounds_reps', rounds: Math.round(r), reps: Math.round(num(f.reps) ?? 0) } } : { error: 'Informe os rounds' };
+        return r != null ? { data: { kind: 'rounds_reps', rounds: Math.round(r), reps: Math.round(num(f.reps) ?? 0) } } : { error: i18n.t('fitness:result.rounds') };
       }
       case 'reps': {
         const r = num(f.reps);
-        return r != null ? { data: { kind: 'reps', reps: Math.round(r) } } : { error: 'Informe as repetições' };
+        return r != null ? { data: { kind: 'reps', reps: Math.round(r) } } : { error: i18n.t('fitness:result.reps') };
       }
       case 'load': {
         const k = num(f.kg);
-        return k != null ? { data: { kind: 'load', kg: k } } : { error: 'Informe a carga em kg' };
+        return k != null ? { data: { kind: 'load', kg: k } } : { error: i18n.t('fitness:result.load') };
       }
       case 'calories': {
         const c = num(f.calories);
-        return c != null ? { data: { kind: 'calories', calories: Math.round(c) } } : { error: 'Informe as calorias' };
+        return c != null ? { data: { kind: 'calories', calories: Math.round(c) } } : { error: i18n.t('fitness:result.calories') };
       }
       default: {
         const m = num(f.meters);
-        return m != null ? { data: { kind: 'distance', meters: m } } : { error: 'Informe a distância em metros' };
+        return m != null ? { data: { kind: 'distance', meters: m } } : { error: i18n.t('fitness:result.distance') };
       }
     }
   }
   if (part.type === 'hyrox') {
     const s = parseClock(f.time);
-    return s ? { data: { kind: 'hyrox', total_seconds: s } } : { error: 'Informe o tempo total (ex.: 1:15:00)' };
+    return s ? { data: { kind: 'hyrox', total_seconds: s } } : { error: i18n.t('fitness:result.total') };
   }
   if (part.type === 'endurance') {
     const s = f.time.trim() ? parseClock(f.time) : null;
     const km = num(f.km);
-    if (s == null && (km == null || km <= 0)) return { error: 'Informe o tempo ou a distância' };
+    if (s == null && (km == null || km <= 0)) return { error: i18n.t('fitness:result.timeOrDistance') };
     return { data: { kind: 'endurance', ...(s ? { seconds: s } : {}), ...(km && km > 0 ? { distance_m: Math.round(km * 1000) } : {}) } };
   }
   return { data: { kind: 'done' } };

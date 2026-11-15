@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Button, Chip, Field, PressableScale } from '@/src/design-system/ui';
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
-import { listSavedPixKeys, PixData, PixKeyType, pixKeyTypeLabel, PIX_KEY_TYPES } from '@/src/shared/api/conversation-actions.api';
-import { DEMO_PIX_KEYS, formatPixKey, pixKeyError } from './logic';
+import { listSavedPixKeys, PixData, PixKeyType, PIX_KEY_TYPES } from '@/src/shared/api/conversation-actions.api';
+import { DEMO_PIX_KEYS, formatPixKey, pixKeyError, pixKeyTypeLabel } from './logic';
 import { PixCard } from './PixCard';
 import { useCan } from '@/src/features/auth/useCan';
 
@@ -36,6 +37,7 @@ export function PixSheet({
   sending?: boolean;
   onSend: (pix: PixData & { save?: boolean }) => void;
 }) {
+  const { t } = useTranslation('inbox');
   const { user } = useAuth();
   // A conta faz parte da chave: chaves Pix de uma empresa nunca aparecem em outra.
   const saved = useQuery({ queryKey: ['pix-keys', user?.id, user?.kind === 'staff' ? user.tenant_id : null], enabled: live && visible, queryFn: listSavedPixKeys, staleTime: 60_000 });
@@ -53,7 +55,7 @@ export function PixSheet({
   const setHolder = (v: string) => update({ holder: v });
 
   const keyErr = pixKeyError(type, key);
-  const holderErr = holder.trim().length >= 2 ? null : 'Informe o nome de quem recebe';
+  const holderErr = holder.trim().length >= 2 ? null : t('pix.holderError');
   const ok = !keyErr && !holderErr;
   const isNewKey = !keys.some((k) => k.key === key.trim() && k.key_type === type);
 
@@ -69,13 +71,13 @@ export function PixSheet({
         reset();
         onClose();
       }}
-      title="Enviar chave Pix"
-      closeLabel="Fechar chave Pix"
+      title={t('pix.title')}
+      closeLabel={t('pix.close')}
     >
       <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={{ gap: 14 }} keyboardShouldPersistTaps="handled">
         {keys.length ? (
           <View style={{ gap: 8 }}>
-            <Text style={styles.label}>Chaves salvas</Text>
+            <Text style={styles.label}>{t('pix.saved')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ marginHorizontal: -20 }}>
               <View style={{ width: 12 }} />
               {keys.map((k) => {
@@ -88,7 +90,7 @@ export function PixSheet({
                     }}
                     accessibilityRole="button"
                     accessibilityState={{ selected: on }}
-                    accessibilityLabel={`Usar chave ${pixKeyTypeLabel(k.key_type)} ${k.key}`}
+                    accessibilityLabel={t('pix.useKey', { type: pixKeyTypeLabel(k.key_type), key: k.key })}
                     style={[styles.saved, on && styles.savedOn]}
                   >
                     <Text style={[styles.savedType, on && { color: '#0f766e' }]}>{pixKeyTypeLabel(k.key_type)}</Text>
@@ -102,15 +104,15 @@ export function PixSheet({
         ) : null}
 
         <View style={{ gap: 8 }}>
-          <Text style={styles.label}>Tipo de chave</Text>
+          <Text style={styles.label}>{t('pix.typeLabel')}</Text>
           <View style={styles.types}>
-            {PIX_KEY_TYPES.map((t) => (
+            {PIX_KEY_TYPES.map((opt) => (
               <Chip
-                key={t.value}
-                label={t.label}
-                selected={type === t.value}
+                key={opt.value}
+                label={pixKeyTypeLabel(opt.value)}
+                selected={type === opt.value}
                 onPress={() => {
-                  update({ type: t.value, savedId: null });
+                  update({ type: opt.value, savedId: null });
                 }}
               />
             ))}
@@ -119,7 +121,7 @@ export function PixSheet({
 
         <View>
           <Field
-            label={type === 'copy_paste' ? 'Código Pix copia e cola' : 'Chave'}
+            label={type === 'copy_paste' ? t('pix.copyPasteLabel') : t('pix.keyLabel')}
             value={key}
             onChangeText={(v) => {
               update({ key: v, savedId: null });
@@ -133,7 +135,7 @@ export function PixSheet({
         </View>
 
         <View>
-          <Field label="Nome de quem recebe" value={holder} onChangeText={setHolder} placeholder="Como aparece no banco" autoCapitalize="words" />
+          <Field label={t('pix.holderLabel')} value={holder} onChangeText={setHolder} placeholder={t('pix.holderPlaceholder')} autoCapitalize="words" />
           {touched && holderErr ? <Text style={styles.error}>{holderErr}</Text> : null}
         </View>
 
@@ -141,16 +143,16 @@ export function PixSheet({
         {isNewKey && key.trim() && canSaveKeys ? (
           <View style={styles.saveRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.saveTitle}>Salvar esta chave</Text>
-              <Text style={styles.saveSub}>Fica pronta para as próximas conversas</Text>
+              <Text style={styles.saveTitle}>{t('pix.saveTitle')}</Text>
+              <Text style={styles.saveSub}>{t('pix.saveSub')}</Text>
             </View>
-            <Switch value={save} onValueChange={setSave} trackColor={{ true: '#0f766e', false: colors.track }} thumbColor="#fff" accessibilityLabel="Salvar esta chave" />
+            <Switch value={save} onValueChange={setSave} trackColor={{ true: '#0f766e', false: colors.track }} thumbColor="#fff" accessibilityLabel={t('pix.saveTitle')} />
           </View>
         ) : null}
 
         {ok ? (
           <View style={{ gap: 8 }}>
-            <Text style={styles.label}>Como o cliente recebe</Text>
+            <Text style={styles.label}>{t('pix.preview')}</Text>
             <View style={styles.preview}>
               <PixCard pix={{ key: key.trim(), key_type: type, holder_name: holder.trim() }} />
             </View>
@@ -158,7 +160,7 @@ export function PixSheet({
         ) : null}
       </ScrollView>
       <Button
-        label="Enviar chave Pix"
+        label={t('pix.send')}
         loading={sending}
         onPress={() => {
           setTouched(true);

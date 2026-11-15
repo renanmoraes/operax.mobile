@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import i18n from '@/src/i18n';
 import { AppState, Platform } from 'react-native';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
@@ -37,8 +38,8 @@ export function appVersionInfo(): AppVersionInfo {
 /** "Versão 1.0.0 (12) · atualização 3f2a1c9d" */
 export function appVersionLabel(info = appVersionInfo()): string {
   const build = info.build ? ` (${info.build})` : '';
-  const upd = info.update === 'embutida' ? '' : ` · atualização ${info.update}`;
-  return `Versão ${info.version}${build}${upd}`;
+  const upd = info.update === 'embutida' ? '' : i18n.t('settings:updateTag', { id: info.update });
+  return i18n.t('settings:version', { version: `${info.version}${build}` }) + upd;
 }
 
 const CHECK_EVERY_MS = 30 * 60_000;

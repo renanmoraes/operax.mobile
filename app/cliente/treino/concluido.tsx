@@ -1,4 +1,7 @@
 import { router } from 'expo-router';
+import { useActiveCompanySlug, useCompanies } from '@/src/features/client/useClientData';
+import i18n, { locale } from '@/src/i18n';
+import { useTranslation } from 'react-i18next';
 import { showDialog } from '@/src/design-system/Dialog';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
@@ -16,12 +19,13 @@ import type { FitnessFeeling, FitnessWorkoutView } from '@/src/features/fitness/
 import { useHistory, useLoadHistory, useRecordResult } from '@/src/features/fitness/useFitness';
 import { formatClock, formatKg, isoDate } from '@/src/shared/format';
 
+const feel = (key: FitnessFeeling, icon: IconName) => ({ key, icon, get label() { return i18n.t(`fitness:done.feeling.${key}`); } });
 const FEELINGS: { key: FitnessFeeling; label: string; icon: IconName }[] = [
-  { key: 'great', label: 'Ótimo', icon: 'happy-outline' },
-  { key: 'good', label: 'Bom', icon: 'thumbs-up-outline' },
-  { key: 'ok', label: 'Ok', icon: 'remove-circle-outline' },
-  { key: 'bad', label: 'Puxado', icon: 'trending-down-outline' },
-  { key: 'awful', label: 'Péssimo', icon: 'sad-outline' },
+  feel('great', 'happy-outline'),
+  feel('good', 'thumbs-up-outline'),
+  feel('ok', 'remove-circle-outline'),
+  feel('bad', 'trending-down-outline'),
+  feel('awful', 'sad-outline'),
 ];
 
 export default function WorkoutDoneScreen() {
@@ -36,6 +40,11 @@ export default function WorkoutDoneScreen() {
 
 function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; session: FinishedSession | null }) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation(['fitness', 'common']);
+  // Nome da empresa no cartão de compartilhar (antes era um nome de demonstração fixo).
+  const slug = useActiveCompanySlug();
+  const { data: companies } = useCompanies();
+  const companyName = companies?.find((c) => c.slug === slug)?.name ?? 'Operax';
   const LOAD_HISTORY = useLoadHistory();
   const rows = useMemo(() => flattenWorkout(workout), [workout]);
   const { data: history } = useHistory();
@@ -57,7 +66,7 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
     .filter(Boolean) as { name: string; kg: number; diff: number }[];
 
   const past = (history ?? []).filter((e) => e.title === workout.title).slice(0, 5).reverse();
-  const bars = [...past.map((e) => ({ label: e.date.slice(8, 10) + '/' + e.date.slice(5, 7), v: e.volume_kg ?? 0 })), { label: 'Hoje', v: volume }];
+  const bars = [...past.map((e) => ({ label: e.date.slice(8, 10) + '/' + e.date.slice(5, 7), v: e.volume_kg ?? 0 })), { label: t('sheet.today'), v: volume }];
   const maxV = Math.max(1, ...bars.map((b) => b.v));
 
   async function save() {
@@ -83,7 +92,7 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
       // Recusado pelo servidor (dado inválido, sem acesso): guardar não adianta, a pessoa precisa saber.
       const status = isAxiosError(e) ? (e.response?.status ?? 0) : 0;
       if (status >= 400 && status < 500) {
-        void showDialog({ title: 'Não deu para salvar', message: 'O servidor recusou este resultado. Confira os dados e tente de novo.', tone: 'warn' });
+        void showDialog({ title: t('rec.saveFailTitle'), message: t('done.rejected'), tone: 'warn' });
         return;
       }
       await queueResults(bodies.slice(sent));
@@ -100,7 +109,7 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
           <LinearGradient colors={['#ffffff', '#eaf1ff', '#dff3ff']} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={StyleSheet.absoluteFill} />
           <Glow size={360} opacity={0.4} style={{ alignSelf: 'center', top: -120 }} />
           <View style={{ alignItems: 'flex-end', paddingHorizontal: 20 }}>
-            <IconButton icon="close" accessibilityLabel="Fechar" onPress={() => router.replace('/(client)/fitness')} />
+            <IconButton icon="close" accessibilityLabel={t('common:actions.close')} onPress={() => router.replace('/(client)/fitness')} />
           </View>
           <Rise style={{ alignItems: 'center' }}>
             <LinearGradient colors={gradients.brand} style={styles.trophy}>
@@ -108,18 +117,18 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
             </LinearGradient>
           </Rise>
           <Rise index={1}>
-            <Text style={styles.title}>Treino concluído!</Text>
+            <Text style={styles.title}>{t('done.title')}</Text>
           </Rise>
           <Rise index={2}>
-            <Muted style={styles.sub}>{`${workout.title} · ${setsDone} de ${totalSets(rows)} séries`}</Muted>
+            <Muted style={styles.sub}>{t('done.sub', { title: workout.title, done: setsDone, total: totalSets(rows) })}</Muted>
           </Rise>
           <Rise index={3} style={styles.stats}>
             <StatStrip
               align="center"
               items={[
-                { value: formatClock(session?.elapsed ?? 0), label: 'tempo' },
-                { value: volume.toLocaleString('pt-BR'), label: 'kg de volume' },
-                { value: `${setsDone}/${totalSets(rows)}`, label: 'séries' },
+                { value: formatClock(session?.elapsed ?? 0), label: t('rec.timeUnit') },
+                { value: volume.toLocaleString(locale()), label: t('done.volumeUnit') },
+                { value: `${setsDone}/${totalSets(rows)}`, label: t('sheet.setsUnit') },
               ]}
             />
           </Rise>
@@ -146,10 +155,10 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
           <Rise index={5}>
             <Card>
               <View style={styles.rowBetween}>
-                <Text style={styles.cardTitle}>{`Volume no ${workout.title.split('·')[0].trim()}`}</Text>
-                <Muted>{`últimas ${bars.length} vezes`}</Muted>
+                <Text style={styles.cardTitle}>{t('done.volumeIn', { title: workout.title.split('·')[0].trim() })}</Text>
+                <Muted>{t('done.lastTimes', { count: bars.length })}</Muted>
               </View>
-              <View style={styles.bars} accessible accessibilityLabel={`Volume de hoje: ${volume} kg`}>
+              <View style={styles.bars} accessible accessibilityLabel={t('done.volumeToday', { kg: volume })}>
                 {bars.map((b, i) => (
                   <View key={i} style={{ flex: 1, alignItems: 'center', gap: 6 }}>
                     {i === bars.length - 1 ? (
@@ -166,8 +175,8 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
 
           <Rise index={6}>
             <Card>
-              <Text style={styles.cardTitle}>Como foi o treino?</Text>
-              <Muted style={{ marginTop: 4 }}>{`Vai junto com o resultado para ${workout.contact_name?.split(' ')[0] ?? 'seu personal'}.`}</Muted>
+              <Text style={styles.cardTitle}>{t('rec.howWasIt')}</Text>
+              <Muted style={{ marginTop: 4 }}>{t('done.goesTo', { name: workout.contact_name?.split(' ')[0] ?? t('done.yourCoach') })}</Muted>
               <View style={styles.feelings} accessibilityRole="radiogroup">
                 {FEELINGS.map((f) => {
                   const on = feeling === f.key;
@@ -179,16 +188,16 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
                   );
                 })}
               </View>
-              <Text style={[styles.cardTitle, { fontSize: 14, marginTop: 16 }]}>Esforço (0 a 10)</Text>
+              <Text style={[styles.cardTitle, { fontSize: 14, marginTop: 16 }]}>{t('done.effortScale')}</Text>
               <View style={styles.efforts}>
                 {Array.from({ length: 11 }, (_, n) => (
-                  <Pressable key={n} onPress={() => setEffort(n)} accessibilityRole="radio" accessibilityState={{ checked: effort === n }} accessibilityLabel={`Esforço ${n}`} style={[styles.effort, effort === n && styles.feelingOn]}>
+                  <Pressable key={n} onPress={() => setEffort(n)} accessibilityRole="radio" accessibilityState={{ checked: effort === n }} accessibilityLabel={t('history.effort', { n })} style={[styles.effort, effort === n && styles.feelingOn]}>
                     <Text style={[styles.effortText, effort === n && { color: '#fff' }]}>{n}</Text>
                   </Pressable>
                 ))}
               </View>
               <View style={{ marginTop: 14 }}>
-                <Field label="Comentário (opcional)" value={comment} onChangeText={setComment} multiline placeholder="Conte como você se sentiu" />
+                <Field label={t('log.commentOpt')} value={comment} onChangeText={setComment} multiline placeholder={t('done.commentHint')} />
               </View>
             </Card>
           </Rise>
@@ -197,29 +206,29 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
             <Card style={styles.share}>
               <LinearGradient colors={gradients.media} style={styles.story}>
                 <Text style={styles.storyTime}>{formatClock(session?.elapsed ?? 0)}</Text>
-                <Text style={styles.storyHandle}>Move Studio</Text>
+                <Text style={styles.storyHandle}>{companyName}</Text>
               </LinearGradient>
               <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>Compartilhar</Text>
-                <Muted style={{ marginTop: 3, lineHeight: 18 }}>{feeling ? 'Mande o resumo para Instagram, WhatsApp e mais.' : 'Diga como foi para liberar o compartilhamento.'}</Muted>
+                <Text style={styles.cardTitle}>{t('done.share')}</Text>
+                <Muted style={{ marginTop: 3, lineHeight: 18 }}>{feeling ? t('done.shareSub') : t('done.shareLocked')}</Muted>
                 {feeling ? (
                   <Button
-                    label="Compartilhar"
+                    label={t('done.share')}
                     compact
                     icon="share-outline"
                     style={{ marginTop: 10, alignSelf: 'flex-start' }}
-                    onPress={() => void Share.share({ message: `Treino concluído: ${workout.title}, ${formatClock(session?.elapsed ?? 0)} e ${volume.toLocaleString('pt-BR')} kg de volume.` })}
+                    onPress={() => void Share.share({ message: t('done.shareMessage', { title: workout.title, time: formatClock(session?.elapsed ?? 0), kg: volume.toLocaleString(locale()) }) })}
                   />
                 ) : null}
               </View>
             </Card>
           </Rise>
 
-          {queued ? <Body style={styles.queued}>Sem conexão agora. O resultado ficou guardado e vai sozinho quando a internet voltar.</Body> : null}
+          {queued ? <Body style={styles.queued}>{t('done.queued')}</Body> : null}
           {queued ? (
-            <Button label="Voltar ao treino" onPress={() => router.replace('/(client)/fitness')} />
+            <Button label={t('log.backToWorkout')} onPress={() => router.replace('/(client)/fitness')} />
           ) : (
-            <Button label="Salvar e voltar" loading={record.isPending} onPress={() => void save()} />
+            <Button label={t('done.saveBack')} loading={record.isPending} onPress={() => void save()} />
           )}
         </View>
       </ScrollView>

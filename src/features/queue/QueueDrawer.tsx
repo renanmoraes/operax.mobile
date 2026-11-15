@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dimensions,
   FlatList,
@@ -37,6 +38,7 @@ type Props = {
 };
 
 export function QueueDrawer({ items, claimingId, onClaim }: Props) {
+  const { t } = useTranslation(['inbox', 'common']);
   const canClaim = useCan()('claim');
   const { visible, close } = useQueueDrawer();
   const insets = useSafeAreaInsets();
@@ -60,7 +62,7 @@ export function QueueDrawer({ items, claimingId, onClaim }: Props) {
           style={styles.overlay}
           onPress={close}
           accessibilityRole="button"
-          accessibilityLabel="Fechar fila"
+          accessibilityLabel={t('queue.close')}
         />
         <Animated.View
           style={[
@@ -71,14 +73,14 @@ export function QueueDrawer({ items, claimingId, onClaim }: Props) {
         >
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.title}>Fila</Text>
+              <Text style={styles.title}>{t('queue.title')}</Text>
               <Muted style={{ marginTop: 2 }}>
                 {items.length === 0
-                  ? 'Ninguém aguardando'
-                  : `${items.length} aguardando · assuma para atender`}
+                  ? t('queue.none')
+                  : t('queue.waiting', { count: items.length })}
               </Muted>
             </View>
-            <IconButton icon="close" accessibilityLabel="Fechar fila" onPress={close} />
+            <IconButton icon="close" accessibilityLabel={t('queue.close')} onPress={close} />
           </View>
 
           <FlatList
@@ -87,8 +89,8 @@ export function QueueDrawer({ items, claimingId, onClaim }: Props) {
             contentContainerStyle={items.length === 0 ? styles.emptyWrap : styles.list}
             ListEmptyComponent={
               <View style={styles.empty}>
-                <EmptyState icon="checkmark-done-outline" title="Fila zerada" subtitle="Ninguém esperando atendimento agora." />
-                <Button label="Fechar" variant="soft" onPress={close} />
+                <EmptyState icon="checkmark-done-outline" title={t('queue.emptyTitle')} subtitle={t('queue.emptySub')} />
+                <Button label={t('common:actions.close')} variant="soft" onPress={close} />
               </View>
             }
             renderItem={({ item }) => (
@@ -104,10 +106,10 @@ export function QueueDrawer({ items, claimingId, onClaim }: Props) {
                   </View>
                 </View>
                 <View style={styles.itemFoot}>
-                  <Badge label={`${item.queue} · ${channelLabel[item.channel] ?? item.channel}`} />
+                  <Badge label={`${item.queue} · ${channelLabel[item.channel] ?? t('card.channelOther')}`} />
                   {canClaim ? (
                     <Button
-                      label="Assumir"
+                      label={t('queue.claim')}
                       compact
                       loading={claimingId === item.id}
                       disabled={claimingId === item.id}

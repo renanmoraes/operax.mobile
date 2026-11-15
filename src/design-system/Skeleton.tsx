@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import i18n from '@/src/i18n';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { DimensionValue, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import Animated, { Easing, ReduceMotion, SharedValue, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
@@ -17,7 +18,7 @@ export function SkeletonGroup({ children, style }: { children: ReactNode; style?
   }, [t]);
   return (
     <ShimmerCtx.Provider value={t}>
-      <View style={style} accessible accessibilityRole="progressbar" accessibilityLabel="Carregando">
+      <View style={style} accessible accessibilityRole="progressbar" accessibilityLabel={i18n.t('states.loading')}>
         {children}
       </View>
     </ShimmerCtx.Provider>

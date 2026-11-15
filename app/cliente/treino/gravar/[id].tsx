@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import i18n from '@/src/i18n';
 import { useMemo } from 'react';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { Recorder, type RecorderSave } from '@/src/features/fitness/Recorder';
@@ -13,7 +14,7 @@ import { isoDate } from '@/src/shared/format';
 /** Gravar com o GPS a parte de corrida, caminhada ou bike da ficha: o resultado entra no treino do dia. */
 export default function GpsRecordScreen() {
   const { id, parte } = useLocalSearchParams<{ id: string; parte?: string }>();
-  return <WorkoutGate id={id} title="Gravar treino">{(w) => <PlannedRecord workout={w} partIndex={Number(parte ?? 0)} />}</WorkoutGate>;
+  return <WorkoutGate id={id} title={i18n.t('fitness:recordWorkout')}>{(w) => <PlannedRecord workout={w} partIndex={Number(parte ?? 0)} />}</WorkoutGate>;
 }
 
 function PlannedRecord({ workout, partIndex }: { workout: FitnessWorkoutView; partIndex: number }) {

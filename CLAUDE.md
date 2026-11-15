@@ -9,6 +9,10 @@ App Expo/React Native do CRM Operax.
 
 Rodar: `npx expo start`
 
+## Idiomas
+
+- Todo texto de tela passa pelo i18n (pt, en, es): nada de texto fixo nem `'pt-BR'` fixo. Ver `docs/i18n.md`.
+
 ## Antes de cada push
 
 - `npm run lint` (expo lint), `npx tsc --noEmit --noUnusedLocals` e `npx jest` passando.

@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import i18n, { locale } from '@/src/i18n';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,14 +17,16 @@ import { RequirePermission , useCan } from '@/src/features/auth/useCan';
 const STAGE_DOTS = [colors.warn, colors.primary, '#8c99b0', colors.success];
 
 export default function KanbanScreenGuarded() {
+  const { t } = useTranslation('agenda');
   return (
-    <RequirePermission need="kanban" title="Kanban">
+    <RequirePermission need="kanban" title={t('kanban.title')}>
       <KanbanScreen />
     </RequirePermission>
   );
 }
 
 function KanbanScreen() {
+  const { t } = useTranslation('agenda');
   // Mover cartão exige kanban:move_card (quem só lê vê o funil sem as setas).
   const canMove = useCan()('kanbanMove');
   const insets = useSafeAreaInsets();
@@ -58,10 +62,10 @@ function KanbanScreen() {
           const cards = await listStageCards(stage.id);
           return cards.map((c) => ({
             id: c.id,
-            title: c.title || c.contact?.name || c.contact_name || 'Card',
+            title: c.title || c.contact?.name || c.contact_name || i18n.t('agenda:kanban.cardFallback'),
             contactName: c.contact?.name || c.contact_name || '—',
             stageId: c.stage_id || stage.id,
-            value: c.value_estimated != null ? `R$ ${Number(c.value_estimated).toLocaleString('pt-BR')}` : undefined,
+            value: c.value_estimated != null ? `R$ ${Number(c.value_estimated).toLocaleString(locale())}` : undefined,
           }));
         }),
       );
@@ -99,7 +103,7 @@ function KanbanScreen() {
 
   return (
     <Screen>
-      <ScreenHeader safe title="Kanban" subtitle={mode === 'live' ? pipelineQuery.data?.name || 'Funil' : 'Funil de demonstração'} onBack={() => router.back()} />
+      <ScreenHeader safe title={t('kanban.title')} subtitle={mode === 'live' ? pipelineQuery.data?.name || t('kanban.funnel') : t('kanban.demoFunnel')} onBack={() => router.back()} />
       {mode === 'live' && (pipelinesQuery.data?.length ?? 0) > 1 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingBottom: 8 }}>
           {pipelinesQuery.data!.map((p) => (
@@ -119,7 +123,7 @@ function KanbanScreen() {
               </View>
               {stageCards.length === 0 ? (
                 <View style={styles.empty}>
-                  <Muted>Nada por aqui</Muted>
+                  <Muted>{t('kanban.empty')}</Muted>
                 </View>
               ) : null}
               {stageCards.map((card) => (
@@ -135,8 +139,8 @@ function KanbanScreen() {
                     {card.value ? <Badge label={card.value} tone="success" /> : <View />}
                     {canMove ? (
                     <View style={{ flexDirection: 'row', gap: 6 }}>
-                      <IconButton icon="arrow-back" size={36} tone="soft" accessibilityLabel={`Mover ${card.title} para a etapa anterior`} onPress={() => moveCardLocal(card.id, -1)} />
-                      <IconButton icon="arrow-forward" size={36} tone="primary" accessibilityLabel={`Mover ${card.title} para a próxima etapa`} onPress={() => moveCardLocal(card.id, 1)} />
+                      <IconButton icon="arrow-back" size={36} tone="soft" accessibilityLabel={t('kanban.movePrev', { title: card.title })} onPress={() => moveCardLocal(card.id, -1)} />
+                      <IconButton icon="arrow-forward" size={36} tone="primary" accessibilityLabel={t('kanban.moveNext', { title: card.title })} onPress={() => moveCardLocal(card.id, 1)} />
                     </View>
                     ) : null}
                   </View>

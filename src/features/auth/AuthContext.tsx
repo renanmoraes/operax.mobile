@@ -29,6 +29,7 @@ import {
   setTokens,
   SavedRole,
 } from '@/src/shared/api/token-store';
+import i18n from '@/src/i18n';
 import { connectSocket, disconnectSocket } from '@/src/shared/realtime/socket';
 import { registerForPushNotificationsAsync } from '@/src/features/notifications/push';
 import { clearBookingReminders } from '@/src/features/notifications/reminders';
@@ -127,9 +128,14 @@ async function loadPortalUser(fallbackCompanies: Parameters<typeof portalUser>[1
 }
 
 function messageFromError(err: unknown, fallback: string): string {
-  const msg =
-    (err as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
-  return Array.isArray(msg) ? msg.join(', ') : String(msg);
+  const res = (err as { response?: { status?: number; data?: { message?: unknown } } })?.response;
+  const status = res?.status ?? 500;
+  if (status === 401) return i18n.t('auth:errors.unauthorized');
+  if (status === 429) return i18n.t('auth:errors.tooMany');
+  const msg = res?.data?.message;
+  // Só texto do servidor que é uma frase simples e de erro do cliente (4xx); o resto vira a mensagem traduzida.
+  if (status < 500 && typeof msg === 'string' && msg.trim()) return msg;
+  return fallback;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -201,7 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Sessão restaurada sem resumo (veio de instalação antiga): registra na troca de contas.
         const registerIfMissing = (r: Role, u: AuthUser) => {
           if (known[r]) return;
-          const summary: AccountSummary = { role: r, name: u.name || (r === 'staff' ? 'Equipe' : 'Cliente'), email: u.email ?? undefined, demo: false };
+          const summary: AccountSummary = { role: r, name: u.name || (r === 'staff' ? i18n.t('auth:shared.team') : i18n.t('auth:shared.client')), email: u.email ?? undefined, demo: false };
           void saveAccountSummary(summary);
           setAccounts((prev) => ({ ...prev, [r]: summary }));
         };
@@ -251,7 +257,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthState>(() => {
     function remember(r: Role, u: AuthUser, demo: boolean) {
-      const summary: AccountSummary = { role: r, name: u.name || (r === 'staff' ? 'Equipe' : 'Cliente'), email: u.email ?? undefined, demo };
+      const summary: AccountSummary = { role: r, name: u.name || (r === 'staff' ? i18n.t('auth:shared.team') : i18n.t('auth:shared.client')), email: u.email ?? undefined, demo };
       void saveAccountSummary(summary);
       setAccounts((prev) => ({ ...prev, [r]: summary }));
     }
@@ -343,7 +349,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(target);
           setUser(null);
           setAuthenticated(false);
-          setError('Você saiu da conta, mas não foi possível abrir a outra agora. Confira a internet e tente de novo.');
+          setError(i18n.t('auth:errors.leftButCannotOpen'));
           return false;
         }
         // Falha passageira (sem internet, servidor fora): a conta salva continua guardada e
@@ -352,7 +358,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await setSavedRole(role);
           if (isAuthenticated) void connectSocket();
         }
-        setError('Não foi possível trocar de conta agora. Confira a internet e tente de novo.');
+        setError(i18n.t('auth:errors.cannotSwitch'));
         return false;
       }
     }
@@ -388,7 +394,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       login: async (email, password, companyCode) => {
         if (!companyCode || companyCode.trim().length !== 4) {
-          setError('Informe o código da empresa (4 letras).');
+          setError(i18n.t('auth:errors.companyCode'));
           throw new Error('company_code');
         }
         setError(null);
@@ -402,7 +408,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return 'mfa';
           }
           if ('status' in result && result.status === 'mfa_setup_required') {
-            setError('Configure o MFA no app web antes de usar o mobile.');
+            setError(i18n.t('auth:errors.mfaSetup'));
             setNeedsMfa(false);
             setAuthenticated(false);
             throw new Error('mfa_setup_required');
@@ -420,7 +426,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           void registerDevicePushToken();
           return 'ok';
         } catch (err) {
-          setError(messageFromError(err, 'Falha no login. Verifique e-mail, senha e conexão.'));
+          if (err instanceof Error && err.message === 'mfa_setup_required') throw err; // já tem a mensagem própria
+          setError(messageFromError(err, i18n.t('auth:errors.loginFailed')));
           throw err;
         }
       },
@@ -460,7 +467,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await connectSocket();
           void registerDevicePushToken();
         } catch (err) {
-          setError('Código MFA inválido.');
+          setError(i18n.t('auth:errors.mfaInvalid'));
           throw err;
         }
       },
@@ -470,7 +477,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           return await enterPortal(await portalPasswordLogin(identifier, password ?? ''));
         } catch (err) {
-          setError(messageFromError(err, 'Falha no login. Verifique os dados e a conexão.'));
+          setError(messageFromError(err, i18n.t('auth:errors.loginFailedData')));
           throw err;
         }
       },
@@ -481,7 +488,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const r = await portalRequestCode(identifier);
           portalChallenge.current = r.challenge_id;
         } catch (err) {
-          setError(messageFromError(err, 'Não foi possível enviar o código. Tente de novo.'));
+          setError(messageFromError(err, i18n.t('auth:errors.sendCode')));
           throw err;
         }
       },
@@ -497,7 +504,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           return await enterPortal(r as PortalLoginResult);
         } catch (err) {
-          setError(messageFromError(err, 'Código inválido ou expirado.'));
+          setError(messageFromError(err, i18n.t('auth:errors.invalidOtp')));
           throw new Error('invalid_otp');
         }
       },
@@ -510,7 +517,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           portalSetup.current = null;
           return await enterPortal(r);
         } catch (err) {
-          setError(messageFromError(err, 'Não foi possível criar a senha. Tente de novo.'));
+          setError(messageFromError(err, i18n.t('auth:errors.createPassword')));
           throw err;
         }
       },
@@ -535,7 +542,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         const identity = portalIdentity.current ?? (await getRefreshToken('client'));
-        if (!identity) throw new Error('Sessão expirada. Entre de novo.');
+        if (!identity) throw new Error(i18n.t('auth:errors.sessionExpired'));
         await enterPortal(await portalSelectCompany(identity, tenantId));
       },
 

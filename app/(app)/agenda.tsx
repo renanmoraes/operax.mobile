@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/src/i18n';
 import { StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, EmptyState, Screen, ScreenHeader } from '@/src/design-system/ui';
@@ -48,25 +50,22 @@ const STATUS_TONE: Record<string, DayEvent['tone']> = {
   rejected: 'danger',
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  confirmed: 'Confirmado',
-  pending: 'Aguardando confirmação',
-  cancelled: 'Cancelado',
-  completed: 'Realizado',
-  done: 'Realizado',
-  no_show: 'Faltou',
-  rejected: 'Recusado',
-};
+const STATUS_LABEL_KEYS = ['confirmed', 'pending', 'cancelled', 'completed', 'done', 'no_show', 'rejected', 'checked_in', 'in_progress', 'waitlisted', 'offered', 'expired'] as const;
+type StatusLabelKey = (typeof STATUS_LABEL_KEYS)[number];
+const statusLabel = (st: string): string =>
+  (STATUS_LABEL_KEYS as readonly string[]).includes(st) ? i18n.t(`agenda:agenda.status.${st as StatusLabelKey}`) : i18n.t('agenda:agenda.statusOther');
 
 export default function AgendaScreenGuarded() {
+  const { t } = useTranslation('agenda');
   return (
-    <RequirePermission need="agenda" title="Agenda">
+    <RequirePermission need="agenda" title={t('agenda.title')}>
       <AgendaScreen />
     </RequirePermission>
   );
 }
 
 function AgendaScreen() {
+  const { t } = useTranslation('agenda');
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();
   const bounds = dayBounds();
@@ -81,7 +80,7 @@ function AgendaScreen() {
   const { toast, show } = useToast(2200);
 
   const header = (
-    <ScreenHeader safe title="Agenda" subtitle={`Hoje, ${longDate(new Date()).toLowerCase()}`} right={<Badge label={mode === 'live' ? 'Ao vivo' : 'Demo'} tone="primary" />} />
+    <ScreenHeader safe title={t('agenda.title')} subtitle={t('agenda.today', { date: longDate(new Date()).toLowerCase() })} right={<Badge label={mode === 'live' ? t('agenda.live') : t('agenda.demo')} tone="primary" />} />
   );
 
   // Mesma forma para o real e o demo: a lista de agendamentos como a API manda.
@@ -90,8 +89,8 @@ function AgendaScreen() {
       mode === 'live'
         ? query.data && query.data.ok
           ? query.data.items.filter((b) => {
-              const t = new Date(b.starts_at).getTime();
-              return t >= bounds.startMs && t < bounds.endMs;
+              const startsMs = new Date(b.starts_at).getTime();
+              return startsMs >= bounds.startMs && startsMs < bounds.endMs;
             })
           : []
         : agendaEvents.map((e) => ({
@@ -111,7 +110,7 @@ function AgendaScreen() {
     return (
       <Screen>
         {header}
-        <EmptyState icon="calendar-outline" title="Agenda indisponível nesta empresa" subtitle={query.data.message} />
+        <EmptyState icon="calendar-outline" title={t('agenda.unavailable')} subtitle={query.data.message} />
       </Screen>
     );
   }
@@ -131,11 +130,13 @@ function AgendaScreen() {
         await query.refetch();
       }
       setStatusOverride((prev) => ({ ...prev, [open.id]: STATUS_AFTER[action] }));
-      show(DONE_MESSAGE[action], action === 'cancel' || action === 'reject' || action === 'no_show' ? 'info' : 'success');
+      show(i18n.t(`agenda:agenda.done.${action}`), action === 'cancel' || action === 'reject' || action === 'no_show' ? 'info' : 'success');
       setOpenId(null);
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
-      show(Array.isArray(msg) ? msg[0] : msg || 'Não foi possível concluir. Tente de novo.', 'error');
+      // Texto do servidor só quando é um aviso (4xx) escrito; erro de servidor ou rede usa o texto do app.
+      const res = (e as { response?: { status?: number; data?: { message?: string | string[] } } })?.response;
+      const raw = Array.isArray(res?.data?.message) ? res?.data?.message[0] : res?.data?.message;
+      show(typeof raw === 'string' && raw.trim() && (res?.status ?? 500) < 500 ? raw : t('agenda.actionFailed'), 'error');
     } finally {
       setBusy(null);
     }
@@ -151,7 +152,7 @@ function AgendaScreen() {
       ) : events.length === 0 ? (
         <>
           {header}
-          <EmptyState icon="calendar-outline" title="Nenhum compromisso hoje" subtitle="Quando alguém marcar, aparece aqui." />
+          <EmptyState icon="calendar-outline" title={t('agenda.emptyTitle')} subtitle={t('agenda.emptySub')} />
         </>
       ) : (
         <DayTimeline
@@ -161,7 +162,7 @@ function AgendaScreen() {
           header={
             <>
               {header}
-              <Text style={styles.summary}>{upcoming ? `${upcoming} ${upcoming === 1 ? 'compromisso pela frente' : 'compromissos pela frente'} · ${events.length} no dia` : `${events.length} no dia · todos já passaram`}</Text>
+              <Text style={styles.summary}>{upcoming ? t('agenda.summary.upcoming', { count: upcoming, total: events.length }) : t('agenda.summary.allPast', { total: events.length })}</Text>
             </>
           }
         />
@@ -184,14 +185,6 @@ function AgendaScreen() {
   );
 }
 
-const DONE_MESSAGE: Record<BookingAction, string> = {
-  approve: 'Pedido aprovado',
-  reject: 'Pedido recusado',
-  check_in: 'Entrada registrada',
-  no_show: 'Falta registrada',
-  cancel: 'Agendamento cancelado',
-};
-
 /** "14:30" de hoje em ISO (horários do demo). */
 function todayAt(hhmm: string): string {
   const [h, m] = hhmm.split(':').map(Number);
@@ -205,12 +198,12 @@ function toEvent(b: ApiBooking): DayEvent {
   const startMin = toMinutes(b.starts_at);
   return {
     id: b.id,
-    title: b.service_name || 'Compromisso',
+    title: b.service_name || i18n.t('agenda:agenda.defaultTitle'),
     person: b.client_name || b.provider_name || '—',
     location: b.location_name || undefined,
     startMin,
     endMin: Math.max(startMin + 15, toMinutes(b.ends_at)),
-    statusLabel: STATUS_LABEL[st] ?? String(b.status),
+    statusLabel: statusLabel(st),
     tone: STATUS_TONE[st] ?? 'primary',
   };
 }

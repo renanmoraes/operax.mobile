@@ -1,4 +1,5 @@
 import { ComponentProps, ReactNode, useEffect, useState } from 'react';
+import i18n from '@/src/i18n';
 import {
   ActivityIndicator,
   Platform,
@@ -826,12 +827,12 @@ export function ScreenHeader({
   return (
     <View style={[styles.header, safe && { paddingTop: insets.top + styles.header.paddingTop }]}>
       <View style={styles.headerLeft}>
-        {onBack ? <IconButton icon="chevron-back" onPress={onBack} accessibilityLabel="Voltar" /> : null}
+        {onBack ? <IconButton icon="chevron-back" onPress={onBack} accessibilityLabel={i18n.t('actions.back')} /> : null}
         {onMenuPress ? (
           <PressableScale
             onPress={onMenuPress}
             accessibilityRole="button"
-            accessibilityLabel={menuBadge > 0 ? `Abrir fila, ${menuBadge} na fila` : 'Abrir fila'}
+            accessibilityLabel={menuBadge > 0 ? i18n.t('ui.openQueueCount', { count: menuBadge }) : i18n.t('ui.openQueue')}
             hitSlop={8}
             scaleTo={0.92}
             style={styles.menuBtn}
@@ -873,7 +874,7 @@ export function TopBar({
   return (
     <View style={[styles.topBar, safe && { marginTop: insets.top }]}>
       <View style={styles.topSide}>
-        {onBack ? <IconButton icon="chevron-back" onPress={onBack} accessibilityLabel="Voltar" tone={tone} /> : null}
+        {onBack ? <IconButton icon="chevron-back" onPress={onBack} accessibilityLabel={i18n.t('actions.back')} tone={tone} /> : null}
       </View>
       {title ? (
         <Text style={styles.topTitle} numberOfLines={1} accessibilityRole="header">

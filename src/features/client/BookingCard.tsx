@@ -1,31 +1,28 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, Muted } from '@/src/design-system/ui';
 import { colors, numbers, radii, text, typography } from '@/src/design-system/tokens';
+import i18n from '@/src/i18n';
 import { formatHour } from '@/src/shared/format';
 import type { ClientBooking } from './types';
 import { useConfirmBooking } from './useClientData';
 
-export const bookingKindLabel: Record<ClientBooking['category'], string> = {
-  session: 'Sessão',
-  class: 'Aula em grupo',
-  evaluation: 'Avaliação',
-  service: 'Serviço',
-};
+export const bookingKindLabel = (category: ClientBooking['category']): string => i18n.t(`client:booking.kind.${category}`);
 
 export function bookingPill(b: ClientBooking): { label: string; tone: 'warn' | 'primary' | 'success' | 'neutral' | 'danger' } {
   switch (b.status) {
     case 'pending':
-      return { label: 'Falta confirmar sua presença', tone: 'warn' };
+      return { label: i18n.t('client:booking.pill.pending'), tone: 'warn' };
     case 'offer':
-      return { label: 'Abriu uma vaga para você', tone: 'primary' };
+      return { label: i18n.t('client:booking.pill.offer'), tone: 'primary' };
     case 'confirmed':
-      return { label: 'Presença confirmada', tone: 'success' };
+      return { label: i18n.t('client:booking.pill.confirmed'), tone: 'success' };
     case 'cancelled':
-      return { label: 'Cancelado', tone: 'danger' };
+      return { label: i18n.t('client:booking.pill.cancelled'), tone: 'danger' };
     default:
-      return { label: 'Realizado', tone: 'neutral' };
+      return { label: i18n.t('client:booking.pill.done'), tone: 'neutral' };
   }
 }
 
@@ -34,6 +31,7 @@ export function bookingHref(b: ClientBooking) {
 }
 
 export function BookingCard({ booking: b }: { booking: ClientBooking }) {
+  const { t } = useTranslation(['client', 'common']);
   const confirm = useConfirmBooking();
   const pill = bookingPill(b);
   const strong = b.status === 'pending';
@@ -46,18 +44,18 @@ export function BookingCard({ booking: b }: { booking: ClientBooking }) {
           <Text style={[styles.timeEnd, { color: strong ? 'rgba(255,255,255,0.8)' : colors.textMuted }]}>{formatHour(b.ends_at)}</Text>
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Muted style={{ fontFamily: typography.fontFamilySemiBold, fontSize: 12 }} numberOfLines={1}>{`${bookingKindLabel[b.category]} · ${b.tenant_name}`}</Muted>
+          <Muted style={{ fontFamily: typography.fontFamilySemiBold, fontSize: 12 }} numberOfLines={1}>{`${bookingKindLabel(b.category)} · ${b.tenant_name}`}</Muted>
           <Text style={[styles.title, muted && { color: colors.textMuted }]} numberOfLines={1}>{b.service_name}</Text>
-          <Muted style={{ marginTop: 3 }} numberOfLines={1}>{`com ${b.provider_name}`}</Muted>
+          <Muted style={{ marginTop: 3 }} numberOfLines={1}>{t('booking.withProvider', { name: b.provider_name ?? '' })}</Muted>
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} style={{ marginTop: 4 }} />
       </Pressable>
       <View style={styles.bottom}>
         <Badge label={pill.label} tone={pill.tone} />
         {b.status === 'pending' ? (
-          <Button label="Confirmar" compact loading={confirm.isPending} onPress={() => confirm.mutate(b.id)} />
+          <Button label={t('common:actions.confirm')} compact loading={confirm.isPending} onPress={() => confirm.mutate(b.id)} />
         ) : b.status === 'offer' ? (
-          <Button label="Ver vaga" compact onPress={() => router.push(bookingHref(b) as never)} />
+          <Button label={t('booking.seeSlot')} compact onPress={() => router.push(bookingHref(b) as never)} />
         ) : null}
       </View>
     </Card>

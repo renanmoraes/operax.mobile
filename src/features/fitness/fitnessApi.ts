@@ -1,4 +1,6 @@
 import { isAxiosError } from 'axios';
+import { UserFacingError } from '@/src/features/client/userFacingError';
+import i18n from '@/src/i18n';
 import { api } from '@/src/shared/api/client';
 import { addDays, isoDate, startOfDay, startOfWeek } from '@/src/shared/format';
 import { clientDataMode } from '@/src/features/client/dataMode';
@@ -154,9 +156,9 @@ export async function recordFreeActivity(body: FreeActivityBody): Promise<{ ok: 
   const tr = body.recording?.track;
   history = [
     {
-      id, kind: 'free', date: isoDate(new Date(body.started_at)), started_at: body.started_at, title: body.title ?? 'Treino livre', modality: body.sport,
+      id, kind: 'free', date: isoDate(new Date(body.started_at)), started_at: body.started_at, title: body.title ?? i18n.t('fitness:freeWorkout'), modality: body.sport,
       duration_seconds: body.seconds, distance_meters: body.distance_m ?? null, avg_hr: null, effort: body.effort ?? null,
-      sources: [{ origin: 'celular', label: 'Celular' }], feeling: body.feeling ?? null, notes: body.notes ?? null, tag: body.tag ?? null, sets: body.sets ?? null, session_id: id,
+      sources: [{ origin: 'celular', label: i18n.t('fitness:source.phone') }], feeling: body.feeling ?? null, notes: body.notes ?? null, tag: body.tag ?? null, sets: body.sets ?? null, session_id: id,
     },
     ...getHistory(),
   ];
@@ -296,7 +298,7 @@ export async function fetchCheckins(): Promise<BodyCheckin[]> {
 }
 
 export async function addCheckin(input: Omit<BodyCheckin, 'id'>) {
-  if (live()) throw new Error('Os registros corporais ainda não são salvos na sua conta. Fale com a equipe para lançar na avaliação.');
+  if (live()) throw new UserFacingError(i18n.t('fitness:checkinsUnsupported'));
   await tick();
   checkins = [...getCheckins(), { ...input, id: `c-${Date.now()}` }];
 }

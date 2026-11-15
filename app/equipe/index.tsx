@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState, Rise, Screen, ScreenHeader, Segmented } from '@/src/design-system/ui';
@@ -16,14 +17,16 @@ const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
 
 /** Chat interno: grupos e conversas diretas com a equipe, como no Operax web. */
 export default function TeamChatListScreenGuarded() {
+  const { t } = useTranslation('team');
   return (
-    <RequirePermission need="teamChat" title="Chat da equipe">
+    <RequirePermission need="teamChat" title={t('list.title')}>
       <TeamChatListScreen />
     </RequirePermission>
   );
 }
 
 function TeamChatListScreen() {
+  const { t } = useTranslation('team');
   const insets = useSafeAreaInsets();
   const { channels, unread, loading, refresh } = useTeamChat();
   const [filter, setFilter] = useState<Filter>('all');
@@ -61,8 +64,8 @@ function TeamChatListScreen() {
       >
         <ScreenHeader
           safe
-          title="Chat da equipe"
-          subtitle={unread > 0 ? `${unread} ${unread === 1 ? 'mensagem nova' : 'mensagens novas'}` : 'Tudo lido'}
+          title={t('list.title')}
+          subtitle={unread > 0 ? t('list.newMessages', { count: unread }) : t('list.allRead')}
           onBack={() => router.back()}
         />
         <View style={styles.tools}>
@@ -71,24 +74,24 @@ function TeamChatListScreen() {
             <TextInput
               value={search}
               onChangeText={setSearch}
-              placeholder="Buscar pessoa ou grupo"
+              placeholder={t('list.searchPlaceholder')}
               placeholderTextColor={colors.textMuted}
-              accessibilityLabel="Buscar pessoa ou grupo"
+              accessibilityLabel={t('list.searchPlaceholder')}
               autoCorrect={false}
               style={styles.searchInput}
             />
             {search ? (
-              <Ionicons name="close-circle" size={17} color={colors.textMuted} onPress={() => setSearch('')} accessibilityLabel="Limpar busca" />
+              <Ionicons name="close-circle" size={17} color={colors.textMuted} onPress={() => setSearch('')} accessibilityLabel={t('list.clearSearch')} />
             ) : null}
           </View>
           <Segmented
             value={filter}
             onChange={(k) => setFilter(k as Filter)}
             options={[
-              { key: 'all', label: 'Todas' },
-              { key: 'unread', label: counts.unread ? `Novas ${counts.unread}` : 'Novas' },
-              { key: 'group', label: 'Grupos' },
-              { key: 'dm', label: 'Diretas' },
+              { key: 'all', label: t('list.filterAll') },
+              { key: 'unread', label: counts.unread ? t('list.filterNewCount', { count: counts.unread }) : t('list.filterNew') },
+              { key: 'group', label: t('list.filterGroups') },
+              { key: 'dm', label: t('list.filterDirect') },
             ]}
           />
         </View>
@@ -99,14 +102,14 @@ function TeamChatListScreen() {
           ) : shown.length === 0 ? (
             <EmptyState
               icon={filter === 'unread' ? 'checkmark-done-outline' : 'chatbubbles-outline'}
-              title={filter === 'unread' ? 'Nada novo por aqui' : search ? 'Ninguém encontrado' : 'Sem conversas ainda'}
-              subtitle={filter === 'unread' ? 'Quando um colega mandar mensagem, ela aparece aqui e na aba Mais.' : search ? 'Confira o nome ou tente outro filtro.' : 'Crie grupos e conversas pelo Operax web.'}
+              title={filter === 'unread' ? t('list.nothingNew') : search ? t('list.noOne') : t('list.noChats')}
+              subtitle={filter === 'unread' ? t('list.nothingNewHint') : search ? t('list.checkName') : t('list.createOnWeb')}
             />
           ) : (
             <>
               {pinned.length ? (
                 <Rise>
-                  <Text style={styles.label}>Fixadas</Text>
+                  <Text style={styles.label}>{t('list.pinned')}</Text>
                   <View style={styles.card}>
                     {pinned.map((c, i) => (
                       <ChannelRow key={c.id} channel={c} last={i === pinned.length - 1} onPress={() => router.push(`/equipe/${c.id}`)} />
@@ -116,7 +119,7 @@ function TeamChatListScreen() {
               ) : null}
               {rest.length ? (
                 <Rise index={1}>
-                  {pinned.length ? <Text style={styles.label}>Conversas</Text> : null}
+                  {pinned.length ? <Text style={styles.label}>{t('list.chats')}</Text> : null}
                   <View style={[styles.card, !pinned.length && { marginTop: 6 }]}>
                     {rest.map((c, i) => (
                       <ChannelRow key={c.id} channel={c} last={i === rest.length - 1} onPress={() => router.push(`/equipe/${c.id}`)} />

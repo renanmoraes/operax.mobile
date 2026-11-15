@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Badge, Card, HeroCard, IconTile, Muted } from '@/src/design-system/ui';
@@ -19,6 +20,7 @@ function initialsOf(name: string) {
 }
 
 export default function ClientTenantSelectScreen() {
+  const { t } = useTranslation('auth');
   const { user, switchTenant } = useAuth();
   // Login real: ainda não há sessão de empresa aqui (me/companies daria 401); o nome e a marca vêm da lista do login.
   const { data: companies } = useCompanies({ enabled: clientDataMode() !== 'live' });
@@ -40,14 +42,14 @@ export default function ClientTenantSelectScreen() {
 
   return (
     <AuthShell
-      title={firstName ? `Oi, ${firstName}.\nOnde vamos hoje?` : 'Onde vamos hoje?'}
-      subtitle={`Você é cliente de ${memberships.length} empresas que usam Operax. Dá para trocar depois pelo perfil.`}
-      footer={<Muted style={{ textAlign: 'center', lineHeight: 19 }}>Não achou sua empresa? Peça para a equipe te cadastrar.</Muted>}
+      title={firstName ? t('tenantSelect.titleNamed', { name: firstName }) : t('tenantSelect.title')}
+      subtitle={t('tenantSelect.subtitle', { count: memberships.length })}
+      footer={<Muted style={{ textAlign: 'center', lineHeight: 19 }}>{t('tenantSelect.notFound')}</Muted>}
     >
       {memberships.map((m, i) => {
         const info = companies?.find((c) => c.name === m.tenant_name);
         const caps = info
-          ? [info.capabilities.scheduling && 'Agenda', info.capabilities.training && 'Treino', info.capabilities.chat && 'Chat'].filter(Boolean)
+          ? [info.capabilities.scheduling && t('tenantSelect.capSchedule'), info.capabilities.training && t('tenantSelect.capTraining'), info.capabilities.chat && t('tenantSelect.capChat')].filter(Boolean)
           : [];
         const busy = loadingId === m.tenant_id;
         const content = (
@@ -58,7 +60,7 @@ export default function ClientTenantSelectScreen() {
                 <Text style={styles.name}>{m.tenant_name}</Text>
                 {info ? <Muted style={{ marginTop: 2 }}>{info.segment}</Muted> : null}
               </View>
-              {busy ? <ActivityIndicator color={colors.primary} /> : i === 0 ? <Badge label="Último acesso" tone="primary" /> : <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />}
+              {busy ? <ActivityIndicator color={colors.primary} /> : i === 0 ? <Badge label={t('tenantSelect.lastAccess')} tone="primary" /> : <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />}
             </View>
             {caps.length ? (
               <View style={styles.caps}>
@@ -72,11 +74,11 @@ export default function ClientTenantSelectScreen() {
           </>
         );
         return i === 0 ? (
-          <HeroCard key={m.tenant_id} onPress={() => pick(m.tenant_id)} accessibilityLabel={`Entrar em ${m.tenant_name}`} style={{ padding: 20 }}>
+          <HeroCard key={m.tenant_id} onPress={() => pick(m.tenant_id)} accessibilityLabel={t('tenantSelect.enter', { name: m.tenant_name })} style={{ padding: 20 }}>
             {content}
           </HeroCard>
         ) : (
-          <Card key={m.tenant_id} onPress={() => pick(m.tenant_id)} accessibilityLabel={`Entrar em ${m.tenant_name}`} style={{ padding: 20 }}>
+          <Card key={m.tenant_id} onPress={() => pick(m.tenant_id)} accessibilityLabel={t('tenantSelect.enter', { name: m.tenant_name })} style={{ padding: 20 }}>
             {content}
           </Card>
         );

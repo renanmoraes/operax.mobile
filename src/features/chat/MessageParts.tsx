@@ -2,6 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import { locale } from '@/src/i18n';
 import { Pressable, StyleProp, StyleSheet, Text, TextStyle, View } from 'react-native';
 import { colors, gradients, text } from '@/src/design-system/tokens';
 
@@ -25,7 +27,7 @@ export type ChatMediaData =
   | { kind: 'document'; uri?: string; name: string; sizeBytes?: number; pages?: number };
 
 export function sizeLabel(bytes: number) {
-  return bytes >= 1_000_000 ? `${(bytes / 1_000_000).toFixed(1).replace('.', ',')} MB` : `${Math.max(1, Math.round(bytes / 1000))} KB`;
+  return bytes >= 1_000_000 ? `${(bytes / 1_000_000).toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MB` : `${Math.max(1, Math.round(bytes / 1000))} KB`;
 }
 
 export function durationLabel(s: number) {
@@ -45,6 +47,7 @@ function mediaHeight(width?: number, height?: number) {
 
 /** Hora + tiques de leitura. `overlay` = branco, para ficar por cima da foto. */
 export function MessageMeta({ at, mine, status, tone }: { at: string; mine: boolean; status?: MessageStatus; tone: 'onBubbleMine' | 'onBubbleTheirs' | 'overlay' }) {
+  const { t } = useTranslation('inbox');
   const color = tone === 'overlay' ? '#fff' : tone === 'onBubbleMine' ? 'rgba(255,255,255,0.78)' : colors.textMuted;
   const read = status === 'read';
   const tickColor = tone === 'overlay' ? (read ? colors.cyan : '#fff') : tone === 'onBubbleMine' ? (read ? colors.cyan : 'rgba(255,255,255,0.78)') : read ? colors.primary : colors.textMuted;
@@ -56,7 +59,7 @@ export function MessageMeta({ at, mine, status, tone }: { at: string; mine: bool
           name={status === 'sending' ? 'time-outline' : status === 'failed' ? 'alert-circle' : status === 'sent' ? 'checkmark' : 'checkmark-done'}
           size={15}
           color={status === 'failed' ? colors.danger : tickColor}
-          accessibilityLabel={read ? 'Lida' : status === 'sending' ? 'Enviando' : status === 'failed' ? 'Falhou' : 'Entregue'}
+          accessibilityLabel={read ? t('chatUi.statusRead') : status === 'sending' ? t('chatUi.statusSending') : status === 'failed' ? t('chatUi.statusFailed') : t('chatUi.statusDelivered')}
         />
       ) : null}
     </View>
@@ -107,12 +110,13 @@ function OverlayMeta({ children, left }: { children: ReactNode; left?: ReactNode
 
 /** Foto ou vídeo ocupando a bolha toda. */
 function VisualMedia({ media, meta, joined }: { media: Extract<ChatMediaData, { kind: 'image' | 'video' }>; meta: ReactNode | null; joined?: boolean }) {
+  const { t } = useTranslation('inbox');
   const h = mediaHeight(media.width, media.height);
   const isVideo = media.kind === 'video';
   return (
     <View style={[styles.visual, { height: h }, joined && styles.visualJoined]}>
       {media.uri && !isVideo ? (
-        <Image source={{ uri: media.uri }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel="Foto" />
+        <Image source={{ uri: media.uri }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel={t('chatUi.photo')} />
       ) : (
         <LinearGradient colors={isVideo ? gradients.media : gradients.photo} style={[StyleSheet.absoluteFill, styles.center]}>
           {!isVideo ? <Ionicons name="image-outline" size={34} color="rgba(255,255,255,0.75)" /> : null}
@@ -150,8 +154,9 @@ function VisualMedia({ media, meta, joined }: { media: Extract<ChatMediaData, { 
 
 /** Documento: prévia da página em cima, faixa com nome e detalhes embaixo. */
 function DocumentMedia({ media, mine }: { media: Extract<ChatMediaData, { kind: 'document' }>; mine: boolean }) {
+  const { t } = useTranslation('inbox');
   const ext = extOf(media.name);
-  const details = [media.pages ? `${media.pages} ${media.pages === 1 ? 'página' : 'páginas'}` : null, media.sizeBytes ? sizeLabel(media.sizeBytes) : null, ext].filter(Boolean).join(' · ');
+  const details = [media.pages ? t('chatUi.pages', { count: media.pages }) : null, media.sizeBytes ? sizeLabel(media.sizeBytes) : null, ext === 'arquivo' ? t('chatUi.file') : ext].filter(Boolean).join(' · ');
   return (
     <View style={{ width: MEDIA_WIDTH }}>
       <View style={styles.page} accessible={false}>
@@ -193,11 +198,12 @@ export function MediaBubble({
   status?: MessageStatus;
   onOpen?: () => void;
 }) {
+  const { t } = useTranslation('inbox');
   const visual = media.kind !== 'document';
   const hasCaption = !!caption?.trim();
   const tone = mine ? 'onBubbleMine' : 'onBubbleTheirs';
   const label =
-    media.kind === 'image' ? 'Foto' : media.kind === 'video' ? `Vídeo${media.title ? ` ${media.title}` : ''}${media.durationS != null ? `, ${durationLabel(media.durationS)}` : ''}` : `Documento ${media.name}`;
+    media.kind === 'image' ? t('chatUi.photo') : media.kind === 'video' ? `${media.title ? t('chatUi.videoTitled', { title: media.title }) : t('chatUi.video')}${media.durationS != null ? `, ${durationLabel(media.durationS)}` : ''}` : t('chatUi.document', { name: media.name });
 
   const body = (
     <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
@@ -222,7 +228,7 @@ export function MediaBubble({
   );
 
   return onOpen ? (
-    <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Abrir ${label}`} style={({ pressed }) => [pressed && { opacity: 0.92 }]}>
+    <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={t('chatUi.open', { label })} style={({ pressed }) => [pressed && { opacity: 0.92 }]}>
       {body}
     </Pressable>
   ) : (

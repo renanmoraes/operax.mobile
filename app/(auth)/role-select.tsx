@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Display, Glow, IconTile, Muted, PressableScale, Rise, Screen } from '@/src/design-system/ui';
@@ -40,6 +41,7 @@ function RoleCard({
 }
 
 export default function RoleSelectScreen() {
+  const { t } = useTranslation('auth');
   const insets = useSafeAreaInsets();
   const { selectRole } = useAuth();
 
@@ -58,18 +60,18 @@ export default function RoleSelectScreen() {
 
         <View style={{ marginTop: 'auto' }}>
           <Rise index={1}>
-            <Display style={styles.headline}>Sua agenda, seu treino e a equipe na palma da mão.</Display>
+            <Display style={styles.headline}>{t('roleSelect.headline')}</Display>
           </Rise>
           <Rise index={2}>
-            <Muted style={styles.sub}>Como você quer entrar?</Muted>
+            <Muted style={styles.sub}>{t('roleSelect.how')}</Muted>
           </Rise>
           <View style={{ marginTop: 28, gap: 12 }}>
             <Rise index={3}>
               <RoleCard
                 primary
                 icon="person"
-                title="Sou cliente"
-                subtitle="Agenda, treino e conversa direta com a empresa"
+                title={t('roleSelect.clientTitle')}
+                subtitle={t('roleSelect.clientSubtitle')}
                 onPress={async () => {
                   await selectRole('client');
                   router.replace('/(auth)/client-login');
@@ -79,8 +81,8 @@ export default function RoleSelectScreen() {
             <Rise index={4}>
               <RoleCard
                 icon="headset"
-                title="Sou da equipe"
-                subtitle="Atendimento, agenda e kanban do time"
+                title={t('roleSelect.teamTitle')}
+                subtitle={t('roleSelect.teamSubtitle')}
                 onPress={async () => {
                   await selectRole('staff');
                   router.replace('/(auth)/login');
@@ -89,7 +91,7 @@ export default function RoleSelectScreen() {
             </Rise>
           </View>
           <Rise index={5}>
-            <Muted style={styles.legal}>Ao continuar, você concorda com os Termos de uso e a Política de privacidade.</Muted>
+            <Muted style={styles.legal}>{t('roleSelect.legal')}</Muted>
           </Rise>
         </View>
       </View>

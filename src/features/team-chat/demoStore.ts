@@ -1,3 +1,4 @@
+import { locale } from '@/src/i18n';
 import type { IncomingNotice, TeamChannel, TeamMessage } from './model';
 import { firstName, previewOf } from './model';
 
@@ -9,7 +10,7 @@ import { firstName, previewOf } from './model';
 
 const ME = 'u1';
 const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
-const clock = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+const clock = (iso: string) => new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
 
 type DemoChannel = Omit<TeamChannel, 'preview' | 'previewAuthor' | 'lastAt'> & { topic?: string };
 

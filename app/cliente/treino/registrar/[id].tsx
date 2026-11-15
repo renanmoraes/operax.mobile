@@ -1,4 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import i18n from '@/src/i18n';
+import { useTranslation } from 'react-i18next';
 import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,17 +16,15 @@ import { buildResult, maskClock } from '@/src/features/fitness/results';
 
 export default function RegisterResultScreen() {
   const { id, parte } = useLocalSearchParams<{ id: string; parte?: string }>();
-  return <WorkoutGate id={id} title="Registrar resultado">{(w) => <RegisterResult workout={w} partIndex={Number(parte ?? 0)} />}</WorkoutGate>;
+  return <WorkoutGate id={id} title={i18n.t('fitness:sheet.logResult')}>{(w) => <RegisterResult workout={w} partIndex={Number(parte ?? 0)} />}</WorkoutGate>;
 }
 
-const LEVELS: { key: FitnessWodLevel; label: string }[] = [
-  { key: 'rx', label: 'Prescrito' },
-  { key: 'scaled', label: 'Adaptado' },
-  { key: 'beginner', label: 'Iniciante' },
-];
+const level = (key: FitnessWodLevel) => ({ key, get label() { return i18n.t(`fitness:log.level.${key}`); } });
+const LEVELS: { key: FitnessWodLevel; label: string }[] = [level('rx'), level('scaled'), level('beginner')];
 
 function RegisterResult({ workout, partIndex }: { workout: FitnessWorkoutView; partIndex: number }) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation(['fitness', 'common']);
   const part = workout.parts[partIndex] ?? workout.parts[0];
   const record = useRecordResult();
   const key = useMemo(() => newIdempotencyKey(), []);
@@ -67,45 +67,45 @@ function RegisterResult({ workout, partIndex }: { workout: FitnessWorkoutView; p
     if (part.type === 'metcon') {
       switch (part.result_type) {
         case 'time':
-          return <Field label="Tempo (min:seg)" value={f.time} onChangeText={set('time')} placeholder="12:34" keyboardType="number-pad" />;
+          return <Field label={t('log.timeMs')} value={f.time} onChangeText={set('time')} placeholder="12:34" keyboardType="number-pad" />;
         case 'rounds_reps':
           return (
             <View style={styles.pair}>
-              <View style={{ flex: 1 }}><Field label="Rounds" value={f.rounds} onChangeText={set('rounds')} placeholder="5" keyboardType="number-pad" /></View>
-              <View style={{ flex: 1 }}><Field label="Repetições extras" value={f.reps} onChangeText={set('reps')} placeholder="12" keyboardType="number-pad" /></View>
+              <View style={{ flex: 1 }}><Field label={t('log.rounds')} value={f.rounds} onChangeText={set('rounds')} placeholder="5" keyboardType="number-pad" /></View>
+              <View style={{ flex: 1 }}><Field label={t('log.extraReps')} value={f.reps} onChangeText={set('reps')} placeholder="12" keyboardType="number-pad" /></View>
             </View>
           );
         case 'reps':
-          return <Field label="Repetições" value={f.reps} onChangeText={set('reps')} placeholder="120" keyboardType="number-pad" />;
+          return <Field label={t('log.reps')} value={f.reps} onChangeText={set('reps')} placeholder="120" keyboardType="number-pad" />;
         case 'load':
-          return <Field label="Carga (kg)" value={f.kg} onChangeText={set('kg')} placeholder="60" keyboardType="decimal-pad" />;
+          return <Field label={t('log.load')} value={f.kg} onChangeText={set('kg')} placeholder="60" keyboardType="decimal-pad" />;
         case 'calories':
-          return <Field label="Calorias" value={f.calories} onChangeText={set('calories')} placeholder="80" keyboardType="number-pad" />;
+          return <Field label={t('log.calories')} value={f.calories} onChangeText={set('calories')} placeholder="80" keyboardType="number-pad" />;
         default:
-          return <Field label="Distância (metros)" value={f.meters} onChangeText={set('meters')} placeholder="2000" keyboardType="number-pad" />;
+          return <Field label={t('log.meters')} value={f.meters} onChangeText={set('meters')} placeholder="2000" keyboardType="number-pad" />;
       }
     }
-    if (part.type === 'hyrox') return <Field label="Tempo total (h:min:seg)" value={f.time} onChangeText={set('time')} placeholder="1:15:00" keyboardType="number-pad" />;
+    if (part.type === 'hyrox') return <Field label={t('log.totalTime')} value={f.time} onChangeText={set('time')} placeholder="1:15:00" keyboardType="number-pad" />;
     if (part.type === 'endurance')
       return (
         <View style={styles.pair}>
-          <View style={{ flex: 1 }}><Field label="Tempo (min:seg)" value={f.time} onChangeText={set('time')} placeholder="32:10" keyboardType="number-pad" /></View>
-          <View style={{ flex: 1 }}><Field label="Distância (km)" value={f.km} onChangeText={set('km')} placeholder="5,2" keyboardType="decimal-pad" /></View>
+          <View style={{ flex: 1 }}><Field label={t('log.timeMs')} value={f.time} onChangeText={set('time')} placeholder="32:10" keyboardType="number-pad" /></View>
+          <View style={{ flex: 1 }}><Field label={t('log.km')} value={f.km} onChangeText={set('km')} placeholder="5,2" keyboardType="decimal-pad" /></View>
         </View>
       );
-    return <Body>Confirme que fez esta parte do treino.</Body>;
+    return <Body>{t('log.confirmDone')}</Body>;
   })();
 
   if (state !== 'idle') {
     return (
       <Screen>
-        <TopBar safe title="Registrar resultado" onBack={() => router.back()} />
+        <TopBar safe title={t('sheet.logResult')} onBack={() => router.back()} />
         <View style={[styles.done, { paddingBottom: insets.bottom + 24 }]}>
-          <Text style={styles.doneTitle}>{state === 'saved' ? 'Resultado salvo!' : 'Guardado no celular'}</Text>
+          <Text style={styles.doneTitle}>{state === 'saved' ? t('log.saved') : t('rec.queued')}</Text>
           <Muted style={{ textAlign: 'center', lineHeight: 20 }}>
-            {state === 'saved' ? 'Já conta no seu histórico, na evolução e na meta da semana.' : 'Sem conexão agora. O resultado vai sozinho quando a internet voltar.'}
+            {state === 'saved' ? t('log.savedBody') : t('log.queuedBody')}
           </Muted>
-          <Button label="Voltar ao treino" onPress={() => router.replace('/(client)/fitness')} style={{ alignSelf: 'stretch', marginTop: 12 }} />
+          <Button label={t('log.backToWorkout')} onPress={() => router.replace('/(client)/fitness')} style={{ alignSelf: 'stretch', marginTop: 12 }} />
         </View>
       </Screen>
     );
@@ -113,7 +113,7 @@ function RegisterResult({ workout, partIndex }: { workout: FitnessWorkoutView; p
 
   return (
     <Screen>
-      <TopBar safe title="Registrar resultado" onBack={() => router.back()} />
+      <TopBar safe title={t('sheet.logResult')} onBack={() => router.back()} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 120, gap: 14 }} keyboardShouldPersistTaps="handled">
           <Rise>
@@ -127,13 +127,13 @@ function RegisterResult({ workout, partIndex }: { workout: FitnessWorkoutView; p
           </Rise>
           {part.type === 'metcon' ? (
             <View>
-              <Muted style={styles.label}>Como você fez</Muted>
+              <Muted style={styles.label}>{t('log.howYouDid')}</Muted>
               <Segmented value={level} onChange={(k) => setLevel(k as FitnessWodLevel)} options={LEVELS} />
             </View>
           ) : null}
           {fields}
           <View>
-            <Muted style={styles.label}>Esforço (opcional)</Muted>
+            <Muted style={styles.label}>{t('log.effortOpt')}</Muted>
             <View style={styles.effort}>
               {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
                 <Text key={n} onPress={() => setEffort(effort === n ? null : n)} accessibilityRole="button" accessibilityState={{ selected: effort === n }} style={[styles.effortDot, effort === n && styles.effortOn]}>
@@ -142,11 +142,11 @@ function RegisterResult({ workout, partIndex }: { workout: FitnessWorkoutView; p
               ))}
             </View>
           </View>
-          <Field label="Comentário (opcional)" value={notes} onChangeText={setNotes} placeholder="Como foi?" multiline />
+          <Field label={t('log.commentOpt')} value={notes} onChangeText={setNotes} placeholder={t('log.howWas')} multiline />
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </ScrollView>
         <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
-          <Button label="Salvar resultado" icon="checkmark" loading={record.isPending} onPress={() => void save()} />
+          <Button label={t('log.save')} icon="checkmark" loading={record.isPending} onPress={() => void save()} />
         </View>
       </KeyboardAvoidingView>
     </Screen>

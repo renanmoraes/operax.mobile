@@ -1,3 +1,5 @@
+// Idiomas: carrega as traduções antes de qualquer tela.
+import i18n from '@/src/i18n';
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -23,6 +25,8 @@ import { colors } from '@/src/design-system/tokens';
 import { installErrorReporter, reportError, setReporterSession, trackRoute } from '@/src/shared/telemetry/errorReporter';
 import { Button } from '@/src/design-system/ui';
 import { DialogHost } from '@/src/design-system/Dialog';
+import { useTranslation } from 'react-i18next';
+import { useLanguageSync } from '@/src/i18n/language';
 import { useAppUpdates } from '@/src/shared/updates/appVersion';
 import { linkToAppRoute } from '@/src/features/notifications/linkRoute';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -125,13 +129,14 @@ function SplashGate() {
 /** Nova versão baixada em segundo plano: avisa e deixa atualizar na hora (senão entra ao reabrir). */
 function UpdateBanner() {
   const { state, apply } = useAppUpdates();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   if (state !== 'ready') return null;
   return (
     <View pointerEvents="box-none" style={{ position: 'absolute', left: 16, right: 16, top: insets.top + 8 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 18, backgroundColor: colors.text }}>
-        <Text style={{ flex: 1, color: '#fff', fontFamily: 'Inter_600SemiBold', fontSize: 14 }}>Nova versão do Operax pronta</Text>
-        <Button label="Atualizar" compact onPress={apply} />
+        <Text style={{ flex: 1, color: '#fff', fontFamily: 'Inter_600SemiBold', fontSize: 14 }}>{t('update.ready')}</Text>
+        <Button label={t('update.apply')} compact onPress={apply} />
       </View>
     </View>
   );
@@ -194,6 +199,8 @@ function AccountCacheReset() {
   const tenant = user?.kind === 'staff' ? user.tenant_id ?? '' : user?.kind === 'client' ? user.active_tenant_id ?? '' : '';
   const key = `${mode}:${user?.kind ?? '-'}:${user?.id ?? '-'}:${tenant}`;
   const last = useRef(key);
+  // Idioma: escolha feita no app, senão o do perfil no Operax (equipe), senão o do celular.
+  useLanguageSync(user ? { kind: user.kind, locale: (user as { locale?: string | null }).locale } : null);
   // Dono dos dados de treino guardados no aparelho (fila offline e rascunhos): só a conta logada lê e envia os seus.
   setFitnessOwner(user ? key : '');
   useEffect(() => {
@@ -222,11 +229,11 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   }, [error]);
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 14, backgroundColor: colors.pageBg }}>
-      <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 20, color: colors.text, textAlign: 'center' }}>Algo deu errado nesta tela</Text>
+      <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 20, color: colors.text, textAlign: 'center' }}>{i18n.t('errorBoundary.title')}</Text>
       <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 15, lineHeight: 21, color: colors.textSoft, textAlign: 'center' }}>
-        Já avisamos a equipe Operax com os detalhes para corrigir. Tente de novo.
+        {i18n.t('errorBoundary.body')}
       </Text>
-      <Button label="Tentar de novo" onPress={() => void retry()} style={{ alignSelf: 'stretch', marginTop: 6 }} />
+      <Button label={i18n.t('actions.retry')} onPress={() => void retry()} style={{ alignSelf: 'stretch', marginTop: 6 }} />
     </View>
   );
 }

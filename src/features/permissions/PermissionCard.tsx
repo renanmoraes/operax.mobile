@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { Badge, Button, Card, IconName, IconTile, Muted, Rise } from '@/src/design-system/ui';
 import { colors, text } from '@/src/design-system/tokens';
@@ -7,9 +8,10 @@ import type { PermissionState } from './permissionState';
 
 /** Botão de cada permissão: liberar, já ativa, ou abrir os ajustes do sistema quando foi negada. */
 export function StatusAction({ state, onRequest, grantLabel }: { state: PermissionState | undefined; onRequest: () => void; grantLabel: string }) {
-  if (state === 'granted') return <Badge label="Ativado" tone="success" icon="checkmark" />;
-  if (state === 'unavailable') return <Badge label="No app do celular" tone="neutral" />;
-  if (state === 'blocked') return <Button label="Abrir ajustes" variant="soft" compact onPress={openSystemSettings} />;
+  const { t } = useTranslation('client');
+  if (state === 'granted') return <Badge label={t('permissions.enabled')} tone="success" icon="checkmark" />;
+  if (state === 'unavailable') return <Badge label={t('permissions.onPhoneApp')} tone="neutral" />;
+  if (state === 'blocked') return <Button label={t('permissions.openSettings')} variant="soft" compact onPress={openSystemSettings} />;
   return <Button label={grantLabel} compact onPress={onRequest} />;
 }
 

@@ -1,5 +1,6 @@
 import { RecordingPresets, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { IconButton } from '@/src/design-system/ui';
@@ -92,13 +93,14 @@ export function RecordingBar({
   onSend: () => void;
   bottomInset: number;
 }) {
+  const { t } = useTranslation('inbox');
   const padded = [...Array(Math.max(0, BARS - levels.length)).fill(0.08), ...levels];
   return (
     <View style={[styles.bar, { paddingBottom: bottomInset }]} accessibilityLiveRegion="polite">
-      <IconButton icon="trash-outline" tone="soft" size={48} accessibilityLabel="Descartar áudio" onPress={onCancel} />
+      <IconButton icon="trash-outline" tone="soft" size={48} accessibilityLabel={t('chatUi.discardAudio')} onPress={onCancel} />
       <View style={styles.middle}>
         <PulseDot />
-        <Text style={styles.timer} accessibilityLabel={`Gravando, ${elapsedS} segundos`}>
+        <Text style={styles.timer} accessibilityLabel={t('chatUi.recording', { count: elapsedS })}>
           {durationLabel(elapsedS)}
         </Text>
         <View style={styles.levels} accessible={false}>
@@ -107,13 +109,14 @@ export function RecordingBar({
           ))}
         </View>
       </View>
-      <IconButton icon="send" tone="primary" size={48} accessibilityLabel="Enviar áudio" onPress={onSend} />
+      <IconButton icon="send" tone="primary" size={48} accessibilityLabel={t('chatUi.sendAudio')} onPress={onSend} />
     </View>
   );
 }
 
 export function MicButton({ onPress, disabled }: { onPress: () => void; disabled?: boolean }) {
-  return <IconButton icon="mic" tone="primary" size={44} accessibilityLabel="Gravar áudio" onPress={disabled ? () => undefined : onPress} />;
+  const { t } = useTranslation('inbox');
+  return <IconButton icon="mic" tone="primary" size={44} accessibilityLabel={t('chatUi.recordAudio')} onPress={disabled ? () => undefined : onPress} />;
 }
 
 const styles = StyleSheet.create({

@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { locale } from '@/src/i18n';
 import { useMemo, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInputInstance, View, AppState } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -45,14 +47,16 @@ import type { PermKey } from '@/src/features/auth/permissions';
 type Sheet = 'actions' | 'attach' | 'transfer' | 'quick' | 'pix' | 'booking' | null;
 
 export default function ConversationScreenGuarded() {
+  const { t } = useTranslation(['inbox', 'common']);
   return (
-    <RequirePermission need="inbox" title="Atendimento">
+    <RequirePermission need="inbox" title={t('inbox.title')}>
       <ConversationScreen />
     </RequirePermission>
   );
 }
 
 function ConversationScreen() {
+  const { t } = useTranslation(['inbox', 'common']);
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { mode, user } = useAuth();
@@ -126,16 +130,16 @@ function ConversationScreen() {
   const [ownershipOverride, setOwnership] = useState<NonNullable<typeof conversation>['ownership'] | null>(null);
   const ownership = ownershipOverride ?? conversation?.ownership ?? 'queue';
 
-  const showToast = (msg: string) => show(msg, msg.startsWith('Falha') ? 'error' : 'success');
+  const showToast = (msg: string, tone: 'success' | 'error' = 'success') => show(msg, tone);
 
   const sendMut = useMutation({
     mutationFn: async (text: string) => sendTextMessage(id, text),
     onSuccess: () => {
       setDraft('');
       qc.invalidateQueries({ queryKey: ['conversation', id] });
-      showToast('Mensagem enviada');
+      showToast(t('conversation.sent'));
     },
-    onError: () => showToast('Falha ao enviar'),
+    onError: () => showToast(t('conversation.sendFailed'), 'error'),
   });
 
   if (!conversation) {
@@ -151,21 +155,21 @@ function ConversationScreen() {
     return (
       <View style={styles.center}>
         <Backdrop variant="chat" />
-        <Muted>Conversa não encontrada.</Muted>
-        <Button label="Voltar" variant="soft" compact onPress={() => router.back()} style={{ marginTop: 14 }} />
+        <Muted>{t('conversation.notFound')}</Muted>
+        <Button label={t('common:actions.back')} variant="soft" compact onPress={() => router.back()} style={{ marginTop: 14 }} />
       </View>
     );
   }
 
   const statusLabel =
-    ownership === 'mine' ? 'Com você' : ownership === 'queue' ? 'Na fila' : 'Encerrada';
+    ownership === 'mine' ? t('conversation.status.mine') : ownership === 'queue' ? t('conversation.status.queue') : t('conversation.status.closed');
 
   const runAction = async (action: 'claim' | 'release' | 'close') => {
     if (mode === 'mock') {
       if (action === 'claim') setOwnership('mine');
       if (action === 'release') setOwnership('queue');
       if (action === 'close') setOwnership('closed');
-      showToast(action === 'claim' ? 'Atendimento assumido' : 'Atualizado');
+      showToast(action === 'claim' ? t('conversation.claimed') : t('conversation.updated'));
       setSheet(null);
       return;
     }
@@ -174,9 +178,9 @@ function ConversationScreen() {
       if (action === 'release') await releaseConversation(id);
       if (action === 'close') await closeConversation(id);
       await liveQuery.refetch();
-      showToast('Atualizado');
+      showToast(t('conversation.updated'));
     } catch {
-      showToast('Falha na ação');
+      showToast(t('conversation.actionFailed'), 'error');
     }
     setSheet(null);
   };
@@ -184,7 +188,7 @@ function ConversationScreen() {
   const pickAndSend = async (kind: 'image' | 'document' | 'camera') => {
     setSheet(null);
     if (mode === 'mock') {
-      showToast(kind === 'document' ? 'Documento (demo)' : 'Mídia (demo)');
+      showToast(kind === 'document' ? t('conversation.demoDocument') : t('conversation.demoMedia'));
       return;
     }
     try {
@@ -192,7 +196,7 @@ function ConversationScreen() {
         if (kind === 'camera') {
           const perm = await ImagePicker.requestCameraPermissionsAsync();
           if (!perm.granted) {
-            show('Libere a câmera nos ajustes do celular.', 'error', 'camera-outline');
+            show(t('conversation.allowCamera'), 'error', 'camera-outline');
             return;
           }
         }
@@ -220,33 +224,33 @@ function ConversationScreen() {
         });
       }
       await liveQuery.refetch();
-      showToast('Mídia enviada');
+      showToast(t('conversation.mediaSent'));
     } catch {
-      showToast('Falha no envio de mídia');
+      showToast(t('conversation.mediaFailed'), 'error');
     }
   };
 
   // Perfil sem permissão de enviar: conversa só para leitura (o campo de mensagem nem aparece).
   const canSend = can('sendMessage');
   const canCompose = canSend && conversation.within24h && ownership === 'mine';
-  const composeBlock = !conversation.within24h ? 'Fora da janela de 24 h: use uma mensagem ativa' : ownership !== 'mine' ? 'Assuma o atendimento para enviar' : undefined;
+  const composeBlock = !conversation.within24h ? t('conversation.blocked24h') : ownership !== 'mine' ? t('conversation.blockedClaim') : undefined;
   const ownershipActions = { claim: can('claim'), release: can('release'), transfer: can('transfer'), close: can('close') };
   const hasOwnershipAction = Object.values(ownershipActions).some(Boolean) || (!!conversation.contactId && can('contacts'));
 
   const sendPix = async (pix: PixData & { save?: boolean }) => {
     if (mode === 'mock') {
-      appendLocal({ type: 'pix', body: 'Chave Pix', pix });
+      appendLocal({ type: 'pix', body: t('mapper.pixKey'), pix });
       setSheet(null);
-      showToast('Chave Pix enviada');
+      showToast(t('conversation.pixSent'));
       return;
     }
     try {
       await sendPixMessage(id, pix);
       setSheet(null);
       await liveQuery.refetch();
-      showToast('Chave Pix enviada');
+      showToast(t('conversation.pixSent'));
     } catch {
-      showToast('Falha ao enviar a chave Pix');
+      showToast(t('conversation.pixFailed'), 'error');
     }
   };
 
@@ -260,14 +264,14 @@ function ConversationScreen() {
   };
 
   const allActions: (ConversationAction & { perm: PermKey })[] = [
-    { key: 'media', label: 'Foto e vídeo', icon: 'images', tone: 'media', perm: 'sendMedia', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('image')) },
-    { key: 'camera', label: 'Câmera', icon: 'camera', tone: 'camera', perm: 'sendMedia', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('camera')) },
-    { key: 'document', label: 'Documento', icon: 'document', tone: 'document', perm: 'sendMedia', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('document')) },
-    { key: 'pix', label: 'Chave Pix', icon: 'diamond', tone: 'pix', perm: 'sendMessage', blockedReason: composeBlock, onPress: guarded(() => switchSheet('pix')) },
-    { key: 'booking', label: 'Agendar horário', icon: 'calendar', tone: 'booking', perm: 'bookingCreate', onPress: () => switchSheet('booking') },
+    { key: 'media', label: t('conversation.action.media'), icon: 'images', tone: 'media', perm: 'sendMedia', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('image')) },
+    { key: 'camera', label: t('conversation.action.camera'), icon: 'camera', tone: 'camera', perm: 'sendMedia', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('camera')) },
+    { key: 'document', label: t('conversation.action.document'), icon: 'document', tone: 'document', perm: 'sendMedia', blockedReason: composeBlock, onPress: guarded(() => void pickAndSend('document')) },
+    { key: 'pix', label: t('conversation.action.pix'), icon: 'diamond', tone: 'pix', perm: 'sendMessage', blockedReason: composeBlock, onPress: guarded(() => switchSheet('pix')) },
+    { key: 'booking', label: t('conversation.action.booking'), icon: 'calendar', tone: 'booking', perm: 'bookingCreate', onPress: () => switchSheet('booking') },
     {
       key: 'template',
-      label: 'Mensagem ativa',
+      label: t('conversation.action.template'),
       icon: 'document-text',
       tone: 'template',
       perm: 'templates',
@@ -286,7 +290,7 @@ function ConversationScreen() {
         id: `local-${Date.now()}`,
         conversationId: id,
         direction: 'out',
-        at: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        at: new Date().toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }),
         status: 'sent',
         ...m,
       },
@@ -295,14 +299,14 @@ function ConversationScreen() {
   const startVoice = async () => {
     if (!canCompose) return;
     const result = await voice.start();
-    if (result !== 'granted') show('Libere o microfone nos ajustes do celular para gravar áudio.', 'error', 'mic-off-outline');
+    if (result !== 'granted') show(t('conversation.allowMic'), 'error', 'mic-off-outline');
   };
 
   const sendVoice = async () => {
     const audio = await voice.stop();
     if (!audio) return;
     if (mode === 'mock') {
-      appendLocal({ type: 'audio', body: 'Áudio', audioUri: audio.uri, durationS: audio.durationS });
+      appendLocal({ type: 'audio', body: t('conversation.audio'), audioUri: audio.uri, durationS: audio.durationS });
       return;
     }
     try {
@@ -313,7 +317,7 @@ function ConversationScreen() {
       });
       await liveQuery.refetch();
     } catch {
-      showToast('Falha no envio do áudio');
+      showToast(t('conversation.audioFailed'), 'error');
     }
   };
 
@@ -322,12 +326,12 @@ function ConversationScreen() {
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Backdrop variant="chat" />
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <IconButton icon="chevron-back" accessibilityLabel="Voltar" onPress={() => router.back()} />
+        <IconButton icon="chevron-back" accessibilityLabel={t('common:actions.back')} onPress={() => router.back()} />
         <Pressable
           style={styles.contactBlock}
           onPress={() => conversation.contactId && router.push(`/contact/${conversation.contactId}`)}
           accessibilityRole="button"
-          accessibilityLabel="Ver contato"
+          accessibilityLabel={t('conversation.viewContact')}
         >
           <Avatar initials={initialsOf(conversation.contactName)} size={42} />
           <View style={{ flex: 1, minWidth: 0 }}>
@@ -340,20 +344,20 @@ function ConversationScreen() {
             </View>
           </View>
         </Pressable>
-        {hasOwnershipAction ? <IconButton icon="ellipsis-horizontal" accessibilityLabel="Ações do atendimento" onPress={() => setSheet('actions')} /> : null}
+        {hasOwnershipAction ? <IconButton icon="ellipsis-horizontal" accessibilityLabel={t('conversation.moreActions')} onPress={() => setSheet('actions')} /> : null}
       </View>
 
       {!conversation.within24h ? (
         <View style={styles.windowBanner}>
           <Ionicons name="time-outline" size={18} color={colors.warnText} />
-          <Text style={styles.windowText}>Fora da janela de 24 h. Responda com um template aprovado.</Text>
+          <Text style={styles.windowText}>{t('conversation.windowBanner')}</Text>
           {can('templates') ? (
           <Pressable
             onPress={() => router.push({ pathname: '/templates', params: { conversationId: id } })}
             accessibilityRole="button"
             hitSlop={8}
           >
-            <Text style={styles.link}>Templates</Text>
+            <Text style={styles.link}>{t('conversation.templatesLink')}</Text>
           </Pressable>
           ) : null}
         </View>
@@ -362,8 +366,8 @@ function ConversationScreen() {
       {ownership === 'queue' && ownershipActions.claim && canSend ? (
         <View style={styles.claimBanner}>
           <IconTile icon="hand-left-outline" size={38} />
-          <Text style={styles.claimText}>Este contato está na fila. Assuma para responder.</Text>
-          <Button label="Assumir" compact onPress={() => runAction('claim')} />
+          <Text style={styles.claimText}>{t('conversation.claimBanner')}</Text>
+          <Button label={t('conversation.claim')} compact onPress={() => runAction('claim')} />
         </View>
       ) : null}
 
@@ -424,7 +428,7 @@ function ConversationScreen() {
       {!canSend ? (
         <View style={[styles.readOnly, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <Ionicons name="eye-outline" size={18} color={colors.textSoft} />
-          <Text style={styles.readOnlyText}>Somente leitura: seu perfil no Operax não envia mensagens.</Text>
+          <Text style={styles.readOnlyText}>{t('conversation.readOnly')}</Text>
         </View>
       ) : voice.recording ? (
         <View style={[styles.composer, { paddingHorizontal: 0, paddingTop: 0 }]}>
@@ -437,7 +441,7 @@ function ConversationScreen() {
             onPress={() => setSheet('attach')}
             style={styles.attachBtn}
             accessibilityRole="button"
-            accessibilityLabel="Mais ações: mídia, Pix, agendar"
+            accessibilityLabel={t('conversation.attachA11y')}
           >
             <Ionicons name="add" size={24} color={colors.primary} />
           </Pressable>
@@ -447,7 +451,7 @@ function ConversationScreen() {
             onPress={() => setSheet('quick')}
             style={styles.qrBtn}
             accessibilityRole="button"
-            accessibilityLabel="Respostas rápidas e templates"
+            accessibilityLabel={t('conversation.quickA11y')}
           >
             <Ionicons name="flash-outline" size={20} color={colors.primary} />
           </Pressable>
@@ -456,7 +460,7 @@ function ConversationScreen() {
             inputRef={inputRef}
             value={draft}
             onChangeText={setDraft}
-            placeholder={!conversation.within24h ? 'Use um template' : ownership !== 'mine' ? 'Assuma para responder' : 'Mensagem…'}
+            placeholder={!conversation.within24h ? t('conversation.placeholderTemplate') : ownership !== 'mine' ? t('conversation.placeholderClaim') : t('conversation.placeholderMessage')}
             editable={canCompose}
           />
           {draft.trim() || !canCompose || !can('sendMedia') ? (
@@ -472,7 +476,7 @@ function ConversationScreen() {
               }}
               style={[styles.send, (!canCompose || !draft.trim()) && { opacity: 0.45 }]}
               accessibilityRole="button"
-              accessibilityLabel="Enviar"
+              accessibilityLabel={t('common:actions.send')}
             >
               <Ionicons name="send" size={18} color="#fff" />
             </Pressable>
@@ -484,14 +488,14 @@ function ConversationScreen() {
 
       <Toast toast={toast} />
 
-      <BottomSheet visible={sheet === 'actions'} onClose={() => setSheet(null)} title="Posse e atendimento">
-        {ownershipActions.claim ? <Button label="Assumir" onPress={() => runAction('claim')} /> : null}
-        {ownershipActions.release ? <Button label="Liberar para a fila" variant="secondary" onPress={() => runAction('release')} /> : null}
-        {ownershipActions.transfer ? <Button label="Transferir…" variant="secondary" onPress={() => setSheet('transfer')} /> : null}
-        {ownershipActions.close ? <Button label="Encerrar" variant="danger" onPress={() => runAction('close')} /> : null}
+      <BottomSheet visible={sheet === 'actions'} onClose={() => setSheet(null)} title={t('conversation.ownershipTitle')}>
+        {ownershipActions.claim ? <Button label={t('conversation.claim')} onPress={() => runAction('claim')} /> : null}
+        {ownershipActions.release ? <Button label={t('conversation.release')} variant="secondary" onPress={() => runAction('release')} /> : null}
+        {ownershipActions.transfer ? <Button label={t('conversation.transfer')} variant="secondary" onPress={() => setSheet('transfer')} /> : null}
+        {ownershipActions.close ? <Button label={t('conversation.close')} variant="danger" onPress={() => runAction('close')} /> : null}
         {conversation.contactId && can('contacts') ? (
           <Button
-            label="Ver contato"
+            label={t('conversation.viewContact')}
             variant="ghost"
             onPress={() => {
               setSheet(null);
@@ -501,9 +505,9 @@ function ConversationScreen() {
         ) : null}
       </BottomSheet>
 
-      <BottomSheet visible={sheet === 'transfer'} onClose={() => setSheet(null)} title="Transferir">
-        <Muted>No mobile, libere para a fila ou use o web para escolher atendente.</Muted>
-        <Button label="Liberar para a fila" onPress={() => runAction('release')} />
+      <BottomSheet visible={sheet === 'transfer'} onClose={() => setSheet(null)} title={t('conversation.transferTitle')}>
+        <Muted>{t('conversation.transferHint')}</Muted>
+        <Button label={t('conversation.release')} onPress={() => runAction('release')} />
       </BottomSheet>
 
       <ActionsSheet visible={sheet === 'attach'} onClose={() => setSheet(null)} actions={actions} footnote={composeBlock} />
@@ -518,7 +522,7 @@ function ConversationScreen() {
           setSheet(null);
           const body = resolveQuickReplyVariables(q.body, { name: conversation.contactName }, user?.name ?? '');
           if (!canCompose) {
-            show(composeBlock ?? 'Não dá para responder agora', 'info');
+            show(composeBlock ?? t('conversation.cannotReply'), 'info');
             return;
           }
           setDraft((d) => (slashTerm(d) !== null ? applyQuickReply(d, body) : d ? `${d}\n${body}` : body));
@@ -539,7 +543,7 @@ function ConversationScreen() {
         contactName={conversation.contactName}
         onBooked={(summary) => {
           setSheet(null);
-          show(`Agendado: ${summary}`, 'success', 'calendar-outline');
+          show(t('conversation.booked', { summary }), 'success', 'calendar-outline');
         }}
         onError={(msg) => show(msg, 'error')}
       />

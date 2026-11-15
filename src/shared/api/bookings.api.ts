@@ -1,4 +1,5 @@
 import { api } from './client';
+import i18n from '@/src/i18n';
 import { isAxiosError } from 'axios';
 
 export type ApiBooking = {
@@ -69,15 +70,14 @@ export async function listBookings(params?: {
       return {
         ok: false,
         code: 'plan_locked',
-        message:
-          (err.response.data as { message?: string })?.message ||
-          'Agenda não inclusa no plano deste tenant.',
+        // Sempre o texto traduzido: o 403 do servidor pode vir em inglês ("Forbidden resource").
+        message: i18n.t('errors.agendaLocked'),
       };
     }
     return {
       ok: false,
       code: 'error',
-      message: 'Não foi possível carregar a agenda.',
+      message: i18n.t('errors.agendaLoad'),
     };
   }
 }

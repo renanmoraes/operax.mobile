@@ -3,6 +3,7 @@
  * Google Fit e outros) num formato só, pronto para mostrar e para enviar ao backend.
  * Funções puras: não importam nada nativo, então rodam nos testes e no web.
  */
+import i18n from '@/src/i18n';
 
 export type HealthSource = 'apple_health' | 'health_connect';
 
@@ -23,34 +24,12 @@ export type HealthWorkout = {
 };
 
 // Valores de HKWorkoutActivityType (Apple).
-const APPLE_SPORT: Record<number, string> = {
-  11: 'Treino funcional',
-  13: 'Ciclismo',
-  14: 'Dança',
-  20: 'Musculação',
-  24: 'Trilha',
-  37: 'Corrida',
-  46: 'Natação',
-  50: 'Musculação',
-  52: 'Caminhada',
-  57: 'Yoga',
-  63: 'HIIT',
-  66: 'Pilates',
-};
+type SportKey = 'functional' | 'cycling' | 'dance' | 'strength' | 'hiking' | 'running' | 'swimming' | 'walking' | 'yoga' | 'hiit' | 'pilates';
+const APPLE_SPORT: Record<number, SportKey> = { 11: 'functional', 13: 'cycling', 14: 'dance', 20: 'strength', 24: 'hiking', 37: 'running', 46: 'swimming', 50: 'strength', 52: 'walking', 57: 'yoga', 63: 'hiit', 66: 'pilates' };
 
 // Valores de ExerciseSessionRecord.exerciseType (Health Connect).
-const HC_SPORT: Record<number, string> = {
-  8: 'Ciclismo',
-  36: 'HIIT',
-  37: 'Trilha',
-  48: 'Pilates',
-  56: 'Corrida',
-  70: 'Musculação',
-  74: 'Natação',
-  79: 'Caminhada',
-  81: 'Musculação',
-  83: 'Yoga',
-};
+const HC_SPORT: Record<number, SportKey> = { 8: 'cycling', 36: 'hiit', 37: 'hiking', 48: 'pilates', 56: 'running', 70: 'strength', 74: 'swimming', 79: 'walking', 81: 'strength', 83: 'yoga' };
+const sportName = (k: SportKey | undefined) => i18n.t(k ? `fitness:imported.${k}` : 'fitness:imported.workout');
 
 // Apps que gravam no Health Connect e que vale nomear para o aluno.
 const ORIGIN_NAME: Record<string, string> = {
@@ -62,8 +41,8 @@ const ORIGIN_NAME: Record<string, string> = {
   'com.xiaomi.wearable': 'Mi Fitness',
 };
 
-export const sportFromApple = (type: number) => APPLE_SPORT[type] ?? 'Treino';
-export const sportFromHealthConnect = (type: number) => HC_SPORT[type] ?? 'Treino';
+export const sportFromApple = (type: number) => sportName(APPLE_SPORT[type]);
+export const sportFromHealthConnect = (type: number) => sportName(HC_SPORT[type]);
 
 type Qty = { unit: string; quantity: number } | undefined;
 

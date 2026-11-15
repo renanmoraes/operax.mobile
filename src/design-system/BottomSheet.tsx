@@ -1,4 +1,5 @@
 import { ReactNode, useEffect } from 'react';
+import i18n from '@/src/i18n';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,7 +15,7 @@ export function BottomSheet({
   visible,
   onClose,
   title,
-  closeLabel = 'Fechar',
+  closeLabel = i18n.t('actions.close'),
   children,
   contentStyle,
 }: {

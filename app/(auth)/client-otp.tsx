@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet } from 'react-native';
 import { Body, Button, Field } from '@/src/design-system/ui';
 import { colors } from '@/src/design-system/tokens';
@@ -7,6 +8,7 @@ import { useAuth } from '@/src/features/auth/AuthContext';
 import { AuthShell } from '@/src/features/auth/AuthShell';
 
 export default function ClientOtpScreen() {
+  const { t } = useTranslation(['auth', 'common']);
   const { identifier } = useLocalSearchParams<{ identifier: string }>();
   const { verifyClientOtp, requestClientOtp, setClientPassword, error } = useAuth();
   // Primeiro acesso: depois do código certo, a pessoa cria a senha para as próximas vezes.
@@ -47,16 +49,16 @@ export default function ClientOtpScreen() {
   return (
     <AuthShell
       onBack={() => router.replace('/(auth)/client-login')}
-      title={creating ? 'Crie sua senha' : 'Confira seu celular'}
+      title={creating ? t('clientOtp.createTitle') : t('clientOtp.checkTitle')}
       subtitle={
         creating
-          ? 'É o seu primeiro acesso. Com a senha você entra direto nas próximas vezes.'
-          : `Digite o código de 6 dígitos enviado para ${identifier ?? 'você'}.`
+          ? t('clientOtp.createSubtitle')
+          : t('clientOtp.checkSubtitle', { target: identifier ?? t('clientOtp.you') })
       }
       footer={
         creating ? (
           <Button
-            label="Criar senha e entrar"
+            label={t('clientOtp.createAndEnter')}
             loading={loading}
             disabled={password.length < 8 || password !== confirm}
             onPress={async () => {
@@ -78,7 +80,7 @@ export default function ClientOtpScreen() {
         ) : (
           <>
             <Button
-              label="Confirmar"
+              label={t('common:actions.confirm')}
               loading={loading}
               disabled={code.length < 4}
               onPress={async () => {
@@ -102,7 +104,7 @@ export default function ClientOtpScreen() {
                 }
               }}
             />
-            <Button label={cooldown > 0 ? `Reenviar em ${cooldown}s` : 'Reenviar código'} variant="ghost" disabled={cooldown > 0} onPress={resend} />
+            <Button label={cooldown > 0 ? t('clientOtp.resendIn', { seconds: cooldown }) : t('clientOtp.resend')} variant="ghost" disabled={cooldown > 0} onPress={resend} />
           </>
         )
       }
@@ -110,20 +112,20 @@ export default function ClientOtpScreen() {
       {creating ? (
         <>
           <Field
-            label="Nova senha"
+            label={t('clientOtp.newPassword')}
             icon="lock-closed-outline"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             autoComplete="new-password"
-            placeholder="Pelo menos 8 caracteres"
+            placeholder={t('clientOtp.passwordHint')}
           />
-          <Field label="Repita a senha" icon="lock-closed-outline" value={confirm} onChangeText={setConfirm} secureTextEntry autoComplete="new-password" />
-          {confirm && password !== confirm ? <Body style={styles.error}>As senhas não são iguais.</Body> : null}
+          <Field label={t('clientOtp.repeatPassword')} icon="lock-closed-outline" value={confirm} onChangeText={setConfirm} secureTextEntry autoComplete="new-password" />
+          {confirm && password !== confirm ? <Body style={styles.error}>{t('clientOtp.mismatch')}</Body> : null}
         </>
       ) : (
         <Field
-          label="Código"
+          label={t('fields.code')}
           icon="keypad-outline"
           value={code}
           onChangeText={setCode}
@@ -133,7 +135,7 @@ export default function ClientOtpScreen() {
         />
       )}
       {blocked ? (
-        <Body style={styles.error}>Nenhuma das suas empresas tem o portal disponível. Fale com elas para habilitar.</Body>
+        <Body style={styles.error}>{t('shared.portalBlocked')}</Body>
       ) : error ? (
         <Body style={styles.error}>{error}</Body>
       ) : null}

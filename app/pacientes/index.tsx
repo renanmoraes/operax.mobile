@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { locale } from '@/src/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,14 +26,16 @@ const fold = (s: string) =>
 
 /** Pacientes e clientes da empresa: busca, lista em ordem alfabética e acesso à ficha. */
 export default function PatientsScreenGuarded() {
+  const { t } = useTranslation('inbox');
   return (
-    <RequirePermission need="contacts" title="Pacientes">
+    <RequirePermission need="contacts" title={t('patients.title')}>
       <PatientsScreen />
     </RequirePermission>
   );
 }
 
 function PatientsScreen() {
+  const { t } = useTranslation('inbox');
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();
   const [search, setSearch] = useState('');
@@ -39,8 +43,8 @@ function PatientsScreen() {
 
   // Busca no servidor só depois de uma pausa na digitação.
   useEffect(() => {
-    const t = setTimeout(() => setTerm(search.trim()), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setTerm(search.trim()), 300);
+    return () => clearTimeout(timer);
   }, [search]);
 
   const query = useQuery({
@@ -53,21 +57,21 @@ function PatientsScreen() {
     if (mode === 'live') {
       return (query.data?.items ?? []).map((c) => ({
         id: c.id,
-        name: c.name || c.phone_e164 || 'Sem nome',
+        name: c.name || c.phone_e164 || t('patients.unnamed'),
         phone: c.phone_e164 ?? null,
         email: c.email ?? null,
-        tags: (c.tags ?? []).map((t) => (typeof t === 'string' ? t : t.tag || t.name || '')).filter(Boolean),
+        tags: (c.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.tag || tag.name || '')).filter(Boolean),
       }));
     }
     const f = fold(term);
     return mockContacts
       .filter((c) => !f || fold(`${c.name} ${c.phone} ${c.email ?? ''}`).includes(f))
       .map((c) => ({ id: c.id, name: c.name, phone: c.phone, email: c.email ?? null, tags: c.tags }));
-  }, [mode, query.data, term]);
+  }, [mode, query.data, term, t]);
 
   const sections = useMemo(() => {
     const groups = new Map<string, Person[]>();
-    for (const p of [...people].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))) {
+    for (const p of [...people].sort((a, b) => a.name.localeCompare(b.name, locale()))) {
       const letter = fold(p.name).charAt(0).toUpperCase() || '#';
       const key = /[A-Z]/.test(letter) ? letter : '#';
       groups.set(key, [...(groups.get(key) ?? []), p]);
@@ -79,20 +83,20 @@ function PatientsScreen() {
 
   return (
     <Screen>
-      <ScreenHeader safe title="Pacientes" subtitle={total ? `${total} ${total === 1 ? 'pessoa' : 'pessoas'}` : undefined} onBack={() => router.back()} />
+      <ScreenHeader safe title={t('patients.title')} subtitle={total ? t('patients.count', { count: total }) : undefined} onBack={() => router.back()} />
       <View style={styles.searchWrap}>
         <View style={styles.search}>
           <Ionicons name="search" size={17} color={colors.textMuted} />
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Nome, telefone ou e-mail"
+            placeholder={t('patients.searchPlaceholder')}
             placeholderTextColor={colors.textMuted}
             autoCorrect={false}
-            accessibilityLabel="Buscar paciente"
+            accessibilityLabel={t('patients.searchLabel')}
             style={styles.searchInput}
           />
-          {search ? <Ionicons name="close-circle" size={17} color={colors.textMuted} onPress={() => setSearch('')} accessibilityLabel="Limpar busca" /> : null}
+          {search ? <Ionicons name="close-circle" size={17} color={colors.textMuted} onPress={() => setSearch('')} accessibilityLabel={t('patients.clearSearch')} /> : null}
         </View>
       </View>
 
@@ -107,7 +111,7 @@ function PatientsScreen() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32 }}
           refreshControl={mode === 'live' ? <RefreshControl refreshing={query.isFetching && !query.isLoading} onRefresh={() => void query.refetch()} tintColor={colors.primary} /> : undefined}
           renderSectionHeader={({ section }) => <Text style={styles.letter}>{section.title}</Text>}
-          ListEmptyComponent={<EmptyState icon="people-outline" title={term ? 'Ninguém encontrado' : 'Nenhum paciente ainda'} subtitle={term ? 'Confira o nome ou busque pelo telefone.' : 'Os contatos da empresa aparecem aqui.'} />}
+          ListEmptyComponent={<EmptyState icon="people-outline" title={term ? t('patients.noneFound') : t('patients.noneYet')} subtitle={term ? t('patients.checkName') : t('patients.companyContacts')} />}
           renderItem={({ item, index, section }) => (
             <PressableScale
               onPress={() => router.push(`/contact/${item.id}`)}
@@ -120,12 +124,12 @@ function PatientsScreen() {
               </View>
               <View style={[styles.body, index < section.data.length - 1 && styles.divider]}>
                 <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.meta}>{[phoneLabel(item.phone), item.email].filter(Boolean).join(' · ') || 'Sem contato'}</Text>
+                <Text style={styles.meta}>{[phoneLabel(item.phone), item.email].filter(Boolean).join(' · ') || t('patients.noContact')}</Text>
                 {item.tags.length ? (
                   <View style={styles.tags}>
-                    {item.tags.slice(0, 3).map((t) => (
-                      <View key={t} style={styles.tag}>
-                        <Text style={styles.tagText}>{t}</Text>
+                    {item.tags.slice(0, 3).map((tag) => (
+                      <View key={tag} style={styles.tag}>
+                        <Text style={styles.tagText}>{tag}</Text>
                       </View>
                     ))}
                   </View>

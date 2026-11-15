@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { colors, motion, shadows, text } from '@/src/design-system/tokens';
@@ -22,6 +23,7 @@ export function QuickReplySuggestions({
   loading?: boolean;
   onPick: (q: QuickReplyLike) => void;
 }) {
+  const { t } = useTranslation('inbox');
   const p = useSharedValue(0);
   useEffect(() => {
     p.value = withTiming(1, { duration: 180, easing: easeOut });
@@ -29,14 +31,14 @@ export function QuickReplySuggestions({
   const anim = useAnimatedStyle(() => ({ opacity: p.value, transform: [{ translateY: (1 - p.value) * 8 }] }));
 
   return (
-    <Animated.View style={[styles.panel, anim]} accessibilityLabel="Respostas rápidas">
+    <Animated.View style={[styles.panel, anim]} accessibilityLabel={t('chatUi.quickTitle')}>
       <View style={styles.head}>
         <Ionicons name="flash" size={14} color={colors.primary} />
-        <Text style={styles.headText}>{term ? `Atalhos com “${term}”` : 'Respostas rápidas'}</Text>
-        <Text style={styles.headHint}>toque para usar</Text>
+        <Text style={styles.headText}>{term ? t('chatUi.shortcutsWith', { term }) : t('chatUi.quickTitle')}</Text>
+        <Text style={styles.headHint}>{t('chatUi.tapToUse')}</Text>
       </View>
       {items.length === 0 ? (
-        <Text style={styles.empty}>{loading ? 'Buscando…' : `Nenhum atalho para /${term}`}</Text>
+        <Text style={styles.empty}>{loading ? t('chatUi.searching') : t('chatUi.noShortcutFor', { term })}</Text>
       ) : (
         <ScrollView style={{ maxHeight: 236 }} keyboardShouldPersistTaps="always">
           {items.map((q, i) => (
@@ -44,7 +46,7 @@ export function QuickReplySuggestions({
               key={q.id}
               onPress={() => onPick(q)}
               accessibilityRole="button"
-              accessibilityLabel={`Usar ${q.title}, atalho /${q.slug}`}
+              accessibilityLabel={t('chatUi.useShortcut', { title: q.title, slug: q.slug })}
               style={({ pressed }) => [styles.row, i > 0 && styles.rowBorder, pressed && { backgroundColor: colors.primaryWash }]}
             >
               <View style={styles.rowTop}>

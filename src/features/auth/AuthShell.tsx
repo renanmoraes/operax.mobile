@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { useTranslation } from 'react-i18next';
 import { Badge, Display, IconButton, Muted, Rise, Screen } from '@/src/design-system/ui';
 import { spacing } from '@/src/design-system/tokens';
 
@@ -23,6 +24,7 @@ export function AuthShell({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const { t } = useTranslation('common');
   const insets = useSafeAreaInsets();
   return (
     <Screen backdrop="mirror">
@@ -32,7 +34,7 @@ export function AuthShell({
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.top}>
-            {onBack ? <IconButton icon="chevron-back" onPress={onBack} accessibilityLabel="Voltar" /> : <View />}
+            {onBack ? <IconButton icon="chevron-back" onPress={onBack} accessibilityLabel={t('actions.back')} /> : <View />}
             {tag ? <Badge label={tag} tone="primary" /> : null}
           </View>
           {showLogo ? (

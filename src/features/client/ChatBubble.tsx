@@ -1,5 +1,6 @@
 import { Linking, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
 import { formatHour } from '@/src/shared/format';
 import { BUBBLE_RADIUS, ChatMediaData, MediaBubble, MessageMeta, TextWithMeta } from '@/src/features/chat/MessageParts';
@@ -21,13 +22,14 @@ function toMedia(a: ChatAttachment): ChatMediaData | null {
 }
 
 export function ChatBubble({ m }: { m: ChatMessage }) {
+  const { t } = useTranslation('client');
   const mine = m.from === 'me';
   const at = formatHour(m.at);
   const media = m.attachment ? toMedia(m.attachment) : null;
   const uri = m.attachment ? fileUri(m.attachment) : undefined;
   const open = () => {
     if (!uri || !m.attachment) return;
-    if (m.attachment.kind === 'image') openViewer({ kind: 'image', uri, title: m.author_name ? `Foto de ${m.author_name}` : 'Sua foto' });
+    if (m.attachment.kind === 'image') openViewer({ kind: 'image', uri, title: m.author_name ? t('chat.photoOf', { name: m.author_name }) : t('chat.yourPhoto') });
     // Só PDF abre no visualizador; Word, planilha e outros vão para "Abrir com…" do celular.
     else if (m.attachment.kind === 'document') void openDocument(uri, m.attachment.name);
     else void Linking.openURL(uri);
@@ -40,10 +42,10 @@ export function ChatBubble({ m }: { m: ChatMessage }) {
         <View style={styles.reschedule}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="swap-horizontal" size={15} color={colors.primary} />
-            <Text style={styles.rescheduleLabel}>Pedido de outro horário</Text>
+            <Text style={styles.rescheduleLabel}>{t('chat.rescheduleRequest')}</Text>
           </View>
           <Text style={styles.rescheduleTitle}>{m.reschedule.title}</Text>
-          <Text style={styles.rescheduleMeta}>{`Era: ${formatHour(m.reschedule.original_at)}`}</Text>
+          <Text style={styles.rescheduleMeta}>{t('chat.was', { time: formatHour(m.reschedule.original_at) })}</Text>
           {m.text ? <Text style={[styles.text, { marginTop: 10 }]}>{m.text}</Text> : null}
           <View style={styles.metaInside}>
             <MessageMeta at={at} mine={mine} status={m.status} tone="onBubbleTheirs" />

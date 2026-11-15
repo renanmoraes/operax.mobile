@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
+import { LanguageRow } from '@/src/i18n/LanguageRow';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { Avatar, Button, HeroCard, IconTile, Muted, PressableScale, Rise, Screen, SectionHeader, SettingsGroup, SettingsRow, StatStrip } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
@@ -14,6 +16,7 @@ import { usePermissions } from '@/src/features/permissions/permissions';
 import { appVersionLabel } from '@/src/shared/updates/appVersion';
 
 export default function ClientPerfilScreen() {
+  const { t } = useTranslation('client');
   const insets = useSafeAreaInsets();
   const { user, logout, switchTenant, mode } = useAuth();
   const { data: companies } = useCompanies();
@@ -35,7 +38,7 @@ export default function ClientPerfilScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
               <Avatar initials={initials} size={72} tone="brand" />
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.name} numberOfLines={1}>{client?.name ?? 'Cliente'}</Text>
+                <Text style={styles.name} numberOfLines={1}>{client?.name ?? t('profile.client')}</Text>
                 <Muted style={{ marginTop: 3 }} numberOfLines={1}>{secondaryLine}</Muted>
               </View>
             </View>
@@ -43,9 +46,9 @@ export default function ClientPerfilScreen() {
               <StatStrip
                 style={styles.stats}
                 items={[
-                  { value: summary.totalSessions, label: 'treinos' },
-                  { value: summary.level.level, label: 'nível' },
-                  { value: summary.streak, label: 'dias seguidos', accent: true },
+                  { value: summary.totalSessions, label: t('profile.workouts') },
+                  { value: summary.level.level, label: t('profile.level') },
+                  { value: summary.streak, label: t('profile.streakDays'), accent: true },
                 ]}
               />
             ) : null}
@@ -54,7 +57,7 @@ export default function ClientPerfilScreen() {
 
         {memberships.length ? (
           <>
-            <SectionHeader title="Minhas empresas" />
+            <SectionHeader title={t('profile.myCompanies')} />
             <View style={styles.companies}>
               {memberships.map((m, i) => {
                 const active = m.tenant_id === client?.active_tenant_id;
@@ -66,13 +69,13 @@ export default function ClientPerfilScreen() {
                     onPress={() => switchTenant(m.tenant_id).catch(() => {})}
                     accessibilityRole="button"
                     accessibilityState={{ selected: active }}
-                    accessibilityLabel={active ? `${m.tenant_name}, aberta agora` : `Trocar para ${m.tenant_name}`}
+                    accessibilityLabel={active ? t('profile.openNowA11y', { name: m.tenant_name }) : t('profile.switchTo', { name: m.tenant_name })}
                     style={[styles.company, active && styles.companyActive]}
                   >
                     <IconTile initials={info?.initials ?? m.tenant_name.slice(0, 2).toUpperCase()} size={40} tone={i === 0 ? 'brand' : i === 1 ? 'soft' : 'neutral'} />
                     <Text style={styles.companyName} numberOfLines={2}>{m.tenant_name}</Text>
                     <Muted style={[{ fontSize: 12 }, active && { color: colors.primary, fontFamily: typography.fontFamilySemiBold }]} numberOfLines={1}>
-                      {active ? 'Aberta' : info?.segment.split(' ')[0] ?? 'Trocar'}
+                      {active ? t('profile.open') : info?.segment.split(' ')[0] ?? t('profile.switch')}
                     </Muted>
                   </PressableScale>
                 );
@@ -81,35 +84,36 @@ export default function ClientPerfilScreen() {
           </>
         ) : null}
 
-        <SectionHeader title="Preferências" />
+        <SectionHeader title={t('profile.preferences')} />
         <Rise index={1}>
           <SettingsGroup>
             <SettingsRow
               icon="notifications-outline"
-              title="Notificações"
-              subtitle={notif === 'granted' ? 'Lembretes e mensagens ativados' : notif === 'unavailable' ? 'Disponível no app do celular' : 'Desativadas'}
+              title={t('profile.notifications')}
+              subtitle={notif === 'granted' ? t('profile.notifOn') : notif === 'unavailable' ? t('profile.notifPhoneOnly') : t('profile.notifOff')}
               subtitleTone={notif === 'granted' ? 'success' : undefined}
-              right={notif === 'undetermined' || notif === 'denied' ? <Button label="Ativar" compact onPress={() => void request('notifications')} /> : undefined}
+              right={notif === 'undetermined' || notif === 'denied' ? <Button label={t('onboarding.enable')} compact onPress={() => void request('notifications')} /> : undefined}
               onPress={() => router.push('/cliente/permissoes')}
             />
-            <SettingsRow icon="calendar-outline" title="Calendário do celular" subtitle="Assinar a agenda" onPress={() => router.push('/cliente/calendario')} />
+            <SettingsRow icon="calendar-outline" title={t('profile.calendar')} subtitle={t('profile.calendarSub')} onPress={() => router.push('/cliente/calendario')} />
             <SettingsRow
               icon="watch-outline"
-              title="Relógios e apps"
-              subtitle={connected.length ? `${connected.join(', ')} conectado` : 'Garmin Connect™, Strava e Polar'}
+              title={t('profile.watches')}
+              subtitle={connected.length ? t('onboarding.watch.connected', { names: connected.join(', ') }) : t('profile.watchesSub')}
               subtitleTone={connected.length ? 'success' : undefined}
               onPress={() => router.push('/cliente/relogios')}
             />
-            <SettingsRow icon="shield-checkmark-outline" title="Privacidade" subtitle="Fotos de evolução: você e seu personal" onPress={() => router.push('/cliente/permissoes')} last />
+            <SettingsRow icon="shield-checkmark-outline" title={t('profile.privacy')} subtitle={t('profile.privacySub')} onPress={() => router.push('/cliente/permissoes')} />
+            <LanguageRow syncProfile={false} last />
           </SettingsGroup>
         </Rise>
 
-        <Text style={styles.groupLabel}>Contas</Text>
+        <Text style={styles.groupLabel}>{t('profile.accounts')}</Text>
         <Rise index={2}>
           <AccountSwitcher />
         </Rise>
         <Rise index={3} style={{ marginTop: 16 }}>
-          <Button label="Sair desta conta" variant="ghost" onPress={() => void logout().then(() => router.replace('/'))} style={{ minHeight: 48 }} />
+          <Button label={t('profile.logout')} variant="ghost" onPress={() => void logout().then(() => router.replace('/'))} style={{ minHeight: 48 }} />
         </Rise>
         <Muted style={{ textAlign: 'center', fontSize: 12, marginTop: 10 }}>{appVersionLabel()}</Muted>
       </ScrollView>

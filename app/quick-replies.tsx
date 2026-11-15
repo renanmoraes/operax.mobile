@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { router, useLocalSearchParams } from 'expo-router';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,14 +12,16 @@ import { SkeletonList } from '@/src/design-system/Skeleton';
 import { RequirePermission } from '@/src/features/auth/useCan';
 
 export default function QuickRepliesScreenGuarded() {
+  const { t } = useTranslation('inbox');
   return (
-    <RequirePermission need="quickReplies" title="Respostas rápidas">
+    <RequirePermission need="quickReplies" title={t('quickReplies.title')}>
       <QuickRepliesScreen />
     </RequirePermission>
   );
 }
 
 function QuickRepliesScreen() {
+  const { t } = useTranslation('inbox');
   const { conversationId } = useLocalSearchParams<{ conversationId?: string }>();
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();
@@ -34,8 +37,8 @@ function QuickRepliesScreen() {
     <Screen>
       <ScreenHeader
         safe
-        title="Respostas rápidas"
-        subtitle={conversationId ? 'Toque para voltar à conversa' : 'Atalhos de mensagem da equipe'}
+        title={t('quickReplies.title')}
+        subtitle={conversationId ? t('quickReplies.subtitleConv') : t('quickReplies.subtitle')}
         onBack={() => router.back()}
       />
       {mode === 'live' && query.isLoading ? (
@@ -45,7 +48,7 @@ function QuickRepliesScreen() {
           data={data}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: insets.bottom + 32, gap: 10 }}
-          ListEmptyComponent={<EmptyState icon="flash-outline" title="Nenhuma resposta rápida" subtitle="Cadastre atalhos no Operax web para usar aqui." />}
+          ListEmptyComponent={<EmptyState icon="flash-outline" title={t('quickReplies.emptyTitle')} subtitle={t('quickReplies.emptySub')} />}
           renderItem={({ item }) => (
             <Card
               style={{ flexDirection: 'row', gap: 12 }}

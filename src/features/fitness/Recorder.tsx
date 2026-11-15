@@ -8,6 +8,8 @@ import { useKeepAwake } from 'expo-keep-awake';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
+import { useTranslation } from 'react-i18next';
+import i18n, { locale } from '@/src/i18n';
 import { Button, Field, Muted, PressableScale, ProgressBar, Screen, TopBar } from '@/src/design-system/ui';
 import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { formatClock } from '@/src/shared/format';
@@ -56,6 +58,8 @@ const DRAFT_MAX_AGE_MS = 6 * 3600_000;
 type Draft = { key: string; startedAt: number; banked: number; savedAt: number; run: Omit<RunState, 'last' | 'recent'> };
 
 const run0 = () => emptyRun();
+/** Número com 1 casa no formato do idioma ("12,5" / "12.5"). */
+const num1 = (n: number) => new Intl.NumberFormat(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n);
 
 function KeepAwake() {
   useKeepAwake();
@@ -100,6 +104,7 @@ export function Recorder({
   onHistory: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation(['fitness', 'common']);
   const [phase, setPhase] = useState<Phase>('ready');
   const phaseRef = useRef<Phase>('ready');
   const go = useCallback((p: Phase) => {
@@ -207,7 +212,7 @@ export function Recorder({
   const say = useCallback((t: string) => {
     if (!prefsRef.current.voice) return;
     try {
-      Speech.speak(t, { language: 'pt-BR', rate: 1.02 });
+      Speech.speak(t, { language: locale(), rate: 1.02 });
     } catch {
       // sem voz no aparelho
     }
@@ -270,7 +275,7 @@ export function Recorder({
     guideRef.current = next;
     setGuideAt(next);
     Vibration.vibrate(200);
-    say(i < guide.length ? stepCue(guide[i]) : 'Treino do professor concluído. Pode finalizar quando quiser.');
+    say(i < guide.length ? stepCue(guide[i]) : i18n.t('fitness:rec.guideDone'));
   }
 
   // Aviso a cada quilômetro (bike: a cada 5 km).
@@ -288,13 +293,13 @@ export function Recorder({
   }, [kmCount, say, sport.rate]);
 
   const discard = useCallback(() => {
-    void confirmDialog({ title: 'Descartar treino?', message: 'O que foi gravado agora não vai para o histórico.', confirmLabel: 'Descartar treino', cancelLabel: 'Continuar treinando', tone: 'danger' }).then((ok) => {
+    void confirmDialog({ title: t('rec.discardTitle'), message: t('rec.discardBody'), confirmLabel: t('rec.discard'), cancelLabel: t('rec.keepTraining'), tone: 'danger' }).then((ok) => {
       if (!ok) return;
       stopWatch();
       dropDraft();
       onClose();
     });
-  }, [onClose]);
+  }, [onClose, t]);
 
   // Voltar do Android no meio do treino não sai sem querer.
   useEffect(() => {
@@ -336,7 +341,7 @@ export function Recorder({
     setGuideAt(g0);
     setSets(0);
     go('running');
-    say(guide?.length ? `Treino iniciado. ${stepCue(guide[0])}` : 'Treino iniciado.');
+    say(guide?.length ? `${t('rec.say.started')} ${stepCue(guide[0])}` : t('rec.say.started'));
   }
 
   function pause(auto = false) {
@@ -349,7 +354,7 @@ export function Recorder({
     autoPausedRef.current = auto;
     setAutoPaused(auto);
     go('paused');
-    say(auto ? 'Pausa automática.' : 'Treino pausado.');
+    say(auto ? t('rec.say.autoPaused') : t('rec.say.paused'));
   }
 
   function resume(auto = false) {
@@ -357,8 +362,8 @@ export function Recorder({
     autoPausedRef.current = false;
     setAutoPaused(false);
     lastMoveAt.current = Date.now();
-    if (!auto) say('Treino retomado.');
-    else say('Retomando.');
+    if (!auto) say(t('rec.say.resumed'));
+    else say(t('rec.say.resuming'));
     // Voltou da tela de salvar depois de uma falha: o GPS foi desligado ao tentar salvar.
     if (sport.gps) void watch().catch((e) => void reportError(e, { context: 'gps continuar' }));
     runningSince.current = Date.now();
@@ -401,7 +406,7 @@ export function Recorder({
     } catch (e) {
       void reportError(e, { context: 'salvar treino gravado' });
       go('review');
-      void showDialog({ title: 'Não deu para salvar', message: 'Tente de novo em instantes. O treino continua guardado no celular.', tone: 'warn', icon: 'cloud-offline-outline' });
+      void showDialog({ title: t('rec.saveFailTitle'), message: t('rec.saveFailBody'), tone: 'warn', icon: 'cloud-offline-outline' });
     }
   }
 
@@ -420,18 +425,18 @@ export function Recorder({
           <LinearGradient colors={[colors.cyan, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.doneBadge}>
             <MaterialCommunityIcons name={phase === 'saved' ? 'check-bold' : 'cloud-clock-outline'} size={40} color="#fff" />
           </LinearGradient>
-          <Text style={styles.doneTitle}>{phase === 'saved' ? 'Treino salvo' : 'Guardado no celular'}</Text>
+          <Text style={styles.doneTitle}>{phase === 'saved' ? t('rec.saved') : t('rec.queued')}</Text>
           <Muted style={styles.doneSub}>
-            {phase === 'saved' ? `Está no seu histórico${sport.gps ? ', com o caminho' : ''} e com o que você contou. Seu professor também vê.` : 'Sem internet agora. Ele vai sozinho para o histórico quando a conexão voltar.'}
+            {phase === 'saved' ? t(sport.gps ? 'rec.savedBodyGps' : 'rec.savedBody') : t('rec.queuedBody')}
           </Muted>
           <View style={styles.doneStats}>
             {sport.gps ? <DoneStat value={formatKm(run.distanceM)} unit="km" /> : null}
-            <DoneStat value={formatClock(elapsed)} unit="tempo" />
+            <DoneStat value={formatClock(elapsed)} unit={t('rec.timeUnit')} />
             {sport.gps && sport.rate === 'pace' ? <DoneStat value={formatPace(averagePace(run, elapsed))} unit="/km" /> : null}
           </View>
           <View style={{ alignSelf: 'stretch', gap: 10, marginTop: 'auto' }}>
-            {phase === 'saved' ? <Button label="Ver no histórico" icon="time-outline" onPress={onHistory} /> : null}
-            <Button label="Concluir" variant={phase === 'saved' ? 'secondary' : 'primary'} onPress={onClose} />
+            {phase === 'saved' ? <Button label={t('rec.seeHistory')} icon="time-outline" onPress={onHistory} /> : null}
+            <Button label={t('rec.finishDone')} variant={phase === 'saved' ? 'secondary' : 'primary'} onPress={onClose} />
           </View>
         </View>
       </Screen>
@@ -443,7 +448,7 @@ export function Recorder({
     return (
       <Screen>
         <NoSwipeBack phase={phase} />
-        <TopBar safe title="Salvar treino" onBack={() => go('paused')} />
+        <TopBar safe title={t('rec.saveWorkout')} onBack={() => go('paused')} />
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 28, gap: 18 }} keyboardShouldPersistTaps="handled">
           <View style={styles.summary}>
             {sport.gps && route.length > 1 ? <RouteMap route={route} style={styles.summaryMap} /> : null}
@@ -453,19 +458,19 @@ export function Recorder({
                   <MaterialCommunityIcons name={sport.icon} size={30} color={colors.primary} />
                 </LinearGradient>
               ) : null}
-              <SummaryCell label={sport.gps ? 'Tempo' : `${sport.label} · tempo`} value={formatClock(seconds)} />
-              {!sport.gps && sets ? <SummaryCell label="Séries" value={String(sets)} /> : null}
-              {sport.gps ? <SummaryCell label="Distância" value={`${formatKm(run.distanceM)} km`} /> : null}
-              {sport.gps ? <SummaryCell label={speed ? 'Velocidade' : 'Ritmo'} value={speed ? `${(seconds ? (run.distanceM / seconds) * 3.6 : 0).toFixed(1).replace('.', ',')} km/h` : `${formatPace(averagePace(run, seconds))}/km`} /> : null}
-              {sport.gps ? <SummaryCell label="Subida" value={`${Math.round(run.elevationGainM)} m`} /> : null}
+              <SummaryCell label={sport.gps ? t('rec.time') : t('rec.sportTime', { sport: sport.label })} value={formatClock(seconds)} />
+              {!sport.gps && sets ? <SummaryCell label={t('rec.sets')} value={String(sets)} /> : null}
+              {sport.gps ? <SummaryCell label={t('rec.distance')} value={`${formatKm(run.distanceM)} km`} /> : null}
+              {sport.gps ? <SummaryCell label={speed ? t('rec.speed') : t('rec.pace')} value={speed ? `${num1(seconds ? (run.distanceM / seconds) * 3.6 : 0)} km/h` : `${formatPace(averagePace(run, seconds))}/km`} /> : null}
+              {sport.gps ? <SummaryCell label={t('rec.climb')} value={`${Math.round(run.elevationGainM)} m`} /> : null}
             </View>
           </View>
 
-          {askTitle ? <Field label="Nome do treino" value={title} onChangeText={(v) => setTitle(v.slice(0, 80))} placeholder={defaultTitle(sport.label, new Date(startMs))} /> : null}
+          {askTitle ? <Field label={t('rec.name')} value={title} onChangeText={(v) => setTitle(v.slice(0, 80))} placeholder={defaultTitle(sport.label, new Date(startMs))} /> : null}
 
           {askTag ? (
             <View style={{ gap: 10 }}>
-              <Text style={styles.ask}>Tipo de treino</Text>
+              <Text style={styles.ask}>{t('rec.type')}</Text>
               <View style={styles.tags}>
                 {WORKOUT_TAGS[sport.gps || sport.id === 'swim' ? 'endurance' : 'gym'].map((t) => {
                   const on = tag === t.id;
@@ -480,7 +485,7 @@ export function Recorder({
           ) : null}
 
           <View style={{ gap: 10 }}>
-            <Text style={styles.ask}>Como foi o treino?</Text>
+            <Text style={styles.ask}>{t('rec.howWasIt')}</Text>
             <View style={styles.feelings}>
               {FEELINGS.map((f) => {
                 const on = feeling === f.id;
@@ -496,14 +501,14 @@ export function Recorder({
 
           <View style={{ gap: 10 }}>
             <View style={styles.rowBetween}>
-              <Text style={styles.ask}>Esforço</Text>
-              <Muted>{effort ? `${effort} · ${effortWord(effort)}` : 'De 1 a 10'}</Muted>
+              <Text style={styles.ask}>{t('rec.effort')}</Text>
+              <Muted>{effort ? `${effort} · ${effortWord(effort)}` : t('rec.effortScale')}</Muted>
             </View>
             <View style={styles.effort}>
               {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
                 const on = effort != null && n <= effort;
                 return (
-                  <Pressable key={n} onPress={() => setEffort(effort === n ? undefined : n)} accessibilityRole="button" accessibilityLabel={`Esforço ${n}, ${effortWord(n)}`} accessibilityState={{ selected: effort === n }} style={[styles.effortCell, { height: 22 + n * 2.6 }, on && { backgroundColor: n >= 9 ? colors.warn : colors.primary }]}>
+                  <Pressable key={n} onPress={() => setEffort(effort === n ? undefined : n)} accessibilityRole="button" accessibilityLabel={t('rec.effortA11y', { n, word: effortWord(n) })} accessibilityState={{ selected: effort === n }} style={[styles.effortCell, { height: 22 + n * 2.6 }, on && { backgroundColor: n >= 9 ? colors.warn : colors.primary }]}>
                     <Text style={[styles.effortNum, on && { color: '#fff' }]}>{n}</Text>
                   </Pressable>
                 );
@@ -511,13 +516,13 @@ export function Recorder({
             </View>
           </View>
 
-          <Field label="Anotações para o professor" value={notes} onChangeText={(v) => setNotes(v.slice(0, 500))} placeholder="Dor, clima, o que sentiu…" multiline />
+          <Field label={t('rec.notes')} value={notes} onChangeText={(v) => setNotes(v.slice(0, 500))} placeholder={t('rec.notesHint')} multiline />
 
           <View style={{ gap: 10 }}>
-            <Button label="Salvar treino" icon="checkmark" loading={phase === 'saving'} onPress={() => void save()} />
-            <Button label="Continuar gravando" variant="ghost" disabled={phase === 'saving'} onPress={() => go('paused')} />
+            <Button label={t('rec.saveWorkout')} icon="checkmark" loading={phase === 'saving'} onPress={() => void save()} />
+            <Button label={t('rec.keepRecording')} variant="ghost" disabled={phase === 'saving'} onPress={() => go('paused')} />
             <Pressable onPress={discard} disabled={phase === 'saving'} accessibilityRole="button" style={styles.discard}>
-              <Text style={styles.discardText}>Descartar treino</Text>
+              <Text style={styles.discardText}>{t('rec.discard')}</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -553,15 +558,15 @@ export function Recorder({
       {paused && showMap ? (
         <View style={[styles.pausedBand, { top: insets.top + 60 }]}>
           <Ionicons name="pause" size={15} color="#fff" />
-          <Text style={styles.pausedBandText}>{autoPaused ? 'Pausa automática · ande para continuar' : 'Pausado'}</Text>
+          <Text style={styles.pausedBandText}>{autoPaused ? t('rec.autoPausedBand') : t('rec.pausedLabel')}</Text>
         </View>
       ) : null}
 
       <View style={[styles.topRow, { top: insets.top + 8 }]}>
         {phase === 'ready' ? (
-          <RoundButton icon="close" onPress={onClose} label="Fechar" />
+          <RoundButton icon="close" onPress={onClose} label={t('common:actions.close')} />
         ) : sport.gps ? (
-          <RoundButton icon={view === 'map' ? 'speedometer-outline' : 'map-outline'} onPress={() => setView(view === 'map' ? 'numbers' : 'map')} label={view === 'map' ? 'Ver os números grandes' : 'Ver o mapa'} />
+          <RoundButton icon={view === 'map' ? 'speedometer-outline' : 'map-outline'} onPress={() => setView(view === 'map' ? 'numbers' : 'map')} label={view === 'map' ? t('rec.viewNumbers') : t('rec.viewMap')} />
         ) : (
           <View style={{ width: 44 }} />
         )}
@@ -569,20 +574,20 @@ export function Recorder({
           disabled={phase !== 'ready' || !onPickSport}
           onPress={() => setPickerOpen(true)}
           accessibilityRole={phase === 'ready' && onPickSport ? 'button' : undefined}
-          accessibilityLabel={phase === 'ready' && onPickSport ? `${heading}. Trocar esporte` : heading}
+          accessibilityLabel={phase === 'ready' && onPickSport ? t('rec.switchSportA11y', { sport: heading }) : heading}
           style={styles.headingPill}
         >
           <MaterialCommunityIcons name={sport.icon} size={16} color={colors.primary} />
           <Text style={styles.headingText} numberOfLines={1}>{heading}</Text>
           {phase === 'ready' && onPickSport ? <Ionicons name="chevron-down" size={14} color={colors.textMuted} /> : null}
         </Pressable>
-        <RoundButton icon="options-outline" onPress={() => setSettingsOpen(true)} label="Ajustes da gravação" />
+        <RoundButton icon="options-outline" onPress={() => setSettingsOpen(true)} label={t('rec.settings')} />
       </View>
 
       {sport.gps && !(paused && showMap) && (showMap || phase === 'ready') ? (
         <View style={[styles.gpsChip, { top: insets.top + 62 }, weak || !here ? styles.gpsWeak : null]}>
           <View style={[styles.gpsDot, { backgroundColor: !here ? colors.textMuted : weak ? colors.warn : colors.success }]} />
-          <Text style={styles.gpsText}>{perm === 'denied' ? 'Sem permissão de localização' : !here ? 'Procurando GPS…' : weak ? `GPS fraco · ±${Math.round(accuracy ?? 0)} m` : `GPS pronto · ±${Math.round(accuracy ?? 0)} m`}</Text>
+          <Text style={styles.gpsText}>{perm === 'denied' ? t('rec.noLocation') : !here ? t('rec.gpsSearching') : t(weak ? 'rec.gpsWeak' : 'rec.gpsReady', { m: Math.round(accuracy ?? 0) })}</Text>
         </View>
       ) : null}
 
@@ -590,40 +595,40 @@ export function Recorder({
         {paused && !showMap ? (
           <View style={styles.pausedBar}>
             <Ionicons name="pause" size={14} color="#fff" />
-            <Text style={styles.pausedText}>{autoPaused ? 'Pausa automática' : 'Pausado'}</Text>
+            <Text style={styles.pausedText}>{autoPaused ? t('rec.autoPausedLabel') : t('rec.pausedLabel')}</Text>
           </View>
         ) : (
           <View style={styles.handle} />
         )}
 
         <ScrollView contentContainerStyle={{ paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
-          <Text style={styles.label}>Tempo</Text>
-          <Text style={styles.clock} accessibilityLabel={`Tempo ${formatClock(elapsed)}`}>{formatClock(elapsed)}</Text>
+          <Text style={styles.label}>{t('rec.time')}</Text>
+          <Text style={styles.clock} accessibilityLabel={t('rec.timeA11y', { time: formatClock(elapsed) })}>{formatClock(elapsed)}</Text>
           {subtitle ? <Muted style={styles.subtitle} numberOfLines={1}>{subtitle}</Muted> : null}
 
           {sport.gps && !showMap && phase !== 'ready' ? (
             <View style={styles.bigDistance}>
-              <Text style={styles.bigDistanceValue} accessibilityLabel={`${formatKm(run.distanceM)} quilômetros`}>{formatKm(run.distanceM)}</Text>
-              <Text style={styles.label}>Distância (km)</Text>
+              <Text style={styles.bigDistanceValue} accessibilityLabel={t('rec.kmA11y', { km: formatKm(run.distanceM) })}>{formatKm(run.distanceM)}</Text>
+              <Text style={styles.label}>{t('rec.distanceKm')}</Text>
             </View>
           ) : null}
 
           {sport.gps ? (
             <View style={styles.pair}>
               <View style={styles.pairCell}>
-                <Text style={styles.label}>{speed ? (showMap || phase === 'ready' ? 'Velocidade' : 'Média') : 'Ritmo médio'}</Text>
-                <Text style={styles.pairValue}>{speed ? kmh.toFixed(1).replace('.', ',') : formatPace(avg)}<Text style={styles.pairUnit}>{speed ? ' km/h' : ' /km'}</Text></Text>
+                <Text style={styles.label}>{speed ? (showMap || phase === 'ready' ? t('rec.speed') : t('rec.average')) : t('rec.avgPace')}</Text>
+                <Text style={styles.pairValue}>{speed ? num1(kmh) : formatPace(avg)}<Text style={styles.pairUnit}>{speed ? ' km/h' : ' /km'}</Text></Text>
               </View>
               <View style={styles.pairDivider} />
               {showMap || phase === 'ready' ? (
                 <View style={styles.pairCell}>
-                  <Text style={styles.label}>Distância</Text>
+                  <Text style={styles.label}>{t('rec.distance')}</Text>
                   <Text style={styles.pairValue}>{formatKm(run.distanceM)}<Text style={styles.pairUnit}> km</Text></Text>
                 </View>
               ) : (
                 <View style={styles.pairCell}>
-                  <Text style={styles.label}>{speed ? 'Agora' : 'Ritmo atual'}</Text>
-                  <Text style={styles.pairValue}>{speed ? (now ? 3600 / now : 0).toFixed(1).replace('.', ',') : formatPace(now)}<Text style={styles.pairUnit}>{speed ? ' km/h' : ' /km'}</Text></Text>
+                  <Text style={styles.label}>{speed ? t('rec.now') : t('rec.currentPace')}</Text>
+                  <Text style={styles.pairValue}>{speed ? num1(now ? 3600 / now : 0) : formatPace(now)}<Text style={styles.pairUnit}>{speed ? ' km/h' : ' /km'}</Text></Text>
                 </View>
               )}
             </View>
@@ -634,16 +639,16 @@ export function Recorder({
           {sport.gps && phase !== 'ready' ? (
             <View style={styles.minor}>
               {/* Nos números grandes o ritmo atual já está no par de cima: aqui fica a máxima (bike) ou nada. */}
-              {showMap || speed ? <Minor label={speed ? 'Máxima' : 'Ritmo atual'} value={speed ? `${(run.maxSpeedMs * 3.6).toFixed(1).replace('.', ',')} km/h` : `${formatPace(now)} /km`} /> : null}
-              <Minor label="Subida" value={`${Math.round(run.elevationGainM)} m`} />
-              <Minor label="Altitude" value={run.altitudeM != null ? `${Math.round(run.altitudeM)} m` : '–'} />
+              {showMap || speed ? <Minor label={speed ? t('rec.max') : t('rec.currentPace')} value={speed ? `${num1(run.maxSpeedMs * 3.6)} km/h` : `${formatPace(now)} /km`} /> : null}
+              <Minor label={t('rec.climb')} value={`${Math.round(run.elevationGainM)} m`} />
+              <Minor label={t('rec.altitude')} value={run.altitudeM != null ? `${Math.round(run.altitudeM)} m` : '–'} />
             </View>
           ) : null}
 
           {goalMeters && sport.gps ? (
             <View style={{ marginTop: 16, gap: 6 }}>
               <ProgressBar progress={Math.min(1, run.distanceM / goalMeters)} />
-              <Muted style={{ fontSize: 12.5 }}>{`Meta do treino: ${formatKm(goalMeters)} km`}</Muted>
+              <Muted style={{ fontSize: 12.5 }}>{t('rec.goal', { km: formatKm(goalMeters) })}</Muted>
             </View>
           ) : null}
 
@@ -651,8 +656,8 @@ export function Recorder({
 
           {perm === 'denied' ? (
             <View style={styles.perm}>
-              <Text style={styles.permText}>Para medir distância e desenhar o caminho, o Operax precisa da sua localização durante o treino.</Text>
-              <Button label="Ajustes" variant="soft" compact onPress={() => void Linking.openSettings()} />
+              <Text style={styles.permText}>{t('rec.locationNeeded')}</Text>
+              <Button label={t('rec.settingsShort')} variant="soft" compact onPress={() => void Linking.openSettings()} />
             </View>
           ) : null}
           {phase === 'ready' && draft ? (
@@ -660,76 +665,76 @@ export function Recorder({
               <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
                 <Ionicons name="time-outline" size={20} color={colors.primary} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.draftTitle}>Treino não salvo</Text>
+                  <Text style={styles.draftTitle}>{t('rec.unsaved')}</Text>
                   <Muted style={{ fontSize: 12.5 }}>
-                    {[`Começou às ${new Date(draft.startedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, formatClock(Math.round(draft.banked / 1000)), sport.gps ? `${formatKm(draft.run.distanceM)} km` : null].filter(Boolean).join(' · ')}
+                    {[t('rec.startedAtTime', { time: new Date(draft.startedAt).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) }), formatClock(Math.round(draft.banked / 1000)), sport.gps ? `${formatKm(draft.run.distanceM)} km` : null].filter(Boolean).join(' · ')}
                   </Muted>
                 </View>
               </View>
               <View style={{ flexDirection: 'row', gap: 10 }}>
-                <Button label="Retomar" compact icon="play" onPress={() => restore(draft)} style={{ flex: 1 }} />
-                <Button label="Descartar" compact variant="secondary" onPress={clearDraft} style={{ flex: 1 }} />
+                <Button label={t('rec.resume')} compact icon="play" onPress={() => restore(draft)} style={{ flex: 1 }} />
+                <Button label={t('rec.discardShort')} compact variant="secondary" onPress={clearDraft} style={{ flex: 1 }} />
               </View>
             </View>
           ) : null}
           {!sport.gps && phase !== 'ready' ? (
             <View style={styles.timerInfo}>
-              <Minor label="Começou às" value={new Date(startMs).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} />
-              <Minor label="Situação" value={phase === 'paused' ? 'Pausado' : 'Gravando'} />
+              <Minor label={t('rec.startedAt')} value={new Date(startMs).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })} />
+              <Minor label={t('rec.status')} value={phase === 'paused' ? t('rec.pausedLabel') : t('rec.recording')} />
             </View>
           ) : null}
           {!sport.gps && active && (sport.id === 'strength' || sport.id === 'other') ? <RestTimer sets={sets} onSets={setSets} active={phase === 'running'} say={say} /> : null}
-          {phase === 'ready' && !sport.gps && !draft ? <Muted style={styles.readyHint}>O cronômetro grava o tempo do treino. No fim você conta como foi, e o professor acompanha.</Muted> : null}
+          {phase === 'ready' && !sport.gps && !draft ? <Muted style={styles.readyHint}>{t('rec.timerHint')}</Muted> : null}
         </ScrollView>
 
         <View style={[styles.controls, { paddingBottom: insets.bottom + 18 }, locked && { opacity: 0 }]} pointerEvents={locked ? 'none' : 'auto'}>
           {phase === 'ready' ? (
-            <BigButton label="Iniciar" icon="play" onPress={() => void start()} />
+            <BigButton label={t('rec.start')} icon="play" onPress={() => void start()} />
           ) : phase === 'running' ? (
             <>
-              <SideButton icon="lock-closed-outline" label="Travar" onPress={() => setLocked(true)} />
-              <BigButton icon="pause" tone="dark" accessibilityLabel="Pausar" onPress={() => pause()} />
+              <SideButton icon="lock-closed-outline" label={t('rec.lock')} onPress={() => setLocked(true)} />
+              <BigButton icon="pause" tone="dark" accessibilityLabel={t('rec.pause')} onPress={() => pause()} />
               <View style={{ width: 64 }} />
             </>
           ) : (
             <>
-              <BigButton label="Continuar" icon="play" onPress={() => resume()} />
-              <BigButton label="Fim" icon="stop" tone="dark" onPress={finish} />
+              <BigButton label={t('rec.continue')} icon="play" onPress={() => resume()} />
+              <BigButton label={t('rec.finish')} icon="stop" tone="dark" onPress={finish} />
             </>
           )}
         </View>
       </View>
 
       {locked ? (
-        <Pressable style={StyleSheet.absoluteFill} onLongPress={() => setLocked(false)} delayLongPress={700} accessibilityLabel="Tela travada. Toque e segure para destravar">
+        <Pressable style={StyleSheet.absoluteFill} onLongPress={() => setLocked(false)} delayLongPress={700} accessibilityLabel={t('rec.lockedA11y')}>
           <View style={[styles.lockPill, { bottom: insets.bottom + 40 }]}>
             <Ionicons name="lock-closed" size={16} color="#fff" />
-            <Text style={styles.lockText}>Tela travada · toque e segure para destravar</Text>
+            <Text style={styles.lockText}>{t('rec.locked')}</Text>
           </View>
         </Pressable>
       ) : null}
 
       <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setSettingsOpen(false)} accessibilityLabel="Fechar ajustes" />
+        <Pressable style={styles.backdrop} onPress={() => setSettingsOpen(false)} accessibilityLabel={t('rec.closeSettings')} />
         <View style={[styles.settings, { paddingBottom: insets.bottom + 20 }]}>
           <View style={styles.handle} />
-          <Text style={styles.settingsTitle}>Ajustes da gravação</Text>
-          <PrefRow title="Manter a tela acesa" subtitle="A tela não apaga enquanto o treino está gravando." value={prefs.keepAwake} onChange={(v) => changePref('keepAwake', v)} />
-          <PrefRow title="Avisos de voz" subtitle={sport.gps ? 'Fala cada quilômetro, as etapas do professor e as pausas.' : 'Avisa o fim do descanso e as pausas.'} value={prefs.voice} onChange={(v) => changePref('voice', v)} />
-          {sport.gps ? <PrefRow title="Pausa automática" subtitle="Pausa sozinho quando você para (semáforo, água) e volta ao andar." value={prefs.autoPause} onChange={(v) => changePref('autoPause', v)} /> : null}
-          {sport.gps ? <PrefRow title="Começar pelo mapa" subtitle="Desligado, a gravação abre nos números grandes." value={prefs.showMap} onChange={(v) => { changePref('showMap', v); setView(v ? 'map' : 'numbers'); }} /> : null}
-          {sport.gps && sport.rate === 'pace' ? <PrefRow title="Velocidade em vez de ritmo" subtitle="km/h no lugar de minutos por quilômetro." value={prefs.speed} onChange={(v) => changePref('speed', v)} /> : null}
-          <Muted style={{ marginTop: 6, lineHeight: 18 }}>Com a tela bloqueada o celular pode parar o GPS. Use o botão Travar para guardar o celular no bolso sem tocar em nada.</Muted>
-          <Button label="Pronto" onPress={() => setSettingsOpen(false)} style={{ marginTop: 14 }} />
+          <Text style={styles.settingsTitle}>{t('rec.settings')}</Text>
+          <PrefRow title={t('rec.pref.awake')} subtitle={t('rec.pref.awakeSub')} value={prefs.keepAwake} onChange={(v) => changePref('keepAwake', v)} />
+          <PrefRow title={t('rec.pref.voice')} subtitle={sport.gps ? t('rec.pref.voiceSubGps') : t('rec.pref.voiceSub')} value={prefs.voice} onChange={(v) => changePref('voice', v)} />
+          {sport.gps ? <PrefRow title={t('rec.autoPausedLabel')} subtitle={t('rec.pref.autoPauseSub')} value={prefs.autoPause} onChange={(v) => changePref('autoPause', v)} /> : null}
+          {sport.gps ? <PrefRow title={t('rec.pref.startMap')} subtitle={t('rec.pref.startMapSub')} value={prefs.showMap} onChange={(v) => { changePref('showMap', v); setView(v ? 'map' : 'numbers'); }} /> : null}
+          {sport.gps && sport.rate === 'pace' ? <PrefRow title={t('rec.pref.speed')} subtitle={t('rec.pref.speedSub')} value={prefs.speed} onChange={(v) => changePref('speed', v)} /> : null}
+          <Muted style={{ marginTop: 6, lineHeight: 18 }}>{t('rec.lockNote')}</Muted>
+          <Button label={t('rec.ok')} onPress={() => setSettingsOpen(false)} style={{ marginTop: 14 }} />
         </View>
       </Modal>
 
       {onPickSport ? (
         <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
-          <Pressable style={styles.backdrop} onPress={() => setPickerOpen(false)} accessibilityLabel="Fechar" />
+          <Pressable style={styles.backdrop} onPress={() => setPickerOpen(false)} accessibilityLabel={t('common:actions.close')} />
           <View style={[styles.settings, { paddingBottom: insets.bottom + 20 }]}>
             <View style={styles.handle} />
-            <Text style={styles.settingsTitle}>Qual treino?</Text>
+            <Text style={styles.settingsTitle}>{t('rec.whichWorkout')}</Text>
             <View style={styles.pickGrid}>
               {SPORTS.map((s2) => {
                 const on = s2.id === sport.id;
@@ -791,14 +796,15 @@ function Minor({ label, value }: { label: string; value: string }) {
 }
 
 function Splits({ splits, speed }: { splits: { km: number; seconds: number; partial?: number }[]; speed: boolean }) {
+  const { t } = useTranslation('fitness');
   const pace = (s: { seconds: number; partial?: number }) => s.seconds / ((s.partial ?? 1000) / 1000);
   const full = splits.filter((s) => !s.partial);
   const best = full.length ? Math.min(...full.map(pace)) : null;
   return (
     <View style={styles.splits}>
       <View style={styles.rowBetween}>
-        <Text style={styles.splitsTitle}>Parciais</Text>
-        <Muted style={{ fontSize: 12 }}>{speed ? 'km · km/h' : 'km · ritmo'}</Muted>
+        <Text style={styles.splitsTitle}>{t('rec.splits')}</Text>
+        <Muted style={{ fontSize: 12 }}>{speed ? t('rec.splitsSpeed') : t('rec.splitsPace')}</Muted>
       </View>
       {[...splits].reverse().slice(0, 6).map((s) => {
         const p = pace(s);
@@ -806,14 +812,14 @@ function Splits({ splits, speed }: { splits: { km: number; seconds: number; part
         return (
           <View key={s.km} style={styles.splitRow}>
             <Text style={styles.splitKm}>{s.partial ? `${s.km}*` : s.km}</Text>
-            <Text style={styles.splitPace}>{speed ? (3600 / p).toFixed(1).replace('.', ',') : formatPace(p)}</Text>
+            <Text style={styles.splitPace}>{speed ? num1(3600 / p) : formatPace(p)}</Text>
             <View style={styles.splitTrack}>
               <View style={[styles.splitBar, { width: `${Math.max(12, Math.min(100, ((best ?? p) / p) * 100))}%` }, isBest && { backgroundColor: colors.success }, s.partial ? { opacity: 0.45 } : null]} />
             </View>
           </View>
         );
       })}
-      {splits.some((s) => s.partial) ? <Muted style={{ fontSize: 11.5 }}>* quilômetro em andamento</Muted> : null}
+      {splits.some((s) => s.partial) ? <Muted style={{ fontSize: 11.5 }}>{t('rec.splitPartial')}</Muted> : null}
     </View>
   );
 }

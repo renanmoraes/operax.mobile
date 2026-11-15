@@ -1,9 +1,11 @@
 import { createElement, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { readAsStringAsync, EncodingType } from 'expo-file-system/legacy';
 import { WebView } from 'react-native-webview';
 import { Button, T } from '@/src/design-system/ui';
 import { colors } from '@/src/design-system/tokens';
+import i18n from '@/src/i18n';
 import { ensureLocalFile } from './viewer';
 
 const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174';
@@ -36,6 +38,7 @@ function pdfJsHtml(base64: string) {
 
 /** PDF dentro do app com rolagem e zoom de pinça. iPhone: leitor do próprio sistema; Android: PDF.js; web: leitor do navegador. */
 export function PdfView({ uri, title, onShare }: { uri: string; title?: string; onShare: () => void }) {
+  const { t } = useTranslation('client');
   const [html, setHtml] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -60,15 +63,15 @@ export function PdfView({ uri, title, onShare }: { uri: string; title?: string; 
   if (failed) {
     return (
       <View style={styles.center}>
-        <T role="title">Não deu para abrir aqui</T>
-        <T role="callout" tone="muted" style={{ textAlign: 'center' }}>Você ainda pode abrir o arquivo em outro app.</T>
-        <Button label="Abrir em outro app" icon="share-outline" onPress={onShare} style={{ marginTop: 6 }} />
+        <T role="title">{t('viewer.cannotOpen')}</T>
+        <T role="callout" tone="muted" style={{ textAlign: 'center' }}>{t('viewer.canOpenElsewhere')}</T>
+        <Button label={t('viewer.openElsewhere')} icon="share-outline" onPress={onShare} style={{ marginTop: 6 }} />
       </View>
     );
   }
 
   if (Platform.OS === 'web') {
-    return createElement('iframe', { src: uri, title: title || 'Documento', style: { border: 0, width: '100%', height: '100%', background: '#eef1f6' } });
+    return createElement('iframe', { src: uri, title: title || i18n.t('client:viewer.document'), style: { border: 0, width: '100%', height: '100%', background: '#eef1f6' } });
   }
 
   return (

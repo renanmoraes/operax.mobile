@@ -1,3 +1,4 @@
+import i18n from '@/src/i18n';
 import type { ApiBooking, BookingAction } from '@/src/shared/api/bookings.api';
 
 /** Ficha do agendamento como a tela mostra (igual ao que o Operax web traz ao abrir na agenda). */
@@ -12,7 +13,7 @@ export type BookingDetails = {
   contactId: string | null;
   payment: string | null;
   paymentKnown: boolean;
-  visit: 'Retorno' | 'Nova consulta' | null;
+  visit: string | null;
   encaixe: string | null;
   semLembrete: string | null;
   staffNotes: string | null;
@@ -25,16 +26,16 @@ export type BookingDetails = {
 
 /** "Particular", "Convênio Unimed", "Convênio" ou nada (recepção ainda não informou). */
 export function paymentSummary(type?: string | null, planName?: string | null): string | null {
-  if (type === 'private') return 'Particular';
-  if (type === 'insurance') return planName ? `Convênio ${planName}` : 'Convênio';
+  if (type === 'private') return i18n.t('agenda:booking.payment.private');
+  if (type === 'insurance') return planName ? i18n.t('agenda:booking.payment.insurance', { plan: planName }) : i18n.t('agenda:booking.payment.insuranceNoPlan');
   return null;
 }
 
 /** Lembrete em linguagem simples: 1440 → "1 dia antes", 120 → "2 h antes", 30 → "30 min antes". */
 export function reminderLabel(minutes: number): string {
-  if (minutes % 1440 === 0) return `${minutes / 1440} ${minutes === 1440 ? 'dia' : 'dias'} antes`;
-  if (minutes % 60 === 0) return `${minutes / 60} h antes`;
-  return `${minutes} min antes`;
+  if (minutes % 1440 === 0) return i18n.t('agenda:booking.reminder.days', { count: minutes / 1440 });
+  if (minutes % 60 === 0) return i18n.t('agenda:booking.reminder.hours', { count: minutes / 60 });
+  return i18n.t('agenda:booking.reminder.minutes', { count: minutes });
 }
 
 /** Telefone E.164 brasileiro para leitura: +5511987654321 → (11) 98765-4321. */
@@ -49,7 +50,7 @@ export function phoneLabel(e164?: string | null): string | null {
 export function detailsFromApi(b: ApiBooking): BookingDetails {
   return {
     id: b.id,
-    client: b.client_name || 'Cliente',
+    client: b.client_name || i18n.t('agenda:booking.client'),
     status: String(b.status).toLowerCase(),
     provider: b.provider_name ?? null,
     service: b.service_name ?? null,
@@ -58,13 +59,13 @@ export function detailsFromApi(b: ApiBooking): BookingDetails {
     contactId: b.client_contact_id ?? null,
     payment: paymentSummary(b.payment_type, b.plan_type_name),
     paymentKnown: b.payment_type === 'private' || b.payment_type === 'insurance',
-    visit: b.visit_kind === 'retorno' ? 'Retorno' : b.visit_kind === 'primeira_consulta' ? 'Nova consulta' : null,
-    encaixe: b.is_encaixe || b.encaixe_justification ? b.encaixe_justification?.trim() || 'Horário sobreposto autorizado pela recepção.' : null,
-    semLembrete: b.sem_lembrete ? (b.sem_lembrete_motivo?.trim() ? `Ninguém vai ser avisado antes do horário: ${b.sem_lembrete_motivo.trim()}.` : 'Ninguém vai ser avisado antes do horário.') : null,
+    visit: b.visit_kind === 'retorno' ? i18n.t('agenda:booking.visitReturn') : b.visit_kind === 'primeira_consulta' ? i18n.t('agenda:booking.visitNew') : null,
+    encaixe: b.is_encaixe || b.encaixe_justification ? b.encaixe_justification?.trim() || i18n.t('agenda:booking.encaixeDefault') : null,
+    semLembrete: b.sem_lembrete ? (b.sem_lembrete_motivo?.trim() ? i18n.t('agenda:booking.noReminderReason', { reason: b.sem_lembrete_motivo.trim() }) : i18n.t('agenda:booking.noReminder')) : null,
     staffNotes: b.staff_notes?.trim() || null,
     customerNote: b.customer_note?.trim() || null,
     reminders: (b.reminder_offsets_minutes ?? []).slice().sort((x, y) => y - x).map(reminderLabel),
-    series: b.series_id ? (b.occurrence_index ? `Faz parte de uma série recorrente (ocorrência ${b.occurrence_index})` : 'Faz parte de uma série recorrente') : null,
+    series: b.series_id ? (b.occurrence_index ? i18n.t('agenda:booking.seriesN', { n: b.occurrence_index }) : i18n.t('agenda:booking.series')) : null,
     rescheduleReason: b.last_reschedule_reason?.trim() || null,
     requestedBy: b.requested_by_contact_name?.trim() || null,
   };
@@ -103,13 +104,7 @@ export const ACTION_PERM = {
   cancel: 'bookingCancel',
 } as const satisfies Record<BookingAction, 'bookingApprove' | 'bookingCreate' | 'bookingCancel'>;
 
-export const ACTION_LABEL: Record<BookingAction, string> = {
-  approve: 'Aprovar pedido',
-  reject: 'Recusar pedido',
-  check_in: 'Dar entrada',
-  no_show: 'Marcar falta',
-  cancel: 'Cancelar agendamento',
-};
+export const actionLabel = (a: BookingAction): string => i18n.t(`agenda:booking.action.${a}`);
 
 /** Status depois da ação (para o modo demo e para atualizar a tela antes de recarregar). */
 export const STATUS_AFTER: Record<BookingAction, string> = {

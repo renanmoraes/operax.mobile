@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { colors, motion, shadows, text, typography } from '@/src/design-system/tokens';
@@ -23,6 +24,7 @@ export function MentionSuggestions({
   loading?: boolean;
   onPick: (item: MentionItem) => void;
 }) {
+  const { t } = useTranslation('team');
   const p = useSharedValue(0);
   useEffect(() => {
     p.set(withTiming(1, { duration: 180, easing: Easing.bezier(...motion.easeOut), reduceMotion: ReduceMotion.Never }));
@@ -32,14 +34,14 @@ export function MentionSuggestions({
   const tint = isUser ? colors.primary : TEAL;
 
   return (
-    <Animated.View style={[styles.panel, anim]} accessibilityLabel={isUser ? 'Marcar alguém da equipe' : 'Marcar paciente'}>
+    <Animated.View style={[styles.panel, anim]} accessibilityLabel={isUser ? t('mention.headUser') : t('mention.a11yContact')}>
       <View style={styles.head}>
         <Ionicons name={isUser ? 'at' : 'medkit-outline'} size={14} color={tint} />
-        <Text style={styles.headText}>{isUser ? 'Marcar alguém da equipe' : 'Marcar paciente ou cliente'}</Text>
-        <Text style={styles.hint}>{isUser ? 'recebe notificação' : 'fica ligado à ficha'}</Text>
+        <Text style={styles.headText}>{isUser ? t('mention.headUser') : t('mention.headContact')}</Text>
+        <Text style={styles.hint}>{isUser ? t('mention.hintUser') : t('mention.hintContact')}</Text>
       </View>
       {items.length === 0 ? (
-        <Text style={styles.empty}>{loading ? 'Buscando…' : query ? `Ninguém encontrado para “${query}”` : isUser ? 'Digite o nome de alguém da equipe' : 'Digite o nome do paciente'}</Text>
+        <Text style={styles.empty}>{loading ? t('mention.searching') : query ? t('mention.noneFor', { query }) : isUser ? t('mention.typeUser') : t('mention.typeContact')}</Text>
       ) : (
         <ScrollView style={{ maxHeight: 232 }} keyboardShouldPersistTaps="always">
           {items.map((it, i) => (
@@ -47,7 +49,7 @@ export function MentionSuggestions({
               key={it.id}
               onPress={() => onPick(it)}
               accessibilityRole="button"
-              accessibilityLabel={`${isUser ? 'Marcar' : 'Citar paciente'} ${it.name}`}
+              accessibilityLabel={t(isUser ? 'mention.itemUser' : 'mention.itemContact', { name: it.name })}
               style={({ pressed }) => [styles.row, i > 0 && styles.rowBorder, pressed && { backgroundColor: colors.rowPress }]}
             >
               <View style={[styles.avatar, { backgroundColor: isUser ? colors.primaryTint : '#dcf6f1' }]}>

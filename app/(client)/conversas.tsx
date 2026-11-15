@@ -2,6 +2,8 @@ import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { Badge, Card, HeroCard, IconTile, Muted, Rise, Screen, ScreenHeader } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { colors, typography } from '@/src/design-system/tokens';
@@ -10,16 +12,17 @@ import type { ChatMessage } from '@/src/features/client/types';
 import { formatHour, sameDay, timeAgo } from '@/src/shared/format';
 import { clientDataMode } from '@/src/features/client/dataMode';
 
-function preview(m: ChatMessage): { chip?: string; text: string } {
-  const who = m.from === 'me' ? 'Você: ' : '';
-  if (m.attachment?.kind === 'video') return { chip: 'Vídeo', text: m.attachment.title ?? m.text ?? 'Vídeo' };
-  if (m.attachment?.kind === 'image') return { chip: 'Foto', text: `${who}${m.text || 'Foto'}` };
+function preview(m: ChatMessage, t: TFunction<'client'>): { chip?: string; text: string } {
+  const who = m.from === 'me' ? t('chats.you') : '';
+  if (m.attachment?.kind === 'video') return { chip: t('chats.video'), text: m.attachment.title ?? m.text ?? t('chats.video') };
+  if (m.attachment?.kind === 'image') return { chip: t('chats.photo'), text: `${who}${m.text || t('chats.photo')}` };
   if (m.attachment?.kind === 'document') return { chip: 'PDF', text: m.attachment.name };
-  if (m.reschedule) return { chip: 'Horário', text: `${who}${m.reschedule.title}` };
+  if (m.reschedule) return { chip: t('chats.slot'), text: `${who}${m.reschedule.title}` };
   return { text: `${who}${m.text}` };
 }
 
 export default function ClientConversationsScreen() {
+  const { t } = useTranslation('client');
   const insets = useSafeAreaInsets();
   const { data: chats } = useChats();
   const { data: companies } = useCompanies();
@@ -27,27 +30,27 @@ export default function ClientConversationsScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom }}>
-        <ScreenHeader title="Conversas" />
+        <ScreenHeader title={t('chats.title')} />
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
           <Rise>
             <HeroCard style={{ padding: 18 }}>
               <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
                 <IconTile icon="shield-checkmark-outline" size={44} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.heroTitle}>Direto com a equipe</Text>
-                  <Muted style={{ marginTop: 3, lineHeight: 19, color: colors.textSoft }}>{clientDataMode() === 'live' ? 'Suas mensagens vão direto para a caixa de entrada da empresa. Sem número pessoal.' : 'Fotos, vídeos e documentos vão para a caixa de entrada da empresa. Sem número pessoal.'}</Muted>
+                  <Text style={styles.heroTitle}>{t('chats.directTitle')}</Text>
+                  <Muted style={{ marginTop: 3, lineHeight: 19, color: colors.textSoft }}>{clientDataMode() === 'live' ? t('chats.directBodyLive') : t('chats.directBodyDemo')}</Muted>
                 </View>
               </View>
             </HeroCard>
           </Rise>
           {chats?.map((c, i) => {
             const last = c.messages[c.messages.length - 1];
-            const p = last ? preview(last) : { text: 'Comece a conversa' };
+            const p = last ? preview(last, t) : { text: t('chats.startConversation') };
             const company = companies?.find((x) => x.slug === c.tenant_slug);
             const lastDate = last ? new Date(last.at) : null;
             return (
               <Rise key={c.tenant_slug} index={i + 1}>
-                <Card onPress={() => router.push(`/cliente/chat/${c.tenant_slug}`)} accessibilityLabel={`Conversa com ${c.tenant_name}${c.unread ? `, ${c.unread} não lidas` : ''}`} style={styles.row}>
+                <Card onPress={() => router.push(`/cliente/chat/${c.tenant_slug}`)} accessibilityLabel={c.unread ? t('chats.a11yUnread', { name: c.tenant_name, count: c.unread }) : t('chats.a11y', { name: c.tenant_name })} style={styles.row}>
                   <IconTile initials={company?.initials} size={52} tone={i === 0 ? 'brand' : i === 1 ? 'soft' : 'neutral'} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <View style={styles.rowTop}>
@@ -71,7 +74,7 @@ export default function ClientConversationsScreen() {
               </Rise>
             );
           })}
-          <Muted style={{ textAlign: 'center', marginTop: 4, lineHeight: 19 }}>Prefere WhatsApp? Cada empresa mostra o número dela dentro da conversa.</Muted>
+          <Muted style={{ textAlign: 'center', marginTop: 4, lineHeight: 19 }}>{t('chats.whatsapp')}</Muted>
         </View>
       </ScrollView>
     </Screen>

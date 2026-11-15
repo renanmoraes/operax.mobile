@@ -2,8 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { showDialog } from '@/src/design-system/Dialog';
 import { useIsFocused } from 'expo-router';
 import { isAxiosError } from 'axios';
+import i18n from '@/src/i18n';
 import * as api from './clientApi';
 import { clientDataMode } from './dataMode';
+import { UserFacingError } from './userFacingError';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import type { ChatMessage, ClientBooking, OutgoingAttachment } from './types';
 import { useEffect } from 'react';
@@ -60,9 +62,9 @@ export function actionErrorMessage(e: unknown): string {
   if (isAxiosError(e)) {
     const msg = (e.response?.data as { message?: unknown } | undefined)?.message;
     if (typeof msg === 'string' && msg.trim() && (e.response?.status ?? 500) < 500) return msg;
-    return 'Não foi possível concluir agora. Confira a internet e tente de novo.';
+    return i18n.t('client:errors.actionOffline');
   }
-  return e instanceof Error && e.message ? e.message : 'Não foi possível concluir agora.';
+  return e instanceof UserFacingError && e.message ? e.message : i18n.t('client:errors.action');
 }
 
 function useBookingMutation<A>(fn: (arg: A) => Promise<unknown>) {
@@ -70,7 +72,7 @@ function useBookingMutation<A>(fn: (arg: A) => Promise<unknown>) {
   return useMutation({
     mutationFn: fn,
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.bookings }),
-    onError: (e) => void showDialog({ title: 'Não deu certo', message: actionErrorMessage(e), tone: 'warn' }),
+    onError: (e) => void showDialog({ title: i18n.t('client:errors.title'), message: actionErrorMessage(e), tone: 'warn' }),
   });
 }
 
@@ -89,11 +91,11 @@ export function useClassAction() {
       // Inscreveu-se na aula: aviso na hora (os lembretes antes da aula vêm do sync da agenda).
       if (vars.action === 'accept') {
         const b = qc.getQueryData<ClientBooking[]>(keys.bookings)?.find((x) => x.id === vars.id);
-        if (b) void notifyNow('Inscrição na aula confirmada', describe(b, new Date(b.starts_at), new Date()), `/cliente/aula/${b.id}`);
+        if (b) void notifyNow(i18n.t('client:reminders.classEnrolled'), describe(b, new Date(b.starts_at), new Date()), `/cliente/aula/${b.id}`);
       }
       return qc.invalidateQueries({ queryKey: keys.bookings });
     },
-    onError: (e) => void showDialog({ title: 'Não deu certo', message: actionErrorMessage(e), tone: 'warn' }),
+    onError: (e) => void showDialog({ title: i18n.t('client:errors.title'), message: actionErrorMessage(e), tone: 'warn' }),
   });
 }
 

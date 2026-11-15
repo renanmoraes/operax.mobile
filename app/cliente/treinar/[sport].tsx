@@ -1,4 +1,5 @@
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import i18n from '@/src/i18n';
 import { useMemo } from 'react';
 import { useClientCapabilities } from '@/src/features/client/useClientData';
 import { Recorder, type RecorderSave } from '@/src/features/fitness/Recorder';
@@ -50,7 +51,7 @@ export default function FreeRecordScreen() {
     <Recorder
       sport={sport}
       heading={sport.label}
-      subtitle="Treino livre"
+      subtitle={i18n.t('fitness:freeWorkout')}
       askTitle
       askTag
       onPickSport={(next) => router.replace(`/cliente/treinar/${next}`)}

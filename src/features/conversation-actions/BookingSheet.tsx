@@ -1,5 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { locale } from '@/src/i18n';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Button, Chip, Field, PressableScale } from '@/src/design-system/ui';
@@ -13,7 +15,7 @@ import {
 } from '@/src/shared/api/conversation-actions.api';
 import { dayLabel, dayRange, DEMO_PROVIDERS, DEMO_SERVICES, demoSlots, nextDays, servicesFor, upcomingSlots } from './logic';
 
-const hhmm = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+const hhmm = (iso: string) => new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
 const DAYS = 14;
 
 /** Primeiro nome, mantendo títulos como "Dr." e "Dra." junto ("Dr. Ricardo"). */
@@ -43,6 +45,7 @@ export function BookingSheet({
   onBooked: (summary: string) => void;
   onError: (msg: string) => void;
 }) {
+  const { t } = useTranslation('inbox');
   const providersQ = useQuery({ queryKey: ['sched', 'providers'], enabled: live && visible, queryFn: listSchedProviders, staleTime: 5 * 60_000 });
   const servicesQ = useQuery({ queryKey: ['sched', 'services'], enabled: live && visible, queryFn: listSchedServices, staleTime: 5 * 60_000 });
   const providers = (live ? providersQ.data ?? [] : DEMO_PROVIDERS).filter((p) => p.is_active !== false);
@@ -94,35 +97,37 @@ export function BookingSheet({
     },
     onSuccess: (_res, v) => {
       const d = new Date(v.slot.starts_at);
-      const when = `${d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', '')} às ${hhmm(v.slot.starts_at)}`;
-      onBooked(`${v.serviceName} com ${v.providerName}, ${when}`);
+      const when = t('booking.when', { date: d.toLocaleDateString(locale(), { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', ''), time: hhmm(v.slot.starts_at) });
+      onBooked(t('booking.summary', { service: v.serviceName, provider: v.providerName, when }));
       setSlot(null);
       setNote('');
     },
     onError: (e: unknown) => {
-      const msg = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
-      onError(Array.isArray(msg) ? msg[0] : msg || 'Não foi possível agendar. Tente outro horário.');
+      // Só mostra o texto do servidor quando é um aviso (4xx) escrito; erro de servidor ou rede usa o texto do app.
+      const res = (e as { response?: { status?: number; data?: { message?: string | string[] } } })?.response;
+      const raw = Array.isArray(res?.data?.message) ? res?.data?.message[0] : res?.data?.message;
+      onError(typeof raw === 'string' && raw.trim() && (res?.status ?? 500) < 500 ? raw : t('booking.failed'));
     },
   });
 
   const submit = () => {
     if (!slot || !providerId || !serviceId || create.isPending) return;
-    create.mutate({ slot, providerId, serviceId, providerName: provider?.name ?? 'a equipe', serviceName: service?.name ?? 'Horário', note });
+    create.mutate({ slot, providerId, serviceId, providerName: provider?.name ?? t('booking.teamFallback'), serviceName: service?.name ?? t('booking.slotFallback'), note });
   };
 
   const loadingBase = live && (providersQ.isLoading || servicesQ.isLoading);
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title={`Agendar para ${shortName(contactName)}`} closeLabel="Fechar agendamento">
+    <BottomSheet visible={visible} onClose={onClose} title={t('booking.title', { name: shortName(contactName) })} closeLabel={t('booking.close')}>
       <ScrollView style={{ maxHeight: 540 }} contentContainerStyle={{ gap: 16 }} keyboardShouldPersistTaps="handled">
         {loadingBase ? (
           <ActivityIndicator color={colors.primary} style={{ paddingVertical: 30 }} />
         ) : providers.length === 0 ? (
-          <Text style={styles.empty}>Nenhum profissional ativo na agenda. Cadastre pelo Operax web.</Text>
+          <Text style={styles.empty}>{t('booking.noProviders')}</Text>
         ) : (
           <>
             {providers.length > 1 ? (
-              <Step label="Profissional">
+              <Step label={t('booking.provider')}>
                 <View style={styles.wrap}>
                   {providers.map((p) => (
                     <Chip key={p.id} label={p.name} selected={providerId === p.id} onPress={() => setProviderId(p.id)} />
@@ -132,7 +137,7 @@ export function BookingSheet({
             ) : null}
 
             {providerId ? (
-              <Step label="Serviço">
+              <Step label={t('booking.service')}>
                 <View style={styles.wrap}>
                   {services.map((s) => (
                     <Chip key={s.id} label={`${s.name} · ${s.default_duration_min} min`} selected={serviceId === s.id} onPress={() => setServiceId(s.id)} />
@@ -142,13 +147,13 @@ export function BookingSheet({
             ) : null}
 
             {service ? (
-              <Step label="Dia">
+              <Step label={t('booking.day')}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}>
                   {days.map((d, i) => {
                     const on = i === dayIdx;
                     const l = dayLabel(d);
                     return (
-                      <PressableScale key={i} onPress={() => setDayIdx(i)} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} style={[styles.day, on && styles.dayOn]}>
+                      <PressableScale key={i} onPress={() => setDayIdx(i)} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={d.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })} style={[styles.day, on && styles.dayOn]}>
                         <Text style={[styles.dayTop, on && { color: 'rgba(255,255,255,0.85)' }]}>{l.top}</Text>
                         <Text style={[styles.dayNum, on && { color: '#fff' }]}>{l.day}</Text>
                       </PressableScale>
@@ -159,11 +164,11 @@ export function BookingSheet({
             ) : null}
 
             {service ? (
-              <Step label="Horário livre">
+              <Step label={t('booking.freeSlot')}>
                 {slotsQ.isLoading ? (
                   <ActivityIndicator color={colors.primary} style={{ paddingVertical: 14 }} />
                 ) : slots.length === 0 ? (
-                  <Text style={styles.empty}>Sem horário livre neste dia. Tente o próximo.</Text>
+                  <Text style={styles.empty}>{t('booking.noSlots')}</Text>
                 ) : (
                   <View style={styles.slots}>
                     {slots.map((s) => {
@@ -179,12 +184,12 @@ export function BookingSheet({
               </Step>
             ) : null}
 
-            {slot ? <Field label="Recado para o cliente (opcional)" value={note} onChangeText={setNote} placeholder="Ex.: chegar 10 min antes" /> : null}
+            {slot ? <Field label={t('booking.noteLabel')} value={note} onChangeText={setNote} placeholder={t('booking.notePlaceholder')} /> : null}
           </>
         )}
       </ScrollView>
       <Button
-        label={slot ? `Agendar ${dayLabel(day).top.toLowerCase()} às ${hhmm(slot.starts_at)}` : 'Escolha um horário'}
+        label={slot ? t('booking.submit', { day: dayLabel(day).top.toLowerCase(), time: hhmm(slot.starts_at) }) : t('booking.pickSlot')}
         disabled={!slot}
         loading={create.isPending}
         onPress={submit}

@@ -1,4 +1,5 @@
 import { Redirect, Tabs } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/design-system/tokens';
 import { GlassTabBar } from '@/src/design-system/GlassTabBar';
@@ -27,6 +28,7 @@ export default function AppLayout() {
   const teamChat = useTeamChat();
   const qc = useQueryClient();
   // Aviso novo chega ao vivo na aba Avisos.
+  const { t } = useTranslation('nav');
   useSocketEvents({ 'notification.new': () => void qc.invalidateQueries({ queryKey: ['notifications'] }) }, user?.kind === 'staff');
   // Primeira entrada da equipe: pede as permissões do aparelho (depois ficam em Perfil).
   const [permsSeen, setPermsSeen] = useState<boolean | null>(null);
@@ -58,7 +60,7 @@ export default function AppLayout() {
         <Tabs.Screen
           name="inbox/index"
           options={{
-            title: 'Atendimento',
+            title: t('staff.inbox'),
             headerShown: false,
             href: visible('inbox/index') ? undefined : null,
             tabBarIcon: ({ color, size }) => (
@@ -69,7 +71,7 @@ export default function AppLayout() {
         <Tabs.Screen
           name="agenda"
           options={{
-            title: 'Agenda',
+            title: t('staff.agenda'),
             href: visible('agenda') ? undefined : null,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="calendar" size={size} color={color as string} />
@@ -79,7 +81,7 @@ export default function AppLayout() {
         <Tabs.Screen
           name="notifications"
           options={{
-            title: 'Avisos',
+            title: t('staff.notifications'),
             href: visible('notifications') ? undefined : null,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="notifications" size={size} color={color as string} />
@@ -89,7 +91,7 @@ export default function AppLayout() {
         <Tabs.Screen
           name="more"
           options={{
-            title: 'Mais',
+            title: t('staff.more'),
             headerShown: false,
             href: visible('more') ? undefined : null,
             // Mensagens novas do chat interno aparecem como contador na aba Mais.
@@ -101,9 +103,9 @@ export default function AppLayout() {
         />
         {/* Telas abertas pelo Mais: ficam fora da barra, mas acessíveis. No expo-router 58
             `href: null` faz a rota redirecionar para a primeira aba, então só escondemos o item. */}
-        <Tabs.Screen name="kanban" options={{ title: 'Kanban', tabBarItemStyle: HIDDEN_ITEM }} />
-        <Tabs.Screen name="profile" options={{ title: 'Perfil', tabBarItemStyle: HIDDEN_ITEM }} />
-        <Tabs.Screen name="history" options={{ title: 'Histórico', tabBarItemStyle: HIDDEN_ITEM }} />
+        <Tabs.Screen name="kanban" options={{ title: t('staff.kanban'), tabBarItemStyle: HIDDEN_ITEM }} />
+        <Tabs.Screen name="profile" options={{ title: t('staff.profile'), tabBarItemStyle: HIDDEN_ITEM }} />
+        <Tabs.Screen name="history" options={{ title: t('staff.history'), tabBarItemStyle: HIDDEN_ITEM }} />
       </Tabs>
     </QueueDrawerProvider>
   );

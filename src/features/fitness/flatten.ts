@@ -1,4 +1,5 @@
 import type { FitnessCombinedItem, FitnessExerciseItem, FitnessExerciseSnapshot, FitnessWorkoutView, RecordResultBody } from './types';
+import i18n from '@/src/i18n';
 
 export function parseKg(load: string | undefined): number {
   if (!load) return 0;
@@ -6,17 +7,7 @@ export function parseKg(load: string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-const BLOCK_LABEL: Record<FitnessCombinedItem['block_kind'], string> = {
-  superset: 'Superset',
-  biset: 'Bi-set',
-  triset: 'Tri-set',
-  circuit: 'Circuito',
-  dropset: 'Drop set',
-  rest_pause: 'Rest-pause',
-  pyramid: 'Pirâmide',
-  cluster: 'Cluster',
-  giant_set: 'Série gigante',
-};
+const blockLabel = (k: FitnessCombinedItem['block_kind']) => i18n.t(`fitness:block.${k}`);
 
 export type ExerciseRow = {
   key: string;
@@ -37,6 +28,8 @@ export type ExerciseRow = {
   prescription: string;
   loadLabel: string;
   tag?: string;
+  /** Tipo do bloco combinado (compare por isto, não pelo `tag`, que muda com o idioma). */
+  blockKind?: FitnessCombinedItem['block_kind'];
   notes?: string;
 };
 
@@ -83,9 +76,10 @@ export function flattenWorkout(w: FitnessWorkoutView): ExerciseRow[] {
         restSeconds: item.rest_seconds,
         kg: loads[0],
         reps,
-        prescription: distinct.length > 1 ? `${item.rounds} rodadas · ${item.items.length} exercícios` : `${item.rounds} séries · ${item.items.length} cargas`,
+        prescription: i18n.t(distinct.length > 1 ? 'fitness:rx.rounds' : 'fitness:rx.loads', { rounds: item.rounds, count: item.items.length }),
         loadLabel,
-        tag: BLOCK_LABEL[item.block_kind],
+        tag: blockLabel(item.block_kind),
+        blockKind: item.block_kind,
       });
     });
   });

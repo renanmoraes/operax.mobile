@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import i18n, { locale } from '@/src/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,14 +24,14 @@ function Stepper({ label, value, unit, onMinus, onPlus }: { label: string; value
     <View style={styles.stepper}>
       <Text style={styles.stepLabel}>{label}</Text>
       <View style={styles.stepRow}>
-        <PressableScale onPress={onMinus} accessibilityRole="button" accessibilityLabel={`Diminuir ${label.toLowerCase()}`} scaleTo={0.9} style={styles.stepBtn}>
+        <PressableScale onPress={onMinus} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:session.decrease', { what: label.toLowerCase() })} scaleTo={0.9} style={styles.stepBtn}>
           <Ionicons name="remove" size={22} color={colors.primary} />
         </PressableScale>
         <Num size="lg" accessibilityLiveRegion="polite">
           {value}
           {unit ? <Text style={{ fontSize: 13, color: colors.textMuted }}>{` ${unit}`}</Text> : null}
         </Num>
-        <PressableScale onPress={onPlus} accessibilityRole="button" accessibilityLabel={`Aumentar ${label.toLowerCase()}`} scaleTo={0.9} style={styles.stepBtn}>
+        <PressableScale onPress={onPlus} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:session.increase', { what: label.toLowerCase() })} scaleTo={0.9} style={styles.stepBtn}>
           <Ionicons name="add" size={22} color={colors.primary} />
         </PressableScale>
       </View>
@@ -45,7 +46,7 @@ function Spark({ values }: { values: number[] }) {
   const pts = values.map((v, i) => [4 + (i * 112) / (values.length - 1), max === min ? 18 : 32 - ((v - min) / (max - min)) * 28]);
   const last = pts[pts.length - 1];
   return (
-    <Svg width={120} height={36} accessibilityLabel="Evolução da carga nas últimas sessões">
+    <Svg width={120} height={36} accessibilityLabel={i18n.t('fitness:session.sparkA11y')}>
       <Polyline points={pts.map((p) => p.join(',')).join(' ')} stroke={colors.primary} strokeWidth={2.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
       <Circle cx={last[0]} cy={last[1]} r={4} fill={colors.primary} />
     </Svg>
@@ -64,9 +65,9 @@ function NoSetsSession({ workout }: { workout: FitnessWorkoutView }) {
       <TopBar safe title={workout.title} onBack={() => router.back()} />
       <EmptyState
         icon="list-outline"
-        title="Este treino não tem séries para marcar"
-        subtitle="Ele é de outra modalidade (WOD, corrida ou orientação). Abra a ficha para registrar o resultado de cada parte."
-        actionLabel="Abrir a ficha"
+        title={i18n.t('fitness:session.noSets')}
+        subtitle={i18n.t('fitness:session.noSetsSub')}
+        actionLabel={i18n.t('fitness:session.openSheet')}
         onAction={() => router.replace(`/cliente/treino/${workout.id}`)}
       />
     </Screen>
@@ -138,7 +139,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
 
   function say(text: string) {
     show(text, 'info', 'volume-high-outline');
-    if (voice) Speech.speak(text, { language: 'pt-BR' });
+    if (voice) Speech.speak(text, { language: locale() });
   }
 
   function goTo(i: number) {
@@ -152,7 +153,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
   function completeSet() {
     const next = logs.map((l, i) => (i === idx ? [...l, { kg, reps }] : l));
     setLogs(next);
-    say(`${formatKg(kg)} quilos, ${reps} repetições`);
+    say(i18n.t('fitness:session.saySet', { kg: formatKg(kg), reps }));
     const doneCount = next[idx].length;
     if (doneCount < row.sets.length) {
       // Próxima série já vem com a carga/repetições prescritas (drop set muda a cada estágio).
@@ -175,28 +176,28 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
   }
 
   const primary = resting
-    ? { label: 'Pular descanso', onPress: () => setRest(0) }
+    ? { label: i18n.t('fitness:rest.skipA11y'), onPress: () => setRest(0) }
     : exDone
       ? isLast
-        ? { label: 'Finalizar treino', onPress: finish }
-        : { label: `Próximo: ${rows[idx + 1].name}`, onPress: () => goTo(idx + 1) }
-      : { label: `Concluir série ${done.length + 1}`, onPress: completeSet };
+        ? { label: i18n.t('fitness:session.finish'), onPress: finish }
+        : { label: i18n.t('fitness:session.nextEx', { name: rows[idx + 1].name }), onPress: () => goTo(idx + 1) }
+      : { label: i18n.t('fitness:session.completeSet', { n: done.length + 1 }), onPress: completeSet };
 
   const volume = done.reduce((n, s) => n + s.kg * s.reps, 0);
 
   return (
     <Screen backdrop="default">
       <View style={[styles.top, { paddingTop: insets.top + 12 }]}>
-        <IconButton icon="close" accessibilityLabel="Sair do treino (seu progresso fica salvo)" onPress={() => router.back()} />
+        <IconButton icon="close" accessibilityLabel={i18n.t('fitness:session.exitA11y')} onPress={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Muted style={{ fontSize: 12.5 }}>{workout.title}</Muted>
-          <Num size="md" style={{ marginTop: 2 }} accessibilityLabel={`Tempo de treino ${formatClock(elapsed)}`}>{formatClock(elapsed)}</Num>
+          <Num size="md" style={{ marginTop: 2 }} accessibilityLabel={i18n.t('fitness:session.timeA11y', { time: formatClock(elapsed) })}>{formatClock(elapsed)}</Num>
         </View>
         <PressableScale
           onPress={() => setVoice((v) => !v)}
           accessibilityRole="switch"
           accessibilityState={{ checked: voice }}
-          accessibilityLabel="Narração por voz"
+          accessibilityLabel={i18n.t('fitness:session.voice')}
           scaleTo={0.9}
           style={[styles.voice, { backgroundColor: voice ? colors.primaryTint : '#fff' }]}
         >
@@ -213,7 +214,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
               onPress={() => goTo(i)}
               hitSlop={{ top: 10, bottom: 10 }}
               accessibilityRole="button"
-              accessibilityLabel={`Ir para o exercício ${i + 1}, ${r.name}`}
+              accessibilityLabel={i18n.t('fitness:session.goToEx', { n: i + 1, name: r.name })}
               accessibilityState={{ selected: i === idx }}
               style={styles.segmentHit}
             >
@@ -226,13 +227,13 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
       </View>
       <View style={styles.navRow}>
         <Text style={styles.navCount}>
-          {'Exercício '}
+          {i18n.t('fitness:session.exercise') + ' '}
           <Text style={styles.navCountStrong}>{idx + 1}</Text>
-          {` de ${rows.length}`}
+          {i18n.t('fitness:session.ofTotal', { total: rows.length })}
         </Text>
-        <PressableScale onPress={() => setListOpen(true)} accessibilityRole="button" accessibilityLabel="Ver todos os exercícios do treino" style={styles.navList}>
+        <PressableScale onPress={() => setListOpen(true)} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:session.seeAllA11y')} style={styles.navList}>
           <Ionicons name="list" size={16} color={colors.primary} />
-          <Text style={styles.navListText}>Ver treino</Text>
+          <Text style={styles.navListText}>{i18n.t('fitness:session.seeWorkout')}</Text>
         </PressableScale>
       </View>
 
@@ -241,7 +242,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
           <PressableScale
             onPress={() => router.push(`/cliente/exercicio/${exId}?treino=${workout.id}`)}
             accessibilityRole="button"
-            accessibilityLabel={`Ver como executar ${exName}`}
+            accessibilityLabel={i18n.t('fitness:session.howToA11y', { name: exName })}
           >
             <LinearGradient colors={gradients.media} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.thumb}>
               <View style={styles.thumbPlay}>
@@ -252,10 +253,10 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.name}>{exName}</Text>
             <Text style={styles.prescription} numberOfLines={2}>
-              {[exName !== row.name && row.tag ? `${row.tag}: ${row.name}` : null, exSnap?.muscle_group, row.prescription, row.tag === 'Drop set' ? row.loadLabel : null].filter(Boolean).join(' · ')}
+              {[exName !== row.name && row.tag ? `${row.tag}: ${row.name}` : null, exSnap?.muscle_group, row.prescription, row.blockKind === 'dropset' ? row.loadLabel : null].filter(Boolean).join(' · ')}
             </Text>
             <Pressable onPress={() => router.push(`/cliente/exercicio/${exId}?treino=${workout.id}`)} hitSlop={8} accessibilityRole="link">
-              <Text style={styles.howTo}>{exSnap?.media.length ? 'Vídeo do seu personal' : 'Como executar'}</Text>
+              <Text style={styles.howTo}>{exSnap?.media.length ? i18n.t('fitness:session.coachVideo') : i18n.t('fitness:session.howTo')}</Text>
             </Pressable>
           </View>
         </View>
@@ -266,8 +267,8 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
             const current = i === done.length && !resting;
             return (
               <View key={i} style={[styles.pill, log ? styles.pillDone : current ? styles.pillNow : styles.pillNext]}>
-                <Text style={[styles.pillTitle, { color: log ? colors.primaryDeep : colors.textMuted }]}>{`Série ${i + 1}`}</Text>
-                <Text style={[styles.pillValue, { color: log ? colors.primaryDeep : current ? colors.text : colors.textMuted }]}>{log ? `${formatKg(log.kg)} × ${log.reps}` : current ? 'agora' : '—'}</Text>
+                <Text style={[styles.pillTitle, { color: log ? colors.primaryDeep : colors.textMuted }]}>{i18n.t('fitness:session.setN', { n: i + 1 })}</Text>
+                <Text style={[styles.pillValue, { color: log ? colors.primaryDeep : current ? colors.text : colors.textMuted }]}>{log ? `${formatKg(log.kg)} × ${log.reps}` : current ? i18n.t('fitness:session.now') : '—'}</Text>
               </View>
             );
           })}
@@ -275,14 +276,14 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
 
         {resting ? (
           <View style={styles.restCard}>
-            <ProgressRing size={132} stroke={10} progress={rest / restTotal} accessibilityLabel={`Descanso: ${rest} segundos`}>
+            <ProgressRing size={132} stroke={10} progress={rest / restTotal} accessibilityLabel={i18n.t('fitness:session.restA11y', { count: rest })}>
               <Num size="xl">{rest}</Num>
-              <Muted style={{ fontSize: 12 }}>segundos</Muted>
+              <Muted style={{ fontSize: 12 }}>{i18n.t('fitness:session.seconds')}</Muted>
             </ProgressRing>
             <View style={{ flex: 1 }}>
-              <Text style={styles.restTitle}>Descanso</Text>
-              <Muted style={{ marginTop: 4, lineHeight: 19 }}>{`A seguir: série ${done.length + 1} · ${formatKg(kg)} kg × ${reps}`}</Muted>
-              <PressableScale onPress={() => { setRest((r) => r + 15); setRestTotal((t) => Math.max(t, rest + 15)); }} accessibilityRole="button" accessibilityLabel="Mais 15 segundos de descanso" style={styles.more}>
+              <Text style={styles.restTitle}>{i18n.t('fitness:rest.title')}</Text>
+              <Muted style={{ marginTop: 4, lineHeight: 19 }}>{i18n.t('fitness:session.upNext', { n: done.length + 1, kg: formatKg(kg), reps })}</Muted>
+              <PressableScale onPress={() => { setRest((r) => r + 15); setRestTotal((t) => Math.max(t, rest + 15)); }} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:rest.plus15A11y')} style={styles.more}>
                 <Text style={styles.moreText}>+15 s</Text>
               </PressableScale>
             </View>
@@ -293,20 +294,20 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
               <Ionicons name="checkmark" size={24} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.restTitle}>Exercício concluído</Text>
-              <Muted style={{ marginTop: 3, color: colors.textSoft }}>{`Volume de ${volume.toLocaleString('pt-BR')} kg`}</Muted>
+              <Text style={styles.restTitle}>{i18n.t('fitness:session.exDone')}</Text>
+              <Muted style={{ marginTop: 3, color: colors.textSoft }}>{i18n.t('fitness:session.volume', { kg: volume.toLocaleString(locale()) })}</Muted>
             </View>
           </LinearGradient>
         ) : (
           <>
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
-              <Stepper label="Carga" value={formatKg(kg)} unit="kg" onMinus={() => setKg((v) => Math.max(0, v - step))} onPlus={() => setKg((v) => v + step)} />
-              <Stepper label="Repetições" value={String(reps)} onMinus={() => setReps((v) => Math.max(1, v - 1))} onPlus={() => setReps((v) => v + 1)} />
+              <Stepper label={i18n.t('fitness:session.load')} value={formatKg(kg)} unit="kg" onMinus={() => setKg((v) => Math.max(0, v - step))} onPlus={() => setKg((v) => v + step)} />
+              <Stepper label={i18n.t('fitness:log.reps')} value={String(reps)} onMinus={() => setReps((v) => Math.max(1, v - 1))} onPlus={() => setReps((v) => v + 1)} />
             </View>
             {LOAD_HISTORY[exId] ? (
               <View style={styles.lastCard}>
                 <View style={{ flex: 1 }}>
-                  <Muted style={{ fontSize: 12 }}>Última vez</Muted>
+                  <Muted style={{ fontSize: 12 }}>{i18n.t('fitness:session.lastTime')}</Muted>
                   <Text style={styles.lastValue}>{`${formatKg(LOAD_HISTORY[exId].slice(-1)[0])} kg × ${row.reps}`}</Text>
                 </View>
                 <Spark values={LOAD_HISTORY[exId]} />
@@ -338,20 +339,20 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
           items={[
             {
               icon: paused ? 'play' : 'pause',
-              label: paused ? 'Continuar' : 'Pausar',
-              accessibilityLabel: paused ? 'Continuar treino' : 'Pausar treino',
+              label: paused ? i18n.t('fitness:rec.continue') : i18n.t('fitness:rec.pause'),
+              accessibilityLabel: paused ? i18n.t('fitness:session.resumeA11y') : i18n.t('fitness:session.pauseA11y'),
               tone: 'primary',
               active: paused,
               onPress: () => setPaused((p) => !p),
             },
             {
               icon: 'play-skip-forward',
-              label: 'Pular',
-              accessibilityLabel: 'Pular para o próximo exercício',
+              label: i18n.t('fitness:rest.skip'),
+              accessibilityLabel: i18n.t('fitness:session.skipA11y'),
               disabled: isLast,
               onPress: () => goTo(idx + 1),
             },
-            { icon: 'flag', label: 'Encerrar', accessibilityLabel: 'Encerrar treino', tone: 'danger', onPress: finish },
+            { icon: 'flag', label: i18n.t('fitness:session.end'), accessibilityLabel: i18n.t('fitness:session.endA11y'), tone: 'danger', onPress: finish },
           ]}
         />
       </View>
@@ -378,9 +379,9 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={[styles.listName, on && { color: colors.primary }]} numberOfLines={1}>{r.name}</Text>
-                <Text style={styles.listMeta} numberOfLines={1}>{count > 0 && !isDone ? `${count} de ${r.sets.length} séries · ${r.prescription}` : r.prescription}</Text>
+                <Text style={styles.listMeta} numberOfLines={1}>{count > 0 && !isDone ? i18n.t('fitness:session.listMeta', { count, total: r.sets.length, rx: r.prescription }) : r.prescription}</Text>
               </View>
-              {on ? <Text style={styles.listNow}>agora</Text> : null}
+              {on ? <Text style={styles.listNow}>{i18n.t('fitness:session.now')}</Text> : null}
             </Pressable>
           );
         })}

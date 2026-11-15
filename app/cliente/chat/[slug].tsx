@@ -1,5 +1,5 @@
-import { isAxiosError } from 'axios';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,6 +16,7 @@ import { colors, gradients, radii, shadows, text, typography } from '@/src/desig
 import { ChatBubble } from '@/src/features/client/ChatBubble';
 import { useBooking, useChat, useCompanies, useMarkChatRead, useSendChat } from '@/src/features/client/useClientData';
 import { clientDataMode } from '@/src/features/client/dataMode';
+import { UserFacingError } from '@/src/features/client/userFacingError';
 import type { OutgoingAttachment } from '@/src/features/client/types';
 import { openSystemSettings } from '@/src/features/permissions/permissions';
 import { formatHour, weekdayShort } from '@/src/shared/format';
@@ -30,6 +31,7 @@ function AttachOption({ icon, label, tone, onPress }: { icon: IconName; label: s
 }
 
 export default function ClientChatScreen() {
+  const { t } = useTranslation(['client', 'common']);
   const insets = useSafeAreaInsets();
   const { slug, remarcar, pedido } = useLocalSearchParams<{ slug: string; remarcar?: string; pedido?: string }>();
   const { data: chat } = useChat(slug);
@@ -38,7 +40,7 @@ export default function ClientChatScreen() {
   const send = useSendChat(slug);
   const { mutate: markRead } = useMarkChatRead();
   const scrollRef = useRef<ScrollViewInstance>(null);
-  const [text, setText] = useState(pedido ? 'Oi! Queria marcar um horário.' : remarcar ? 'Consigo em outro dia? Surgiu um imprevisto.' : '');
+  const [text, setText] = useState(pedido ? t('chat.draftRequest') : remarcar ? t('chat.draftReschedule') : '');
   const [sheet, setSheet] = useState(false);
   const [info, setInfo] = useState(false);
   const [draft, setDraft] = useState<OutgoingAttachment | null>(null);
@@ -60,7 +62,7 @@ export default function ClientChatScreen() {
     setSheet(false);
     const p = await ImagePicker.requestCameraPermissionsAsync();
     if (!p.granted) {
-      setPermIssue('Para usar a câmera, libere o acesso nos ajustes do celular.');
+      setPermIssue(t('chat.cameraDenied'));
       return;
     }
     const r = await ImagePicker.launchCameraAsync({ mediaTypes: ['images', 'videos'], quality: 0.8 });
@@ -98,19 +100,19 @@ export default function ClientChatScreen() {
     try {
       await send.mutateAsync({
         text: submitted.trim(),
-        reschedule: withReschedule && booking ? { booking_id: booking.id, title: booking.service_name ?? 'Compromisso', original_at: booking.starts_at } : undefined,
+        reschedule: withReschedule && booking ? { booking_id: booking.id, title: booking.service_name ?? t('reminders.appointment'), original_at: booking.starts_at } : undefined,
       });
       setText((cur) => (cur === submitted ? '' : cur));
       setWithReschedule(false);
     } catch (e) {
-      setSendError(e instanceof Error && !isAxiosError(e) ? e.message : 'Não foi possível enviar agora. Confira a internet e tente de novo.');
+      setSendError(e instanceof UserFacingError ? e.message : t('chat.sendFailed'));
     }
   }
 
   async function startVoice() {
     const result = await voice.start();
-    if (result === 'blocked' || result === 'denied') setPermIssue('Para gravar áudio, libere o microfone nos ajustes do celular.');
-    else if (result === 'unavailable') setPermIssue('Este aparelho não deixou usar o microfone.');
+    if (result === 'blocked' || result === 'denied') setPermIssue(t('chat.micDenied'));
+    else if (result === 'unavailable') setPermIssue(t('chat.micUnavailable'));
   }
 
   async function sendVoice() {
@@ -129,21 +131,21 @@ export default function ClientChatScreen() {
     <Screen backdrop="chat">
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-          <IconButton icon="chevron-back" tone="soft" accessibilityLabel="Voltar" onPress={() => router.back()} />
+          <IconButton icon="chevron-back" tone="soft" accessibilityLabel={t('common:actions.back')} onPress={() => router.back()} />
           <IconTile initials={company?.initials ?? (chat?.tenant_name ?? '').slice(0, 2).toUpperCase()} size={44} tone="brand" />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.headerTitle} numberOfLines={1}>{chat?.tenant_name}</Text>
             <Muted numberOfLines={1}>{chat?.team_label}</Muted>
           </View>
-          <IconButton icon="information-circle-outline" tone="soft" accessibilityLabel="Informações da conversa" onPress={() => setInfo((v) => !v)} />
+          <IconButton icon="information-circle-outline" tone="soft" accessibilityLabel={t('chat.infoA11y')} onPress={() => setInfo((v) => !v)} />
         </View>
 
         {info ? (
           <Card style={styles.info}>
-            <Text style={styles.infoTitle}>Conversa direta com a equipe</Text>
-            <Muted style={{ marginTop: 4, lineHeight: 19 }}>{textOnly ? 'Suas mensagens vão para a caixa de entrada da empresa, sem passar por número pessoal.' : 'Suas mensagens, fotos e documentos vão para a caixa de entrada da empresa, sem passar por número pessoal.'}</Muted>
-            {chat?.service_hours_text ? <Body style={{ marginTop: 10, fontSize: 13.5 }}>{`Atendimento: ${chat.service_hours_text}`}</Body> : null}
-            {chat?.whatsapp_url ? <Button label="Continuar pelo WhatsApp" variant="soft" compact icon="logo-whatsapp" onPress={() => void Linking.openURL(chat.whatsapp_url!)} style={{ marginTop: 12, alignSelf: 'flex-start' }} /> : null}
+            <Text style={styles.infoTitle}>{t('chat.directTitle')}</Text>
+            <Muted style={{ marginTop: 4, lineHeight: 19 }}>{textOnly ? t('chat.directBodyText') : t('chat.directBodyMedia')}</Muted>
+            {chat?.service_hours_text ? <Body style={{ marginTop: 10, fontSize: 13.5 }}>{t('chat.serviceHours', { hours: chat.service_hours_text })}</Body> : null}
+            {chat?.whatsapp_url ? <Button label={t('chat.continueWhatsapp')} variant="soft" compact icon="logo-whatsapp" onPress={() => void Linking.openURL(chat.whatsapp_url!)} style={{ marginTop: 12, alignSelf: 'flex-start' }} /> : null}
           </Card>
         ) : null}
 
@@ -155,7 +157,7 @@ export default function ClientChatScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.dayChip}>
-            <Text style={styles.dayChipText}>Hoje</Text>
+            <Text style={styles.dayChipText}>{t('agenda.today')}</Text>
           </View>
           {chat?.messages.map((m) => (
             <ChatBubble key={m.id} m={m} />
@@ -165,15 +167,15 @@ export default function ClientChatScreen() {
         {permIssue ? (
           <View style={styles.perm}>
             <Body style={{ flex: 1, fontSize: 13, color: colors.warnText }}>{permIssue}</Body>
-            <Button label="Ajustes" variant="soft" compact onPress={openSystemSettings} />
-            <IconButton icon="close" size={36} accessibilityLabel="Fechar aviso" onPress={() => setPermIssue(null)} />
+            <Button label={t('chat.settings')} variant="soft" compact onPress={openSystemSettings} />
+            <IconButton icon="close" size={36} accessibilityLabel={t('chat.closeNotice')} onPress={() => setPermIssue(null)} />
           </View>
         ) : null}
 
         {sendError ? (
           <View style={styles.perm}>
             <Body style={{ flex: 1, fontSize: 13, color: colors.warnText }}>{sendError}</Body>
-            <IconButton icon="close" size={36} accessibilityLabel="Fechar aviso" onPress={() => setSendError(null)} />
+            <IconButton icon="close" size={36} accessibilityLabel={t('chat.closeNotice')} onPress={() => setSendError(null)} />
           </View>
         ) : null}
 
@@ -181,10 +183,10 @@ export default function ClientChatScreen() {
           <View style={styles.rescheduleDraft}>
             <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.rdTitle}>{`Pedido de outro horário · ${booking.service_name}`}</Text>
-              <Muted>{`Era: ${weekdayShort(new Date(booking.starts_at))} ${formatHour(booking.starts_at)}`}</Muted>
+              <Text style={styles.rdTitle}>{t('chat.rescheduleDraft', { service: booking.service_name ?? '' })}</Text>
+              <Muted>{t('chat.was', { time: `${weekdayShort(new Date(booking.starts_at))} ${formatHour(booking.starts_at)}` })}</Muted>
             </View>
-            <IconButton icon="close" size={34} accessibilityLabel="Tirar pedido de horário" onPress={() => setWithReschedule(false)} />
+            <IconButton icon="close" size={34} accessibilityLabel={t('chat.removeRequest')} onPress={() => setWithReschedule(false)} />
           </View>
         ) : null}
 
@@ -195,46 +197,46 @@ export default function ClientChatScreen() {
         ) : (
         <View style={[styles.composer, { paddingBottom: insets.bottom + 10 }]}>
           {textOnly ? null : (
-          <PressableScale onPress={() => setSheet((v) => !v)} accessibilityRole="button" accessibilityLabel="Anexar arquivo" accessibilityState={{ expanded: sheet }} scaleTo={0.92} style={[styles.plus, sheet && { backgroundColor: colors.primary }]}>
+          <PressableScale onPress={() => setSheet((v) => !v)} accessibilityRole="button" accessibilityLabel={t('chat.attach')} accessibilityState={{ expanded: sheet }} scaleTo={0.92} style={[styles.plus, sheet && { backgroundColor: colors.primary }]}>
             <Ionicons name="add" size={24} color={sheet ? '#fff' : colors.text} style={{ transform: [{ rotate: sheet ? '45deg' : '0deg' }] }} />
           </PressableScale>
           )}
-          <ChatInput value={text} onChangeText={setText} placeholder="Mensagem para a equipe" />
+          <ChatInput value={text} onChangeText={setText} placeholder={t('chat.placeholder')} />
           {text.trim() || withReschedule || textOnly ? (
-            <IconButton icon="send" tone="primary" size={44} accessibilityLabel="Enviar" onPress={() => void sendText()} />
+            <IconButton icon="send" tone="primary" size={44} accessibilityLabel={t('common:actions.send')} onPress={() => void sendText()} />
           ) : (
             <MicButton onPress={() => void startVoice()} />
           )}
         </View>
         )}
 
-        <BottomSheet visible={sheet} onClose={() => setSheet(false)} closeLabel="Fechar anexos" title="Enviar para a equipe">
+        <BottomSheet visible={sheet} onClose={() => setSheet(false)} closeLabel={t('chat.closeAttach')} title={t('chat.sendToTeam')}>
           <View style={styles.attachRow}>
-            {Platform.OS !== 'web' ? <AttachOption icon="camera-outline" label="Câmera" tone="primary" onPress={() => void pickCamera()} /> : null}
-            <AttachOption icon="images-outline" label="Fotos e vídeos" tone="soft" onPress={() => void pickGallery()} />
-            <AttachOption icon="document-text-outline" label="Documento" tone="neutral" onPress={() => void pickDocument()} />
+            {Platform.OS !== 'web' ? <AttachOption icon="camera-outline" label={t('chat.camera')} tone="primary" onPress={() => void pickCamera()} /> : null}
+            <AttachOption icon="images-outline" label={t('chat.photosVideos')} tone="soft" onPress={() => void pickGallery()} />
+            <AttachOption icon="document-text-outline" label={t('chat.document')} tone="neutral" onPress={() => void pickDocument()} />
           </View>
-          <Muted style={{ textAlign: 'center', marginTop: 16 }}>Fotos, vídeos e PDFs vão direto para a equipe.</Muted>
+          <Muted style={{ textAlign: 'center', marginTop: 16 }}>{t('chat.attachHint')}</Muted>
         </BottomSheet>
 
         {draft ? (
           <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.pageBg }]}>
             <View style={[styles.previewTop, { paddingTop: insets.top + 12 }]}>
-              <IconButton icon="close" accessibilityLabel="Cancelar envio" onPress={() => setDraft(null)} />
+              <IconButton icon="close" accessibilityLabel={t('chat.cancelSend')} onPress={() => setDraft(null)} />
               <View style={{ flex: 1 }}>
-                <Muted style={{ fontSize: 12.5 }}>Enviar para</Muted>
+                <Muted style={{ fontSize: 12.5 }}>{t('chat.sendTo')}</Muted>
                 <Text style={styles.headerTitle}>{chat?.tenant_name}</Text>
               </View>
             </View>
             <View style={styles.previewBody}>
               {draft.kind === 'image' ? (
-                <Image source={{ uri: draft.uri }} style={styles.previewMedia} contentFit="contain" accessibilityLabel="Foto escolhida" />
+                <Image source={{ uri: draft.uri }} style={styles.previewMedia} contentFit="contain" accessibilityLabel={t('chat.chosenPhoto')} />
               ) : draft.kind === 'video' ? (
                 <LinearGradient colors={gradients.media} style={[styles.previewMedia, { alignItems: 'center', justifyContent: 'center' }]}>
                   <View style={styles.bigPlay}>
                     <Ionicons name="play" size={26} color={colors.text} />
                   </View>
-                  <Text style={styles.previewNote}>{`Vídeo · ${draft.duration_s ?? 0}s`}</Text>
+                  <Text style={styles.previewNote}>{t('chat.videoDuration', { s: draft.duration_s ?? 0 })}</Text>
                 </LinearGradient>
               ) : (
                 <Card style={{ alignItems: 'center', paddingVertical: 32, gap: 10 }}>
@@ -245,8 +247,8 @@ export default function ClientChatScreen() {
               )}
             </View>
             <View style={[styles.composer, { paddingBottom: insets.bottom + 10 }]}>
-              <ChatInput value={caption} onChangeText={setCaption} placeholder="Adicione uma legenda" accessibilityLabel="Legenda" />
-              <Button label="Enviar" icon="send" compact loading={send.isPending} onPress={() => void sendDraft()} style={{ minHeight: 44 }} />
+              <ChatInput value={caption} onChangeText={setCaption} placeholder={t('chat.captionPlaceholder')} accessibilityLabel={t('chat.caption')} />
+              <Button label={t('common:actions.send')} icon="send" compact loading={send.isPending} onPress={() => void sendDraft()} style={{ minHeight: 44 }} />
             </View>
           </View>
         ) : null}

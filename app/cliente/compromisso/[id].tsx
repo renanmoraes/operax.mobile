@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Avatar, Badge, Button, Card, EmptyState, IconButton, IconName, IconTile, Muted, PressableScale, Rise, Screen } from '@/src/design-system/ui';
 import { colors, radii, shadows, typography, glass } from '@/src/design-system/tokens';
 import { DetailHero } from '@/src/features/client/DetailHero';
@@ -21,6 +22,7 @@ function ActionTile({ icon, label, onPress }: { icon: IconName; label: string; o
 }
 
 export default function BookingDetailScreen() {
+  const { t } = useTranslation('client');
   const insets = useSafeAreaInsets();
   const now = useNow(60_000);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -30,7 +32,7 @@ export default function BookingDetailScreen() {
   const unconfirm = useUnconfirmBooking();
 
   if (!b) {
-    return <Screen>{isLoading ? null : <EmptyState icon="calendar-outline" title="Compromisso não encontrado" actionLabel="Voltar à agenda" onAction={() => router.back()} />}</Screen>;
+    return <Screen>{isLoading ? null : <EmptyState icon="calendar-outline" title={t('appointment.notFound')} actionLabel={t('cancel.backToAgenda')} onAction={() => router.back()} />}</Screen>;
   }
 
   const start = new Date(b.starts_at);
@@ -46,16 +48,16 @@ export default function BookingDetailScreen() {
         <DetailHero
           onBack={() => router.back()}
           right={upcoming ? <Badge label={minutesUntilLabel(b.starts_at)} tone="primary" /> : undefined}
-          eyebrow={`${bookingKindLabel[b.category]} · ${b.tenant_name}`}
-          title={b.service_name ?? 'Compromisso'}
+          eyebrow={`${bookingKindLabel(b.category)} · ${b.tenant_name}`}
+          title={b.service_name ?? t('reminders.appointment')}
         >
           <View style={styles.facts}>
             <View style={styles.fact}>
-              <Muted style={{ fontSize: 12 }}>Quando</Muted>
-              <Text style={styles.factValue}>{isToday ? `Hoje, ${weekdayShort(start).toLowerCase()} ${start.getDate()}` : `${weekdayShort(start)} ${start.getDate()}`}</Text>
+              <Muted style={{ fontSize: 12 }}>{t('appointment.when')}</Muted>
+              <Text style={styles.factValue}>{isToday ? t('appointment.todayDay', { day: `${weekdayShort(start).toLowerCase()} ${start.getDate()}` }) : `${weekdayShort(start)} ${start.getDate()}`}</Text>
             </View>
             <View style={styles.fact}>
-              <Muted style={{ fontSize: 12 }}>Horário</Muted>
+              <Muted style={{ fontSize: 12 }}>{t('appointment.time')}</Muted>
               <Text style={styles.factValue}>{`${formatHour(b.starts_at)} – ${formatHour(b.ends_at)}`}</Text>
             </View>
           </View>
@@ -67,10 +69,10 @@ export default function BookingDetailScreen() {
               <Card>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <View style={styles.warnDot} />
-                  <Text style={styles.statusTitle}>Falta confirmar sua presença</Text>
+                  <Text style={styles.statusTitle}>{t('booking.pill.pending')}</Text>
                 </View>
-                <Muted style={{ marginTop: 6, lineHeight: 19 }}>{`Confirmando, ${b.provider_name?.split(' ')[0]} já deixa tudo pronto para você.`}</Muted>
-                <Button label="Confirmar presença" loading={confirm.isPending} onPress={() => confirm.mutate(b.id)} style={{ marginTop: 14 }} />
+                <Muted style={{ marginTop: 6, lineHeight: 19 }}>{t('appointment.confirmHint', { name: b.provider_name?.split(' ')[0] ?? '' })}</Muted>
+                <Button label={t('home.confirmPresence')} loading={confirm.isPending} onPress={() => confirm.mutate(b.id)} style={{ marginTop: 14 }} />
               </Card>
             </Rise>
           ) : (
@@ -78,7 +80,7 @@ export default function BookingDetailScreen() {
               <View style={[styles.statusRow, { backgroundColor: b.status === 'confirmed' ? colors.successSoft : '#f0f2f5' }]}>
                 <Ionicons name={b.status === 'confirmed' ? 'checkmark-circle-outline' : 'information-circle-outline'} size={22} color={b.status === 'confirmed' ? colors.success : colors.textSoft} />
                 <Text style={[styles.statusTitle, { flex: 1, color: b.status === 'confirmed' ? colors.success : colors.textSoft }]}>{pill.label}</Text>
-                {b.status === 'confirmed' && b.can_confirm === false && upcoming && canUndoBookingAnswer() ? <Button label="Desfazer" variant="ghost" compact onPress={() => unconfirm.mutate(b.id)} /> : null}
+                {b.status === 'confirmed' && b.can_confirm === false && upcoming && canUndoBookingAnswer() ? <Button label={t('home.undo')} variant="ghost" compact onPress={() => unconfirm.mutate(b.id)} /> : null}
               </View>
             </Rise>
           )}
@@ -88,31 +90,31 @@ export default function BookingDetailScreen() {
               <View style={[styles.info, styles.infoBorder]}>
                 <Avatar initials={(b.provider_name ?? '').split(' ').map((w) => w[0]).slice(0, 2).join('')} size={44} />
                 <View style={{ flex: 1 }}>
-                  <Muted style={{ fontSize: 12 }}>Profissional</Muted>
+                  <Muted style={{ fontSize: 12 }}>{t('appointment.provider')}</Muted>
                   <Text style={styles.infoValue}>{b.provider_name}</Text>
                 </View>
-                <IconButton icon="chatbubble-outline" tone="soft" accessibilityLabel={`Conversar com ${b.provider_name}`} onPress={() => router.push(`/cliente/chat/${b.tenant_slug}`)} />
+                <IconButton icon="chatbubble-outline" tone="soft" accessibilityLabel={t('appointment.chatWith', { name: b.provider_name ?? '' })} onPress={() => router.push(`/cliente/chat/${b.tenant_slug}`)} />
               </View>
               {b.location ? (
                 <Pressable
                   style={[styles.info, workout ? styles.infoBorder : null]}
                   accessibilityRole="link"
-                  accessibilityLabel={`Ver rota para ${b.location}`}
+                  accessibilityLabel={t('appointment.routeTo', { place: b.location })}
                   onPress={() => void Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(`${b.location}, ${b.tenant_name}`)}`)}
                 >
                   <IconTile icon="location-outline" size={44} tone="neutral" />
                   <View style={{ flex: 1 }}>
-                    <Muted style={{ fontSize: 12 }}>Local</Muted>
+                    <Muted style={{ fontSize: 12 }}>{t('appointment.place')}</Muted>
                     <Text style={styles.infoValue}>{b.location}</Text>
                   </View>
-                  <Text style={styles.link}>Rota</Text>
+                  <Text style={styles.link}>{t('appointment.route')}</Text>
                 </Pressable>
               ) : null}
               {workout ? (
                 <Pressable style={styles.info} accessibilityRole="button" onPress={() => router.push(`/cliente/treino/${workout.id}`)}>
                   <IconTile icon="barbell-outline" size={44} />
                   <View style={{ flex: 1 }}>
-                    <Muted style={{ fontSize: 12 }}>Ficha desta sessão</Muted>
+                    <Muted style={{ fontSize: 12 }}>{t('appointment.sheet')}</Muted>
                     <Text style={styles.infoValue}>{workout.title}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -124,14 +126,14 @@ export default function BookingDetailScreen() {
           {upcoming && b.status !== 'cancelled' ? (
             <>
               <Rise index={4} style={styles.actions}>
-                <ActionTile icon="calendar-outline" label="Guardar no calendário" onPress={() => router.push('/cliente/calendario')} />
-                <ActionTile icon="swap-horizontal-outline" label="Pedir outro horário" onPress={() => router.push(`/cliente/chat/${b.tenant_slug}?remarcar=${b.id}`)} />
+                <ActionTile icon="calendar-outline" label={t('appointment.saveCalendar')} onPress={() => router.push('/cliente/calendario')} />
+                <ActionTile icon="swap-horizontal-outline" label={t('appointment.askOther')} onPress={() => router.push(`/cliente/chat/${b.tenant_slug}?remarcar=${b.id}`)} />
               </Rise>
               {b.can_cancel ? (
                 <Rise index={5}>
-                  <Button label="Cancelar compromisso" variant="secondary" onPress={() => router.push(`/cliente/cancelar/${b.id}`)} style={{ marginTop: 12 }} />
+                  <Button label={t('appointment.cancel')} variant="secondary" onPress={() => router.push(`/cliente/cancelar/${b.id}`)} style={{ marginTop: 12 }} />
                   <Muted style={styles.policy}>
-                    {hoursAway < 12 ? 'Cancelando agora, com menos de 12 h, conta como falta no seu plano.' : 'Cancelamento sem custo até 12 h antes.'}
+                    {hoursAway < 12 ? t('appointment.policyLate') : t('appointment.policyFree')}
                   </Muted>
                 </Rise>
               ) : null}

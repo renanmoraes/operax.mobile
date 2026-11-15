@@ -1,4 +1,5 @@
 import { router, useNavigation } from 'expo-router';
+import i18n from '@/src/i18n';
 import { useCallback, useMemo, useState } from 'react';
 import { LayoutChangeEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -113,11 +114,11 @@ export default function BodyEvolutionScreen() {
   if (!checkins?.length) {
     return (
       <Screen>
-        <TopBar safe title="Evolução corporal" onBack={() => router.back()} />
+        <TopBar safe title={i18n.t('fitness:tab.bodyProgress')} onBack={() => router.back()} />
         <EmptyState
           icon="body-outline"
-          title="Sua evolução aparece aqui"
-          subtitle="Quando a academia registrar sua avaliação física (peso, gordura, medidas), os números e o gráfico aparecem nesta tela."
+          title={i18n.t('fitness:body.emptyTitle')}
+          subtitle={i18n.t('fitness:body.emptySub')}
         />
       </Screen>
     );
@@ -144,7 +145,7 @@ export default function BodyEvolutionScreen() {
 
   return (
     <Screen>
-      <TopBar safe title="Evolução corporal" onBack={() => router.back()} right={canAdd ? <IconButton icon="add" tone="primary" accessibilityLabel="Adicionar foto de evolução" onPress={() => void addPhoto()} /> : undefined} />
+      <TopBar safe title={i18n.t('fitness:tab.bodyProgress')} onBack={() => router.back()} right={canAdd ? <IconButton icon="add" tone="primary" accessibilityLabel={i18n.t('fitness:body.addPhoto')} onPress={() => void addPhoto()} /> : undefined} />
       <ScrollView scrollEnabled={!dragging} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32 }}>
         {hasPhotos ? (<>
         <Rise>
@@ -157,7 +158,7 @@ export default function BodyEvolutionScreen() {
               }}
               accessible
               accessibilityRole="adjustable"
-              accessibilityLabel="Comparar antes e depois. Arraste para os lados."
+              accessibilityLabel={i18n.t('fitness:body.compareA11y')}
               accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
               onAccessibilityAction={(e) => {
                 pos.set(withTiming(Math.max(0, Math.min(1, pos.value + (e.nativeEvent.actionName === 'increment' ? 0.1 : -0.1))), { duration: 200 }));
@@ -179,13 +180,13 @@ export default function BodyEvolutionScreen() {
                 </>
               ) : null}
               <Animated.View pointerEvents="none" style={[styles.tag, { left: 16 }, beforeTag]}>
-                <Text style={styles.tagText}>{`Antes · ${shortDate(before.date)}`}</Text>
+                <Text style={styles.tagText}>{i18n.t('fitness:body.beforeDate', { date: shortDate(before.date) })}</Text>
               </Animated.View>
               <Animated.View pointerEvents="none" style={[styles.tag, { right: 16 }, afterTag]}>
-                <Text style={styles.tagText}>{`Depois · ${shortDate(after.date)}`}</Text>
+                <Text style={styles.tagText}>{i18n.t('fitness:body.afterDate', { date: shortDate(after.date) })}</Text>
               </Animated.View>
               <View pointerEvents="none" style={styles.journey}>
-                <Text style={styles.journeyText}>{`${days} dias de jornada`}</Text>
+                <Text style={styles.journeyText}>{i18n.t('fitness:body.journey', { count: days })}</Text>
               </View>
             </View>
           </GestureDetector>
@@ -196,14 +197,14 @@ export default function BodyEvolutionScreen() {
           value={view}
           onChange={(k) => showView(k as CompareView)}
           options={[
-            { key: 'before', label: 'Antes' },
-            { key: 'split', label: 'Lado a lado' },
-            { key: 'after', label: 'Depois' },
+            { key: 'before', label: i18n.t('fitness:body.before') },
+            { key: 'split', label: i18n.t('fitness:body.split') },
+            { key: 'after', label: i18n.t('fitness:body.after') },
           ]}
         />
         </>) : null}
 
-        <Text style={styles.compareLabel}>Comparar com</Text>
+        <Text style={styles.compareLabel}>{i18n.t('fitness:body.compareWith')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.rail} contentContainerStyle={styles.railContent}>
           {checkins.slice(0, -1).map((c, i) => {
             const on = c.id === before.id;
@@ -213,7 +214,7 @@ export default function BodyEvolutionScreen() {
                 onPress={() => setBeforeIdx(i)}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={`Comparar com ${shortDate(c.date)}, ${formatKg(c.weight_kg)} quilos`}
+                accessibilityLabel={i18n.t('fitness:body.compareWithA11y', { date: shortDate(c.date), kg: formatKg(c.weight_kg) })}
                 style={[styles.pick, on ? styles.pickOn : styles.pickOff]}
               >
                 <Text style={[styles.pickDate, on && styles.pickDateOn]}>{shortDate(c.date)}</Text>
@@ -233,10 +234,10 @@ export default function BodyEvolutionScreen() {
 
         <Rise index={1} style={styles.measures}>
           {[
-            ['Peso', formatKg(after.weight_kg), 'kg', delta(before.weight_kg, after.weight_kg, ' kg')],
-            ['Gordura', after.body_fat_pct != null ? formatKg(after.body_fat_pct) : '—', '%', delta(before.body_fat_pct, after.body_fat_pct, ' pontos')],
-            ['Cintura', after.waist_cm != null ? formatKg(after.waist_cm) : '—', 'cm', delta(before.waist_cm, after.waist_cm, ' cm')],
-            ['Quadril', after.hip_cm != null ? formatKg(after.hip_cm) : '—', 'cm', delta(before.hip_cm, after.hip_cm, ' cm')],
+            [i18n.t('fitness:body.weight'), formatKg(after.weight_kg), 'kg', delta(before.weight_kg, after.weight_kg, ' kg')],
+            [i18n.t('fitness:body.fat'), after.body_fat_pct != null ? formatKg(after.body_fat_pct) : '—', '%', delta(before.body_fat_pct, after.body_fat_pct, i18n.t('fitness:body.points'))],
+            [i18n.t('fitness:body.waist'), after.waist_cm != null ? formatKg(after.waist_cm) : '—', 'cm', delta(before.waist_cm, after.waist_cm, ' cm')],
+            [i18n.t('fitness:body.hip'), after.hip_cm != null ? formatKg(after.hip_cm) : '—', 'cm', delta(before.hip_cm, after.hip_cm, ' cm')],
           ]
             // Medida que a avaliação não teve não vira cartão vazio.
             .filter(([, value]) => value !== '—')
@@ -257,10 +258,10 @@ export default function BodyEvolutionScreen() {
         <Rise index={2} style={{ marginTop: 12 }}>
           <Card>
             <View style={styles.rowBetween}>
-              <Text style={styles.cardTitle}>Peso</Text>
+              <Text style={styles.cardTitle}>{i18n.t('fitness:body.weight')}</Text>
               <Muted>{`${formatKg(weights[0])} → ${formatKg(weights[weights.length - 1])} kg`}</Muted>
             </View>
-            <Svg width="100%" height={120} viewBox="0 0 310 120" style={{ marginTop: 12 }} accessibilityLabel="Gráfico de peso">
+            <Svg width="100%" height={120} viewBox="0 0 310 120" style={{ marginTop: 12 }} accessibilityLabel={i18n.t('fitness:body.chartA11y')}>
               <Defs>
                 <SvgLinear id="wArea" x1="0" y1="0" x2="0" y2="1">
                   <Stop offset="0" stopColor={colors.primary} stopOpacity={0.22} />
@@ -281,7 +282,7 @@ export default function BodyEvolutionScreen() {
 
         <View style={styles.privacy}>
           <Ionicons name="lock-closed-outline" size={18} color={colors.primaryDeep} />
-          <Text style={styles.privacyText}>Suas fotos ficam só com você e com o seu personal.</Text>
+          <Text style={styles.privacyText}>{i18n.t('fitness:body.privacy')}</Text>
         </View>
       </ScrollView>
     </Screen>

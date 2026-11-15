@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { AudioSource, setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, text } from '@/src/design-system/tokens';
 import { BUBBLE_RADIUS, durationLabel, MessageMeta, MessageStatus } from './MessageParts';
@@ -40,6 +41,7 @@ export function AudioBubble({
   mine: boolean;
   status?: MessageStatus;
 }) {
+  const { t } = useTranslation('inbox');
   const player = useAudioPlayer(source ?? null, { updateInterval: 100 });
   const s = useAudioPlayerStatus(player);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
@@ -91,14 +93,14 @@ export function AudioBubble({
           onPress={toggle}
           disabled={!available}
           accessibilityRole="button"
-          accessibilityLabel={!available ? 'Áudio indisponível' : s.playing ? 'Pausar áudio' : `Ouvir áudio de ${durationLabel(total)}`}
+          accessibilityLabel={!available ? t('chatUi.audioUnavailable') : s.playing ? t('chatUi.pauseAudio') : t('chatUi.playAudio', { duration: durationLabel(total) })}
           style={({ pressed }) => [styles.play, { backgroundColor: mine ? 'rgba(255,255,255,0.2)' : colors.primaryWash }, pressed && { transform: [{ scale: 0.94 }] }, !available && { opacity: 0.5 }]}
         >
           <Ionicons name={s.playing ? 'pause' : 'play'} size={20} color={fg} style={!s.playing ? { marginLeft: 2 } : undefined} />
         </Pressable>
 
         <View style={{ flex: 1 }}>
-          <Pressable onPress={seek} disabled={!available} accessibilityRole="adjustable" accessibilityLabel="Posição do áudio" accessibilityValue={{ min: 0, max: Math.round(total), now: Math.round(s.currentTime) }} style={styles.wave}>
+          <Pressable onPress={seek} disabled={!available} accessibilityRole="adjustable" accessibilityLabel={t('chatUi.audioPosition')} accessibilityValue={{ min: 0, max: Math.round(total), now: Math.round(s.currentTime) }} style={styles.wave}>
             {wave.map((h, i) => (
               <View key={i} style={[styles.bar, { height: 4 + h * 20, backgroundColor: (i + 0.5) / BAR_COUNT <= progress ? played : rest }]} />
             ))}
@@ -110,7 +112,7 @@ export function AudioBubble({
         </View>
 
         {started ? (
-          <Pressable onPress={cycleSpeed} accessibilityRole="button" accessibilityLabel={`Velocidade ${speed} vezes. Toque para mudar`} style={[styles.speed, { backgroundColor: mine ? 'rgba(255,255,255,0.22)' : '#eef1f6' }]}>
+          <Pressable onPress={cycleSpeed} accessibilityRole="button" accessibilityLabel={t('chatUi.speed', { speed })} style={[styles.speed, { backgroundColor: mine ? 'rgba(255,255,255,0.22)' : '#eef1f6' }]}>
             <Text style={[styles.speedText, { color: mine ? '#fff' : colors.text }]}>{`${String(speed).replace('.', ',')}×`}</Text>
           </Pressable>
         ) : (

@@ -1,11 +1,13 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Body, Button, Field } from '@/src/design-system/ui';
 import { colors } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { AuthShell } from '@/src/features/auth/AuthShell';
 
 export default function MfaScreen() {
+  const { t } = useTranslation(['auth', 'common']);
   const { verifyMfa, error } = useAuth();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,12 +15,12 @@ export default function MfaScreen() {
   return (
     <AuthShell
       onBack={() => router.replace('/(auth)/login')}
-      tag="Equipe"
-      title="Só mais um passo"
-      subtitle="Digite o código do autenticador ou o que enviamos por e-mail ou SMS."
+      tag={t('shared.team')}
+      title={t('mfa.title')}
+      subtitle={t('mfa.subtitle')}
       footer={
         <Button
-          label="Confirmar"
+          label={t('common:actions.confirm')}
           loading={loading}
           onPress={async () => {
             setLoading(true);
@@ -34,7 +36,7 @@ export default function MfaScreen() {
         />
       }
     >
-      <Field label="Código" icon="keypad-outline" value={code} onChangeText={setCode} keyboardType="number-pad" autoComplete="one-time-code" placeholder="000000" />
+      <Field label={t('fields.code')} icon="keypad-outline" value={code} onChangeText={setCode} keyboardType="number-pad" autoComplete="one-time-code" placeholder="000000" />
       {error ? <Body style={{ color: colors.dangerText, fontSize: 13.5 }}>{error}</Body> : null}
     </AuthShell>
   );

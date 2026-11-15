@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useMemo } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,14 +15,16 @@ import { SkeletonList } from '@/src/design-system/Skeleton';
 import { RequirePermission } from '@/src/features/auth/useCan';
 
 export default function HistoryScreenGuarded() {
+  const { t } = useTranslation('inbox');
   return (
-    <RequirePermission need="history" title="Histórico">
+    <RequirePermission need="history" title={t('history.title')}>
       <HistoryScreen />
     </RequirePermission>
   );
 }
 
 function HistoryScreen() {
+  const { t } = useTranslation('inbox');
   const insets = useSafeAreaInsets();
   const { mode, user } = useAuth();
 
@@ -46,7 +49,7 @@ function HistoryScreen() {
 
   return (
     <Screen>
-      <ScreenHeader safe title="Histórico" subtitle="Atendimentos encerrados" onBack={() => router.back()} />
+      <ScreenHeader safe title={t('history.title')} subtitle={t('history.subtitle')} onBack={() => router.back()} />
       {mode === 'live' && query.isLoading ? (
         <SkeletonList variant="conversation" count={5} style={{ paddingHorizontal: 20, paddingTop: 4 }} />
       ) : (
@@ -55,7 +58,7 @@ function HistoryScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom, gap: 10 }}
           refreshControl={mode === 'live' ? <RefreshControl refreshing={query.isFetching} onRefresh={() => void query.refetch()} /> : undefined}
-          ListEmptyComponent={<EmptyState icon="time-outline" title="Nenhum histórico ainda" subtitle="Atendimentos encerrados aparecem aqui." />}
+          ListEmptyComponent={<EmptyState icon="time-outline" title={t('history.emptyTitle')} subtitle={t('history.emptySub')} />}
           renderItem={({ item }) => <ConversationCard item={item} onPress={() => router.push(`/conversation/${item.id}`)} />}
         />
       )}

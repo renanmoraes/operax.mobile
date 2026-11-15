@@ -1,19 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, shadows, text, typography } from '@/src/design-system/tokens';
 import { MessageMeta } from '@/src/features/chat/MessageParts';
-import { PixData, pixKeyTypeLabel } from '@/src/shared/api/conversation-actions.api';
-import { formatPixKey } from './logic';
+import type { PixData } from '@/src/shared/api/conversation-actions.api';
+import { formatPixKey, pixKeyTypeLabel } from './logic';
 
 /** Chave Pix enviada na conversa: um "comprovante" com a chave em destaque, como o cliente recebe. */
 export function PixCard({ pix, at, mine, status }: { pix: PixData; at?: string; mine?: boolean; status?: 'sent' | 'delivered' | 'read' }) {
+  const { t } = useTranslation('inbox');
   return (
-    <View style={[styles.card, mine ? { borderBottomRightRadius: 8 } : { borderBottomLeftRadius: 8 }]} accessible accessibilityLabel={`Chave Pix ${pixKeyTypeLabel(pix.key_type)}: ${pix.key}, em nome de ${pix.holder_name}`}>
+    <View style={[styles.card, mine ? { borderBottomRightRadius: 8 } : { borderBottomLeftRadius: 8 }]} accessible accessibilityLabel={t('pix.card.a11y', { type: pixKeyTypeLabel(pix.key_type), key: pix.key, holder: pix.holder_name })}>
       <View style={styles.head}>
         <View style={styles.badge}>
           <Ionicons name="diamond" size={13} color="#fff" />
         </View>
-        <Text style={styles.headText}>Chave Pix</Text>
+        <Text style={styles.headText}>{t('pix.card.title')}</Text>
         <Text style={styles.type}>{pixKeyTypeLabel(pix.key_type)}</Text>
       </View>
       <View style={styles.body}>
@@ -21,7 +23,7 @@ export function PixCard({ pix, at, mine, status }: { pix: PixData; at?: string; 
         <Text style={styles.holder} numberOfLines={1}>{pix.holder_name}</Text>
         <View style={styles.foot}>
           <Ionicons name="copy-outline" size={13} color={colors.textMuted} />
-          <Text style={styles.hint}>O cliente copia a chave no WhatsApp</Text>
+          <Text style={styles.hint}>{t('pix.card.hint')}</Text>
           {at ? <View style={{ marginLeft: 'auto' }}><MessageMeta at={at} mine={!!mine} status={status} tone="onBubbleTheirs" /></View> : null}
         </View>
       </View>

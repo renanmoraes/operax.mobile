@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import i18n, { locale } from '@/src/i18n';
 import type { ClientBooking } from '@/src/features/client/types';
 import { getItem, setItem } from '@/src/shared/storage';
 import { kvGet, kvSet } from '@/src/shared/db/localDb';
@@ -45,9 +46,9 @@ const hour = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 function dayWord(start: Date, now: Date): string {
   const d0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const diff = Math.round((new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime() - d0) / 86_400_000);
-  if (diff === 0) return 'hoje';
-  if (diff === 1) return 'amanhã';
-  return start.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' });
+  if (diff === 0) return i18n.t('client:reminders.today');
+  if (diff === 1) return i18n.t('client:reminders.tomorrow');
+  return start.toLocaleDateString(locale(), { weekday: 'long', day: '2-digit', month: '2-digit' });
 }
 
 function urlFor(b: ClientBooking): string {
@@ -56,8 +57,14 @@ function urlFor(b: ClientBooking): string {
 
 /** Linha do aviso: serviço, quando, com quem e onde. */
 export function describe(b: ClientBooking, start: Date, now: Date): string {
-  const who = b.provider_name ? ` com ${b.provider_name}` : '';
-  return `${b.service_name ?? 'Compromisso'} ${dayWord(start, now)} às ${hour(start)}${who} · ${b.tenant_name}`;
+  const who = b.provider_name ? i18n.t('client:reminders.with', { name: b.provider_name }) : '';
+  return i18n.t('client:reminders.line', {
+    service: b.service_name ?? i18n.t('client:reminders.appointment'),
+    day: dayWord(start, now),
+    time: hour(start),
+    who,
+    tenant: b.tenant_name,
+  });
 }
 
 /** Quais lembretes devem existir agora (função pura: dá para testar sem aparelho). */
@@ -71,13 +78,23 @@ export function planReminders(bookings: ClientBooking[], now = new Date()): Plan
     const s = start.getTime();
     if (!Number.isFinite(s) || s <= t0 || s > horizon) continue;
     const isClass = b.kind === 'class';
-    const noun = isClass ? 'Sua aula' : 'Seu horário';
     const needsConfirm = b.status === 'pending' && b.can_confirm;
     const url = urlFor(b);
     const offsets: { min: number; title: string }[] = [
-      { min: 24 * 60, title: needsConfirm ? `${noun} é amanhã: confirme sua presença` : `${noun} é amanhã` },
-      { min: 60, title: `${noun} começa em 1 hora` },
-      { min: 10, title: isClass ? 'Sua aula começa em 10 minutos' : 'Seu horário é daqui a 10 minutos' },
+      {
+        min: 24 * 60,
+        title: i18n.t(
+          needsConfirm
+            ? isClass
+              ? 'client:reminders.classTomorrowConfirm'
+              : 'client:reminders.bookingTomorrowConfirm'
+            : isClass
+              ? 'client:reminders.classTomorrow'
+              : 'client:reminders.bookingTomorrow',
+        ),
+      },
+      { min: 60, title: i18n.t(isClass ? 'client:reminders.classInHour' : 'client:reminders.bookingInHour') },
+      { min: 10, title: i18n.t(isClass ? 'client:reminders.classIn10' : 'client:reminders.bookingIn10') },
     ];
     for (const o of offsets) {
       const at = s - o.min * 60_000;
@@ -116,7 +133,7 @@ async function ensureChannel(N: NotificationsModule): Promise<string | undefined
   channelTried = true;
   try {
     await N.setNotificationChannelAsync(REMINDER_CHANNEL, {
-      name: 'Lembretes de agenda e aulas',
+      name: i18n.t('client:reminders.channel'),
       importance: N.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#1e4ed8',
@@ -186,7 +203,7 @@ export async function syncBookingReminders(bookings: ClientBooking[], now = new 
     const known = await loadKnown();
     for (const b of newBookings(bookings, known, now).slice(0, 3)) {
       const start = new Date(b.starts_at);
-      await notifyNow(b.kind === 'class' ? 'Aula marcada' : 'Novo horário marcado', describe(b, start, now), urlFor(b));
+      await notifyNow(i18n.t(b.kind === 'class' ? 'client:reminders.classBooked' : 'client:reminders.newBooking'), describe(b, start, now), urlFor(b));
     }
     // Banco local (sem o limite de 2 KB do armazenamento seguro): guarda todos os atuais e os já vistos,
     // para um horário que já existia nunca ser anunciado de novo como novo.

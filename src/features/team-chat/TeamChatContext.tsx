@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import i18n from '@/src/i18n';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { listTeamChannels, markTeamChannelRead } from '@/src/shared/api/team-chat.api';
 import { useSocketEvents } from '@/src/shared/realtime/socket';
@@ -77,7 +78,7 @@ export function TeamChatProvider({ children }: { children: ReactNode }) {
     if (prev) {
       const grew = query.data.find((c) => c.unread > (prev.get(c.id) ?? 0) && c.id !== openRef.current);
       if (grew) {
-        setNotice({ key: `${grew.id}-${Date.now()}`, channelId: grew.id, channelTitle: grew.title, kind: grew.kind, senderName: grew.kind === 'dm' ? grew.title : '', body: grew.preview || 'Nova mensagem' });
+        setNotice({ key: `${grew.id}-${Date.now()}`, channelId: grew.id, channelTitle: grew.title, kind: grew.kind, senderName: grew.kind === 'dm' ? grew.title : '', body: grew.preview || i18n.t('team:model.newMessage') });
       }
     }
     lastUnread.current = next;

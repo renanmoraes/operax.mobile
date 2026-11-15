@@ -1,4 +1,6 @@
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { LanguageRow } from '@/src/i18n/LanguageRow';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar, Badge, Button, Card, HeroCard, IconTile, Muted, Rise, Screen, ScreenHeader, SettingsGroup, SettingsRow } from '@/src/design-system/ui';
@@ -14,23 +16,24 @@ import { appVersionLabel } from '@/src/shared/updates/appVersion';
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { logout, user, mode } = useAuth();
+  const { t } = useTranslation(['settings', 'common']);
   const { states, request } = usePermissions(['notifications'], mode === 'live');
   const push = states.notifications;
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom }}>
-        <ScreenHeader title="Perfil" onBack={() => router.back()} />
+        <ScreenHeader title={t('profile.title')} onBack={() => router.back()} />
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
           <Rise>
             <HeroCard>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                <Avatar initials={initialsOf(user?.name || 'Usuário')} size={72} tone="brand" />
+                <Avatar initials={initialsOf(user?.name || t('profile.user'))} size={72} tone="brand" />
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.name} numberOfLines={1}>{user?.name || 'Usuário'}</Text>
+                  <Text style={styles.name} numberOfLines={1}>{user?.name || t('profile.user')}</Text>
                   <Muted numberOfLines={1} style={{ marginTop: 3 }}>{user?.email}</Muted>
                   <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
-                    <Badge label={mode === 'live' ? 'Online' : 'Demo'} tone={mode === 'live' ? 'success' : 'primary'} />
+                    <Badge label={mode === 'live' ? t('profile.online') : t('profile.demo')} tone={mode === 'live' ? 'success' : 'primary'} />
                     {user?.kind === 'staff' && user.role_code ? <Badge label={user.role_code} /> : null}
                   </View>
                 </View>
@@ -43,19 +46,19 @@ export default function ProfileScreen() {
               <View style={{ flexDirection: 'row', gap: 14 }}>
                 <IconTile icon="notifications-outline" size={46} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>Notificações neste aparelho</Text>
-                  <Muted style={{ marginTop: 4, lineHeight: 19 }}>Avisamos quando alguém entra na fila, quando te mencionam e quando um horário muda.</Muted>
+                  <Text style={styles.cardTitle}>{t('profile.pushTitle')}</Text>
+                  <Muted style={{ marginTop: 4, lineHeight: 19 }}>{t('profile.pushBody')}</Muted>
                 </View>
               </View>
               <View style={{ paddingLeft: 60 }}>
                 {push === 'granted' ? (
-                  <Badge label="Ativadas" tone="success" icon="checkmark" />
+                  <Badge label={t('profile.pushOn')} tone="success" icon="checkmark" />
                 ) : push === 'blocked' ? (
-                  <Button label="Abrir ajustes do celular" variant="soft" compact onPress={openSystemSettings} style={{ alignSelf: 'flex-start' }} />
+                  <Button label={t('common:actions.openSettings')} variant="soft" compact onPress={openSystemSettings} style={{ alignSelf: 'flex-start' }} />
                 ) : push === 'unavailable' ? (
-                  <Badge label="Disponível no app do celular" />
+                  <Badge label={t('profile.pushAppOnly')} />
                 ) : (
-                  <Button label="Ativar notificações" compact onPress={() => void request('notifications')} style={{ alignSelf: 'flex-start' }} />
+                  <Button label={t('profile.pushEnable')} compact onPress={() => void request('notifications')} style={{ alignSelf: 'flex-start' }} />
                 )}
               </View>
             </Card>
@@ -63,21 +66,22 @@ export default function ProfileScreen() {
 
           <Rise index={2}>
             <SettingsGroup>
-              <SettingsRow icon="shield-checkmark-outline" title="Permissões do aparelho" subtitle="Notificações, câmera, fotos e microfone" onPress={() => router.push('/permissoes')} />
-              <SettingsRow icon="options-outline" title="Preferências de notificação" onPress={() => router.push('/notification-prefs')} />
-              <SettingsRow icon="flash-outline" title="Respostas rápidas" onPress={() => router.push('/quick-replies')} />
-              <SettingsRow icon="document-text-outline" title="Templates Meta" onPress={() => router.push('/templates')} last />
+              <SettingsRow icon="shield-checkmark-outline" title={t('profile.permissions')} subtitle={t('profile.permissionsSub')} onPress={() => router.push('/permissoes')} />
+              <SettingsRow icon="options-outline" title={t('profile.notifPrefs')} onPress={() => router.push('/notification-prefs')} />
+              <SettingsRow icon="flash-outline" title={t('profile.quickReplies')} onPress={() => router.push('/quick-replies')} />
+              <SettingsRow icon="document-text-outline" title={t('profile.templates')} onPress={() => router.push('/templates')} />
+              <LanguageRow syncProfile={mode === 'live'} last />
             </SettingsGroup>
           </Rise>
 
           <Rise index={3}>
-            <Text style={styles.groupLabel}>Contas</Text>
+            <Text style={styles.groupLabel}>{t('profile.accounts')}</Text>
             <AccountSwitcher />
           </Rise>
 
           <Rise index={4}>
             <Button
-              label="Sair desta conta"
+              label={t('profile.logout')}
               variant="danger"
               onPress={async () => {
                 await logout();

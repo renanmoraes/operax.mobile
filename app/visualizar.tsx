@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton, T } from '@/src/design-system/ui';
@@ -13,6 +14,7 @@ import { shareFile, type ViewerKind } from '@/src/features/media/viewer';
 
 /** Visualizador em tela cheia: foto com zoom (pinça, toque duplo, arrastar) ou PDF. */
 export default function ViewerScreen() {
+  const { t } = useTranslation(['client', 'common']);
   const insets = useSafeAreaInsets();
   const { kind = 'image', uri = '', title } = useLocalSearchParams<{ kind?: ViewerKind; uri?: string; title?: string }>();
   const [chrome, setChrome] = useState(true);
@@ -22,8 +24,8 @@ export default function ViewerScreen() {
   if (!uri) {
     return (
       <View style={[styles.empty, { paddingTop: insets.top }]}>
-        <T role="title">Arquivo indisponível</T>
-        <IconButton icon="close" accessibilityLabel="Fechar" onPress={close} />
+        <T role="title">{t('viewer.unavailable')}</T>
+        <IconButton icon="close" accessibilityLabel={t('common:actions.close')} onPress={close} />
       </View>
     );
   }
@@ -33,9 +35,9 @@ export default function ViewerScreen() {
       <View style={{ flex: 1, backgroundColor: '#eef1f6' }}>
         <StatusBar style="dark" />
         <View style={[styles.pdfBar, { paddingTop: insets.top + 8 }]}>
-          <IconButton icon="close" accessibilityLabel="Fechar documento" onPress={close} />
-          <Text style={styles.pdfTitle} numberOfLines={1}>{title || 'Documento'}</Text>
-          <IconButton icon="share-outline" accessibilityLabel="Compartilhar ou salvar o documento" onPress={share} />
+          <IconButton icon="close" accessibilityLabel={t('viewer.closeDocument')} onPress={close} />
+          <Text style={styles.pdfTitle} numberOfLines={1}>{title || t('viewer.document')}</Text>
+          <IconButton icon="share-outline" accessibilityLabel={t('viewer.shareDocument')} onPress={share} />
         </View>
         <PdfView uri={uri} title={title} onShare={share} />
       </View>
@@ -54,18 +56,18 @@ export default function ViewerScreen() {
         onSingleTap={() => setChrome((c) => !c)}
         style={StyleSheet.absoluteFill}
       >
-        <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="contain" accessibilityLabel={title || 'Foto'} />
+        <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="contain" accessibilityLabel={title || t('viewer.photo')} />
       </Zoomable>
       {chrome ? (
         <LinearGradient colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0)']} style={[styles.photoBar, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
-          <IconButton icon="close" tone="glass" accessibilityLabel="Fechar foto" onPress={close} />
+          <IconButton icon="close" tone="glass" accessibilityLabel={t('viewer.closePhoto')} onPress={close} />
           <Text style={styles.photoTitle} numberOfLines={1}>{title || ''}</Text>
-          <IconButton icon="share-outline" tone="glass" accessibilityLabel="Compartilhar ou salvar a foto" onPress={share} />
+          <IconButton icon="share-outline" tone="glass" accessibilityLabel={t('viewer.sharePhoto')} onPress={share} />
         </LinearGradient>
       ) : null}
       {chrome ? (
         <View style={[styles.hint, { bottom: insets.bottom + 18 }]} pointerEvents="none">
-          <Text style={styles.hintText}>Pinça ou toque duplo para ampliar</Text>
+          <Text style={styles.hintText}>{t('viewer.zoomHint')}</Text>
         </View>
       ) : null}
     </View>

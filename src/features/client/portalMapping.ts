@@ -1,5 +1,6 @@
 import type { ClientUser } from '@/src/shared/api/auth.api';
 import type { PortalBooking, PortalChat, PortalCompany, PortalHome } from '@/src/shared/api/portal.api';
+import i18n from '@/src/i18n';
 import type { BookingStatus, ClientBooking, ClientChat, ClientCompany } from './types';
 
 /** Status do portal → status que as telas do app usam (mesmos rótulos do portal web). */
@@ -39,7 +40,7 @@ export function portalUser(home: PortalHome, companies: PortalCompany[]): Client
   return {
     kind: 'client',
     id: home.contact.id,
-    name: home.contact.name || 'Cliente',
+    name: home.contact.name || i18n.t('auth:shared.client'),
     email: home.contact.email ?? undefined,
     active_tenant_id: active?.access_id ?? null,
     memberships: companies.map((c) => ({ tenant_id: c.access_id, tenant_name: c.brand_name || c.tenant_slug, tenant_slug: c.tenant_slug, logo_url: c.logo_url })),
@@ -47,7 +48,7 @@ export function portalUser(home: PortalHome, companies: PortalCompany[]): Client
 }
 
 /** Antes de escolher a empresa: só a lista, sem empresa ativa. */
-export function portalUserWithoutSession(companies: PortalCompany[], name = 'Cliente'): ClientUser {
+export function portalUserWithoutSession(companies: PortalCompany[], name = i18n.t('auth:shared.client')): ClientUser {
   return {
     kind: 'client',
     id: companies[0]?.access_id ?? 'portal',
@@ -78,7 +79,7 @@ export function mapPortalChat(chat: PortalChat, home: Pick<PortalHome, 'tenant_s
   return {
     tenant_slug: home.tenant_slug,
     tenant_name: home.brand_name || home.tenant_slug,
-    team_label: 'Equipe',
+    team_label: i18n.t('auth:shared.team'),
     service_hours_text: chat.service_hours_text,
     whatsapp_url: chat.whatsapp_url,
     unread: home.badges?.chat ?? 0,
@@ -88,7 +89,7 @@ export function mapPortalChat(chat: PortalChat, home: Pick<PortalHome, 'tenant_s
       text: m.text,
       at: m.at,
       // Anexos vêm sem link: o link assinado é pedido ao abrir (me/chat/media/:id).
-      attachment: m.attachment ? (m.attachment.kind === 'document' ? { kind: 'document', uri: '', name: 'Documento', size_bytes: 0 } : m.attachment.kind === 'image' ? { kind: 'image', uri: '' } : m.attachment.kind === 'audio' ? { kind: 'audio', uri: '', duration_s: 0 } : { kind: 'video', uri: '', duration_s: 0 }) : null,
+      attachment: m.attachment ? (m.attachment.kind === 'document' ? { kind: 'document', uri: '', name: i18n.t('client:viewer.document'), size_bytes: 0 } : m.attachment.kind === 'image' ? { kind: 'image', uri: '' } : m.attachment.kind === 'audio' ? { kind: 'audio', uri: '', duration_s: 0 } : { kind: 'video', uri: '', duration_s: 0 }) : null,
     })),
   };
 }

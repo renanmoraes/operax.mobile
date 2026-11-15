@@ -1,4 +1,5 @@
 import type { FitnessEnduranceStep, FitnessPart } from './types';
+import i18n, { locale } from '@/src/i18n';
 
 /**
  * O treino do professor guiando a gravação: as etapas da ficha (aquecimento, tiros, recuperação…) viram
@@ -16,7 +17,8 @@ export type GuideStep = {
   round?: { n: number; of: number };
 };
 
-const KIND: Record<GuideStep['kind'], string> = { warmup: 'Aquecimento', interval: 'Tiro', recovery: 'Recuperação', cooldown: 'Desaquecimento', rest: 'Descanso' };
+/** Nome da etapa no idioma atual (as mesmas palavras da ficha). */
+const kind = (k: GuideStep['kind']) => i18n.t(`fitness:step.${k}`);
 
 /** Etapas da parte de resistência, com os blocos repetidos já abertos ("Tiro 2 de 5"). */
 export function guideSteps(part: FitnessPart | undefined): GuideStep[] {
@@ -46,29 +48,21 @@ export function stepProgress(step: GuideStep, doneSeconds: number, doneMeters: n
   return { done: false, fraction: 0 };
 }
 
-const meters = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(m % 1000 ? 1 : 0).replace('.', ',')} km` : `${m} m`);
+const meters = (m: number) => (m >= 1000 ? `${new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(m / 1000)} km` : `${m} m`);
 const clock = (s: number) => (s >= 60 ? `${Math.floor(s / 60)} min${s % 60 ? ` ${String(s % 60).padStart(2, '0')} s` : ''}` : `${s} s`);
 const pace = (s: number) => `${Math.floor(s / 60)}'${String(Math.round(s % 60)).padStart(2, '0')}"`;
 
 /** "Tiro 400 m", "Aquecimento 10 min", "Recuperação livre". */
 export function stepTitle(step: GuideStep): string {
-  const size = step.meters ? meters(step.meters) : step.seconds ? clock(step.seconds) : 'livre';
-  return `${KIND[step.kind]} ${size}`;
+  const size = step.meters ? meters(step.meters) : step.seconds ? clock(step.seconds) : i18n.t('fitness:coach.free');
+  return `${kind(step.kind)} ${size}`;
 }
 
 /** Alvo do professor em texto curto. */
 export function targetText(t: StepTarget | undefined): string | null {
   if (!t) return null;
-  const range = (f: (n: number) => string) => (t.max != null && t.max !== t.min ? `${f(t.min)} a ${f(t.max)}` : f(t.min));
-  switch (t.type) {
-    case 'pace': return `Ritmo ${range(pace)}/km`;
-    case 'hr_zone': return `Zona ${range(String)} de FC`;
-    case 'hr_percent': return `${range(String)}% da FC máxima`;
-    case 'rpe': return `Esforço ${range(String)} de 10`;
-    case 'cadence': return `Cadência ${range(String)}`;
-    case 'ftp_percent': return `${range(String)}% do FTP`;
-    case 'pace_percent': return `${range(String)}% do ritmo de referência`;
-  }
+  const range = (f: (n: number) => string) => (t.max != null && t.max !== t.min ? i18n.t('fitness:coach.range', { a: f(t.min), b: f(t.max) }) : f(t.min));
+  return i18n.t(`fitness:coach.target.${t.type}`, { range: range(t.type === 'pace' ? pace : String) });
 }
 
 /** Ritmo atual contra o alvo de ritmo do professor (só alvo em min/km). */
@@ -90,24 +84,27 @@ export function spokenDuration(totalSeconds: number): string {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
-  const unit = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-  const parts = h ? [unit(h, 'hora', 'horas'), m ? unit(m, 'minuto', 'minutos') : null] : [m ? unit(m, 'minuto', 'minutos') : null, sec || !m ? unit(sec, 'segundo', 'segundos') : null];
-  return parts.filter(Boolean).join(' e ');
+  const unit = (count: number, u: 'hour' | 'minute' | 'second') => i18n.t(`fitness:coach.say.${u}`, { count });
+  const parts = h ? [unit(h, 'hour'), m ? unit(m, 'minute') : null] : [m ? unit(m, 'minute') : null, sec || !m ? unit(sec, 'second') : null];
+  return parts.filter(Boolean).join(i18n.t('fitness:coach.say.and'));
 }
 
-const spokenMeters = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(m % 1000 ? 1 : 0).replace('.', ' vírgula ')} quilômetros` : `${m} metros`);
+const spokenMeters = (m: number) =>
+  m >= 1000 ? i18n.t('fitness:coach.say.kmDistance', { value: (m / 1000).toFixed(m % 1000 ? 1 : 0).replace('.', i18n.t('fitness:coach.say.comma')) }) : i18n.t('fitness:coach.say.meters', { count: m });
 
 /** Aviso de cada quilômetro (corrida/caminhada) ou a cada 5 km (bike). */
 export function kmCue(km: number, splitSeconds: number, avgSecPerKm: number | null, kmh?: number): string {
-  if (kmh != null) return `${km} quilômetros. Velocidade média de ${Math.round(kmh)} quilômetros por hora.`;
-  const avg = avgSecPerKm ? ` Ritmo médio de ${spokenDuration(avgSecPerKm)} por quilômetro.` : '';
-  return `Quilômetro ${km}. Parcial de ${spokenDuration(splitSeconds)}.${avg}`;
+  if (kmh != null) return i18n.t('fitness:coach.say.kmBike', { km, kmh: Math.round(kmh) });
+  const avg = avgSecPerKm ? i18n.t('fitness:coach.say.avg', { pace: spokenDuration(avgSecPerKm) }) : '';
+  return i18n.t('fitness:coach.say.km', { km, split: spokenDuration(splitSeconds) }) + avg;
 }
 
 /** Aviso ao entrar numa etapa do treino do professor. */
 export function stepCue(step: GuideStep): string {
-  const size = step.meters ? spokenMeters(step.meters) : step.seconds ? spokenDuration(step.seconds) : 'sem tempo marcado';
-  const round = step.round && step.kind === 'interval' ? `, ${step.round.n} de ${step.round.of}` : '';
-  const t = step.target?.type === 'pace' ? `. Ritmo entre ${spokenDuration(Math.min(step.target.min, step.target.max ?? step.target.min))} e ${spokenDuration(Math.max(step.target.min, step.target.max ?? step.target.min))} por quilômetro` : '';
-  return `Agora: ${KIND[step.kind].toLowerCase()}${round}, ${size}${t}.`;
+  const size = step.meters ? spokenMeters(step.meters) : step.seconds ? spokenDuration(step.seconds) : i18n.t('fitness:coach.say.untimed');
+  const round = step.round && step.kind === 'interval' ? i18n.t('fitness:coach.say.round', { n: step.round.n, of: step.round.of }) : '';
+  const t = step.target?.type === 'pace'
+    ? i18n.t('fitness:coach.say.paceRange', { a: spokenDuration(Math.min(step.target.min, step.target.max ?? step.target.min)), b: spokenDuration(Math.max(step.target.min, step.target.max ?? step.target.min)) })
+    : '';
+  return i18n.t('fitness:coach.say.now', { step: kind(step.kind).toLowerCase(), round, size, target: t });
 }

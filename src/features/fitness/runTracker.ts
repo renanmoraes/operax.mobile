@@ -1,3 +1,5 @@
+import i18n from '@/src/i18n';
+
 /**
  * Cálculos da gravação de corrida/bike com o GPS do celular (função pura: testável sem aparelho).
  *
@@ -196,6 +198,6 @@ export function decimateTrack(track: Track, max = 1500): Track | undefined {
 /** Título padrão do treino livre pela hora da largada: "Corrida da manhã", "Pedalada da noite". */
 export function defaultTitle(sportLabel: string, at: Date): string {
   const h = at.getHours();
-  const part = h < 5 ? 'da madrugada' : h < 12 ? 'da manhã' : h < 18 ? 'da tarde' : 'da noite';
-  return `${sportLabel} ${part}`;
+  const part = h < 5 ? 'dawn' : h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening';
+  return i18n.t(`fitness:title.${part}`, { sport: part === 'dawn' || i18n.language !== 'en' ? sportLabel : sportLabel.toLowerCase() });
 }

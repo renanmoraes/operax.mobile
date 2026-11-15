@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Animated, { Easing, FadeInLeft, FadeInRight, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,6 +30,7 @@ const EDGE_SLOW = { duration: 580, easing: Easing.bezier(0.45, 0, 0.2, 1), reduc
  * preenche o novo. Os números ficam brancos exatamente onde o azul passa (camada recortada).
  */
 function DayStrip({ selected, onSelect, items }: { selected: Date; onSelect: (d: Date) => void; items: ClientBooking[] }) {
+  const { t } = useTranslation('client');
   const start = startOfWeek(new Date());
   const today = startOfDay(new Date());
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
@@ -82,7 +84,7 @@ function DayStrip({ selected, onSelect, items }: { selected: Date; onSelect: (d:
             onPress={() => onSelect(d)}
             accessibilityRole="button"
             accessibilityState={{ selected: on }}
-            accessibilityLabel={`${weekdayFull(d)} ${d.getDate()}${has ? ', com compromisso' : ', livre'}`}
+            accessibilityLabel={`${weekdayFull(d)} ${d.getDate()}${has ? t('agenda.withAppointmentSuffix') : t('agenda.freeSuffix')}`}
             style={[styles.stripDay, styles.stripOff]}
           >
             <Text style={styles.stripWd}>{weekdayShort(d)}</Text>
@@ -111,6 +113,7 @@ function DayStrip({ selected, onSelect, items }: { selected: Date; onSelect: (d:
 }
 
 export default function ClientAgendaScreen() {
+  const { t } = useTranslation('client');
   const insets = useSafeAreaInsets();
   const slug = useActiveCompanySlug();
   const caps = useClientCapabilities();
@@ -133,23 +136,23 @@ export default function ClientAgendaScreen() {
     <Screen>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom }} showsVerticalScrollIndicator={false}>
         <ScreenHeader
-          title="Agenda"
-          right={caps.chat ? <Button label="Pedir horário" icon="add" compact onPress={() => router.push(`/cliente/chat/${slug}?pedido=1`)} /> : undefined}
+          title={t('agenda.title')}
+          right={caps.chat ? <Button label={t('home.requestSlot')} icon="add" compact onPress={() => router.push(`/cliente/chat/${slug}?pedido=1`)} /> : undefined}
         />
         <View style={{ paddingHorizontal: 20 }}>
           <Segmented
             value={view}
             onChange={(k) => setView(k as View_)}
             options={[
-              { key: 'planilha', label: 'Planilha' },
-              { key: 'semana', label: 'Semana' },
-              { key: 'mes', label: 'Mês' },
-              { key: 'proximos', label: 'Próximos' },
+              { key: 'planilha', label: t('agenda.views.sheet') },
+              { key: 'semana', label: t('agenda.views.week') },
+              { key: 'mes', label: t('agenda.views.month') },
+              { key: 'proximos', label: t('agenda.views.upcoming') },
             ]}
           />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={styles.chips}>
-          <Chip label="Todas as empresas" selected={company === 'all'} onPress={() => setCompany('all')} />
+          <Chip label={t('agenda.allCompanies')} selected={company === 'all'} onPress={() => setCompany('all')} />
           {companies?.map((c) => (
             <Chip key={c.slug} label={c.name} selected={company === c.slug} onPress={() => setCompany(c.slug)} />
           ))}
@@ -163,11 +166,11 @@ export default function ClientAgendaScreen() {
                 key={isoDate(selected)}
                 entering={(dir > 0 ? FadeInRight : FadeInLeft).duration(360).reduceMotion(ReduceMotion.Never)}
               >
-                <Text style={styles.dayTitle}>{`${sameDay(selected, today) ? 'Hoje, ' : ''}${weekdayFull(selected)} ${selected.getDate()}`}</Text>
+                <Text style={styles.dayTitle}>{`${sameDay(selected, today) ? t('agenda.todayComma') : ''}${weekdayFull(selected)} ${selected.getDate()}`}</Text>
                 {dayItems.length === 0 ? (
                   <Card style={{ alignItems: 'center', paddingVertical: 24 }}>
-                    <Text style={styles.emptyTitle}>Dia livre</Text>
-                    <Muted style={{ marginTop: 4 }}>Nada marcado por aqui.</Muted>
+                    <Text style={styles.emptyTitle}>{t('agenda.freeDay')}</Text>
+                    <Muted style={{ marginTop: 4 }}>{t('agenda.nothingBooked')}</Muted>
                   </Card>
                 ) : (
                   <View style={{ gap: 10 }}>
@@ -194,7 +197,7 @@ export default function ClientAgendaScreen() {
                         <Text style={[styles.weekNum, isToday && { color: colors.primary }]}>{d.getDate()}</Text>
                       </View>
                       <View style={{ flex: 1, gap: 6 }}>
-                        {its.length === 0 ? <Muted style={{ paddingTop: 9 }}>Livre</Muted> : null}
+                        {its.length === 0 ? <Muted style={{ paddingTop: 9 }}>{t('agenda.free')}</Muted> : null}
                         {its.map((b) => (
                           <Pressable
                             key={b.id}
@@ -223,10 +226,10 @@ export default function ClientAgendaScreen() {
               <Card>
                 <View style={styles.monthHead}>
                   <Text style={styles.monthTitle}>{`${monthFull(today)[0].toUpperCase()}${monthFull(today).slice(1)} ${today.getFullYear()}`}</Text>
-                  <Muted>{`${items.filter((b) => new Date(b.starts_at).getMonth() === today.getMonth()).length} compromissos`}</Muted>
+                  <Muted>{t('agenda.appointmentsCount', { count: items.filter((b) => new Date(b.starts_at).getMonth() === today.getMonth()).length })}</Muted>
                 </View>
                 <View style={styles.monthGrid}>
-                  {['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((l, i) => (
+                  {t('agenda.weekdayInitials').split(',').map((l, i) => (
                     <Text key={i} style={styles.monthWd}>
                       {l}
                     </Text>
@@ -249,7 +252,7 @@ export default function ClientAgendaScreen() {
                             setView('planilha');
                           }}
                           accessibilityRole="button"
-                          accessibilityLabel={`Dia ${n}${has ? ', com compromisso' : ''}`}
+                          accessibilityLabel={`${t('agenda.dayN', { n })}${has ? t('agenda.withAppointmentSuffix') : ''}`}
                           style={[styles.monthCell, isToday && styles.monthToday]}
                         >
                           <Text style={[styles.monthNum, d < today && { color: '#8c99b0' }, isToday && { color: '#fff' }]}>{n}</Text>
@@ -281,16 +284,16 @@ export default function ClientAgendaScreen() {
                       {showBreak ? (
                         <View style={styles.breakRow}>
                           <View style={styles.breakLine} />
-                          <Muted style={{ fontFamily: typography.fontFamilyBold, fontSize: 12 }}>Próxima semana</Muted>
+                          <Muted style={{ fontFamily: typography.fontFamilyBold, fontSize: 12 }}>{t('agenda.nextWeek')}</Muted>
                           <View style={styles.breakLine} />
                         </View>
                       ) : null}
                       <Text style={styles.groupLabel}>
-                        {sameDay(d, today) ? `Hoje · ${weekdayFull(d)} ${d.getDate()}` : `${weekdayFull(d)} ${d.getDate()}`}
+                        {sameDay(d, today) ? `${t('agenda.today')} · ${weekdayFull(d)} ${d.getDate()}` : `${weekdayFull(d)} ${d.getDate()}`}
                       </Text>
                       {sameDay(d, today) ? (
                         <View style={styles.nowRow}>
-                          <Text style={styles.nowText}>{`Agora · ${formatHour(new Date().toISOString())}`}</Text>
+                          <Text style={styles.nowText}>{t('agenda.now', { time: formatHour(new Date().toISOString()) })}</Text>
                           <View style={styles.nowLine} />
                         </View>
                       ) : null}
@@ -308,10 +311,10 @@ export default function ClientAgendaScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
               <IconTile icon="calendar-number-outline" size={44} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.syncTitle}>Agenda no seu celular</Text>
-                <Muted style={{ marginTop: 2, lineHeight: 18 }}>Assine uma vez e os novos horários aparecem sozinhos.</Muted>
+                <Text style={styles.syncTitle}>{t('agenda.syncTitle')}</Text>
+                <Muted style={{ marginTop: 2, lineHeight: 18 }}>{t('agenda.syncBody')}</Muted>
               </View>
-              <Button label="Assinar" compact onPress={() => router.push('/cliente/calendario')} />
+              <Button label={t('agenda.subscribe')} compact onPress={() => router.push('/cliente/calendario')} />
             </View>
           </HeroCard>
         </View>

@@ -1,4 +1,5 @@
 import { ComponentProps, ReactNode, useEffect, useState } from 'react';
+import i18n from '@/src/i18n';
 import { LayoutChangeEvent, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { BlurView } from 'expo-blur';
@@ -100,9 +101,9 @@ function TabItem({
       accessibilityState={{ selected: focused }}
       accessibilityLabel={
         typeof badge === 'number' && badge > 0
-          ? `${label}, ${badge} ${badge === 1 ? 'mensagem nova' : 'mensagens novas'}`
+          ? i18n.t('nav:badge', { label, count: badge })
           : badge
-            ? `${label}, novas mensagens`
+            ? i18n.t('nav:badgeDot', { label })
             : label
       }
       style={{ flexShrink: 0 }}

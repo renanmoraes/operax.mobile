@@ -1,22 +1,25 @@
 import { StyleSheet, Text, View } from 'react-native';
+import i18n from '@/src/i18n';
 import { Button, Card, IconTile, Muted, T } from '@/src/design-system/ui';
 import { colors, text } from '@/src/design-system/tokens';
 import { formatDistance, formatDuration, timeAgo } from '@/src/shared/format';
 import { HEALTH_PLATFORM, openHealthSetup } from './healthStore';
 import { useConnectHealth, useDisconnectHealth, useHealthAvailability, useHealthState, useSyncHealth } from './useHealth';
 
-const COPY = {
-  ios: { title: 'Saúde do iPhone', subtitle: 'Apple Watch e apps que salvam treinos no Saúde', reads: 'tipo de treino, duração, distância, calorias e batimentos' },
-  android: { title: 'Health Connect', subtitle: 'Samsung Galaxy (Samsung Health), Google Fit e outros', reads: 'tipo de exercício, duração, distância, calorias e batimentos' },
-  web: { title: 'Saúde do celular', subtitle: 'Saúde no iPhone e Health Connect no Android', reads: '' },
-} as const;
+/** Textos por plataforma, lidos na hora no idioma atual. */
+const copyFor = (p: 'ios' | 'android' | 'web') => ({
+  title: i18n.t(`fitness:health.${p}.title`),
+  subtitle: i18n.t(`fitness:health.${p}.subtitle`),
+  reads: i18n.t(`fitness:health.${p}.reads`),
+});
+const healthName = () => (HEALTH_PLATFORM === 'android' ? 'Health Connect' : i18n.t('fitness:health.appName'));
 
 /**
  * Cartão do Saúde (iPhone) ou do Health Connect (Android). Explica o que vai ser lido
  * antes de abrir a janela de permissão do sistema.
  */
 export function HealthCard() {
-  const copy = COPY[HEALTH_PLATFORM ?? 'web'];
+  const copy = copyFor(HEALTH_PLATFORM ?? 'web');
   const { data: availability } = useHealthAvailability();
   const { data: state } = useHealthState();
   const connect = useConnectHealth();
@@ -34,8 +37,8 @@ export function HealthCard() {
           {connected ? (
             <View style={styles.statusRow}>
               <View style={styles.dot} />
-              <T role="captionStrong" style={{ color: colors.success }}>Conectado</T>
-              <Muted>{state?.lastSyncAt ? `· lido ${timeAgo(state.lastSyncAt)}` : ''}</Muted>
+              <T role="captionStrong" style={{ color: colors.success }}>{i18n.t('fitness:watch.connected')}</T>
+              <Muted>{state?.lastSyncAt ? i18n.t('fitness:health.read', { when: timeAgo(state.lastSyncAt) }) : ''}</Muted>
             </View>
           ) : (
             <Muted style={{ marginTop: 2 }}>{copy.subtitle}</Muted>
@@ -45,23 +48,23 @@ export function HealthCard() {
 
       {availability === 'needs_build' ? (
         <T role="callout" tone="soft">
-          Para ler o {HEALTH_PLATFORM === 'android' ? 'Health Connect' : 'Saúde'}, use o app do Operax instalado no celular. No Expo Go essa leitura não está disponível.
+          {i18n.t('fitness:health.needsBuild', { name: healthName() })}
         </T>
       ) : null}
 
       {availability === 'unsupported' ? (
-        <T role="callout" tone="soft">Abra o Operax no celular para conectar o Saúde (iPhone) ou o Health Connect (Android).</T>
+        <T role="callout" tone="soft">{i18n.t('fitness:health.unsupported')}</T>
       ) : null}
 
       {availability === 'not_installed' || availability === 'update_required' ? (
         <View style={{ gap: 10 }}>
           <T role="callout" tone="soft">
             {availability === 'not_installed'
-              ? 'Instale o Health Connect para trazer seus treinos. Em celulares Galaxy, depois ative no Samsung Health: Ajustes › Health Connect.'
-              : 'Atualize o Health Connect para continuar.'}
+              ? i18n.t('fitness:health.install')
+              : i18n.t('fitness:health.update')}
           </T>
           <Button
-            label={availability === 'not_installed' ? 'Instalar Health Connect' : 'Atualizar Health Connect'}
+            label={availability === 'not_installed' ? i18n.t('fitness:health.installBtn') : i18n.t('fitness:health.updateBtn')}
             compact
             icon="download-outline"
             onPress={() => openHealthSetup(availability)}
@@ -73,20 +76,20 @@ export function HealthCard() {
       {availability === 'available' && !connected ? (
         <View style={{ gap: 10 }}>
           <T role="callout" tone="soft">
-            {`O Operax vai ler só ${copy.reads} dos últimos 30 dias, para marcar os treinos da sua ficha. Nada é escrito no ${HEALTH_PLATFORM === 'android' ? 'Health Connect' : 'Saúde'}.`}
+            {i18n.t('fitness:health.explain', { reads: copy.reads, name: healthName() })}
           </T>
-          <Button label={`Conectar ${copy.title}`} compact loading={connect.isPending} onPress={() => connect.mutate()} style={{ alignSelf: 'flex-start' }} />
+          <Button label={i18n.t('fitness:watch.connect', { name: copy.title })} compact loading={connect.isPending} onPress={() => connect.mutate()} style={{ alignSelf: 'flex-start' }} />
         </View>
       ) : null}
 
       {availability === 'available' && connected ? (
         <View style={styles.actions}>
-          <Button label="Sincronizar" variant="soft" compact icon="sync" loading={sync.isPending} onPress={() => sync.mutate()} style={{ flex: 1 }} />
-          <Button label="Desconectar" variant="ghost" compact onPress={() => disconnect.mutate()} style={{ flex: 1 }} />
+          <Button label={i18n.t('fitness:watch.sync')} variant="soft" compact icon="sync" loading={sync.isPending} onPress={() => sync.mutate()} style={{ flex: 1 }} />
+          <Button label={i18n.t('fitness:watch.disconnect')} variant="ghost" compact onPress={() => disconnect.mutate()} style={{ flex: 1 }} />
         </View>
       ) : null}
 
-      {failed ? <T role="caption" style={{ color: colors.dangerText }}>Não deu para ler agora. Confira o acesso do Operax nos ajustes e tente de novo.</T> : null}
+      {failed ? <T role="caption" style={{ color: colors.dangerText }}>{i18n.t('fitness:health.failed')}</T> : null}
 
       {connected && state?.workouts.length ? (
         <View style={styles.list}>
@@ -105,12 +108,12 @@ export function HealthCard() {
           ))}
         </View>
       ) : connected && state && !sync.isPending ? (
-        <Muted>{state.lastSyncAt ? 'Nenhum treino nos últimos 30 dias.' : 'Toque em Sincronizar para trazer seus treinos.'}</Muted>
+        <Muted>{state.lastSyncAt ? i18n.t('fitness:health.none') : i18n.t('fitness:health.tapSync')}</Muted>
       ) : null}
 
       {connected && HEALTH_PLATFORM ? (
         <Muted style={{ fontSize: 12 }}>
-          {HEALTH_PLATFORM === 'ios' ? 'Para tirar o acesso: Ajustes › Saúde › Acesso a Dados › Operax.' : 'Para tirar o acesso: Health Connect › Permissões do app › Operax.'}
+          {HEALTH_PLATFORM === 'ios' ? i18n.t('fitness:health.revokeIos') : i18n.t('fitness:health.revokeAndroid')}
         </Muted>
       ) : null}
     </Card>

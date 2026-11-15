@@ -3,6 +3,7 @@ import { BackHandler, Modal, Pressable, StyleSheet, Text, View } from 'react-nat
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './ui';
+import i18n from '@/src/i18n';
 import { colors, motion, radii, shadows, text } from './tokens';
 
 /**
@@ -59,7 +60,7 @@ export async function confirmDialog(o: { title: string; message?: string; confir
     icon: o.icon,
     actions: [
       { label: o.confirmLabel, value: 'ok', variant: o.tone === 'danger' ? 'danger' : 'primary' },
-      { label: o.cancelLabel ?? 'Voltar', value: 'cancel', variant: 'ghost' },
+      { label: o.cancelLabel ?? i18n.t('actions.back'), value: 'cancel', variant: 'ghost' },
     ],
   });
   return v === 'ok';
@@ -107,12 +108,12 @@ export function DialogHost() {
   const d = item ?? shown;
   if (!d) return null;
   const tone = TONE[d.tone ?? 'info'];
-  const actions = d.actions?.length ? d.actions : [{ label: 'Entendi', value: 'ok', variant: 'primary' as const }];
+  const actions = d.actions?.length ? d.actions : [{ label: i18n.t('actions.understood'), value: 'ok', variant: 'primary' as const }];
 
   return (
     <Modal visible={!!item} transparent animationType="none" statusBarTranslucent onRequestClose={() => item && settle(item.id, item.dismissValue)}>
       <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, scrim]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={() => item && settle(item.id, item.dismissValue)} accessibilityRole="button" accessibilityLabel="Fechar" />
+        <Pressable style={StyleSheet.absoluteFill} onPress={() => item && settle(item.id, item.dismissValue)} accessibilityRole="button" accessibilityLabel={i18n.t('actions.close')} />
       </Animated.View>
       <View style={styles.center} pointerEvents="box-none">
         <Animated.View style={[styles.card, card]} accessibilityViewIsModal accessibilityRole="alert">

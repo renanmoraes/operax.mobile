@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
+import { locale } from '@/src/i18n';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, Card, Muted, ProgressBar, Rise, Screen, SectionHeader, StatTile, TopBar } from '@/src/design-system/ui';
 import { colors, numbers, radii, typography } from '@/src/design-system/tokens';
 import { useFitnessSummary, useHistory, usePlannedWeekdays } from '@/src/features/fitness/useFitness';
-import { formatDuration, isoDate, monthFull, weekdayShort } from '@/src/shared/format';
+import { formatDuration, isoDate, monthFull, weekdayInitials, weekdayShort } from '@/src/shared/format';
 import { useNow } from '@/src/shared/useNow';
 import { clientDataMode } from '@/src/features/client/dataMode';
 
@@ -16,6 +18,7 @@ const GROUPS: Record<string, [string, number][]> = {
 
 export default function FitnessHistoryScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation(['fitness', 'common']);
   const now = useNow();
   const { data: history } = useHistory();
   const { data: summary } = useFitnessSummary();
@@ -40,22 +43,22 @@ export default function FitnessHistoryScreen() {
 
   return (
     <Screen>
-      <TopBar safe title="Histórico" onBack={() => router.back()} />
+      <TopBar safe title={t('history.title')} onBack={() => router.back()} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32 }}>
         <Rise style={{ flexDirection: 'row', gap: 8 }}>
-          <StatTile value={String(summary?.streak ?? '–')} label="dias seguidos" accent />
-          <StatTile value={String(summary?.monthCount ?? '–')} label="este mês" />
-          <StatTile value={String(summary?.totalSessions ?? '–')} label="no total" />
+          <StatTile value={String(summary?.streak ?? '–')} label={t('history.streak')} accent />
+          <StatTile value={String(summary?.monthCount ?? '–')} label={t('history.thisMonth')} />
+          <StatTile value={String(summary?.totalSessions ?? '–')} label={t('history.total')} />
         </Rise>
 
         <Rise index={1} style={{ marginTop: 12 }}>
           <Card>
             <View style={styles.rowBetween}>
               <Text style={styles.cardTitle}>{`${monthFull(today)[0].toUpperCase()}${monthFull(today).slice(1)}`}</Text>
-              <Muted>{`consistência de ${summary?.consistency ?? '–'}%`}</Muted>
+              <Muted>{t('history.consistency', { value: summary?.consistency ?? '–' })}</Muted>
             </View>
             <View style={styles.grid}>
-              {['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((l, i) => (
+              {weekdayInitials().map((l, i) => (
                 <Text key={i} style={styles.wd}>{l}</Text>
               ))}
               {Array.from({ length: lead }, (_, i) => (
@@ -78,25 +81,25 @@ export default function FitnessHistoryScreen() {
               })}
             </View>
             <View style={styles.legend}>
-              <Legend color={colors.primary} label="Treinou" />
-              <Legend color={colors.primarySoft} label="Descanso do plano" />
-              <Legend color="#fff" border={colors.warn} label="Faltou" />
+              <Legend color={colors.primary} label={t('history.legendDone')} />
+              <Legend color={colors.primarySoft} label={t('history.legendRest')} />
+              <Legend color="#fff" border={colors.warn} label={t('history.legendMissed')} />
             </View>
-            <Muted style={{ marginTop: 10, lineHeight: 18 }}>A sequência conta os dias em que você cumpriu o plano. Descanso programado também conta.</Muted>
+            <Muted style={{ marginTop: 10, lineHeight: 18 }}>{t('history.streakNote')}</Muted>
           </Card>
         </Rise>
 
         {groups.length ? (
         <Rise index={2} style={{ marginTop: 12 }}>
           <Card>
-            <Text style={styles.cardTitle}>Onde foi o seu esforço</Text>
-            <Muted style={{ marginTop: 3 }}>Séries por grupo muscular nos últimos 30 dias</Muted>
+            <Text style={styles.cardTitle}>{t('history.effortWhere')}</Text>
+            <Muted style={{ marginTop: 3 }}>{t('history.effortSub')}</Muted>
             <View style={{ gap: 12, marginTop: 14 }}>
               {groups.map(([g, n]) => (
                 <View key={g}>
                   <View style={styles.rowBetween}>
                     <Text style={styles.groupName}>{g}</Text>
-                    <Muted>{`${n} séries`}</Muted>
+                    <Muted>{t('history.sets', { count: n })}</Muted>
                   </View>
                   <View style={{ marginTop: 6 }}>
                     <ProgressBar progress={n / maxGroup} height={10} />
@@ -108,13 +111,13 @@ export default function FitnessHistoryScreen() {
         </Rise>
         ) : null}
 
-        <SectionHeader title="Todos os treinos" />
+        <SectionHeader title={t('history.all')} />
         <View style={{ gap: 8 }}>
           {history?.slice(0, 12).map((e) => {
             const d = new Date(`${e.date}T12:00:00`);
             const watch = e.sources.find((s) => s.origin !== 'portal');
             return (
-              <Card key={e.id} style={styles.entry} onPress={() => router.push(`/cliente/atividade/${encodeURIComponent(e.id)}`)} accessibilityLabel={`${e.title}. Ver detalhes`}>
+              <Card key={e.id} style={styles.entry} onPress={() => router.push(`/cliente/atividade/${encodeURIComponent(e.id)}`)} accessibilityLabel={t('history.seeDetails', { title: e.title })}>
                 <View style={{ width: 46, alignItems: 'center' }}>
                   <Muted style={{ fontFamily: typography.fontFamilySemiBold, fontSize: 11.5 }}>{weekdayShort(d)}</Muted>
                   <Text style={styles.entryDay}>{d.getDate()}</Text>
@@ -123,10 +126,10 @@ export default function FitnessHistoryScreen() {
                   <Text style={styles.entryTitle} numberOfLines={1}>{e.title}</Text>
                   {e.distance_meters ? <Text style={styles.entryDist}>{`${(e.distance_meters / 1000).toFixed(2).replace('.', ',')} km`}</Text> : null}
                   <Muted style={{ marginTop: 3 }} numberOfLines={1}>
-                    {[formatDuration(e.duration_seconds), e.sets_done ? `${e.sets_done} séries` : null, e.volume_kg ? `${e.volume_kg.toLocaleString('pt-BR')} kg` : null, watch ? watch.label : null].filter(Boolean).join(' · ')}
+                    {[formatDuration(e.duration_seconds), e.sets_done ? t('history.sets', { count: e.sets_done }) : null, e.volume_kg ? `${e.volume_kg.toLocaleString(locale())} kg` : null, watch ? watch.label : null].filter(Boolean).join(' · ')}
                   </Muted>
                 </View>
-                {e.record ? <Badge label="Recorde" tone="solid" /> : e.effort ? <Badge label={`Esforço ${e.effort}`} tone="primary" /> : null}
+                {e.record ? <Badge label={t('history.record')} tone="solid" /> : e.effort ? <Badge label={t('history.effort', { n: e.effort })} tone="primary" /> : null}
               </Card>
             );
           })}

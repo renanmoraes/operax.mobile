@@ -1,4 +1,5 @@
 import type { FitnessHistoryEntry, FitnessResultView } from './types';
+import i18n from '@/src/i18n';
 
 /**
  * Regras calculadas no app: o portal não tem rota de consistência/streak nem de gamificação
@@ -45,12 +46,12 @@ export function xpFrom(input: { sessions: number; records: number; goalWeeks: nu
 }
 
 const LEVEL_STEP = 200;
-const LABELS: [number, string][] = [
-  [1, 'Iniciante'],
-  [4, 'Em ritmo'],
-  [6, 'Intermediário'],
-  [10, 'Avançado'],
-  [15, 'Elite'],
+const LABELS: [number, 'beginner' | 'steady' | 'intermediate' | 'advanced' | 'elite'][] = [
+  [1, 'beginner'],
+  [4, 'steady'],
+  [6, 'intermediate'],
+  [10, 'advanced'],
+  [15, 'elite'],
 ];
 
 /** Cada nível pede 200 XP a mais que o anterior (200, 400, 600…). */
@@ -63,7 +64,7 @@ export function levelFromXp(xp: number) {
     level += 1;
     need = LEVEL_STEP * level;
   }
-  const label = LABELS.reduce((acc, [min, name]) => (level >= min ? name : acc), LABELS[0][1]);
+  const label = i18n.t(`fitness:level.${LABELS.reduce((acc, [min, name]) => (level >= min ? name : acc), LABELS[0][1])}`);
   return { level, current: xp - floor, next: need, label };
 }
 

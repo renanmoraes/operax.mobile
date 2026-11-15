@@ -1,4 +1,5 @@
 /** Linha do tempo do dia: posição de cada compromisso, colunas para os que se sobrepõem e faixa de horas. */
+import i18n from '@/src/i18n';
 
 export type TimelineEvent = { id: string; startMin: number; endMin: number };
 export type PlacedEvent<T extends TimelineEvent> = T & { top: number; height: number; lane: number; lanes: number };
@@ -124,9 +125,9 @@ export function layoutEvents<T extends TimelineEvent>(events: T[], axis: TimeAxi
 
 /** "Agora", "Em 25 min", "Há 2 h"… para o compromisso em relação à hora atual. */
 export function relativeLabel(startMin: number, endMin: number, now: number): string | null {
-  if (now >= startMin && now < endMin) return 'Agora';
+  if (now >= startMin && now < endMin) return i18n.t('agenda:timeline.now');
   const diff = Math.round(startMin - now);
-  if (diff > 0 && diff <= 60) return `Em ${diff} min`;
+  if (diff > 0 && diff <= 60) return i18n.t('agenda:timeline.inMinutes', { count: diff });
   return null;
 }
 

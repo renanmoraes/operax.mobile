@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { ReactNode, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { FlatList, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, TextInputInstance, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,14 +36,16 @@ const PAGE = 60;
 
 /** Conversa do chat interno (grupo ou direta) com texto, foto, PDF e áudio. */
 export default function TeamChatConversationScreenGuarded() {
+  const { t } = useTranslation(['team', 'common']);
   return (
-    <RequirePermission need="teamChat" title="Chat da equipe">
+    <RequirePermission need="teamChat" title={t('list.title')}>
       <TeamChatConversationScreen />
     </RequirePermission>
   );
 }
 
 function TeamChatConversationScreen() {
+  const { t } = useTranslation(['team', 'common']);
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { mode, user } = useAuth();
@@ -97,7 +100,7 @@ function TeamChatConversationScreen() {
       setOlder((prev) => retainWindow([...page.filter((m) => !prev.some((p) => p.id === m.id)), ...prev], latest));
       if (page.length < PAGE) setOlderDone(true);
     } catch {
-      show('Não foi possível carregar as mensagens anteriores', 'error');
+      show(t('chat.loadOlderFailed'), 'error');
     } finally {
       setLoadingOlder(false);
     }
@@ -137,7 +140,7 @@ function TeamChatConversationScreen() {
       ? (live ? usersQ.data ?? [] : teamUsers.filter((u) => fold(u.name).includes(fold(pickQuery)))).map((u) => ({ id: u.id, name: u.name, sub: u.email }))
       : picker.kind === 'contact'
         ? live
-          ? (contactsQ.data?.items ?? []).map((c) => ({ id: c.id, name: c.name || 'Contato', sub: phoneLabel(c.phone_e164) }))
+          ? (contactsQ.data?.items ?? []).map((c) => ({ id: c.id, name: c.name || t('chat.contactFallback'), sub: phoneLabel(c.phone_e164) }))
           : mockContacts.filter((c) => fold(c.name).includes(fold(pickQuery))).slice(0, 8).map((c) => ({ id: c.id, name: c.name, sub: phoneLabel(c.phone) }))
         : [];
 
@@ -163,7 +166,7 @@ function TeamChatConversationScreen() {
         setPendingRefs(vars.refs);
         return vars.body;
       });
-      show('Falha ao enviar', 'error');
+      show(t('chat.sendFailed'), 'error');
     },
   });
 
@@ -179,7 +182,7 @@ function TeamChatConversationScreen() {
       setPendingRefs([]);
       if (extras.mentions.length) {
         const names = pendingUsers.filter((u) => extras.mentions.includes(u.id)).map((u) => firstName(u.name));
-        show(`${names.join(', ')} ${names.length === 1 ? 'vai receber' : 'vão receber'} uma notificação`, 'success', 'notifications-outline');
+        show(t('chat.notify', { count: names.length, names: names.join(', ') }), 'success', 'notifications-outline');
       }
       return;
     }
@@ -213,20 +216,20 @@ function TeamChatConversationScreen() {
       await sendTeamMedia(id, file);
       refreshLive();
     } catch {
-      show('Falha no envio do arquivo', 'error');
+      show(t('chat.fileFailed'), 'error');
     }
   };
 
   const startVoice = async () => {
     const result = await voice.start();
-    if (result !== 'granted') show('Libere o microfone nos ajustes do celular para gravar áudio.', 'error', 'mic-off-outline');
+    if (result !== 'granted') show(t('chat.micBlocked'), 'error', 'mic-off-outline');
   };
 
   const sendVoice = async () => {
     const audio = await voice.stop();
     if (!audio) return;
     if (!live) {
-      demoTeamChat.send(id, { type: 'audio', body: 'Áudio', mediaUri: audio.uri, durationS: audio.durationS });
+      demoTeamChat.send(id, { type: 'audio', body: t('preview.audio'), mediaUri: audio.uri, durationS: audio.durationS });
       return;
     }
     try {
@@ -237,7 +240,7 @@ function TeamChatConversationScreen() {
       });
       refreshLive();
     } catch {
-      show('Falha no envio do áudio', 'error');
+      show(t('chat.audioFailed'), 'error');
     }
   };
 
@@ -245,14 +248,14 @@ function TeamChatConversationScreen() {
     return (
       <View style={styles.center}>
         <Backdrop variant="chat" />
-        <Muted>Conversa não encontrada.</Muted>
-        <Button label="Voltar" variant="soft" compact onPress={() => router.back()} style={{ marginTop: 14 }} />
+        <Muted>{t('chat.notFound')}</Muted>
+        <Button label={t('common:actions.back')} variant="soft" compact onPress={() => router.back()} style={{ marginTop: 14 }} />
       </View>
     );
   }
 
   const isGroup = channel?.kind === 'group';
-  const subtitle = isGroup ? 'Grupo da equipe' : channel?.online ? 'Online agora' : 'Equipe';
+  const subtitle = isGroup ? t('chat.groupSubtitle') : channel?.online ? t('chat.onlineNow') : t('chat.teamSubtitle');
 
   const fileUri = (m: TeamMessage) => m.mediaUri ?? (m.asset ? assetUri(m.asset) : undefined);
 
@@ -268,9 +271,9 @@ function TeamChatConversationScreen() {
     let bubble: ReactNode;
     if (item.type === 'image' || item.type === 'video' || item.type === 'document') {
       const uri = fileUri(item);
-      const media: ChatMediaData = item.type === 'document' ? { kind: 'document', name: item.fileName || 'Documento', uri, sizeBytes: item.sizeBytes } : { kind: item.type, uri };
+      const media: ChatMediaData = item.type === 'document' ? { kind: 'document', name: item.fileName || t('chat.document'), uri, sizeBytes: item.sizeBytes } : { kind: item.type, uri };
       const onOpen = uri
-        ? () => (item.type === 'image' ? openViewer({ kind: 'image', uri, title: `Foto de ${item.mine ? 'você' : firstName(item.senderName)}` }) : item.type === 'document' ? void openDocument(uri, item.fileName || 'documento') : void Linking.openURL(uri))
+        ? () => (item.type === 'image' ? openViewer({ kind: 'image', uri, title: item.mine ? t('chat.photoFromYou') : t('chat.photoFrom', { name: firstName(item.senderName) }) }) : item.type === 'document' ? void openDocument(uri, item.fileName || 'documento') : void Linking.openURL(uri))
         : undefined;
       bubble = <MediaBubble media={media} caption={item.body || undefined} at={item.at} mine={item.mine} onOpen={onOpen} />;
     } else if (item.type === 'audio') {
@@ -305,10 +308,10 @@ function TeamChatConversationScreen() {
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Backdrop variant="chat" />
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <IconButton icon="chevron-back" accessibilityLabel="Voltar" onPress={() => router.back()} />
+        <IconButton icon="chevron-back" accessibilityLabel={t('common:actions.back')} onPress={() => router.back()} />
         {channel ? <TeamAvatar channel={channel} size={42} /> : null}
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.title} numberOfLines={1}>{channel?.title ?? 'Carregando…'}</Text>
+          <Text style={styles.title} numberOfLines={1}>{channel?.title ?? t('chat.loading')}</Text>
           <View style={styles.subRow}>
             {!isGroup && channel?.online ? <View style={styles.onlineDot} /> : null}
             <Muted numberOfLines={1} style={{ fontSize: 12.5 }}>{subtitle}</Muted>
@@ -330,7 +333,7 @@ function TeamChatConversationScreen() {
         ListHeaderComponent={
           canLoadOlder ? (
             <Pressable onPress={() => void loadOlder()} disabled={loadingOlder} accessibilityRole="button" style={styles.older}>
-              <Text style={styles.olderText}>{loadingOlder ? 'Carregando…' : 'Carregar mensagens anteriores'}</Text>
+              <Text style={styles.olderText}>{loadingOlder ? t('chat.loading') : t('chat.loadOlder')}</Text>
             </Pressable>
           ) : undefined
         }
@@ -342,7 +345,7 @@ function TeamChatConversationScreen() {
           ) : (
             <View style={styles.empty}>
               <Ionicons name="chatbubbles-outline" size={28} color={colors.primary} />
-              <Text style={styles.emptyText}>Comece a conversa com a equipe.</Text>
+              <Text style={styles.emptyText}>{t('chat.startConversation')}</Text>
             </View>
           )
         }
@@ -355,7 +358,7 @@ function TeamChatConversationScreen() {
       {!canSend ? (
         <View style={[styles.readOnly, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <Ionicons name="eye-outline" size={18} color={colors.textSoft} />
-          <Text style={styles.readOnlyText}>Somente leitura: seu perfil no Operax não envia mensagens no chat da equipe.</Text>
+          <Text style={styles.readOnlyText}>{t('chat.readOnly')}</Text>
         </View>
       ) : voice.recording ? (
         <View style={[styles.composer, { paddingHorizontal: 0, paddingTop: 0 }]}>
@@ -364,13 +367,13 @@ function TeamChatConversationScreen() {
       ) : (
         <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
           {canMedia ? (
-            <Pressable onPress={() => setAttachOpen(true)} style={styles.attachBtn} accessibilityRole="button" accessibilityLabel="Anexar foto ou documento">
+            <Pressable onPress={() => setAttachOpen(true)} style={styles.attachBtn} accessibilityRole="button" accessibilityLabel={t('chat.attach')}>
               <Ionicons name="add" size={24} color={colors.primary} />
             </Pressable>
           ) : null}
-          <ChatInput inputRef={inputRef} value={draft} onChangeText={setDraft} placeholder={isGroup ? `Mensagem para ${channel?.title ?? 'o grupo'}` : 'Mensagem…'} />
+          <ChatInput inputRef={inputRef} value={draft} onChangeText={setDraft} placeholder={isGroup ? (channel?.title ? t('chat.messageTo', { name: channel.title }) : t('chat.messageToGroup')) : t('chat.messagePlaceholder')} />
           {draft.trim() || !canMedia ? (
-            <Pressable onPress={sendText} disabled={sendMut.isPending} style={[styles.send, sendMut.isPending && { opacity: 0.6 }]} accessibilityRole="button" accessibilityLabel="Enviar" accessibilityState={{ disabled: sendMut.isPending }}>
+            <Pressable onPress={sendText} disabled={sendMut.isPending} style={[styles.send, sendMut.isPending && { opacity: 0.6 }]} accessibilityRole="button" accessibilityLabel={t('common:actions.send')} accessibilityState={{ disabled: sendMut.isPending }}>
               <Ionicons name="send" size={18} color="#fff" />
             </Pressable>
           ) : (
@@ -381,9 +384,9 @@ function TeamChatConversationScreen() {
 
       <Toast toast={toast} />
 
-      <BottomSheet visible={attachOpen} onClose={() => setAttachOpen(false)} title="Enviar para a equipe">
-        <Button label="Foto da galeria" variant="secondary" onPress={() => void pick('image')} />
-        <Button label="Documento ou PDF" variant="secondary" onPress={() => void pick('document')} />
+      <BottomSheet visible={attachOpen} onClose={() => setAttachOpen(false)} title={t('chat.sendTitle')}>
+        <Button label={t('chat.galleryPhoto')} variant="secondary" onPress={() => void pick('image')} />
+        <Button label={t('chat.docOrPdf')} variant="secondary" onPress={() => void pick('document')} />
       </BottomSheet>
     </KeyboardAvoidingView>
   );

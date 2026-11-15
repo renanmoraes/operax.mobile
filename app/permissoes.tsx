@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Display, Muted, Rise, Screen, TopBar } from '@/src/design-system/ui';
@@ -13,6 +14,7 @@ import type { PermissionState } from '@/src/features/permissions/permissionState
  * quem negou antes volta aqui e libera (ou abre os ajustes do sistema).
  */
 export default function StaffPermissionsScreen() {
+  const { t } = useTranslation(['staff', 'common']);
   const insets = useSafeAreaInsets();
   const { inicio } = useLocalSearchParams<{ inicio?: string }>();
   const onboarding = inicio === '1';
@@ -30,47 +32,47 @@ export default function StaffPermissionsScreen() {
 
   return (
     <Screen backdrop="mirror">
-      {onboarding ? null : <TopBar safe title="Permissões do aparelho" onBack={() => router.back()} />}
+      {onboarding ? null : <TopBar safe title={t('permissions.title')} onBack={() => router.back()} />}
       <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: onboarding ? insets.top + 40 : 8, paddingBottom: insets.bottom + spacing.xl }]}>
         {onboarding ? (
           <>
             <Rise>
-              <Display style={{ fontSize: 28, lineHeight: 33 }}>Deixe o app pronto para o atendimento</Display>
+              <Display style={{ fontSize: 28, lineHeight: 33 }}>{t('permissions.onboardingTitle')}</Display>
             </Rise>
             <Rise index={1}>
-              <Muted style={styles.sub}>Libere o que for usar. Dá para mudar depois em Perfil › Permissões do aparelho.</Muted>
+              <Muted style={styles.sub}>{t('permissions.onboardingSub')}</Muted>
             </Rise>
           </>
         ) : (
-          <Muted style={styles.sub}>Se você negou alguma permissão, libere aqui ou nos ajustes do celular.</Muted>
+          <Muted style={styles.sub}>{t('permissions.sub')}</Muted>
         )}
         <View style={{ marginTop: 22, gap: 12 }}>
           <PermissionCard
             index={2}
             icon="notifications-outline"
-            title="Notificações"
-            body="Mensagem nova de cliente, atendimento transferido para você, chat da equipe, agenda e avisos do Operax."
-            action={<StatusAction state={states.notifications} grantLabel="Ativar" onRequest={() => void request('notifications')} />}
+            title={t('permissions.notifications.title')}
+            body={t('permissions.notifications.body')}
+            action={<StatusAction state={states.notifications} grantLabel={t('permissions.enable')} onRequest={() => void request('notifications')} />}
           />
           <PermissionCard
             index={3}
             icon="camera-outline"
-            title="Câmera e fotos"
-            body="Para mandar fotos, vídeos e documentos no atendimento e no chat da equipe."
-            action={<StatusAction state={media} grantLabel="Permitir" onRequest={async () => { await request('camera'); await request('photos'); }} />}
+            title={t('permissions.camera.title')}
+            body={t('permissions.camera.body')}
+            action={<StatusAction state={media} grantLabel={t('permissions.allow')} onRequest={async () => { await request('camera'); await request('photos'); }} />}
           />
           <PermissionCard
             index={4}
             icon="mic-outline"
-            title="Microfone"
-            body="Para gravar e mandar áudios no atendimento e no chat da equipe."
-            action={<StatusAction state={states.microphone} grantLabel="Permitir" onRequest={() => void request('microphone')} />}
+            title={t('permissions.microphone.title')}
+            body={t('permissions.microphone.body')}
+            action={<StatusAction state={states.microphone} grantLabel={t('permissions.allow')} onRequest={() => void request('microphone')} />}
           />
         </View>
         {onboarding ? (
           <View style={{ marginTop: 26, gap: 8 }}>
-            <Button label="Continuar" icon="arrow-forward" onPress={() => void finish()} />
-            <Button label="Agora não" variant="ghost" onPress={() => void finish()} />
+            <Button label={t('common:actions.continue')} icon="arrow-forward" onPress={() => void finish()} />
+            <Button label={t('permissions.notNow')} variant="ghost" onPress={() => void finish()} />
           </View>
         ) : null}
       </ScrollView>

@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EmptyState, Screen, TopBar } from '@/src/design-system/ui';
 import { useAuth } from './AuthContext';
 import { hasPermission, PERMS, type PermKey, type PermissionNeed } from './permissions';
@@ -17,6 +18,7 @@ export function useCan() {
 
 /** Tela aberta por link sem a permissão: explica e volta, sem mostrar nada do conteúdo. */
 export function RequirePermission({ need, title, children }: { need: PermKey | PermissionNeed; title: string; children: ReactNode }) {
+  const { t } = useTranslation(['auth', 'common']);
   const can = useCan();
   if (can(need)) return <>{children}</>;
   return (
@@ -24,9 +26,9 @@ export function RequirePermission({ need, title, children }: { need: PermKey | P
       <TopBar safe title={title} onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
       <EmptyState
         icon="lock-closed-outline"
-        title="Sem acesso a esta área"
-        subtitle="Seu perfil no Operax não tem permissão para isso. Se precisar, peça ao administrador da empresa."
-        actionLabel="Voltar"
+        title={t('noAccess.title')}
+        subtitle={t('noAccess.subtitle')}
+        actionLabel={t('common:actions.back')}
         onAction={() => (router.canGoBack() ? router.back() : router.replace('/'))}
       />
     </Screen>

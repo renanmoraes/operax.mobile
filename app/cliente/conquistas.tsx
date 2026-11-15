@@ -1,4 +1,7 @@
 import { router } from 'expo-router';
+import { useActiveCompanySlug, useCompanies } from '@/src/features/client/useClientData';
+import { locale } from '@/src/i18n';
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +18,11 @@ type Badge_ = { id: string; name: string; icon: IconName; unlocked: boolean; sub
 
 export default function AchievementsScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation(['fitness', 'common']);
+  // Nome da empresa no texto de compartilhar (antes era um nome de demonstração fixo).
+  const slug = useActiveCompanySlug();
+  const { data: companies } = useCompanies();
+  const companyName = companies?.find((c) => c.slug === slug)?.name ?? 'Operax';
   const { data: s } = useFitnessSummary();
   const { data: history } = useHistory();
   const { data: evolution } = useEvolution();
@@ -31,38 +39,39 @@ export default function AchievementsScreen() {
   const early = (history ?? []).filter((e) => e.started_at && new Date(e.started_at).getHours() < 7).length;
   const hasPhoto = (checkins ?? []).some((c) => !!c.photo_uri);
   const watch = (providers ?? []).some((p) => p.connected);
-  const won = (ok: boolean, progress: string) => (ok ? 'conquistada' : progress);
+  const won = (ok: boolean, progress: string) => (ok ? t('ach.won') : progress);
+  const badge = (id: string, icon: IconName, unlocked: boolean, sub: string): Badge_ => ({ id, icon, unlocked, sub, name: t(`ach.${id}.name` as 'ach.first.name'), desc: t(`ach.${id}.desc` as 'ach.first.desc') });
   const all: Badge_[] = [
-    { id: 'first', name: 'Primeiro treino', icon: 'flag-outline', unlocked: s.totalSessions >= 1, sub: won(s.totalSessions >= 1, '0/1'), desc: 'Você concluiu seu primeiro treino.' },
-    { id: 'week', name: 'Semana perfeita', icon: 'star-outline', unlocked: perfectWeeks > 0, sub: perfectWeeks > 0 ? `${perfectWeeks} ${perfectWeeks === 1 ? 'vez' : 'vezes'}` : `meta de ${goal}/semana`, desc: 'Bateu a meta de treinos de uma semana.' },
-    { id: 'ten', name: '10 treinos', icon: 'medal-outline', unlocked: s.totalSessions >= 10, sub: won(s.totalSessions >= 10, `${Math.min(s.totalSessions, 10)}/10`), desc: 'Dez treinos concluídos. O hábito começou.' },
-    { id: 'record', name: 'Recorde pessoal', icon: 'flash-outline', unlocked: s.records > 0, sub: `${s.records} ${s.records === 1 ? 'recorde' : 'recordes'}`, desc: 'Bateu a sua melhor carga em um exercício.' },
-    { id: 'early', name: 'Madrugador', icon: 'sunny-outline', unlocked: early >= 5, sub: won(early >= 5, `${Math.min(early, 5)}/5`), desc: 'Cinco treinos começados antes das 7h.' },
-    { id: 'streak7', name: '7 dias seguidos', icon: 'flame-outline', unlocked: s.bestStreak >= 7, sub: won(s.bestStreak >= 7, `${Math.min(s.bestStreak, 7)}/7`), desc: 'Uma semana inteira cumprindo o plano, sem falhar.' },
-    { id: 'photo', name: 'Primeira foto', icon: 'camera-outline', unlocked: hasPhoto, sub: won(hasPhoto, 'a conquistar'), desc: 'Registrou a primeira foto de evolução.' },
-    { id: 'fifty', name: '50 treinos', icon: 'trophy-outline', unlocked: s.totalSessions >= 50, sub: won(s.totalSessions >= 50, `${Math.min(s.totalSessions, 50)}/50`), desc: 'Cinquenta treinos. Isso já é rotina.' },
-    { id: 'watch', name: 'Relógio conectado', icon: 'watch-outline', unlocked: watch, sub: won(watch, 'a conquistar'), desc: 'Seus treinos chegam sozinhos pelo relógio.' },
-    { id: 'streak30', name: '30 dias seguidos', icon: 'flame-outline', unlocked: s.streak >= 30, sub: won(s.streak >= 30, `${Math.min(s.streak, 30)}/30`), desc: 'Cumpra o plano por 30 dias seguidos.' },
-    { id: 'hundred', name: '100 treinos', icon: 'trophy-outline', unlocked: s.totalSessions >= 100, sub: won(s.totalSessions >= 100, `${Math.min(s.totalSessions, 100)}/100`), desc: 'Chegue a cem treinos concluídos.' },
-    { id: 'month', name: 'Mês com 20 treinos', icon: 'calendar-outline', unlocked: s.monthCount >= 20, sub: won(s.monthCount >= 20, `${Math.min(s.monthCount, 20)}/20`), desc: 'Vinte treinos no mesmo mês.' },
+    badge('first', 'flag-outline', s.totalSessions >= 1, won(s.totalSessions >= 1, '0/1')),
+    badge('week', 'star-outline', perfectWeeks > 0, perfectWeeks > 0 ? t('ach.times', { count: perfectWeeks }) : t('ach.weekGoal', { goal })),
+    badge('ten', 'medal-outline', s.totalSessions >= 10, won(s.totalSessions >= 10, `${Math.min(s.totalSessions, 10)}/10`)),
+    badge('record', 'flash-outline', s.records > 0, t('ach.recordsCount', { count: s.records })),
+    badge('early', 'sunny-outline', early >= 5, won(early >= 5, `${Math.min(early, 5)}/5`)),
+    badge('streak7', 'flame-outline', s.bestStreak >= 7, won(s.bestStreak >= 7, `${Math.min(s.bestStreak, 7)}/7`)),
+    badge('photo', 'camera-outline', hasPhoto, won(hasPhoto, t('ach.toEarn'))),
+    badge('fifty', 'trophy-outline', s.totalSessions >= 50, won(s.totalSessions >= 50, `${Math.min(s.totalSessions, 50)}/50`)),
+    badge('watch', 'watch-outline', watch, won(watch, t('ach.toEarn'))),
+    badge('streak30', 'flame-outline', s.streak >= 30, won(s.streak >= 30, `${Math.min(s.streak, 30)}/30`)),
+    badge('hundred', 'trophy-outline', s.totalSessions >= 100, won(s.totalSessions >= 100, `${Math.min(s.totalSessions, 100)}/100`)),
+    badge('month', 'calendar-outline', s.monthCount >= 20, won(s.monthCount >= 20, `${Math.min(s.monthCount, 20)}/20`)),
   ];
   const list = all.filter((b) => filter === 'todas' || (filter === 'abertas' ? b.unlocked : !b.unlocked));
   const unlocked = all.filter((b) => b.unlocked).length;
 
   return (
     <Screen>
-      <TopBar safe title="Nível e conquistas" onBack={() => router.back()} />
+      <TopBar safe title={t('ach.title')} onBack={() => router.back()} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32 }}>
         <Rise>
           <HeroCard>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
               <LinearGradient colors={gradients.brand} style={styles.level}>
-                <Text style={styles.levelLabel}>NÍVEL</Text>
+                <Text style={styles.levelLabel}>{t('ach.levelCaps')}</Text>
                 <Num size="lg" style={{ color: '#fff' }}>{s.level.level}</Num>
               </LinearGradient>
               <View style={{ flex: 1 }}>
                 <Text style={styles.levelName}>{s.level.label}</Text>
-                <Muted style={{ marginTop: 4, fontSize: 13.5 }}>{`Faltam ${(s.level.next - s.level.current).toLocaleString('pt-BR')} XP para o nível ${s.level.level + 1}`}</Muted>
+                <Muted style={{ marginTop: 4, fontSize: 13.5 }}>{t('ach.xpToGo', { xp: (s.level.next - s.level.current).toLocaleString(locale()), level: s.level.level + 1 })}</Muted>
               </View>
             </View>
             <View style={{ marginTop: 18 }}>
@@ -70,9 +79,9 @@ export default function AchievementsScreen() {
             </View>
             <View style={styles.rules}>
               {[
-                ['+50', 'por treino'],
-                ['+120', 'meta da semana'],
-                ['+30', 'por recorde'],
+                ['+50', t('ach.rule.workout')],
+                ['+120', t('ach.rule.week')],
+                ['+30', t('ach.rule.record')],
               ].map(([v, l]) => (
                 <View key={l} style={styles.rule}>
                   <Num size="sm" style={{ color: colors.primary }}>{v}</Num>
@@ -83,14 +92,14 @@ export default function AchievementsScreen() {
           </HeroCard>
         </Rise>
 
-        <SectionHeader title="Conquistas" action={`${unlocked} de ${all.length}`} />
+        <SectionHeader title={t('tab.achievements')} action={t('tab.nOf', { n: unlocked, total: all.length })} />
         <Segmented
           value={filter}
           onChange={setFilter}
           options={[
-            { key: 'todas', label: 'Todas' },
-            { key: 'abertas', label: 'Ganhas' },
-            { key: 'fechadas', label: 'A conquistar' },
+            { key: 'todas', label: t('ach.filter.all') },
+            { key: 'abertas', label: t('ach.filter.won') },
+            { key: 'fechadas', label: t('ach.filter.toEarn') },
           ]}
         />
         <View style={styles.grid}>
@@ -103,7 +112,7 @@ export default function AchievementsScreen() {
               entering={FadeInDown.duration(320).delay(Math.min(i, 8) * 30)}
               exiting={FadeOut.duration(160)}
             >
-              <PressableScale onPress={() => setOpen(b)} accessibilityRole="button" accessibilityLabel={`${b.name}, ${b.unlocked ? 'desbloqueada' : 'a conquistar'}`} style={styles.cell}>
+              <PressableScale onPress={() => setOpen(b)} accessibilityRole="button" accessibilityLabel={`${b.name}, ${b.unlocked ? t('ach.unlockedLower') : t('ach.toEarn')}`} style={styles.cell}>
                 {b.unlocked ? (
                   <LinearGradient colors={gradients.brand} style={styles.medal}>
                     <Ionicons name={b.icon} size={26} color="#fff" />
@@ -121,7 +130,7 @@ export default function AchievementsScreen() {
         </View>
       </ScrollView>
 
-      <BottomSheet visible={!!open} onClose={() => setOpen(null)} closeLabel="Fechar detalhe" contentStyle={{ alignItems: 'center', gap: 0 }}>
+      <BottomSheet visible={!!open} onClose={() => setOpen(null)} closeLabel={t('ach.closeDetail')} contentStyle={{ alignItems: 'center', gap: 0 }}>
         {open ? (
           <>
               {open.unlocked ? (
@@ -135,10 +144,10 @@ export default function AchievementsScreen() {
               )}
               <Text style={styles.sheetTitle}>{open.name}</Text>
               <Muted style={styles.sheetDesc}>{open.desc}</Muted>
-              <Text style={styles.sheetSub}>{open.unlocked ? 'Desbloqueada' : `Progresso: ${open.sub}`}</Text>
+              <Text style={styles.sheetSub}>{open.unlocked ? t('ach.unlocked') : t('ach.progress', { value: open.sub })}</Text>
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 20, alignSelf: 'stretch' }}>
-                <Button label="Fechar" variant="secondary" onPress={() => setOpen(null)} style={{ flex: 1 }} />
-                {open.unlocked ? <Button label="Compartilhar" style={{ flex: 1 }} onPress={() => void Share.share({ message: `Desbloqueei "${open.name}" no Move Studio.` })} /> : null}
+                <Button label={t('common:actions.close')} variant="secondary" onPress={() => setOpen(null)} style={{ flex: 1 }} />
+                {open.unlocked ? <Button label={t('done.share')} style={{ flex: 1 }} onPress={() => void Share.share({ message: t('ach.shareMessage', { name: open.name, company: companyName }) })} /> : null}
               </View>
           </>
         ) : null}

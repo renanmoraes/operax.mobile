@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Body, Button, Field, Muted, Segmented } from '@/src/design-system/ui';
@@ -11,6 +12,7 @@ import { ALLOW_MOCK } from '@/src/shared/config';
 type Method = 'password' | 'otp';
 
 export default function ClientLoginScreen() {
+  const { t } = useTranslation('auth');
   const { clientLogin, requestClientOtp, clearRole, returnRole, cancelAddAccount, enterClientDemo, error, clearError } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -49,12 +51,12 @@ export default function ClientLoginScreen() {
   return (
     <AuthShell
       onBack={backToRoles}
-      title="Que bom te ver por aqui"
-      subtitle="Entre com o e-mail ou celular que você usa na empresa."
+      title={t('clientLogin.title')}
+      subtitle={t('clientLogin.subtitle')}
       footer={
         <>
           <Button
-            label={method === 'otp' ? 'Enviar código' : 'Entrar'}
+            label={method === 'otp' ? t('clientLogin.sendCode') : t('shared.signIn')}
             icon="arrow-forward"
             loading={loading}
             disabled={!identifier.trim() || (method === 'password' && !password)}
@@ -62,7 +64,7 @@ export default function ClientLoginScreen() {
           />
           {ALLOW_MOCK ? (
             <Button
-              label="Entrar direto (demo cliente)"
+              label={t('clientLogin.demo')}
               variant="ghost"
               onPress={() => {
                 enterClientDemo();
@@ -72,7 +74,7 @@ export default function ClientLoginScreen() {
           ) : null}
           <Pressable onPress={backToRoles} accessibilityRole="button" hitSlop={8}>
             <Text style={styles.switch}>
-              É da equipe? <Text style={styles.switchLink}>Entrar como equipe</Text>
+              {t('clientLogin.isTeam')} <Text style={styles.switchLink}>{t('clientLogin.signInAsTeam')}</Text>
             </Text>
           </Pressable>
         </>
@@ -80,14 +82,14 @@ export default function ClientLoginScreen() {
     >
       <Segmented
         options={[
-          { key: 'password', label: 'Com senha' },
-          { key: 'otp', label: 'Código por SMS' },
+          { key: 'password', label: t('clientLogin.withPassword') },
+          { key: 'otp', label: t('clientLogin.bySms') },
         ]}
         value={method}
         onChange={(k) => setMethod(k as Method)}
       />
       <Field
-        label="E-mail ou celular"
+        label={t('fields.emailOrPhone')}
         icon="mail-outline"
         value={identifier}
         autoCapitalize="none"
@@ -97,11 +99,11 @@ export default function ClientLoginScreen() {
           setBlocked(false);
           setIdentifier(v);
         }}
-        placeholder="seu@email.com ou (11) 90000-0000"
+        placeholder={t('fields.emailOrPhonePlaceholder')}
       />
       {method === 'password' ? (
         <Field
-          label="Senha"
+          label={t('fields.password')}
           icon="lock-closed-outline"
           value={password}
           onChangeText={(v) => {
@@ -110,20 +112,20 @@ export default function ClientLoginScreen() {
           }}
           secureTextEntry
           autoComplete="password"
-          placeholder="Sua senha"
+          placeholder={t('fields.passwordPlaceholder')}
         />
       ) : (
         <View style={styles.info}>
           <Ionicons name="phone-portrait-outline" size={20} color={colors.primaryDeep} />
-          <Body style={styles.infoText}>Mandamos um código de 6 dígitos para o seu celular. Sem senha para lembrar.</Body>
+          <Body style={styles.infoText}>{t('clientLogin.smsInfo')}</Body>
         </View>
       )}
       {blocked ? (
-        <Body style={styles.error}>Nenhuma das suas empresas tem o portal disponível. Fale com elas para habilitar.</Body>
+        <Body style={styles.error}>{t('shared.portalBlocked')}</Body>
       ) : error ? (
         <Body style={styles.error}>{error}</Body>
       ) : null}
-      {method === 'password' ? <Muted style={styles.forgot}>Esqueceu a senha? Use o código por SMS.</Muted> : null}
+      {method === 'password' ? <Muted style={styles.forgot}>{t('clientLogin.forgot')}</Muted> : null}
     </AuthShell>
   );
 }

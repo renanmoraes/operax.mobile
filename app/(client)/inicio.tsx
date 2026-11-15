@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import {
   Avatar,
   Badge,
@@ -37,6 +38,7 @@ function Shortcut({ icon, label, onPress }: { icon: IconName; label: string; onP
 }
 
 export default function ClientHomeScreen() {
+  const { t } = useTranslation('client');
   const insets = useSafeAreaInsets();
   const now = useNow(60_000);
   const { user } = useAuth();
@@ -65,12 +67,12 @@ export default function ClientHomeScreen() {
     <Screen>
       <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom }]} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <PressableScale onPress={() => router.push('/(auth)/client-tenant-select')} accessibilityRole="button" accessibilityLabel={`Empresa: ${tenant?.tenant_name ?? ''}. Trocar`} style={styles.tenant}>
+          <PressableScale onPress={() => router.push('/(auth)/client-tenant-select')} accessibilityRole="button" accessibilityLabel={t('home.companySwitch', { name: tenant?.tenant_name ?? '' })} style={styles.tenant}>
             <Avatar initials={companies?.find((c) => c.name === tenant?.tenant_name)?.initials ?? (tenant?.tenant_name ?? 'E').slice(0, 2).toUpperCase()} size={32} tone="brand" />
-            <Text style={styles.tenantName}>{tenant?.tenant_name ?? 'Empresa'}</Text>
+            <Text style={styles.tenantName}>{tenant?.tenant_name ?? t('home.company')}</Text>
             <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
           </PressableScale>
-          <PressableScale onPress={() => router.navigate('/(client)/perfil')} accessibilityRole="button" accessibilityLabel="Meu perfil" scaleTo={0.92}>
+          <PressableScale onPress={() => router.navigate('/(client)/perfil')} accessibilityRole="button" accessibilityLabel={t('home.myProfile')} scaleTo={0.92}>
             <Avatar initials={(client?.name ?? 'C').split(' ').map((w) => w[0]).slice(0, 2).join('')} size={44} />
           </PressableScale>
         </View>
@@ -86,30 +88,30 @@ export default function ClientHomeScreen() {
           <Rise index={2} style={{ marginTop: 18 }}>
             <HeroCard>
               <View style={styles.rowBetween}>
-                <Text style={styles.heroLabel}>Próximo compromisso</Text>
+                <Text style={styles.heroLabel}>{t('home.nextAppointment')}</Text>
                 <Badge label={minutesUntilLabel(next.starts_at)} tone="primary" />
               </View>
               <Text style={styles.heroTitle}>{next.service_name}</Text>
               <View style={styles.heroWho}>
                 <Avatar initials={(next.provider_name ?? '').split(' ').map((w) => w[0]).slice(0, 2).join('')} size={30} />
-                <Text style={styles.heroWhoText}>{`${formatHour(next.starts_at)} · ${formatDuration((new Date(next.ends_at).getTime() - new Date(next.starts_at).getTime()) / 1000)} · com ${next.provider_name}`}</Text>
+                <Text style={styles.heroWhoText}>{t('home.nextMeta', { time: formatHour(next.starts_at), duration: formatDuration((new Date(next.ends_at).getTime() - new Date(next.starts_at).getTime()) / 1000), name: next.provider_name ?? '' })}</Text>
               </View>
               {next.status === 'pending' && next.can_confirm === false ? (
                 <Pressable onPress={() => router.push(`/cliente/compromisso/${next.id}`)} accessibilityRole="button" style={styles.confirmed}>
                   <Ionicons name="time-outline" size={20} color={colors.warnText} />
-                  <Text style={[styles.confirmedText, { color: colors.warnText }]}>Aguardando a empresa confirmar</Text>
+                  <Text style={[styles.confirmedText, { color: colors.warnText }]}>{t('home.waitingCompany')}</Text>
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </Pressable>
               ) : next.status === 'pending' ? (
                 <View style={styles.heroActions}>
-                  <Button label="Confirmar presença" icon="checkmark" loading={confirm.isPending} onPress={() => confirm.mutate(next.id)} style={{ flex: 1, minHeight: 50 }} />
-                  <IconButton icon="chevron-forward" size={50} accessibilityLabel="Ver detalhes do compromisso" onPress={() => router.push(`/cliente/compromisso/${next.id}`)} />
+                  <Button label={t('home.confirmPresence')} icon="checkmark" loading={confirm.isPending} onPress={() => confirm.mutate(next.id)} style={{ flex: 1, minHeight: 50 }} />
+                  <IconButton icon="chevron-forward" size={50} accessibilityLabel={t('home.seeDetails')} onPress={() => router.push(`/cliente/compromisso/${next.id}`)} />
                 </View>
               ) : (
                 <View style={styles.confirmed}>
                   <Ionicons name="checkmark-circle-outline" size={20} color={colors.success} />
-                  <Text style={styles.confirmedText}>Presença confirmada</Text>
-                  {canUndoBookingAnswer() ? <Button label="Desfazer" variant="ghost" compact onPress={() => unconfirm.mutate(next.id)} /> : null}
+                  <Text style={styles.confirmedText}>{t('booking.pill.confirmed')}</Text>
+                  {canUndoBookingAnswer() ? <Button label={t('home.undo')} variant="ghost" compact onPress={() => unconfirm.mutate(next.id)} /> : null}
                 </View>
               )}
             </HeroCard>
@@ -119,36 +121,36 @@ export default function ClientHomeScreen() {
         {caps.training ? (
         <View style={styles.grid}>
           <Rise index={3} style={{ flex: 1 }}>
-            <Card onPress={() => (todayWorkout ? router.push(`/cliente/treino/${todayWorkout.id}`) : router.navigate('/(client)/fitness'))} accessibilityLabel="Treino de hoje" style={styles.tile}>
+            <Card onPress={() => (todayWorkout ? router.push(`/cliente/treino/${todayWorkout.id}`) : router.navigate('/(client)/fitness'))} accessibilityLabel={t('home.todayWorkout')} style={styles.tile}>
               <View style={styles.rowBetween}>
                 <IconTile icon="barbell-outline" size={38} />
-                <Muted style={{ fontFamily: typography.fontFamilySemiBold, fontSize: 12 }}>{todayDone ? 'Feito' : 'Hoje'}</Muted>
+                <Muted style={{ fontFamily: typography.fontFamilySemiBold, fontSize: 12 }}>{todayDone ? t('home.done') : t('home.today')}</Muted>
               </View>
               <Text style={styles.tileTitle} numberOfLines={2}>
-                {todayWorkout ? todayWorkout.title.split('·')[1]?.trim() ?? todayWorkout.title : 'Dia de descanso'}
+                {todayWorkout ? todayWorkout.title.split('·')[1]?.trim() ?? todayWorkout.title : t('home.restDay')}
               </Text>
-              <Muted style={{ marginTop: 4 }}>{todayWorkout ? `${todayWorkout.title.split('·')[0].trim()} · ${todayWorkout.parts[0]?.type === 'strength' ? todayWorkout.parts[0].items.length : 0} exercícios` : 'Alongamento leve se quiser'}</Muted>
+              <Muted style={{ marginTop: 4 }}>{todayWorkout ? t('home.workoutMeta', { label: todayWorkout.title.split('·')[0].trim(), count: todayWorkout.parts[0]?.type === 'strength' ? todayWorkout.parts[0].items.length : 0 }) : t('home.lightStretch')}</Muted>
               {todayWorkout && !todayDone ? (
                 <View style={styles.startPill}>
                   <Ionicons name="play" size={12} color="#fff" />
-                  <Text style={styles.startPillText}>Iniciar</Text>
+                  <Text style={styles.startPillText}>{t('home.start')}</Text>
                 </View>
               ) : null}
             </Card>
           </Rise>
           <Rise index={4} style={{ flex: 1 }}>
-            <Card onPress={() => router.push('/cliente/historico')} accessibilityLabel={`Sequência de ${summary?.streak ?? 0} dias`} style={[styles.tile, { overflow: 'hidden' }]}>
+            <Card onPress={() => router.push('/cliente/historico')} accessibilityLabel={t('home.streakA11y', { n: summary?.streak ?? 0 })} style={[styles.tile, { overflow: 'hidden' }]}>
               <LinearGradient colors={gradients.warm} style={StyleSheet.absoluteFill} />
               <View style={styles.rowBetween}>
                 <IconTile icon="flame-outline" size={38} tone="warm" />
-                <Muted style={{ fontFamily: typography.fontFamilySemiBold, fontSize: 12 }}>Sequência</Muted>
+                <Muted style={{ fontFamily: typography.fontFamilySemiBold, fontSize: 12 }}>{t('home.streak')}</Muted>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginTop: 14 }}>
                 <Num size="lg">{summary?.streak ?? '–'}</Num>
-                <Muted style={{ fontSize: 15, marginBottom: 3 }}>dias</Muted>
+                <Muted style={{ fontSize: 15, marginBottom: 3 }}>{t('home.days')}</Muted>
               </View>
-              <Muted style={{ marginTop: 6 }}>{`Recorde: ${summary?.bestStreak ?? '–'} dias`}</Muted>
-              <View style={styles.dots} accessible accessibilityLabel={`${week?.summary.done ?? 0} de ${week?.summary.planned ?? 0} treinos nesta semana`}>
+              <Muted style={{ marginTop: 6 }}>{t('home.record', { n: summary?.bestStreak ?? '–' })}</Muted>
+              <View style={styles.dots} accessible accessibilityLabel={t('home.weekA11y', { done: week?.summary.done ?? 0, planned: week?.summary.planned ?? 0 })}>
                 {week?.days.map((d) => (
                   <View
                     key={d.date}
@@ -166,9 +168,9 @@ export default function ClientHomeScreen() {
 
         {caps.chat && chat && lastTeam ? (
           <Rise index={5} style={{ marginTop: 12 }}>
-            <Card onPress={() => router.push(`/cliente/chat/${chat.tenant_slug}`)} accessibilityLabel={`Mensagem da equipe ${chat.tenant_name}`}>
+            <Card onPress={() => router.push(`/cliente/chat/${chat.tenant_slug}`)} accessibilityLabel={t('home.teamMessageA11y', { name: chat.tenant_name })}>
               <View style={styles.rowBetween}>
-                <Muted style={{ fontFamily: typography.fontFamilySemiBold }}>Mensagem da equipe</Muted>
+                <Muted style={{ fontFamily: typography.fontFamilySemiBold }}>{t('home.teamMessage')}</Muted>
                 {chat.unread ? <Badge label={String(chat.unread)} tone="solid" /> : null}
               </View>
               <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
@@ -192,12 +194,12 @@ export default function ClientHomeScreen() {
         ) : null}
 
         <Rise index={6} style={styles.shortcuts}>
-          {caps.chat ? <Shortcut icon="calendar-outline" label="Pedir horário" onPress={() => router.push(`/cliente/chat/${tenant?.tenant_slug ?? companies?.find((c) => c.name === tenant?.tenant_name)?.slug ?? 'empresa'}?pedido=1`)} /> : null}
+          {caps.chat ? <Shortcut icon="calendar-outline" label={t('home.requestSlot')} onPress={() => router.push(`/cliente/chat/${tenant?.tenant_slug ?? companies?.find((c) => c.name === tenant?.tenant_name)?.slug ?? 'empresa'}?pedido=1`)} /> : null}
           {caps.training ? (
             <>
-              <Shortcut icon="images-outline" label="Evolução" onPress={() => router.push('/cliente/evolucao')} />
-              <Shortcut icon="stats-chart-outline" label="Histórico" onPress={() => router.push('/cliente/historico')} />
-              <Shortcut icon="ribbon-outline" label="Conquistas" onPress={() => router.push('/cliente/conquistas')} />
+              <Shortcut icon="images-outline" label={t('home.progress')} onPress={() => router.push('/cliente/evolucao')} />
+              <Shortcut icon="stats-chart-outline" label={t('home.history')} onPress={() => router.push('/cliente/historico')} />
+              <Shortcut icon="ribbon-outline" label={t('home.achievements')} onPress={() => router.push('/cliente/conquistas')} />
             </>
           ) : null}
         </Rise>

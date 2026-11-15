@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { router, usePathname } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -21,6 +22,7 @@ const easeOut = Easing.bezier(...motion.easeOut);
  * já está na própria conversa.
  */
 export function IncomingBanner() {
+  const { t } = useTranslation('team');
   const { notice, dismissNotice } = useTeamChat();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
@@ -85,7 +87,7 @@ export function IncomingBanner() {
               router.push(`/equipe/${shown.channelId}`);
             }}
             accessibilityRole="button"
-            accessibilityLabel={`Nova mensagem ${shown.kind === 'group' ? `no grupo ${shown.channelTitle}` : `de ${shown.channelTitle}`}: ${shown.body}. Toque para abrir.`}
+            accessibilityLabel={t(shown.kind === 'group' ? 'banner.a11yGroup' : 'banner.a11yDirect', { title: shown.channelTitle, body: shown.body })}
             style={styles.main}
           >
             <TeamAvatar
@@ -101,7 +103,7 @@ export function IncomingBanner() {
                 <Text style={styles.title} numberOfLines={1}>
                   {shown.channelTitle}
                 </Text>
-                <Text style={styles.tag}>Equipe · agora</Text>
+                <Text style={styles.tag}>{t('banner.tag')}</Text>
               </View>
               <Text style={styles.body} numberOfLines={2}>
                 {who ? <Text style={styles.who}>{who}</Text> : null}
@@ -109,7 +111,7 @@ export function IncomingBanner() {
               </Text>
             </View>
           </Pressable>
-          <Pressable onPress={hide} hitSlop={10} accessibilityRole="button" accessibilityLabel="Dispensar aviso" style={styles.close}>
+          <Pressable onPress={hide} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('banner.dismiss')} style={styles.close}>
             <Ionicons name="close" size={16} color={colors.textMuted} />
           </Pressable>
         </View>

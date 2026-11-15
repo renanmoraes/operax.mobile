@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, Button, IconName, Muted, Rise, Screen, ScreenHeader, SettingsGroup, SettingsRow } from '@/src/design-system/ui';
@@ -31,6 +32,7 @@ const CATEGORY_ICONS: Record<PushCategoryId, IconName> = {
 };
 
 export default function NotificationPrefsScreen() {
+  const { t } = useTranslation('staff');
   const insets = useSafeAreaInsets();
   const { mode, user } = useAuth();
   const { states, request } = usePermissions(['notifications'], mode === 'live');
@@ -52,12 +54,12 @@ export default function NotificationPrefsScreen() {
   const [saved, setSaved] = useState<string | null>(null);
 
   const saveMut = useMutation({
-    mutationFn: () => updateNotificationPrefs(prefs, user?.name || 'Usuário'),
+    mutationFn: () => updateNotificationPrefs(prefs, user?.name || t('common.user')),
     onSuccess: () => {
-      setSaved('Preferências salvas');
+      setSaved(t('prefs.saved'));
       setTimeout(() => setSaved(null), 2000);
     },
-    onError: () => setSaved('Falha ao salvar'),
+    onError: () => setSaved(t('prefs.saveFailed')),
   });
 
   const setCategory = (id: PushCategoryId, value: boolean) => {
@@ -83,50 +85,50 @@ export default function NotificationPrefsScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 40 }}>
-        <ScreenHeader title="Notificações" subtitle="Tudo ligado por padrão, inclusive com a tela bloqueada" onBack={() => router.back()} />
+        <ScreenHeader title={t('prefs.title')} subtitle={t('prefs.subtitle')} onBack={() => router.back()} />
         <View style={{ paddingHorizontal: 20 }}>
           <Rise>
             <SettingsGroup>
               <SettingsRow
                 icon="phone-portrait-outline"
-                title="Permissão do celular"
+                title={t('prefs.devicePermission')}
                 subtitle={
                   permission === 'granted'
-                    ? 'Ativada'
+                    ? t('prefs.permission.granted')
                     : permission === 'blocked'
-                      ? 'Bloqueada nos ajustes'
+                      ? t('prefs.permission.blocked')
                       : permission === 'unavailable'
-                        ? 'Disponível no app do celular'
-                        : 'Ainda não ativada'
+                        ? t('prefs.permission.unavailable')
+                        : t('prefs.permission.notYet')
                 }
                 subtitleTone={permission === 'granted' ? 'success' : permission === 'blocked' ? 'warn' : undefined}
                 right={
                   permission === 'granted' || permission === 'unavailable' ? (
                     <View />
                   ) : permission === 'blocked' ? (
-                    <Button label="Ajustes" variant="soft" compact onPress={openSystemSettings} />
+                    <Button label={t('prefs.settings')} variant="soft" compact onPress={openSystemSettings} />
                   ) : (
-                    <Button label="Ativar" compact onPress={() => void request('notifications')} />
+                    <Button label={t('prefs.enable')} compact onPress={() => void request('notifications')} />
                   )
                 }
               />
               <SettingsRow
                 icon="notifications-outline"
-                title="Push no aparelho"
-                subtitle="Liga ou desliga todas as categorias"
-                right={toggle(prefs.push, (v) => setPrefs((p) => ({ ...p, push: v })), 'Push no aparelho')}
+                title={t('prefs.push.title')}
+                subtitle={t('prefs.push.subtitle')}
+                right={toggle(prefs.push, (v) => setPrefs((p) => ({ ...p, push: v })), t('prefs.push.title'))}
               />
               <SettingsRow
                 icon="volume-medium-outline"
-                title="Som no app"
-                subtitle="Quando o app estiver aberto"
-                right={toggle(prefs.sound, (v) => setPrefs((p) => ({ ...p, sound: v })), 'Som no app')}
+                title={t('prefs.sound.title')}
+                subtitle={t('prefs.sound.subtitle')}
+                right={toggle(prefs.sound, (v) => setPrefs((p) => ({ ...p, sound: v })), t('prefs.sound.title'))}
                 last
               />
             </SettingsGroup>
           </Rise>
 
-          <Muted style={styles.groupLabel}>Categorias</Muted>
+          <Muted style={styles.groupLabel}>{t('prefs.categories')}</Muted>
           <Rise index={1}>
             <View style={!prefs.push && { opacity: 0.5 }}>
               <SettingsGroup>
@@ -147,13 +149,13 @@ export default function NotificationPrefsScreen() {
           <View style={{ marginTop: 18, gap: 10 }}>
             {saved ? (
               <View style={{ alignSelf: 'center' }}>
-                <Badge label={saved} tone={saved.startsWith('Falha') ? 'danger' : 'success'} />
+                <Badge label={saved} tone={saved === t('prefs.saveFailed') ? 'danger' : 'success'} />
               </View>
             ) : null}
             {mode === 'live' ? (
-              <Button label="Salvar preferências" loading={saveMut.isPending} onPress={() => saveMut.mutate()} disabled={saveMut.isPending} />
+              <Button label={t('prefs.savePrefs')} loading={saveMut.isPending} onPress={() => saveMut.mutate()} disabled={saveMut.isPending} />
             ) : (
-              <Muted style={{ textAlign: 'center' }}>No modo demonstração as preferências ficam só neste aparelho.</Muted>
+              <Muted style={{ textAlign: 'center' }}>{t('prefs.demoNote')}</Muted>
             )}
           </View>
         </View>

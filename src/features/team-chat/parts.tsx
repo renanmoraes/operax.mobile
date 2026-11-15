@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { PressableScale } from '@/src/design-system/ui';
 import { colors, numbers, shadows, text, typography } from '@/src/design-system/tokens';
@@ -36,9 +37,10 @@ export function UnreadPill({ count, style }: { count: number; style?: object }) 
 }
 
 export function ChannelRow({ channel, onPress, last }: { channel: TeamChannel; onPress: () => void; last?: boolean }) {
+  const { t } = useTranslation('team');
   const unread = channel.unread > 0;
   const time = timeLabel(channel.lastAt);
-  const a11y = `${channel.kind === 'group' ? 'Grupo' : 'Conversa com'} ${channel.title}${unread ? `, ${channel.unread} não lidas` : ''}${channel.preview ? `. ${channel.previewAuthor ? `${channel.previewAuthor}: ` : ''}${channel.preview}` : ''}`;
+  const a11y = `${channel.kind === 'group' ? t('row.group') : t('row.directWith')} ${channel.title}${unread ? `, ${t('row.unread', { count: channel.unread })}` : ''}${channel.preview ? `. ${channel.previewAuthor ? `${channel.previewAuthor}: ` : ''}${channel.preview}` : ''}`;
   return (
     <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={a11y} style={styles.row}>
       <TeamAvatar channel={channel} />
@@ -51,7 +53,7 @@ export function ChannelRow({ channel, onPress, last }: { channel: TeamChannel; o
         <View style={styles.rowBottom}>
           <Text style={[styles.preview, unread && styles.previewUnread]} numberOfLines={1}>
             {channel.previewAuthor ? <Text style={styles.author}>{`${channel.previewAuthor}: `}</Text> : null}
-            {channel.preview || (channel.kind === 'group' ? 'Grupo da equipe' : 'Conversa direta')}
+            {channel.preview || (channel.kind === 'group' ? t('chat.groupSubtitle') : t('model.directFallback'))}
           </Text>
           <UnreadPill count={channel.unread} />
         </View>

@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import i18n from '@/src/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -58,7 +59,7 @@ export function AnimatedSplash({ ready }: { ready: boolean }) {
   if (done) return null;
 
   return (
-    <Animated.View style={[StyleSheet.absoluteFill, styles.root, root]} pointerEvents={ready && minElapsed ? 'none' : 'auto'} accessible accessibilityLabel="Operax, carregando">
+    <Animated.View style={[StyleSheet.absoluteFill, styles.root, root]} pointerEvents={ready && minElapsed ? 'none' : 'auto'} accessible accessibilityLabel={`Operax, ${i18n.t('states.loading').toLowerCase()}`}>
       <Glow size={520} color={colors.primary} opacity={0.35} style={{ top: -160, left: -180 }} />
       <Glow size={460} color={colors.cyan} opacity={0.16} style={{ bottom: -180, right: -170 }} />
 

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
@@ -29,6 +30,7 @@ export function QuickRepliesSheet({
   onTemplates: () => void;
   within24h: boolean;
 }) {
+  const { t } = useTranslation('inbox');
   const [search, setSearch] = useState('');
   const query = useQuery({
     queryKey: ['quick-replies', 'sheet'],
@@ -40,23 +42,23 @@ export function QuickRepliesSheet({
   const items = filterQuickReplies(all, search.replace(/^\//, ''), 100);
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Respostas rápidas" closeLabel="Fechar respostas rápidas">
+    <BottomSheet visible={visible} onClose={onClose} title={t('quickSheet.title')} closeLabel={t('quickSheet.close')}>
       <View style={styles.search}>
         <Ionicons name="search" size={16} color={colors.textMuted} />
         <TextInput
           value={search}
           onChangeText={setSearch}
-          placeholder="Buscar pelo atalho ou título"
+          placeholder={t('quickSheet.searchPlaceholder')}
           placeholderTextColor={colors.textMuted}
           autoCorrect={false}
           autoCapitalize="none"
-          accessibilityLabel="Buscar resposta rápida"
+          accessibilityLabel={t('quickSheet.searchA11y')}
           style={styles.searchInput}
         />
       </View>
       <ScrollView style={{ maxHeight: 340 }} keyboardShouldPersistTaps="handled">
         {items.length === 0 ? (
-          <Text style={styles.empty}>{query.isLoading && live ? 'Carregando…' : search ? 'Nenhum atalho encontrado' : 'Nenhuma resposta rápida cadastrada'}</Text>
+          <Text style={styles.empty}>{query.isLoading && live ? t('quickSheet.loading') : search ? t('quickSheet.noShortcut') : t('quickSheet.noneRegistered')}</Text>
         ) : (
           items.map((q, i) => (
             <Pressable
@@ -66,7 +68,7 @@ export function QuickRepliesSheet({
                 setSearch('');
               }}
               accessibilityRole="button"
-              accessibilityLabel={`Usar ${q.title}`}
+              accessibilityLabel={t('quickSheet.use', { title: q.title })}
               style={({ pressed }) => [styles.row, i > 0 && styles.rowBorder, pressed && { backgroundColor: colors.rowPress }]}
             >
               <View style={styles.rowTop}>
@@ -83,8 +85,8 @@ export function QuickRepliesSheet({
           <Ionicons name="document-text" size={18} color="#c2410c" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.templatesTitle}>Mensagens ativas (templates)</Text>
-          <Text style={styles.templatesSub}>{within24h ? 'Para quando a janela de 24 h fechar' : 'A janela de 24 h fechou: use um template'}</Text>
+          <Text style={styles.templatesTitle}>{t('quickSheet.templatesTitle')}</Text>
+          <Text style={styles.templatesSub}>{within24h ? t('quickSheet.templatesSubOpen') : t('quickSheet.templatesSubClosed')}</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </Pressable>

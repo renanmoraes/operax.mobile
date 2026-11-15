@@ -1,3 +1,4 @@
+import i18n, { locale } from '@/src/i18n';
 import type { PixKeyType, SavedPixKey, SchedProvider, SchedService, SchedSlot } from '@/src/shared/api/conversation-actions.api';
 
 const digits = (s: string) => s.replace(/\D/g, '');
@@ -12,24 +13,27 @@ function domesticPhone(key: string): string {
 /** Mesmas regras básicas do formulário do Operax web; `null` quando está certo. */
 export function pixKeyError(type: PixKeyType, key: string): string | null {
   const k = key.trim();
-  if (!k) return 'Informe a chave';
+  if (!k) return i18n.t('inbox:pix.error.required');
   switch (type) {
     case 'cpf':
-      return digits(k).length === 11 ? null : 'CPF tem 11 números';
+      return digits(k).length === 11 ? null : i18n.t('inbox:pix.error.cpf');
     case 'cnpj':
-      return digits(k).length === 14 ? null : 'CNPJ tem 14 números';
+      return digits(k).length === 14 ? null : i18n.t('inbox:pix.error.cnpj');
     case 'phone': {
       const n = domesticPhone(k);
-      return n.length === 10 || n.length === 11 ? null : 'Celular com DDD';
+      return n.length === 10 || n.length === 11 ? null : i18n.t('inbox:pix.error.phone');
     }
     case 'email':
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(k) ? null : 'E-mail inválido';
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(k) ? null : i18n.t('inbox:pix.error.email');
     case 'random':
-      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(k) ? null : 'Chave aleatória tem 32 letras e números';
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(k) ? null : i18n.t('inbox:pix.error.random');
     case 'copy_paste':
-      return k.length >= 30 ? null : 'Cole o código Pix completo';
+      return k.length >= 30 ? null : i18n.t('inbox:pix.error.copyPaste');
   }
 }
+
+/** Nome do tipo de chave Pix no idioma do app. */
+export const pixKeyTypeLabel = (type: PixKeyType): string => i18n.t(`inbox:pix.type.${type}`);
 
 /** Mostra a chave de um jeito legível na prévia e no cartão. */
 export function formatPixKey(type: PixKeyType, key: string): string {
@@ -54,7 +58,7 @@ export function nextDays(n: number, from = new Date()): Date[] {
 export function dayLabel(d: Date, today = new Date()): { top: string; day: string } {
   const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
   const diff = Math.round((d.getTime() - t0) / 86_400_000);
-  const top = diff === 0 ? 'Hoje' : diff === 1 ? 'Amanhã' : d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+  const top = diff === 0 ? i18n.t('inbox:booking.today') : diff === 1 ? i18n.t('inbox:booking.tomorrow') : d.toLocaleDateString(locale(), { weekday: 'short' }).replace('.', '');
   return { top: top.charAt(0).toUpperCase() + top.slice(1), day: String(d.getDate()) };
 }
 

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { IconName, PressableScale } from '@/src/design-system/ui';
@@ -26,8 +27,9 @@ export type ConversationAction = {
 
 /** "+" da conversa: grade de ações com ícone tonal e nome curto embaixo. */
 export function ActionsSheet({ visible, onClose, actions, footnote }: { visible: boolean; onClose: () => void; actions: ConversationAction[]; footnote?: string }) {
+  const { t } = useTranslation('inbox');
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Enviar ou fazer" closeLabel="Fechar ações">
+    <BottomSheet visible={visible} onClose={onClose} title={t('actionsSheet.title')} closeLabel={t('actionsSheet.close')}>
       <View style={styles.grid}>
         {actions.map((a) => {
           const tone = ACTION_TONES[a.tone];

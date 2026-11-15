@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { locale } from '@/src/i18n';
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, Body, IconButton, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
@@ -15,10 +17,11 @@ function formatTime(iso?: string) {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function NotificationsScreen() {
+  const { t } = useTranslation('staff');
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();
   const query = useQuery({
@@ -66,8 +69,8 @@ export default function NotificationsScreen() {
     <Screen>
       <ScreenHeader
         safe
-        title="Avisos"
-        right={<IconButton icon="options-outline" accessibilityLabel="Preferências de notificação" onPress={() => router.push('/notification-prefs')} />}
+        title={t('notifications.title')}
+        right={<IconButton icon="options-outline" accessibilityLabel={t('notifications.prefs')} onPress={() => router.push('/notification-prefs')} />}
       />
       <FlatList
         data={data}
@@ -79,7 +82,7 @@ export default function NotificationsScreen() {
         }
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom, gap: 10 }}
         ListEmptyComponent={
-          query.isLoading ? <SkeletonList variant="conversation" count={5} /> : <Muted style={{ textAlign: 'center', marginTop: 40 }}>Nenhum aviso.</Muted>
+          query.isLoading ? <SkeletonList variant="conversation" count={5} /> : <Muted style={{ textAlign: 'center', marginTop: 40 }}>{t('notifications.empty')}</Muted>
         }
         renderItem={({ item }) => {
           const catId = categoryForType(item.type);

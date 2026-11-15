@@ -1,14 +1,15 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SettingsGroup, SettingsRow } from '@/src/design-system/ui';
 import { colors, text } from '@/src/design-system/tokens';
 import { otherRole, Role, useAuth } from './AuthContext';
 
-const SIDE: Record<Role, { label: string; icon: 'headset-outline' | 'person-outline' }> = {
-  staff: { label: 'Equipe', icon: 'headset-outline' },
-  client: { label: 'Cliente', icon: 'person-outline' },
+const SIDE: Record<Role, { icon: 'headset-outline' | 'person-outline' }> = {
+  staff: { icon: 'headset-outline' },
+  client: { icon: 'person-outline' },
 };
 
 /**
@@ -16,11 +17,13 @@ const SIDE: Record<Role, { label: string; icon: 'headset-outline' | 'person-outl
  * o atalho para adicionar a do outro lado sem sair da atual.
  */
 export function AccountSwitcher() {
+  const { t } = useTranslation('auth');
   const { role, user, accounts, switchAccount, addAccount, error } = useAuth();
   const [busy, setBusy] = useState(false);
   if (!role) return null;
   const other = otherRole(role);
   const otherAccount = accounts[other];
+  const sideLabel = (r: Role) => (r === 'staff' ? t('shared.team') : t('shared.client'));
 
   const go = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -37,15 +40,15 @@ export function AccountSwitcher() {
       <SettingsGroup>
         <SettingsRow
           icon={SIDE[role].icon}
-          title={user?.name || accounts[role]?.name || SIDE[role].label}
-          subtitle={`${SIDE[role].label} · aberta agora`}
+          title={user?.name || accounts[role]?.name || sideLabel(role)}
+          subtitle={t('switcher.openNow', { side: sideLabel(role) })}
           right={<Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
         />
         {otherAccount ? (
           <SettingsRow
             icon={SIDE[other].icon}
             title={otherAccount.name}
-            subtitle={`${SIDE[other].label} · toque para trocar`}
+            subtitle={t('switcher.tapToSwitch', { side: sideLabel(other) })}
             right={busy ? <ActivityIndicator color={colors.primary} /> : undefined}
             onPress={busy ? undefined : () => void go(() => switchAccount(other))}
             last
@@ -53,8 +56,8 @@ export function AccountSwitcher() {
         ) : (
           <SettingsRow
             icon="add-circle-outline"
-            title={`Adicionar conta de ${SIDE[other].label.toLowerCase()}`}
-            subtitle="Entre sem sair desta conta"
+            title={other === 'staff' ? t('switcher.addTeam') : t('switcher.addClient')}
+            subtitle={t('switcher.addSubtitle')}
             onPress={busy ? undefined : () => void go(() => addAccount(other))}
             last
           />
@@ -62,7 +65,7 @@ export function AccountSwitcher() {
       </SettingsGroup>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Text style={styles.hint}>
-        {otherAccount ? 'Sair de uma conta mantém a outra aberta neste aparelho.' : 'Quem é dono de empresa e também cliente de outra usa as duas aqui.'}
+        {otherAccount ? t('switcher.hintBoth') : t('switcher.hintOne')}
       </Text>
     </View>
   );

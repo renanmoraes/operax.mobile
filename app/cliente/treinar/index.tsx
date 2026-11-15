@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,26 +18,27 @@ import { useWeek } from '@/src/features/fitness/useFitness';
  */
 export default function TrainHubScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation(['fitness', 'common']);
   const caps = useClientCapabilities();
   const week = useWeek({ enabled: caps.training });
 
   if (!caps.loaded || (caps.training && week.isLoading)) {
     return (
       <Screen>
-        <TopBar safe title="Treinar" onBack={() => router.back()} />
-        <Loading label="Carregando seus treinos" />
+        <TopBar safe title={t('hub.title')} onBack={() => router.back()} />
+        <Loading label={t('hub.loading')} />
       </Screen>
     );
   }
   if (!caps.training || week.isError) {
     return (
       <Screen>
-        <TopBar safe title="Treinar" onBack={() => router.back()} />
+        <TopBar safe title={t('hub.title')} onBack={() => router.back()} />
         <EmptyState
           icon="barbell-outline"
-          title="Treinos não liberados"
-          subtitle="A gravação de treino fica disponível para quem tem plano de treino com a empresa. Fale com a equipe para liberar."
-          actionLabel="Voltar"
+          title={t('hub.lockedTitle')}
+          subtitle={t('hub.lockedSub')}
+          actionLabel={t('common:actions.back')}
           onAction={() => router.back()}
         />
       </Screen>
@@ -49,18 +51,18 @@ export default function TrainHubScreen() {
 
   return (
     <Screen>
-      <TopBar safe title="Treinar" onBack={() => router.back()} />
+      <TopBar safe title={t('hub.title')} onBack={() => router.back()} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
-        <SectionHeader title="Do seu plano hoje" />
+        <SectionHeader title={t('hub.today')} />
         {items.length ? (
           <View style={{ gap: 10 }}>
             {items.map((it, i) => (
               <Rise key={it.id} index={i}>
-                <PressableScale onPress={() => router.push(`/cliente/treino/${it.id}`)} accessibilityRole="button" accessibilityLabel={`${it.title}. Abrir treino`} style={styles.plan}>
+                <PressableScale onPress={() => router.push(`/cliente/treino/${it.id}`)} accessibilityRole="button" accessibilityLabel={t('hub.openWorkout', { title: it.title })} style={styles.plan}>
                   <LinearGradient colors={['#1e4ed8', '#163db0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
                   <Glow size={260} opacity={0.5} style={{ right: -90, top: -110 }} />
                   <View style={styles.rowBetween}>
-                    <Badge label={doneToday ? 'Feito hoje' : 'Hoje'} tone={doneToday ? 'success' : 'primary'} />
+                    <Badge label={doneToday ? t('hub.doneToday') : t('hub.todayBadge')} tone={doneToday ? 'success' : 'primary'} />
                     <Ionicons name="arrow-forward" size={20} color="#fff" />
                   </View>
                   <Text style={styles.planTitle} numberOfLines={2}>{it.title}</Text>
@@ -72,16 +74,16 @@ export default function TrainHubScreen() {
         ) : (
           <View style={styles.noPlan}>
             <Ionicons name="calendar-clear-outline" size={20} color={colors.textMuted} />
-            <Muted style={{ flex: 1, lineHeight: 19 }}>Nada planejado para hoje. Se treinar por conta, grave abaixo: entra no seu histórico e o professor acompanha.</Muted>
+            <Muted style={{ flex: 1, lineHeight: 19 }}>{t('hub.nothing')}</Muted>
           </View>
         )}
 
-        <SectionHeader title="Treino livre" />
+        <SectionHeader title={t('hub.free')} />
         <View style={styles.grid}>
           {SPORTS.map((s, i) => (
             // Um toque abre a gravação (a tela de largada já é a confirmação, com o GPS se preparando).
             <Rise key={s.id} index={i} style={styles.cellWrap}>
-              <PressableScale onPress={() => router.push(`/cliente/treinar/${s.id}`)} accessibilityRole="button" accessibilityLabel={`${s.label}. Abrir gravação`} style={styles.cell}>
+              <PressableScale onPress={() => router.push(`/cliente/treinar/${s.id}`)} accessibilityRole="button" accessibilityLabel={t('hub.openRecording', { sport: s.label })} style={styles.cell}>
                 <View style={styles.cellTop}>
                   <MaterialCommunityIcons name={s.icon} size={30} color={colors.primary} />
                   <View style={styles.cellPlay}>
@@ -89,12 +91,12 @@ export default function TrainHubScreen() {
                   </View>
                 </View>
                 <Text style={styles.cellLabel} numberOfLines={1}>{s.label}</Text>
-                <Text style={styles.cellHint} numberOfLines={1}>{s.gps ? 'GPS e mapa' : s.id === 'swim' ? 'Cronômetro' : 'Séries'}</Text>
+                <Text style={styles.cellHint} numberOfLines={1}>{s.gps ? t('hub.gps') : s.id === 'swim' ? t('hub.timer') : t('hub.sets')}</Text>
               </PressableScale>
             </Rise>
           ))}
         </View>
-        <Muted style={{ marginTop: 12, lineHeight: 19 }}>Fica no seu histórico, com o que você contar no fim, e o professor acompanha.</Muted>
+        <Muted style={{ marginTop: 12, lineHeight: 19 }}>{t('hub.footer')}</Muted>
       </ScrollView>
     </Screen>
   );

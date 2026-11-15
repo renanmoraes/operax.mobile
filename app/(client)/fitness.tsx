@@ -1,4 +1,6 @@
 import { router } from 'expo-router';
+import { locale } from '@/src/i18n';
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +34,7 @@ import { workoutChips } from '@/src/features/fitness/parts';
 
 export default function ClientFitnessScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation(['fitness', 'common']);
   const slug = useActiveCompanySlug();
   const { data: week } = useWeek();
   const { data: summary } = useFitnessSummary();
@@ -50,7 +53,7 @@ export default function ClientFitnessScreen() {
   const goal = evolution?.weekly_goal ?? 5;
   const caps = useClientCapabilities();
   const { data: companies } = useCompanies();
-  const companyName = companies?.find((c) => c.slug === slug)?.name ?? 'Equipe';
+  const companyName = companies?.find((c) => c.slug === slug)?.name ?? t('tab.team');
   const done = week?.summary.done ?? 0;
   const connected = providers?.filter((p) => p.connected) ?? [];
   const firstCheck = checkins?.[0];
@@ -58,52 +61,52 @@ export default function ClientFitnessScreen() {
   const lost = firstCheck && lastCheck ? firstCheck.weight_kg - lastCheck.weight_kg : 0;
 
   const status = !day?.planned ? 'rest' : day.done ? 'done' : isToday ? 'today' : isPast ? 'missed' : 'next';
-  const badge = { rest: ['Descanso', 'neutral'], done: ['Concluído', 'success'], today: ['Hoje', 'solid'], missed: ['Não feito', 'warn'], next: ['Próximo', 'neutral'] } as const;
+  const badge = { rest: [t('tab.badge.rest'), 'neutral'], done: [t('tab.badge.done'), 'success'], today: [t('tab.badge.today'), 'solid'], missed: [t('tab.badge.missed'), 'warn'], next: [t('tab.badge.next'), 'neutral'] } as const;
 
   return (
     <Screen backdrop="mirror">
       <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom }]} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Display>Treino</Display>
-          <PressableScale onPress={() => router.push('/cliente/historico')} accessibilityRole="button" accessibilityLabel={`Sequência de ${summary?.streak ?? 0} dias`} style={styles.streak}>
+          <Display>{t('tab.title')}</Display>
+          <PressableScale onPress={() => router.push('/cliente/historico')} accessibilityRole="button" accessibilityLabel={t('tab.streakA11y', { count: summary?.streak ?? 0 })} style={styles.streak}>
             <Ionicons name="flame-outline" size={17} color={colors.warn} />
-            <Text style={styles.streakText}>{summary?.streak === 1 ? '1 dia' : `${summary?.streak ?? '–'} dias`}</Text>
+            <Text style={styles.streakText}>{summary?.streak != null ? t('tab.days', { count: summary.streak }) : '–'}</Text>
           </PressableScale>
         </View>
 
         <Rise style={{ marginTop: 16 }}>
           <HeroCard style={{ padding: 20 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
-              <ProgressRing progress={done / goal} accessibilityLabel={`Meta semanal: ${done} de ${goal} treinos`}>
+              <ProgressRing progress={done / goal} accessibilityLabel={t('tab.goalA11y', { done, goal })}>
                 <Num size="lg">
                   {done}
                   <Text style={[numbers.sm, { color: colors.textMuted }]}>{`/${goal}`}</Text>
                 </Num>
-                <Muted style={{ fontSize: 11.5, marginTop: 2 }}>treinos</Muted>
+                <Muted style={{ fontSize: 11.5, marginTop: 2 }}>{t('tab.workoutsUnit')}</Muted>
               </ProgressRing>
               <View style={{ flex: 1, gap: 14 }}>
                 <View>
-                  <Muted style={{ fontSize: 12.5 }}>Meta da semana</Muted>
-                  <Text style={styles.heroLine}>{done >= goal ? 'Meta batida. Que semana!' : goal - done === 1 ? 'Falta 1 treino para fechar' : `Faltam ${goal - done} treinos para fechar`}</Text>
+                  <Muted style={{ fontSize: 12.5 }}>{t('tab.weekGoal')}</Muted>
+                  <Text style={styles.heroLine}>{done >= goal ? t('tab.goalHit') : t('tab.toGo', { count: goal - done })}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 16 }}>
                   <View>
-                    <Muted style={{ fontSize: 12 }}>Nível</Muted>
+                    <Muted style={{ fontSize: 12 }}>{t('tab.level')}</Muted>
                     <Num size="sm" style={{ marginTop: 2 }}>{summary?.level.level ?? '–'}</Num>
                   </View>
                   <View style={{ width: 1, backgroundColor: colors.track }} />
                   <View>
-                    <Muted style={{ fontSize: 12 }}>Consistência</Muted>
+                    <Muted style={{ fontSize: 12 }}>{t('tab.consistency')}</Muted>
                     <Num size="sm" style={{ marginTop: 2, color: colors.primary }}>{`${summary?.consistency ?? '–'}%`}</Num>
                   </View>
                 </View>
               </View>
             </View>
             {summary ? (
-              <Pressable onPress={() => router.push('/cliente/conquistas')} accessibilityRole="button" accessibilityLabel="Ver nível e conquistas" style={{ marginTop: 16, gap: 8 }}>
+              <Pressable onPress={() => router.push('/cliente/conquistas')} accessibilityRole="button" accessibilityLabel={t('tab.seeLevel')} style={{ marginTop: 16, gap: 8 }}>
                 <View style={styles.rowBetween}>
-                  <Muted style={{ fontSize: 12 }}>{`${summary.level.label} · nível ${summary.level.level}`}</Muted>
-                  <Muted style={{ fontSize: 12, fontVariant: ['tabular-nums'] }}>{`${summary.level.current.toLocaleString('pt-BR')} / ${summary.level.next.toLocaleString('pt-BR')} XP`}</Muted>
+                  <Muted style={{ fontSize: 12 }}>{t('tab.levelLine', { label: summary.level.label, level: summary.level.level })}</Muted>
+                  <Muted style={{ fontSize: 12, fontVariant: ['tabular-nums'] }}>{`${summary.level.current.toLocaleString(locale())} / ${summary.level.next.toLocaleString(locale())} XP`}</Muted>
                 </View>
                 <ProgressBar progress={summary.level.current / summary.level.next} />
               </Pressable>
@@ -113,15 +116,15 @@ export default function ClientFitnessScreen() {
 
         {caps.training ? (
           <Rise index={1} style={{ marginTop: 12 }}>
-            <PressableScale onPress={() => router.push('/cliente/treinar')} accessibilityRole="button" accessibilityLabel="Treinar agora: gravar treino do plano ou livre" style={styles.cta}>
+            <PressableScale onPress={() => router.push('/cliente/treinar')} accessibilityRole="button" accessibilityLabel={t('tab.trainNowA11y')} style={styles.cta}>
               <LinearGradient colors={['#1e4ed8', '#163db0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
               <Glow size={240} opacity={0.5} style={{ right: -70, top: -110 }} />
               <View style={styles.ctaPlay}>
                 <Ionicons name="play" size={22} color={colors.primary} style={{ marginLeft: 3 }} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.ctaTitle}>Treinar agora</Text>
-                <Text style={styles.ctaSub}>Corrida, caminhada, bike, musculação…</Text>
+                <Text style={styles.ctaTitle}>{t('tab.trainNow')}</Text>
+                <Text style={styles.ctaSub}>{t('tab.trainNowSub')}</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.85)" />
             </PressableScale>
@@ -133,14 +136,14 @@ export default function ClientFitnessScreen() {
             <Card style={styles.memory}>
               <IconTile icon="sparkles-outline" size={36} />
               <Text style={styles.memoryText}>
-                <Text style={{ fontFamily: typography.fontFamilyBold }}>{`Você treinou ${summary.monthCount}x este mês.`}</Text>
-                <Text style={{ color: colors.textMuted }}> Bora manter o ritmo.</Text>
+                <Text style={{ fontFamily: typography.fontFamilyBold }}>{t('tab.monthCount', { count: summary.monthCount })}</Text>
+                <Text style={{ color: colors.textMuted }}> {t('tab.keepGoing')}</Text>
               </Text>
             </Card>
           </Rise>
         ) : null}
 
-        <SectionHeader title="Sua semana" />
+        <SectionHeader title={t('tab.yourWeek')} />
         <View style={styles.days}>
           {week?.days.map((d) => {
             const date = new Date(`${d.date}T12:00:00`);
@@ -152,7 +155,7 @@ export default function ClientFitnessScreen() {
                 onPress={() => setPicked(d.date)}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={`${weekdayShort(date)} ${date.getDate()}${d.done ? ', concluído' : d.planned ? '' : ', descanso'}`}
+                accessibilityLabel={`${weekdayShort(date)} ${date.getDate()}${d.done ? t('tab.dayDone') : d.planned ? '' : t('tab.dayRest')}`}
                 style={[styles.day, on ? styles.dayOn : styles.dayOff]}
               >
                 <Text style={[styles.dayWd, on && { color: 'rgba(255,255,255,0.8)' }]}>{weekdayShort(date)}</Text>
@@ -168,16 +171,16 @@ export default function ClientFitnessScreen() {
             <Card style={{ padding: 20 }}>
               <Badge label={badge[status][0]} tone={badge[status][1]} />
               <Text style={styles.dayTitle}>Descanso</Text>
-              <Muted style={styles.daySub}>Dia livre. Se quiser, 10 minutos de alongamento ou uma caminhada leve.</Muted>
+              <Muted style={styles.daySub}>{t('tab.restDay')}</Muted>
             </Card>
           </Rise>
         ) : (
           items.map((it, i) => (
             <Rise key={it.id} index={2 + i} style={{ marginTop: 12 }}>
-              <Card style={{ padding: 20 }} onPress={() => router.push(`/cliente/treino/${it.id}`)} accessibilityLabel={`${it.title}. Ver ficha`}>
+              <Card style={{ padding: 20 }} onPress={() => router.push(`/cliente/treino/${it.id}`)} accessibilityLabel={t('tab.seeSheet', { title: it.title })}>
                 <View style={styles.rowBetween}>
                   <Badge label={badge[status][0]} tone={badge[status][1]} />
-                  {items.length > 1 ? <Muted>{`${i + 1} de ${items.length}`}</Muted> : null}
+                  {items.length > 1 ? <Muted>{t('tab.nOf', { n: i + 1, total: items.length })}</Muted> : null}
                 </View>
                 <Text style={styles.dayTitle}>{it.title}</Text>
                 <View style={styles.chips}>
@@ -187,10 +190,10 @@ export default function ClientFitnessScreen() {
                 </View>
                 {status === 'today' ? (
                   <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
-                    <Button label="Iniciar treino" icon="play" onPress={() => router.push(`/cliente/treino/${it.id}`)} style={{ flex: 1 }} />
+                    <Button label={t('tab.startWorkout')} icon="play" onPress={() => router.push(`/cliente/treino/${it.id}`)} style={{ flex: 1 }} />
                   </View>
                 ) : status === 'done' ? (
-                  <Button label="Ver o que você fez" variant="soft" onPress={() => router.push('/cliente/historico')} style={{ marginTop: 16 }} />
+                  <Button label={t('tab.seeWhatYouDid')} variant="soft" onPress={() => router.push('/cliente/historico')} style={{ marginTop: 16 }} />
                 ) : null}
               </Card>
             </Rise>
@@ -199,11 +202,11 @@ export default function ClientFitnessScreen() {
 
         {caps.chat ? (
           <Rise index={3} style={{ marginTop: 12 }}>
-            <Card style={styles.coach} onPress={() => router.push(`/cliente/chat/${slug}`)} accessibilityLabel={`Falar com ${companyName}`}>
+            <Card style={styles.coach} onPress={() => router.push(`/cliente/chat/${slug}`)} accessibilityLabel={t('tab.talkTo', { name: companyName })}>
               <IconTile icon="chatbubbles-outline" size={46} tone="soft" />
               <View style={{ flex: 1 }}>
-                <Muted style={{ fontSize: 12.5 }}>Dúvida sobre o treino?</Muted>
-                <Text style={styles.coachName}>{`Fale com ${companyName}`}</Text>
+                <Muted style={{ fontSize: 12.5 }}>{t('tab.question')}</Muted>
+                <Text style={styles.coachName}>{t('tab.talkTo', { name: companyName })}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </Card>
@@ -212,29 +215,29 @@ export default function ClientFitnessScreen() {
 
         <View style={styles.grid}>
           <Rise index={4} style={{ flex: 1 }}>
-            <PressableScale onPress={() => router.push('/cliente/evolucao')} accessibilityRole="button" accessibilityLabel="Evolução corporal" style={[styles.tile, { overflow: 'hidden' }]}>
+            <PressableScale onPress={() => router.push('/cliente/evolucao')} accessibilityRole="button" accessibilityLabel={t('tab.bodyProgress')} style={[styles.tile, { overflow: 'hidden' }]}>
               <LinearGradient colors={['#eaf0ff', '#ddf3ff']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
               <Glow size={160} opacity={0.45} style={{ right: -60, top: -70 }} />
               <Ionicons name="images-outline" size={22} color={colors.primary} />
-              <Text style={[styles.tileTitle, { marginTop: 'auto' }]}>Evolução corporal</Text>
-              <Muted style={{ marginTop: 2, color: colors.primaryDeep }}>{lost > 0 ? `−${formatKg(lost)} kg desde o início` : 'Registre sua primeira foto'}</Muted>
+              <Text style={[styles.tileTitle, { marginTop: 'auto' }]}>{t('tab.bodyProgress')}</Text>
+              <Muted style={{ marginTop: 2, color: colors.primaryDeep }}>{lost > 0 ? t('tab.lost', { kg: formatKg(lost) }) : t('tab.firstPhoto')}</Muted>
             </PressableScale>
           </Rise>
           <Rise index={5} style={{ flex: 1 }}>
-            <PressableScale onPress={() => router.push('/cliente/conquistas')} accessibilityRole="button" accessibilityLabel="Conquistas" style={[styles.tile, { backgroundColor: '#fff' }]}>
+            <PressableScale onPress={() => router.push('/cliente/conquistas')} accessibilityRole="button" accessibilityLabel={t('tab.achievements')} style={[styles.tile, { backgroundColor: '#fff' }]}>
               <Ionicons name="ribbon-outline" size={22} color={colors.primary} />
-              <Text style={[styles.tileTitle, { marginTop: 'auto' }]}>Conquistas</Text>
-              <Muted style={{ marginTop: 2 }}>{`${summary?.records ?? 0} recordes pessoais`}</Muted>
+              <Text style={[styles.tileTitle, { marginTop: 'auto' }]}>{t('tab.achievements')}</Text>
+              <Muted style={{ marginTop: 2 }}>{t('tab.records', { count: summary?.records ?? 0 })}</Muted>
             </PressableScale>
           </Rise>
         </View>
 
         <Rise index={6} style={{ marginTop: 12 }}>
-          <Card onPress={() => router.push('/cliente/relogios')} accessibilityLabel="Relógios e apps" style={styles.coach}>
+          <Card onPress={() => router.push('/cliente/relogios')} accessibilityLabel={t('tab.watches')} style={styles.coach}>
             {connected[0] ? <ProviderMark id={connected[0].id} label={connected[0].label} size={46} /> : <IconTile icon="watch-outline" size={46} tone="soft" />}
             <View style={{ flex: 1 }}>
-              <Text style={styles.coachName}>Relógios e apps</Text>
-              <Muted style={{ marginTop: 2 }}>{connected.length ? `${connected.map((p) => providerDisplayName(p.id, p.label)).join(', ')} conectado` : 'Conecte Garmin Connect™, Strava ou Polar'}</Muted>
+              <Text style={styles.coachName}>{t('tab.watches')}</Text>
+              <Muted style={{ marginTop: 2 }}>{connected.length ? t('tab.connected', { names: connected.map((p) => providerDisplayName(p.id, p.label)).join(', ') }) : t('tab.connect')}</Muted>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </Card>

@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import i18n from '@/src/i18n';
 import { showDialog } from '@/src/design-system/Dialog';
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -24,7 +25,7 @@ function LoadChart({ values }: { values: number[] }) {
   const pts = values.map((v, i) => [10 + (i * (w - 20)) / (values.length - 1), max === min ? h / 2 : h - 14 - ((v - min) / (max - min)) * (h - 34)]);
   const last = pts[pts.length - 1];
   return (
-    <Svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} accessibilityLabel={`Carga subiu de ${formatKg(values[0])} para ${formatKg(values[values.length - 1])} kg`}>
+    <Svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} accessibilityLabel={i18n.t('fitness:ex.chartA11y', { from: formatKg(values[0]), to: formatKg(values[values.length - 1]) })}>
       <Line x1={0} y1={h - 6} x2={w} y2={h - 6} stroke={colors.border} strokeWidth={1.5} />
       <Polyline points={pts.map((p) => p.join(',')).join(' ')} stroke={colors.primary} strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
       <Circle cx={last[0]} cy={last[1]} r={5.5} fill={colors.primary} stroke="#fff" strokeWidth={2.5} />
@@ -47,8 +48,8 @@ export default function ExerciseDetailScreen() {
   const [requested, setRequested] = useState(false);
   const [opening, setOpening] = useState(false);
 
-  if (!snap && isLoading) return <Screen><Loading label="Carregando o exercício" /></Screen>;
-  if (!snap) return <Screen><EmptyState icon="barbell-outline" title="Exercício não encontrado" actionLabel="Voltar" onAction={() => router.back()} /></Screen>;
+  if (!snap && isLoading) return <Screen><Loading label={i18n.t('fitness:ex.loading')} /></Screen>;
+  if (!snap) return <Screen><EmptyState icon="barbell-outline" title={i18n.t('fitness:ex.notFound')} actionLabel={i18n.t('actions.back')} onAction={() => router.back()} /></Screen>;
 
   const hist = LOAD_HISTORY[snap.id];
   const steps = snap.instructions?.split('\n').filter(Boolean) ?? [];
@@ -61,13 +62,13 @@ export default function ExerciseDetailScreen() {
     try {
       const url = await fetchMediaUrl(m.media_file_id);
       if (!url) {
-        void showDialog({ title: 'Vídeo indisponível', message: 'No modo demonstração os vídeos do professor não ficam disponíveis.', tone: 'info', icon: 'videocam-off-outline' });
+        void showDialog({ title: i18n.t('fitness:ex.videoUnavailable'), message: i18n.t('fitness:ex.videoDemo'), tone: 'info', icon: 'videocam-off-outline' });
         return;
       }
       if (m.kind === 'video') await WebBrowser.openBrowserAsync(url);
       else openViewer({ kind: 'image', uri: url, title: m.name });
     } catch {
-      void showDialog({ title: 'Não deu para abrir o vídeo', message: 'Confira a internet e tente de novo.', tone: 'warn', icon: 'cloud-offline-outline' });
+      void showDialog({ title: i18n.t('fitness:ex.videoFail'), message: i18n.t('fitness:gate.errorSub'), tone: 'warn', icon: 'cloud-offline-outline' });
     } finally {
       setOpening(false);
     }
@@ -80,20 +81,20 @@ export default function ExerciseDetailScreen() {
           <LinearGradient colors={['#a9c2ff', '#4c74e8', '#1e4ed8']} start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }} style={StyleSheet.absoluteFill} />
           <Glow size={320} opacity={0.35} style={{ right: -120, top: -120 }} />
           <View style={[styles.mediaTop, { paddingTop: insets.top + 12 }]}>
-            <IconButton icon="chevron-back" tone="glass" accessibilityLabel="Voltar" onPress={() => router.back()} />
+            <IconButton icon="chevron-back" tone="glass" accessibilityLabel={i18n.t('actions.back')} onPress={() => router.back()} />
             {hasVideo ? (
               <View style={styles.mediaBadge}>
-                <Text style={styles.mediaBadgeText}>Vídeo do seu personal</Text>
+                <Text style={styles.mediaBadgeText}>{i18n.t('fitness:session.coachVideo')}</Text>
               </View>
             ) : null}
           </View>
           <View style={styles.playWrap}>
             {hasVideo ? (
-              <PressableScale onPress={() => void play()} disabled={opening} accessibilityRole="button" accessibilityLabel={`Reproduzir ${snap.media[0].name}`} style={styles.play}>
+              <PressableScale onPress={() => void play()} disabled={opening} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:ex.playA11y', { name: snap.media[0].name })} style={styles.play}>
                 {opening ? <ActivityIndicator color={colors.text} /> : <Ionicons name={snap.media[0].kind === 'video' ? 'play' : 'image-outline'} size={26} color={colors.text} style={snap.media[0].kind === 'video' ? { marginLeft: 3 } : undefined} />}
               </PressableScale>
             ) : (
-              <View style={styles.play} accessible accessibilityLabel="Sem vídeo para este exercício">
+              <View style={styles.play} accessible accessibilityLabel={i18n.t('fitness:ex.noVideo')}>
                 <Ionicons name="image-outline" size={26} color={colors.text} />
               </View>
             )}
@@ -101,7 +102,7 @@ export default function ExerciseDetailScreen() {
           {hasVideo ? (
             <View style={styles.mediaFoot}>
               <Ionicons name={snap.media[0].kind === 'video' ? 'videocam' : 'image'} size={16} color="#fff" />
-              <Text style={styles.mediaFootText} numberOfLines={1}>{`${snap.media.length > 1 ? `${snap.media.length} arquivos do professor` : 'Arquivo do professor'} · toque para abrir`}</Text>
+              <Text style={styles.mediaFootText} numberOfLines={1}>{i18n.t('fitness:ex.files', { count: snap.media.length })}</Text>
             </View>
           ) : null}
         </View>
@@ -111,7 +112,7 @@ export default function ExerciseDetailScreen() {
             <Text style={styles.title}>{snap.name}</Text>
           </Rise>
           <Rise index={1} style={styles.chips}>
-            {[snap.muscle_group, snap.equipment, snap.secondary_muscles?.length ? 'Unilateral' : null].filter(Boolean).map((c) => (
+            {[snap.muscle_group, snap.equipment, snap.secondary_muscles?.length ? i18n.t('fitness:ex.unilateral') : null].filter(Boolean).map((c) => (
               <Chip key={String(c)} label={String(c)} />
             ))}
           </Rise>
@@ -120,9 +121,9 @@ export default function ExerciseDetailScreen() {
             <Rise index={2} style={styles.facts}>
               <StatStrip
                 items={[
-                  { value: `${row.sets.length} × ${row.reps}`, label: 'séries' },
-                  { value: row.tag === 'Drop set' ? row.loadLabel : `${formatKg(row.kg)} kg`, label: 'carga' },
-                  { value: `${row.restSeconds} s`, label: 'descanso' },
+                  { value: `${row.sets.length} × ${row.reps}`, label: i18n.t('fitness:sheet.setsUnit') },
+                  { value: row.blockKind === 'dropset' ? row.loadLabel : `${formatKg(row.kg)} kg`, label: i18n.t('fitness:ex.loadUnit') },
+                  { value: `${row.restSeconds} s`, label: i18n.t('fitness:ex.restUnit') },
                 ]}
               />
             </Rise>
@@ -131,7 +132,7 @@ export default function ExerciseDetailScreen() {
           {steps.length ? (
             <Rise index={3} style={{ marginTop: 12 }}>
               <Card>
-                <Text style={styles.cardTitle}>Como executar</Text>
+                <Text style={styles.cardTitle}>{i18n.t('fitness:session.howTo')}</Text>
                 {steps.map((s, i) => (
                   <View key={i} style={styles.step}>
                     <View style={styles.stepNum}>
@@ -154,7 +155,7 @@ export default function ExerciseDetailScreen() {
             <Rise index={4} style={{ marginTop: 12 }}>
               <Card>
                 <View style={styles.rowBetween}>
-                  <Text style={styles.cardTitle}>Sua carga neste exercício</Text>
+                  <Text style={styles.cardTitle}>{i18n.t('fitness:ex.yourLoad')}</Text>
                   <Text style={styles.delta}>{`+${formatKg(hist[hist.length - 1] - hist[0])} kg em ${hist.length} semanas`}</Text>
                 </View>
                 <View style={{ marginTop: 12 }}>
@@ -166,7 +167,7 @@ export default function ExerciseDetailScreen() {
 
           <Rise index={5} style={{ marginTop: 12 }}>
             <Card>
-              <Text style={styles.cardTitle}>Músculos trabalhados</Text>
+              <Text style={styles.cardTitle}>{i18n.t('fitness:ex.muscles')}</Text>
               <View style={styles.muscles}>
                 <Badge label={`${snap.muscle_group} · principal`} tone="solid" />
                 {snap.secondary_muscles?.map((m) => <Badge key={m} label={m} tone="primary" />)}
@@ -180,22 +181,22 @@ export default function ExerciseDetailScreen() {
         {requested ? (
           <View style={styles.requested} accessibilityLiveRegion="polite">
             <Ionicons name="checkmark-circle-outline" size={18} color={colors.success} />
-            <Text style={styles.requestedText}>Pedido de troca enviado. A resposta chega no chat.</Text>
+            <Text style={styles.requestedText}>{i18n.t('fitness:ex.swapSent')}</Text>
           </View>
         ) : null}
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <Button
-            label={requested ? 'Troca pedida' : 'Pedir troca'}
+            label={requested ? i18n.t('fitness:ex.swapRequested') : i18n.t('fitness:ex.requestSwap')}
             variant={requested ? 'soft' : 'secondary'}
             disabled={requested}
             loading={send.isPending}
             style={{ flex: 1 }}
             onPress={async () => {
-              await send.mutateAsync({ text: `Pedido de troca de exercício: ${snap.name} (${workout?.title}). Pode me sugerir outro?` });
+              await send.mutateAsync({ text: i18n.t('fitness:ex.swapMessage', { name: snap.name, workout: workout?.title ?? '' }) });
               setRequested(true);
             }}
           />
-          <Button label="Tirar dúvida" icon="chatbubble-outline" style={{ flex: 1 }} onPress={() => router.push(`/cliente/chat/${slug}`)} />
+          <Button label={i18n.t('fitness:ex.ask')} icon="chatbubble-outline" style={{ flex: 1 }} onPress={() => router.push(`/cliente/chat/${slug}`)} />
         </View>
       </View>
     </Screen>

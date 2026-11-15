@@ -9,7 +9,9 @@ import {
   portalSendChat, PORTAL_CHAT_MAX,
   type PortalHome,
 } from '@/src/shared/api/portal.api';
+import i18n, { locale } from '@/src/i18n';
 import { clientDataMode } from './dataMode';
+import { UserFacingError } from './userFacingError';
 import { buildMockBookings, buildMockChats, mockCompanies } from './mocks';
 import { mapPortalBooking, mapPortalChat, mapPortalCompany } from './portalMapping';
 import type { ChatMessage, ClientBooking, ClientChat, ClientCompany, OutgoingAttachment } from './types';
@@ -22,7 +24,7 @@ import type { ChatMessage, ClientBooking, ClientChat, ClientCompany, OutgoingAtt
 const live = () => clientDataMode() === 'live';
 
 /** Erro com texto para mostrar na tela (ação que o portal ainda não oferece). */
-const unsupported = (text: string) => new Error(text);
+const unsupported = (text: string) => new UserFacingError(text);
 
 let lastHome: PortalHome | null = null;
 async function home(fresh = false) {
@@ -33,7 +35,7 @@ const liveBooking = async (id: string) => (await home(true)).bookings.find((b) =
 async function refreshedBooking(id: string): Promise<ClientBooking> {
   const h = await home(true);
   const b = h.bookings.find((x) => x.id === id);
-  if (!b) throw unsupported('Esse compromisso não está mais na sua agenda.');
+  if (!b) throw unsupported(i18n.t('client:errors.bookingGone'));
   return mapPortalBooking(b, h);
 }
 
@@ -77,7 +79,7 @@ export async function confirmBooking(id: string) {
 }
 
 export async function unconfirmBooking(id: string) {
-  if (live()) throw unsupported('Para desfazer a confirmação, fale com a equipe pelo chat.');
+  if (live()) throw unsupported(i18n.t('client:errors.cannotUnconfirm'));
   await tick();
   return patchBooking(id, { status: 'pending', can_confirm: true });
 }
@@ -95,7 +97,7 @@ export async function cancelBooking(id: string, reason: string) {
 
 export async function changeClassBooking(id: string, action: 'accept' | 'decline' | 'reset') {
   if (live()) {
-    if (action === 'reset') throw unsupported('Essa vaga já foi respondida. Fale com a equipe pelo chat para mudar.');
+    if (action === 'reset') throw unsupported(i18n.t('client:errors.slotAnswered'));
     await portalClassAction(id, action === 'accept' ? 'accept' : 'cancel');
     return refreshedBooking(id).catch(() => null);
   }
@@ -187,12 +189,17 @@ export async function sendChatMessage(
   input: { text: string; attachment?: OutgoingAttachment; reschedule?: ChatMessage['reschedule'] },
 ): Promise<ChatMessage> {
   if (live()) {
-    if (input.attachment) throw unsupported('Por enquanto o chat aceita só texto. Para enviar arquivos, use o WhatsApp da empresa.');
+    if (input.attachment) throw unsupported(i18n.t('client:errors.textOnly'));
     const r = input.reschedule;
-    const about = r ? `\n\nSobre: ${r.title} de ${new Date(r.original_at).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : '';
-    const text = `${input.text.trim() || (r ? 'Consigo outro horário?' : '')}${about}`.trim();
-    if (!text) throw unsupported('Escreva a mensagem antes de enviar.');
-    if (text.length > PORTAL_CHAT_MAX) throw unsupported(`A mensagem tem ${text.length} caracteres e o limite é ${PORTAL_CHAT_MAX}. Divida em duas mensagens.`);
+    const about = r
+      ? `\n\n${i18n.t('client:chat.about', {
+          title: r.title,
+          when: new Date(r.original_at).toLocaleString(locale(), { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+        })}`
+      : '';
+    const text = `${input.text.trim() || (r ? i18n.t('client:chat.rescheduleDefault') : '')}${about}`.trim();
+    if (!text) throw unsupported(i18n.t('client:errors.emptyMessage'));
+    if (text.length > PORTAL_CHAT_MAX) throw unsupported(i18n.t('client:errors.tooLong', { length: text.length, max: PORTAL_CHAT_MAX }));
     await portalSendChat(text);
     return { id: `local-${Date.now()}`, from: 'me', text, at: new Date().toISOString(), status: 'sent', attachment: null };
   }
@@ -207,7 +214,7 @@ export async function sendChatMessage(
     reschedule: input.reschedule,
     attachment: att
       ? att.kind === 'document'
-        ? { kind: 'document', uri: att.uri, name: att.name ?? 'Documento', size_bytes: att.size_bytes ?? 0 }
+        ? { kind: 'document', uri: att.uri, name: att.name ?? i18n.t('client:viewer.document'), size_bytes: att.size_bytes ?? 0 }
         : att.kind === 'video'
           ? { kind: 'video', uri: att.uri, duration_s: att.duration_s ?? 0 }
           : att.kind === 'audio'

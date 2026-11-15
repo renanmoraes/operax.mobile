@@ -1,4 +1,5 @@
 import type { EnduranceSport, FitnessEnduranceStep, FitnessExerciseSnapshot, FitnessPart, FitnessWorkoutView } from './types';
+import i18n, { locale } from '@/src/i18n';
 
 /**
  * Descrição em português de cada parte do treino, para qualquer modalidade (força, WOD, Hyrox,
@@ -6,25 +7,12 @@ import type { EnduranceSport, FitnessEnduranceStep, FitnessExerciseSnapshot, Fit
  * a tela certa por parte (séries, gravação com GPS ou registro do resultado).
  */
 
-export const SPORT_LABEL: Record<EnduranceSport | 'multi', string> = { run: 'Corrida', bike: 'Bike', swim: 'Natação', row: 'Remo', multi: 'Multiesporte' };
+/** Nome do esporte no idioma atual (lido na hora, para trocar junto com o idioma). */
+export const SPORT_LABEL = new Proxy({} as Record<EnduranceSport | 'multi', string>, { get: (_t, k: string) => i18n.t(`fitness:sport.${k as EnduranceSport}`) });
 
-const METCON_LABEL: Record<string, string> = {
-  amrap: 'AMRAP',
-  emom: 'EMOM',
-  for_time: 'For time',
-  tabata: 'Tabata',
-  chipper: 'Chipper',
-  intervals: 'Intervalos',
-  rounds: 'Rounds',
-};
-
-const STEP_LABEL: Record<FitnessEnduranceStep['kind'], string> = {
-  warmup: 'Aquecimento',
-  interval: 'Tiro',
-  recovery: 'Recuperação',
-  cooldown: 'Desaquecimento',
-  rest: 'Descanso',
-};
+const METCON = ['amrap', 'emom', 'for_time', 'tabata', 'chipper', 'intervals', 'rounds'] as const;
+const metconLabel = (f: string) => ((METCON as readonly string[]).includes(f) ? i18n.t(`fitness:metcon.${f as (typeof METCON)[number]}`) : f.toUpperCase());
+const stepLabel = (k: FitnessEnduranceStep['kind']) => i18n.t(`fitness:step.${k}`);
 
 export function duration(seconds: number): string {
   if (seconds < 60) return `${seconds} s`;
@@ -35,60 +23,55 @@ export function duration(seconds: number): string {
   return `${h} h ${m % 60 ? `${m % 60} min` : ''}`.trim();
 }
 
-const meters = (m: number) => (m >= 1000 ? `${String(Math.round(m / 100) / 10).replace('.', ',')} km` : `${m} m`);
+const meters = (m: number) => (m >= 1000 ? `${new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(Math.round(m / 100) / 10)} km` : `${m} m`);
 
 function target(t: FitnessEnduranceStep['target']): string {
   if (!t) return '';
   const range = t.max != null ? `${t.min}–${t.max}` : `${t.min}`;
   switch (t.type) {
     case 'rpe':
-      return ` · esforço ${range}`;
     case 'hr_zone':
-      return ` · zona ${range}`;
     case 'hr_percent':
-      return ` · ${range}% da FC máx.`;
     case 'ftp_percent':
-      return ` · ${range}% do FTP`;
     case 'cadence':
-      return ` · cadência ${range}`;
+      return i18n.t(`fitness:target.${t.type}`, { range });
     default:
-      return ` · ritmo ${range}`;
+      return i18n.t('fitness:target.pace', { range });
   }
 }
 
 function step(s: FitnessEnduranceStep): string {
-  const size = s.distance_meters ? meters(s.distance_meters) : s.duration_seconds ? duration(s.duration_seconds) : 'livre';
-  return `${STEP_LABEL[s.kind] ?? s.kind}: ${size}${target(s.target)}`;
+  const size = s.distance_meters ? meters(s.distance_meters) : s.duration_seconds ? duration(s.duration_seconds) : i18n.t('fitness:step.free');
+  return `${stepLabel(s.kind)}: ${size}${target(s.target)}`;
 }
 
 /** Rótulo curto da parte (para chips): "Força · 3 exercícios", "Corrida", "WOD · AMRAP 12 min". */
 export function partLabel(part: FitnessPart): string {
   switch (part.type) {
     case 'strength': {
-      const n = part.items.length;
-      return `Força · ${n} ${n === 1 ? 'exercício' : 'exercícios'}`;
+      return i18n.t('fitness:part.strength', { count: part.items.length });
     }
     case 'metcon':
-      return `WOD · ${METCON_LABEL[part.format] ?? part.format}${part.time_cap_seconds ? ` ${duration(part.time_cap_seconds)}` : ''}`;
+      return `WOD · ${metconLabel(part.format)}${part.time_cap_seconds ? ` ${duration(part.time_cap_seconds)}` : ''}`;
     case 'hyrox':
-      return `Hyrox · ${part.steps.length} etapas`;
+      return i18n.t('fitness:part.hyrox', { count: part.steps.length });
     case 'endurance':
-      return SPORT_LABEL[part.sport] ?? 'Resistência';
+      return SPORT_LABEL[part.sport] ?? i18n.t('fitness:part.endurance');
     default:
-      return part.name || 'Orientação';
+      return part.name || i18n.t('fitness:part.guidance');
   }
 }
 
 /** Linhas da ficha para partes que não são de força (força tem a lista de exercícios própria). */
 export function partLines(part: FitnessPart, snapshots: FitnessExerciseSnapshot[]): string[] {
-  const name = (id?: string) => snapshots.find((s) => s.id === id)?.name ?? 'Exercício';
+  const name = (id?: string) => snapshots.find((s) => s.id === id)?.name ?? i18n.t('fitness:part.exercise');
   switch (part.type) {
     case 'metcon':
       return part.movements.map((m) => `${m.reps} ${name(m.exercise_id)}${m.load_rx ? ` · ${m.load_rx}` : ''}${m.notes ? ` (${m.notes})` : ''}`);
     case 'hyrox':
-      return part.steps.map((s) => `${s.kind === 'run' ? 'Corrida' : s.name}${s.distance_meters ? ` · ${meters(s.distance_meters)}` : ''}${s.reps ? ` · ${s.reps} rep.` : ''}${s.load ? ` · ${s.load}` : ''}`);
+      return part.steps.map((s) => `${s.kind === 'run' ? i18n.t('fitness:sport.run') : s.name}${s.distance_meters ? ` · ${meters(s.distance_meters)}` : ''}${s.reps ? ` · ${i18n.t('fitness:part.reps', { count: s.reps })}` : ''}${s.load ? ` · ${s.load}` : ''}`);
     case 'endurance':
-      return part.steps.map((s) => (s.kind === 'repeat' ? `${s.repeats} vezes: ${s.steps.map(step).join(' + ')}` : step(s)));
+      return part.steps.map((s) => (s.kind === 'repeat' ? i18n.t('fitness:part.times', { count: s.repeats, steps: s.steps.map(step).join(' + ') }) : step(s)));
     case 'free_text':
       return part.text.split('\n').filter(Boolean);
     default:

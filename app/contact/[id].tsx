@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar, Badge, Card, HeroCard, IconTile, Loading, Muted, Rise, Screen, ScreenHeader, SettingsGroup, SettingsRow, EmptyState } from '@/src/design-system/ui';
@@ -11,14 +12,16 @@ import { initialsOf } from '@/src/features/inbox/ConversationCard';
 import { RequirePermission } from '@/src/features/auth/useCan';
 
 export default function ContactScreenGuarded() {
+  const { t } = useTranslation('inbox');
   return (
-    <RequirePermission need="contacts" title="Contato">
+    <RequirePermission need="contacts" title={t('contact.title')}>
       <ContactScreen />
     </RequirePermission>
   );
 }
 
 function ContactScreen() {
+  const { t } = useTranslation('inbox');
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();
@@ -32,21 +35,21 @@ function ContactScreen() {
   const contact = mode === 'live' ? query.data : mock;
 
   const header = (
-    <ScreenHeader safe title="Contato" onBack={() => router.back()} />
+    <ScreenHeader safe title={t('contact.title')} onBack={() => router.back()} />
   );
 
   if (!contact) {
     return (
       <Screen>
         {header}
-        {query.isLoading ? <Loading /> : <EmptyState icon="person-outline" title="Contato não encontrado" subtitle="Ele pode ter sido removido ou você não tem acesso." />}
+        {query.isLoading ? <Loading /> : <EmptyState icon="person-outline" title={t('contact.notFound')} subtitle={t('contact.notFoundHint')} />}
       </Screen>
     );
   }
 
   const tags = Array.isArray((contact as { tags?: unknown[] }).tags)
     ? (contact as { tags: (string | { tag?: string; name?: string })[] }).tags
-        .map((t) => (typeof t === 'string' ? t : t.tag || t.name || ''))
+        .map((tag) => (typeof tag === 'string' ? tag : tag.tag || tag.name || ''))
         .filter(Boolean)
     : [];
   const phone = ('phone_e164' in contact ? contact.phone_e164 : (contact as { phone?: string }).phone) || '';
@@ -61,14 +64,14 @@ function ContactScreen() {
           <Rise>
             <HeroCard>
               <View style={{ alignItems: 'center', gap: 10 }}>
-                <Avatar initials={initialsOf(contact.name || 'Contato')} size={76} tone="brand" />
-                <Text style={styles.name} numberOfLines={2}>{contact.name || 'Contato'}</Text>
+                <Avatar initials={initialsOf(contact.name || t('contact.title'))} size={76} tone="brand" />
+                <Text style={styles.name} numberOfLines={2}>{contact.name || t('contact.title')}</Text>
                 {tags.length || leadScore != null ? (
                   <View style={styles.tags}>
                     {tags.map((tag) => (
                       <Badge key={tag} label={tag} tone="primary" />
                     ))}
-                    {leadScore != null ? <Badge label={`Lead ${leadScore}`} tone="success" icon="trending-up" /> : null}
+                    {leadScore != null ? <Badge label={t('contact.lead', { score: leadScore })} tone="success" icon="trending-up" /> : null}
                   </View>
                 ) : null}
               </View>
@@ -77,8 +80,8 @@ function ContactScreen() {
 
           <Rise index={1}>
             <SettingsGroup>
-              <SettingsRow icon="call-outline" title="Telefone" subtitle={phone || 'Não informado'} last={!contact.email} />
-              {contact.email ? <SettingsRow icon="mail-outline" title="E-mail" subtitle={contact.email} last /> : null}
+              <SettingsRow icon="call-outline" title={t('contact.phone')} subtitle={phone || t('contact.notInformed')} last={!contact.email} />
+              {contact.email ? <SettingsRow icon="mail-outline" title={t('contact.email')} subtitle={contact.email} last /> : null}
             </SettingsGroup>
           </Rise>
 
@@ -86,8 +89,8 @@ function ContactScreen() {
             <Card style={{ flexDirection: 'row', gap: 14 }}>
               <IconTile icon="document-text-outline" size={42} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.section}>Notas</Text>
-                <Muted style={{ marginTop: 4, lineHeight: 19 }}>{notes || 'Nenhuma nota sobre este contato ainda.'}</Muted>
+                <Text style={styles.section}>{t('contact.notes')}</Text>
+                <Muted style={{ marginTop: 4, lineHeight: 19 }}>{notes || t('contact.noNotes')}</Muted>
               </View>
             </Card>
           </Rise>

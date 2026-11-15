@@ -1,3 +1,4 @@
+import i18n, { locale } from '@/src/i18n';
 import type { ApiTeamChannel, ApiTeamMessage } from '@/src/shared/api/team-chat.api';
 
 /** Modelo de tela do chat interno: igual para o modo demo e para o backend real. */
@@ -67,18 +68,18 @@ export function timeLabel(iso: string | null | undefined, now = new Date()): str
   if (Number.isNaN(d.getTime())) return '';
   const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const days = Math.round((startOf(now) - startOf(d)) / 86_400_000);
-  if (days <= 0) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  if (days === 1) return 'Ontem';
+  if (days <= 0) return d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+  if (days === 1) return i18n.t('team:model.yesterday');
   if (days < 7) {
-    const w = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+    const w = d.toLocaleDateString(locale(), { weekday: 'short' }).replace('.', '');
     return w.charAt(0).toUpperCase() + w.slice(1);
   }
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  return d.toLocaleDateString(locale(), { day: '2-digit', month: '2-digit' });
 }
 
 export function clockLabel(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
 }
 
 /** Fixadas primeiro; depois as com não lidas; depois a mais recente. */
@@ -100,7 +101,7 @@ export function mapApiChannel(c: ApiTeamChannel): TeamChannel {
   return {
     id: c.id,
     kind,
-    title: kind === 'dm' ? c.peer?.name || 'Conversa direta' : c.name || 'Grupo',
+    title: kind === 'dm' ? c.peer?.name || i18n.t('team:model.directFallback') : c.name || i18n.t('team:model.groupFallback'),
     preview: c.topic ?? null,
     previewAuthor: null,
     lastAt: c.last_message_at ?? c.created_at ?? null,
@@ -129,10 +130,10 @@ export function mapApiMessage(m: ApiTeamMessage, viewerId: string | undefined, a
     id: m.id,
     channelId: m.channel_id,
     senderId: m.sender_id,
-    senderName: m.sender_name || 'Equipe',
+    senderName: m.sender_name || i18n.t('team:model.senderFallback'),
     mine: !!viewerId && m.sender_id === viewerId,
     type,
-    body: m.deleted_at ? 'Mensagem apagada' : m.body ?? '',
+    body: m.deleted_at ? i18n.t('team:model.deleted') : m.body ?? '',
     at: clockLabel(m.created_at),
     mediaUri: absoluteMediaUrl(m.media_url, apiUrl),
     fileName: m.media_filename ?? undefined,
@@ -144,13 +145,13 @@ export function mapApiMessage(m: ApiTeamMessage, viewerId: string | undefined, a
 export function previewOf(m: Pick<TeamMessage, 'type' | 'body' | 'fileName'>): string {
   switch (m.type) {
     case 'audio':
-      return 'Áudio';
+      return i18n.t('team:preview.audio');
     case 'image':
-      return m.body ? `Foto · ${m.body}` : 'Foto';
+      return m.body ? i18n.t('team:preview.photoCaption', { caption: m.body }) : i18n.t('team:preview.photo');
     case 'video':
-      return m.body ? `Vídeo · ${m.body}` : 'Vídeo';
+      return m.body ? i18n.t('team:preview.videoCaption', { caption: m.body }) : i18n.t('team:preview.video');
     case 'document':
-      return m.fileName || 'Documento';
+      return m.fileName || i18n.t('team:preview.document');
     default:
       return m.body;
   }

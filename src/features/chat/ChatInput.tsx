@@ -1,4 +1,5 @@
 import { Ref, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, TextInput, TextInputContentSizeChangeEvent, TextInputInstance, View } from 'react-native';
 import { colors, typography } from '@/src/design-system/tokens';
 
@@ -14,7 +15,7 @@ export function ChatInput({
   onChangeText,
   placeholder,
   editable = true,
-  accessibilityLabel = 'Mensagem',
+  accessibilityLabel,
   inputRef,
 }: {
   value: string;
@@ -25,6 +26,7 @@ export function ChatInput({
   /** Para devolver o foco e pôr o cursor no fim depois de inserir algo (marcação, atalho). */
   inputRef?: Ref<TextInputInstance>;
 }) {
+  const { t } = useTranslation('inbox');
   const [measured, setHeight] = useState(LINE);
   // Depois de enviar (campo vazio), volta para uma linha mesmo que o evento de tamanho não venha.
   const height = value ? measured : LINE;
@@ -43,7 +45,7 @@ export function ChatInput({
         onContentSizeChange={onSize}
         placeholder={placeholder}
         placeholderTextColor={colors.textMuted}
-        accessibilityLabel={accessibilityLabel}
+        accessibilityLabel={accessibilityLabel ?? t('chatUi.inputLabel')}
         editable={editable}
         multiline
         autoComplete="off"

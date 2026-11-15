@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react';
+import i18n from '@/src/i18n';
 import type { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { FitnessFeeling, FreeSport } from './types';
 
@@ -19,13 +20,16 @@ export type SportInfo = {
   tracker: 'run' | 'bike';
 };
 
+/** `label` é lido na hora no idioma atual (getter), então troca junto com o idioma. */
+const sport = (s: Omit<SportInfo, 'label'>): SportInfo => ({ ...s, get label() { return i18n.t(`fitness:free.${s.id}`); } });
+
 export const SPORTS: SportInfo[] = [
-  { id: 'run', label: 'Corrida', icon: 'run-fast', gps: true, rate: 'pace', tracker: 'run' },
-  { id: 'walk', label: 'Caminhada', icon: 'walk', gps: true, rate: 'pace', tracker: 'run' },
-  { id: 'bike', label: 'Pedalada', icon: 'bike', gps: true, rate: 'speed', tracker: 'bike' },
-  { id: 'strength', label: 'Musculação', icon: 'weight-lifter', gps: false, rate: null, tracker: 'run' },
-  { id: 'swim', label: 'Natação', icon: 'swim', gps: false, rate: null, tracker: 'run' },
-  { id: 'other', label: 'Outro treino', icon: 'heart-pulse', gps: false, rate: null, tracker: 'run' },
+  sport({ id: 'run', icon: 'run-fast', gps: true, rate: 'pace', tracker: 'run' }),
+  sport({ id: 'walk', icon: 'walk', gps: true, rate: 'pace', tracker: 'run' }),
+  sport({ id: 'bike', icon: 'bike', gps: true, rate: 'speed', tracker: 'bike' }),
+  sport({ id: 'strength', icon: 'weight-lifter', gps: false, rate: null, tracker: 'run' }),
+  sport({ id: 'swim', icon: 'swim', gps: false, rate: null, tracker: 'run' }),
+  sport({ id: 'other', icon: 'heart-pulse', gps: false, rate: null, tracker: 'run' }),
 ];
 
 export const sportInfo = (id: string | null | undefined): SportInfo => SPORTS.find((s) => s.id === id) ?? SPORTS[SPORTS.length - 1];
@@ -35,40 +39,28 @@ export function historySportLabel(modality: string | null | undefined): string |
   if (!modality) return null;
   const known = SPORTS.find((s) => s.id === modality);
   if (known) return known.label;
-  return ({ row: 'Remo', strength: 'Musculação' } as Record<string, string>)[modality] ?? null;
+  return modality === 'row' ? i18n.t('fitness:free.row') : null;
 }
 
+const feeling = (id: FitnessFeeling, icon: McIcon) => ({ id, icon, get label() { return i18n.t(`fitness:feeling.${id}`); } });
 export const FEELINGS: { id: FitnessFeeling; label: string; icon: McIcon }[] = [
-  { id: 'great', label: 'Ótimo', icon: 'emoticon-excited-outline' },
-  { id: 'good', label: 'Bom', icon: 'emoticon-happy-outline' },
-  { id: 'ok', label: 'Normal', icon: 'emoticon-neutral-outline' },
-  { id: 'bad', label: 'Difícil', icon: 'emoticon-sad-outline' },
-  { id: 'awful', label: 'Pesado demais', icon: 'emoticon-dead-outline' },
+  feeling('great', 'emoticon-excited-outline'),
+  feeling('good', 'emoticon-happy-outline'),
+  feeling('ok', 'emoticon-neutral-outline'),
+  feeling('bad', 'emoticon-sad-outline'),
+  feeling('awful', 'emoticon-dead-outline'),
 ];
 
 /** Escala de esforço percebido (1 a 10), com a palavra que o aluno reconhece. */
 export function effortWord(n: number): string {
-  if (n <= 2) return 'Muito leve';
-  if (n <= 4) return 'Leve';
-  if (n <= 6) return 'Moderado';
-  if (n <= 8) return 'Forte';
-  return 'Máximo';
+  return i18n.t(n <= 2 ? 'fitness:effort.veryLight' : n <= 4 ? 'fitness:effort.light' : n <= 6 ? 'fitness:effort.moderate' : n <= 8 ? 'fitness:effort.hard' : 'fitness:effort.max');
 }
 
 /** Tipo do treino (o professor filtra e entende o histórico por isso). */
+type TagId = 'easy' | 'long' | 'intervals' | 'tempo' | 'race' | 'strength' | 'hypertrophy' | 'conditioning' | 'mobility';
+const tag = (id: TagId) => ({ id, get label() { return i18n.t(`fitness:tag.${id}`); } });
 export const WORKOUT_TAGS: Record<'endurance' | 'gym', { id: string; label: string }[]> = {
-  endurance: [
-    { id: 'easy', label: 'Regenerativo' },
-    { id: 'long', label: 'Longão' },
-    { id: 'intervals', label: 'Intervalado' },
-    { id: 'tempo', label: 'Ritmo' },
-    { id: 'race', label: 'Prova' },
-  ],
-  gym: [
-    { id: 'strength', label: 'Força' },
-    { id: 'hypertrophy', label: 'Hipertrofia' },
-    { id: 'conditioning', label: 'Condicionamento' },
-    { id: 'mobility', label: 'Mobilidade' },
-  ],
+  endurance: [tag('easy'), tag('long'), tag('intervals'), tag('tempo'), tag('race')],
+  gym: [tag('strength'), tag('hypertrophy'), tag('conditioning'), tag('mobility')],
 };
 export const tagLabel = (id: string | null | undefined) => [...WORKOUT_TAGS.endurance, ...WORKOUT_TAGS.gym].find((t) => t.id === id)?.label ?? null;

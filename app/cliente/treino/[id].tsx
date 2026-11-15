@@ -1,4 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import i18n from '@/src/i18n';
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,7 +22,7 @@ import { useNow } from '@/src/shared/useNow';
 export default function WorkoutSheetScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   return (
-    <WorkoutGate id={id} title="Ficha do treino">
+    <WorkoutGate id={id} title={i18n.t('fitness:sheet.title')}>
       {(workout) => <WorkoutSheet workout={workout} />}
     </WorkoutGate>
   );
@@ -28,6 +30,7 @@ export default function WorkoutSheetScreen() {
 
 function WorkoutSheet({ workout }: { workout: FitnessWorkoutView }) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation(['fitness', 'common']);
   const now = useNow();
   const LOAD_HISTORY = useLoadHistory();
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -37,14 +40,14 @@ function WorkoutSheet({ workout }: { workout: FitnessWorkoutView }) {
   const today = new Date().getDay();
   const isToday = workout.schedule.weekdays?.includes(today);
   const nextDay = workout.schedule.weekdays?.map((d) => (d - today + 7) % 7).filter((d) => d > 0).sort((a, b) => a - b)[0];
-  const when = isToday ? 'Hoje' : nextDay === 1 ? 'Amanhã' : nextDay != null ? `Próxima ${weekdayFull(new Date(now + nextDay * 86_400_000))}` : '';
+  const when = isToday ? t('sheet.today') : nextDay === 1 ? t('sheet.tomorrow') : nextDay != null ? t('sheet.next', { day: weekdayFull(new Date(now + nextDay * 86_400_000)) }) : '';
   const firstOther = workout.parts.findIndex((p) => partMode(p) !== 'sets');
 
   // Ficha em PDF do portal (com a sessão do aluno), aberta no visualizador do app.
   async function openPdf() {
     setPdfError(null);
     if (clientDataMode() !== 'live') {
-      setPdfError('A ficha em PDF sai com o login real.');
+      setPdfError(t('sheet.pdfDemo'));
       return;
     }
     setPdfBusy(true);
@@ -55,7 +58,7 @@ function WorkoutSheet({ workout }: { workout: FitnessWorkoutView }) {
       if (res.status !== 200) throw new Error(String(res.status));
       openViewer({ kind: 'pdf', uri: res.uri, title: workout.title });
     } catch {
-      setPdfError('Não foi possível baixar a ficha agora.');
+      setPdfError(t('sheet.pdfFail'));
     } finally {
       setPdfBusy(false);
     }
@@ -70,16 +73,16 @@ function WorkoutSheet({ workout }: { workout: FitnessWorkoutView }) {
   const actionLabel = (i: number) => {
     const p = workout.parts[i];
     const mode = partMode(p);
-    if (mode === 'gps') return p.type === 'endurance' && p.sport === 'bike' ? 'Gravar pedal com GPS' : 'Gravar corrida com GPS';
-    if (mode === 'done') return 'Marcar como feito';
-    return 'Registrar resultado';
+    if (mode === 'gps') return p.type === 'endurance' && p.sport === 'bike' ? t('sheet.recordRide') : t('sheet.recordRun');
+    if (mode === 'done') return t('sheet.markDone');
+    return t('sheet.logResult');
   };
 
   return (
     <Screen>
-      <TopBar safe title="Ficha do treino" onBack={() => router.back()} right={<IconButton icon="document-text-outline" accessibilityLabel="Abrir a ficha em PDF" onPress={() => void openPdf()} />} />
+      <TopBar safe title={t('sheet.title')} onBack={() => router.back()} right={<IconButton icon="document-text-outline" accessibilityLabel={t('sheet.pdfA11y')} onPress={() => void openPdf()} />} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 120 }}>
-        {pdfBusy ? <Muted style={styles.note}>Baixando a ficha…</Muted> : pdfError ? <Muted style={styles.note}>{pdfError}</Muted> : null}
+        {pdfBusy ? <Muted style={styles.note}>{t('sheet.downloading')}</Muted> : pdfError ? <Muted style={styles.note}>{pdfError}</Muted> : null}
 
         <Rise style={{ marginTop: 4 }}>
           <HeroCard>
@@ -89,9 +92,9 @@ function WorkoutSheet({ workout }: { workout: FitnessWorkoutView }) {
               <StatStrip
                 style={styles.stats}
                 items={[
-                  { value: rows.length, label: rows.length === 1 ? 'exercício' : 'exercícios' },
-                  { value: totalSets(rows), label: 'séries' },
-                  { value: estimateMinutes(rows), label: 'minutos' },
+                  { value: rows.length, label: t('sheet.exercisesUnit', { count: rows.length }) },
+                  { value: totalSets(rows), label: t('sheet.setsUnit') },
+                  { value: estimateMinutes(rows), label: t('sheet.minutesUnit') },
                 ]}
               />
             ) : (
@@ -109,7 +112,7 @@ function WorkoutSheet({ workout }: { workout: FitnessWorkoutView }) {
             <Card style={styles.noteCard}>
               <IconTile icon="chatbox-ellipses-outline" size={38} tone="soft" />
               <View style={{ flex: 1 }}>
-                <Muted style={{ fontFamily: typography.fontFamilySemiBold, fontSize: 12.5 }}>Observação do professor</Muted>
+                <Muted style={{ fontFamily: typography.fontFamilySemiBold, fontSize: 12.5 }}>{t('sheet.coachNote')}</Muted>
                 <Text style={styles.noteText}>{workout.coach_note}</Text>
               </View>
             </Card>
@@ -121,7 +124,7 @@ function WorkoutSheet({ workout }: { workout: FitnessWorkoutView }) {
             const partRows = rows.filter((r) => r.partIndex === pi);
             return (
               <View key={pi}>
-                <SectionHeader title={part.name || 'Exercícios'} />
+                <SectionHeader title={part.name || t('sheet.exercises')} />
                 <View style={{ gap: 10 }}>
                   {partRows.map((r, i) => {
                     const hist = LOAD_HISTORY[r.exerciseId];
@@ -134,12 +137,12 @@ function WorkoutSheet({ workout }: { workout: FitnessWorkoutView }) {
                           </View>
                           <View style={{ flex: 1, minWidth: 0 }}>
                             <Text style={styles.rowTitle}>{r.name}</Text>
-                            <Muted style={{ marginTop: 4, fontVariant: ['tabular-nums'] }}>{r.tag === 'Drop set' ? `${r.prescription} · ${r.loadLabel}` : r.prescription}</Muted>
+                            <Muted style={{ marginTop: 4, fontVariant: ['tabular-nums'] }}>{r.blockKind === 'dropset' ? `${r.prescription} · ${r.loadLabel}` : r.prescription}</Muted>
                             {r.tag ? <View style={{ marginTop: 8 }}><Badge label={r.tag} tone="primary" /></View> : null}
                           </View>
                           {last != null ? (
                             <View style={{ alignItems: 'flex-end' }}>
-                              <Muted style={{ fontSize: 11.5 }}>última</Muted>
+                              <Muted style={{ fontSize: 11.5 }}>{t('sheet.last')}</Muted>
                               <Text style={styles.last}>{`${formatKg(last)} kg`}</Text>
                             </View>
                           ) : null}
@@ -173,7 +176,7 @@ function WorkoutSheet({ workout }: { workout: FitnessWorkoutView }) {
       </ScrollView>
       <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
         {hasStrength ? (
-          <Button label="Começar treino" icon="play" onPress={() => router.push(`/cliente/treino/sessao/${workout.id}`)} />
+          <Button label={t('sheet.start')} icon="play" onPress={() => router.push(`/cliente/treino/sessao/${workout.id}`)} />
         ) : firstOther >= 0 ? (
           <Button label={actionLabel(firstOther)} icon={partMode(workout.parts[firstOther]) === 'gps' ? 'navigate' : 'play'} onPress={() => start(firstOther)} />
         ) : null}

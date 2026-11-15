@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { Avatar, Badge, Card, Muted } from '@/src/design-system/ui';
 import { colors, typography } from '@/src/design-system/tokens';
@@ -15,11 +16,12 @@ export function initialsOf(name: string) {
 }
 
 export function ConversationCard({ item, onPress }: { item: Conversation; onPress: () => void }) {
+  const { t } = useTranslation('inbox');
   const urgent = item.urgency === 'critical' || item.urgency === 'high';
-  const channel = channelLabel[item.channel] ?? item.channel;
+  const channel = channelLabel[item.channel] ?? t('card.channelOther');
   const isApp = item.channel === ('app' as Conversation['channel']);
   return (
-    <Card onPress={onPress} accessibilityLabel={`${item.contactName}, ${item.unread ? `${item.unread} não lidas, ` : ''}${item.lastMessage}`} style={styles.card}>
+    <Card onPress={onPress} accessibilityLabel={item.unread ? t('card.a11yUnread', { name: item.contactName, count: item.unread, message: item.lastMessage }) : t('card.a11y', { name: item.contactName, message: item.lastMessage })} style={styles.card}>
       <Avatar initials={initialsOf(item.contactName)} size={48} tone={isApp ? 'brand' : 'soft'} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={styles.top}>
@@ -35,7 +37,7 @@ export function ConversationCard({ item, onPress }: { item: Conversation; onPres
         </View>
         <View style={styles.meta}>
           <Muted style={{ fontSize: 12 }} numberOfLines={1}>{item.queue}</Muted>
-          {urgent ? <Badge label="Atenção" tone="warn" /> : null}
+          {urgent ? <Badge label={t('card.attention')} tone="warn" /> : null}
         </View>
       </View>
     </Card>

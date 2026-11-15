@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { showDialog } from '@/src/design-system/Dialog';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,14 +20,16 @@ import { SkeletonList } from '@/src/design-system/Skeleton';
 import { RequirePermission } from '@/src/features/auth/useCan';
 
 export default function InboxScreenGuarded() {
+  const { t } = useTranslation('inbox');
   return (
-    <RequirePermission need="inbox" title="Atendimento">
+    <RequirePermission need="inbox" title={t('inbox.title')}>
       <InboxScreen />
     </RequirePermission>
   );
 }
 
 function InboxScreen() {
+  const { t } = useTranslation('inbox');
   const insets = useSafeAreaInsets();
   const { mode, user } = useAuth();
   const { open, close, setQueueCount } = useQueueDrawer();
@@ -98,8 +101,8 @@ function InboxScreen() {
     } catch (e) {
       // A fila continua aberta; explica o motivo (outra pessoa assumiu, sem conexão…).
       const status = (e as { response?: { status?: number; data?: { message?: unknown } } })?.response;
-      const msg = typeof status?.data?.message === 'string' && (status?.status ?? 500) < 500 ? status.data.message : 'Não foi possível assumir agora. Tente de novo.';
-      void showDialog({ title: 'Não deu para assumir', message: msg, tone: 'warn' });
+      const msg = typeof status?.data?.message === 'string' && (status?.status ?? 500) < 500 ? status.data.message : t('inbox.claimFailed');
+      void showDialog({ title: t('inbox.claimFailedTitle'), message: msg, tone: 'warn' });
       void query.refetch();
     } finally {
       setClaimingId(null);
@@ -110,15 +113,15 @@ function InboxScreen() {
     <Screen>
       <ScreenHeader
         safe
-        title="Atendimento"
+        title={t('inbox.title')}
         onMenuPress={open}
         menuBadge={queue.length}
-        right={<Badge label={mode === 'live' ? (query.isFetching ? 'Atualizando…' : 'Online') : 'Demo'} tone={mode === 'live' ? 'success' : 'primary'} />}
+        right={<Badge label={mode === 'live' ? (query.isFetching ? t('inbox.updating') : t('inbox.online')) : t('inbox.demo')} tone={mode === 'live' ? 'success' : 'primary'} />}
       />
       <View style={styles.stats}>
-        <StatTile value={String(queue.length)} label="na fila" accent />
-        <StatTile value={String(active.length)} label="com você" />
-        <StatTile value={String(active.reduce((n, c) => n + (c.unread > 0 ? 1 : 0), 0))} label="não lidas" />
+        <StatTile value={String(queue.length)} label={t('inbox.inQueue')} accent />
+        <StatTile value={String(active.length)} label={t('inbox.withYou')} />
+        <StatTile value={String(active.reduce((n, c) => n + (c.unread > 0 ? 1 : 0), 0))} label={t('inbox.unreadLabel')} />
       </View>
 
       {mode === 'live' && query.isLoading ? (
@@ -135,9 +138,9 @@ function InboxScreen() {
           }
           ListEmptyComponent={
             <EmptyState
-              title="Nenhum atendimento com você"
-              subtitle="Assuma alguém da fila para começar."
-              actionLabel="Ver fila"
+              title={t('inbox.emptyTitle')}
+              subtitle={t('inbox.emptySub')}
+              actionLabel={t('inbox.viewQueue')}
               onAction={open}
             />
           }

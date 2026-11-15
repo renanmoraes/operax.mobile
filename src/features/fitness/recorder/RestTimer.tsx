@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import i18n from '@/src/i18n';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, Vibration, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, numbers, radii, text, typography } from '@/src/design-system/tokens';
@@ -15,6 +17,7 @@ export function RestTimer({ sets, onSets, active, say }: { sets: number; onSets:
   const [restTotal, setRestTotal] = useState(90);
   const [now, setNow] = useState(() => Date.now());
   const warned = useRef(false);
+  const { t } = useTranslation('fitness');
 
   useEffect(() => {
     if (!restEnd) return;
@@ -24,7 +27,7 @@ export function RestTimer({ sets, onSets, active, say }: { sets: number; onSets:
       if (!warned.current && restEnd - n <= 0) {
         warned.current = true;
         Vibration.vibrate([0, 350, 180, 350]);
-        say(`Descanso terminado. Série ${sets + 1}.`);
+        say(i18n.t('fitness:rest.say', { n: sets + 1 }));
         setRestEnd(null);
       }
     }, 250);
@@ -48,17 +51,17 @@ export function RestTimer({ sets, onSets, active, say }: { sets: number; onSets:
   if (restEnd) {
     return (
       <View style={[styles.card, styles.resting]}>
-        <Text style={styles.restLabel}>Descanso</Text>
-        <Text style={styles.restClock} accessibilityLabel={`Descanso, faltam ${left} segundos`}>{formatClock(left)}</Text>
+        <Text style={styles.restLabel}>{t('rest.title')}</Text>
+        <Text style={styles.restClock} accessibilityLabel={t('rest.leftA11y', { count: left })}>{formatClock(left)}</Text>
         <View style={styles.track}>
           <View style={[styles.bar, { width: `${Math.round((1 - left / restTotal) * 100)}%` }]} />
         </View>
         <View style={styles.row}>
-          <Pressable onPress={() => setRestEnd((e) => (e ? e + 15_000 : e))} style={styles.ghost} accessibilityRole="button" accessibilityLabel="Mais 15 segundos de descanso">
+          <Pressable onPress={() => setRestEnd((e) => (e ? e + 15_000 : e))} style={styles.ghost} accessibilityRole="button" accessibilityLabel={t('rest.plus15A11y')}>
             <Text style={styles.ghostText}>+15 s</Text>
           </Pressable>
-          <Pressable onPress={() => setRestEnd(null)} style={styles.ghost} accessibilityRole="button" accessibilityLabel="Pular descanso">
-            <Text style={styles.ghostText}>Pular</Text>
+          <Pressable onPress={() => setRestEnd(null)} style={styles.ghost} accessibilityRole="button" accessibilityLabel={t('rest.skipA11y')}>
+            <Text style={styles.ghostText}>{t('rest.skip')}</Text>
           </Pressable>
         </View>
       </View>
@@ -69,20 +72,20 @@ export function RestTimer({ sets, onSets, active, say }: { sets: number; onSets:
     <View style={styles.card}>
       <View style={styles.row}>
         <View>
-          <Text style={styles.label}>Séries feitas</Text>
+          <Text style={styles.label}>{t('rest.setsDone')}</Text>
           <Text style={styles.count}>{sets}</Text>
         </View>
         {sets > 0 ? (
-          <Pressable onPress={() => onSets(sets - 1)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Desfazer última série" style={styles.undo}>
+          <Pressable onPress={() => onSets(sets - 1)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('rest.undoA11y')} style={styles.undo}>
             <Ionicons name="arrow-undo" size={14} color={colors.textSoft} />
-            <Text style={styles.undoText}>Desfazer</Text>
+            <Text style={styles.undoText}>{t('rest.undo')}</Text>
           </Pressable>
         ) : null}
       </View>
-      <Text style={styles.hint}>{active ? 'Terminou a série? Toque no descanso:' : 'Continue o treino para marcar as séries.'}</Text>
+      <Text style={styles.hint}>{active ? t('rest.hint') : t('rest.hintPaused')}</Text>
       <View style={styles.row}>
         {PRESETS.map((s) => (
-          <Pressable key={s} disabled={!active} onPress={() => rest(s)} accessibilityRole="button" accessibilityLabel={`Série feita, descansar ${formatClock(s)}`} style={[styles.preset, !active && { opacity: 0.45 }]}>
+          <Pressable key={s} disabled={!active} onPress={() => rest(s)} accessibilityRole="button" accessibilityLabel={t('rest.presetA11y', { time: formatClock(s) })} style={[styles.preset, !active && { opacity: 0.45 }]}>
             <Ionicons name="timer-outline" size={16} color={colors.primary} />
             <Text style={styles.presetText}>{formatClock(s)}</Text>
           </Pressable>

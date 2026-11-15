@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import i18n from '@/src/i18n';
 import { useEffect } from 'react';
 import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import Animated, { Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
@@ -38,7 +39,7 @@ export function OperaxLoader({ size = 56, label, style, onDark }: { size?: numbe
   const circ = 2 * Math.PI * r;
 
   return (
-    <View style={[styles.wrap, style]} accessible accessibilityRole="progressbar" accessibilityLabel={label ?? 'Carregando'}>
+    <View style={[styles.wrap, style]} accessible accessibilityRole="progressbar" accessibilityLabel={label ?? i18n.t('states.loading')}>
       <View style={{ width: size, height: size }}>
         <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
           <Circle cx={size / 2} cy={size / 2} r={r} stroke={onDark ? 'rgba(255,255,255,0.12)' : colors.track} strokeWidth={stroke} fill="none" />

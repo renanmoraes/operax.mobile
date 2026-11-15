@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Display, Muted, Rise, Screen } from '@/src/design-system/ui';
@@ -12,6 +13,7 @@ import { providerDisplayName } from '@/src/features/fitness/brands';
 import { useClientCapabilities } from '@/src/features/client/useClientData';
 
 export default function ClientPermissionsScreen() {
+  const { t } = useTranslation(['client', 'common']);
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();
   const keys: PermissionKey[] = ['notifications', 'location', 'camera', 'photos'];
@@ -41,40 +43,40 @@ export default function ClientPermissionsScreen() {
     <Screen backdrop="mirror">
       <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + spacing.xl }]}>
         <Rise>
-          <Display style={{ fontSize: 28, lineHeight: 33 }}>Deixe o app do seu jeito</Display>
+          <Display style={{ fontSize: 28, lineHeight: 33 }}>{t('onboarding.title')}</Display>
         </Rise>
         <Rise index={1}>
-          <Muted style={styles.sub}>Ative só o que fizer sentido para você. Dá para mudar depois no perfil.</Muted>
+          <Muted style={styles.sub}>{t('onboarding.subtitle')}</Muted>
         </Rise>
 
         <View style={{ marginTop: 26, gap: 12 }}>
           <PermissionCard
             index={2}
             icon="notifications-outline"
-            title="Notificações"
-            body={caps.training ? 'Lembrete antes dos seus horários, resposta da equipe no chat e aviso quando o personal mudar seu treino.' : 'Lembrete antes dos seus horários e resposta da equipe no chat.'}
-            action={<StatusAction state={states.notifications} grantLabel="Ativar" onRequest={() => void request('notifications')} />}
+            title={t('onboarding.notifications.title')}
+            body={caps.training ? t('onboarding.notifications.bodyTraining') : t('onboarding.notifications.body')}
+            action={<StatusAction state={states.notifications} grantLabel={t('onboarding.enable')} onRequest={() => void request('notifications')} />}
           />
           {caps.training ? (
             <PermissionCard
               index={3}
               icon="navigate-outline"
-              title="Localização"
-              body="Para gravar corrida e pedal com o GPS do celular: distância, ritmo, velocidade e altitude. Só é usada durante o treino."
-              action={<StatusAction state={states.location} grantLabel="Permitir" onRequest={() => void request('location')} />}
+              title={t('onboarding.location.title')}
+              body={t('onboarding.location.body')}
+              action={<StatusAction state={states.location} grantLabel={t('onboarding.allow')} onRequest={() => void request('location')} />}
             />
           ) : null}
           {showWatch ? (
           <PermissionCard
             index={3}
             icon="watch-outline"
-            title="Relógio e apps de treino"
-            body="Conecte Garmin Connect™, Strava ou Polar e seus treinos chegam sozinhos, com tempo, distância e batimentos."
+            title={t('onboarding.watch.title')}
+            body={t('onboarding.watch.body')}
             action={
               connected.length ? (
-                <Button label={`${connected.join(', ')} conectado`} variant="soft" compact icon="checkmark" onPress={() => router.push('/cliente/relogios')} />
+                <Button label={t('onboarding.watch.connected', { names: connected.join(', ') })} variant="soft" compact icon="checkmark" onPress={() => router.push('/cliente/relogios')} />
               ) : (
-                <Button label="Conectar" compact onPress={() => router.push('/cliente/relogios')} />
+                <Button label={t('onboarding.watch.connect')} compact onPress={() => router.push('/cliente/relogios')} />
               )
             }
           />
@@ -83,12 +85,12 @@ export default function ClientPermissionsScreen() {
           <PermissionCard
             index={4}
             icon="camera-outline"
-            title="Câmera e fotos"
-            body="Para mandar fotos, vídeos e documentos no chat e registrar suas fotos de evolução."
+            title={t('onboarding.media.title')}
+            body={t('onboarding.media.body')}
             action={
               <StatusAction
                 state={mediaState}
-                grantLabel="Permitir"
+                grantLabel={t('onboarding.allow')}
                 onRequest={async () => {
                   await request('camera');
                   await request('photos');
@@ -101,8 +103,8 @@ export default function ClientPermissionsScreen() {
 
         <View style={{ flex: 1, minHeight: 24 }} />
         <Rise index={5} style={{ gap: 10 }}>
-          <Button label="Continuar" icon="arrow-forward" onPress={finish} />
-          <Button label="Agora não" variant="ghost" onPress={finish} />
+          <Button label={t('common:actions.continue')} icon="arrow-forward" onPress={finish} />
+          <Button label={t('onboarding.notNow')} variant="ghost" onPress={finish} />
         </Rise>
       </ScrollView>
     </Screen>

@@ -1,5 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/src/i18n';
 import { useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,19 +13,27 @@ import { templates as mockTemplates } from '@/src/mocks/data';
 import { SkeletonList } from '@/src/design-system/Skeleton';
 import { RequirePermission } from '@/src/features/auth/useCan';
 
+/** Nome traduzido de categoria/idioma da Meta (MARKETING, pt_BR…); o que não conhecemos aparece como veio. */
+function metaLabel(kind: 'category' | 'language', value: string): string {
+  const key = `inbox:templates.${kind}.${kind === 'category' ? value.toUpperCase() : value}`;
+  return i18n.exists(key) ? i18n.t(key as never) : value;
+}
+
 export default function TemplatesScreenGuarded() {
+  const { t } = useTranslation('inbox');
   return (
-    <RequirePermission need="templates" title="Templates">
+    <RequirePermission need="templates" title={t('templates.guardTitle')}>
       <TemplatesScreen />
     </RequirePermission>
   );
 }
 
 function TemplatesScreen() {
+  const { t } = useTranslation('inbox');
   const { conversationId } = useLocalSearchParams<{ conversationId?: string }>();
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; tone: 'success' | 'danger' } | null>(null);
   const query = useQuery({
     queryKey: ['templates'],
     enabled: mode === 'live',
@@ -33,30 +43,30 @@ function TemplatesScreen() {
     mutationFn: (templateId: string) =>
       sendTemplateMessage(conversationId!, { template_id: templateId }),
     onSuccess: () => {
-      setToast('Template enfileirado');
+      setToast({ text: t('templates.queued'), tone: 'success' });
       setTimeout(() => router.back(), 800);
     },
-    onError: () => setToast('Falha ao enviar template'),
+    onError: () => setToast({ text: t('templates.sendFailed'), tone: 'danger' }),
   });
 
   const data =
     mode === 'live'
-      ? (query.data ?? []).map((t) => ({
-          id: t.id,
-          name: t.name,
-          category: t.category || '—',
-          language: t.language || 'pt_BR',
-          preview: t.body || t.name,
-          status: (t.status === 'approved' ? 'approved' : 'pending') as 'approved' | 'pending',
+      ? (query.data ?? []).map((tpl) => ({
+          id: tpl.id,
+          name: tpl.name,
+          category: tpl.category || '—',
+          language: tpl.language || 'pt_BR',
+          preview: tpl.body || tpl.name,
+          status: (tpl.status === 'approved' ? 'approved' : 'pending') as 'approved' | 'pending',
         }))
       : mockTemplates;
 
   return (
     <Screen>
-      <ScreenHeader safe title="Templates Meta" subtitle="Fora da janela de 24 h, só aprovados" onBack={() => router.back()} />
+      <ScreenHeader safe title={t('templates.title')} subtitle={t('templates.subtitle')} onBack={() => router.back()} />
       {toast ? (
         <View style={{ alignSelf: 'center', marginBottom: 8 }}>
-          <Badge label={toast} tone={toast.startsWith('Falha') ? 'danger' : 'success'} />
+          <Badge label={toast.text} tone={toast.tone} />
         </View>
       ) : null}
       {mode === 'live' && query.isLoading ? (
@@ -66,7 +76,7 @@ function TemplatesScreen() {
           data={data}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: insets.bottom + 32, gap: 10 }}
-          ListEmptyComponent={<EmptyState icon="document-text-outline" title="Nenhum template" subtitle="Templates aprovados pela Meta aparecem aqui." />}
+          ListEmptyComponent={<EmptyState icon="document-text-outline" title={t('templates.emptyTitle')} subtitle={t('templates.emptySub')} />}
           renderItem={({ item }) => {
             const approved = item.status === 'approved';
             return (
@@ -87,10 +97,10 @@ function TemplatesScreen() {
               >
                 <View style={styles.rowTop}>
                   <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
-                  <Badge label={approved ? 'Aprovado' : 'Em análise'} tone={approved ? 'success' : 'warn'} />
+                  <Badge label={approved ? t('templates.approved') : t('templates.inReview')} tone={approved ? 'success' : 'warn'} />
                 </View>
                 <Muted style={{ fontSize: 12.5 }}>
-                  {item.category} · {item.language}
+                  {metaLabel('category', item.category)} · {metaLabel('language', item.language)}
                 </Muted>
                 <View style={styles.preview}>
                   <Text style={styles.previewText} numberOfLines={4}>{item.preview}</Text>

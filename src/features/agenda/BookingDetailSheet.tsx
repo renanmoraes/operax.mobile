@@ -1,25 +1,27 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Button, IconName, PressableScale } from '@/src/design-system/ui';
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
 import type { BookingAction } from '@/src/shared/api/bookings.api';
-import { ACTION_LABEL, ACTION_PERM, actionsFor, BookingDetails, phoneLabel } from './bookingDetails';
+import { actionLabel, ACTION_PERM, actionsFor, BookingDetails, phoneLabel } from './bookingDetails';
 import { useCan } from '@/src/features/auth/useCan';
 import { clockLabel } from './timeline';
 
-const STATUS: Record<string, { label: string; bg: string; fg: string }> = {
-  confirmed: { label: 'Confirmado', bg: colors.successSoft, fg: colors.success },
-  pending: { label: 'Aguardando confirmação', bg: colors.warnSoft, fg: colors.warnText },
-  completed: { label: 'Realizado', bg: '#eef1f6', fg: colors.textSoft },
-  done: { label: 'Realizado', bg: '#eef1f6', fg: colors.textSoft },
-  cancelled: { label: 'Cancelado', bg: colors.dangerSoft, fg: colors.dangerText },
-  rejected: { label: 'Recusado', bg: colors.dangerSoft, fg: colors.dangerText },
-  no_show: { label: 'Faltou', bg: colors.dangerSoft, fg: colors.dangerText },
+const STATUS: Record<'confirmed' | 'pending' | 'completed' | 'done' | 'cancelled' | 'rejected' | 'no_show', { bg: string; fg: string }> = {
+  confirmed: { bg: colors.successSoft, fg: colors.success },
+  pending: { bg: colors.warnSoft, fg: colors.warnText },
+  completed: { bg: '#eef1f6', fg: colors.textSoft },
+  done: { bg: '#eef1f6', fg: colors.textSoft },
+  cancelled: { bg: colors.dangerSoft, fg: colors.dangerText },
+  rejected: { bg: colors.dangerSoft, fg: colors.dangerText },
+  no_show: { bg: colors.dangerSoft, fg: colors.dangerText },
 };
 
+const OTHER_STATUS = ['checked_in', 'in_progress', 'waitlisted', 'offered', 'expired'];
 const DESTRUCTIVE: BookingAction[] = ['cancel', 'reject', 'no_show'];
 
 /**
@@ -45,10 +47,14 @@ export function BookingDetailSheet({
   busy: BookingAction | null;
   onAction: (action: BookingAction, opts?: { payment_type?: 'private' }) => void;
 }) {
+  const { t } = useTranslation('agenda');
   const [confirming, setConfirming] = useState<BookingAction | null>(null);
   const can = useCan();
   if (!details) return null;
-  const st = STATUS[details.status] ?? { label: details.status, bg: colors.primaryWash, fg: colors.primaryDeep };
+  const known = details.status in STATUS ? STATUS[details.status as keyof typeof STATUS] : null;
+  const st = known
+    ? { ...known, label: t(`agenda.status.${details.status as keyof typeof STATUS}`) }
+    : { label: t(OTHER_STATUS.includes(details.status) ? (`agenda.status.${details.status}` as 'agenda.status.checked_in') : 'agenda.statusOther'), bg: colors.primaryWash, fg: colors.primaryDeep };
   const actions = actionsFor(details.status).filter((a) => can(ACTION_PERM[a]));
   const minutes = endMin - startMin;
   const phone = phoneLabel(details.phone);
@@ -70,7 +76,7 @@ export function BookingDetailSheet({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={close} closeLabel="Fechar detalhes do agendamento">
+    <BottomSheet visible={visible} onClose={close} closeLabel={t('sheet.close')}>
       <ScrollView style={{ maxHeight: 600 }} contentContainerStyle={{ gap: 16, paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
         {/* Quem e situação */}
         <View style={styles.head}>
@@ -84,7 +90,7 @@ export function BookingDetailSheet({
             <View style={styles.chips}>
               <Chip label={st.label} bg={st.bg} fg={st.fg} />
               {details.visit ? <Chip label={details.visit} bg="#eef1f6" fg={colors.textSoft} /> : null}
-              {details.encaixe ? <Chip label="Encaixe" bg="#fff1e2" fg="#c2410c" /> : null}
+              {details.encaixe ? <Chip label={t('sheet.encaixe')} bg="#fff1e2" fg="#c2410c" /> : null}
             </View>
           </View>
         </View>
@@ -102,37 +108,37 @@ export function BookingDetailSheet({
 
         {/* Detalhes */}
         <View style={styles.list}>
-          <Row icon="person-outline" label="Profissional" value={[details.provider, details.service].filter(Boolean).join(' · ') || '—'} />
-          <Row icon="card-outline" label="Atendimento" value={details.payment ?? 'Particular ou convênio ainda não informado'} muted={!details.payment} />
-          {details.location ? <Row icon="location-outline" label="Local" value={details.location} /> : null}
+          <Row icon="person-outline" label={t('sheet.provider')} value={[details.provider, details.service].filter(Boolean).join(' · ') || '—'} />
+          <Row icon="card-outline" label={t('sheet.coverage')} value={details.payment ?? t('sheet.coverageUnknown')} muted={!details.payment} />
+          {details.location ? <Row icon="location-outline" label={t('sheet.location')} value={details.location} /> : null}
           {phone ? (
             <Row
               icon="call-outline"
-              label="Telefone"
+              label={t('sheet.phone')}
               value={phone}
               right={
                 <View style={{ flexDirection: 'row', gap: 6 }}>
-                  <MiniBtn icon="call" label="Ligar" onPress={() => void Linking.openURL(`tel:+${digits}`)} />
+                  <MiniBtn icon="call" label={t('sheet.call')} onPress={() => void Linking.openURL(`tel:+${digits}`)} />
                   <MiniBtn icon="logo-whatsapp" label="WhatsApp" onPress={() => void Linking.openURL(`https://wa.me/${digits}`)} />
                 </View>
               }
             />
           ) : null}
-          {details.requestedBy ? <Row icon="chatbubble-ellipses-outline" label="Pedido por" value={details.requestedBy} /> : null}
-          {details.reminders.length ? <Row icon="notifications-outline" label="Lembretes" value={details.reminders.join(' · ')} last /> : null}
+          {details.requestedBy ? <Row icon="chatbubble-ellipses-outline" label={t('sheet.requestedBy')} value={details.requestedBy} /> : null}
+          {details.reminders.length ? <Row icon="notifications-outline" label={t('sheet.reminders')} value={details.reminders.join(' · ')} last /> : null}
         </View>
 
-        {details.customerNote ? <Note title="Recado do cliente" body={details.customerNote} /> : null}
-        {details.staffNotes ? <Note title="Observações da equipe" body={details.staffNotes} /> : null}
+        {details.customerNote ? <Note title={t('sheet.customerNote')} body={details.customerNote} /> : null}
+        {details.staffNotes ? <Note title={t('sheet.staffNotes')} body={details.staffNotes} /> : null}
 
-        {details.encaixe ? <Alert tone="warn" title="Encaixe" body={details.encaixe} /> : null}
-        {details.semLembrete ? <Alert tone="danger" title="Sem lembrete" body={details.semLembrete} /> : null}
-        {details.series ? <Alert tone="info" title="Série recorrente" body={details.series} /> : null}
-        {details.rescheduleReason ? <Alert tone="info" title="Último reagendamento" body={details.rescheduleReason} /> : null}
+        {details.encaixe ? <Alert tone="warn" title={t('sheet.encaixe')} body={details.encaixe} /> : null}
+        {details.semLembrete ? <Alert tone="danger" title={t('sheet.noReminder')} body={details.semLembrete} /> : null}
+        {details.series ? <Alert tone="info" title={t('sheet.series')} body={details.series} /> : null}
+        {details.rescheduleReason ? <Alert tone="info" title={t('sheet.lastReschedule')} body={details.rescheduleReason} /> : null}
 
         {details.contactId && can('contacts') ? (
           <Button
-            label="Ver contato e conversas"
+            label={t('sheet.viewContact')}
             variant="secondary"
             icon="person-circle-outline"
             onPress={() => {
@@ -148,10 +154,10 @@ export function BookingDetailSheet({
               const destructive = DESTRUCTIVE.includes(a);
               const label =
                 confirming === a
-                  ? `Toque de novo para ${ACTION_LABEL[a].toLowerCase()}`
+                  ? t('sheet.tapAgain', { action: actionLabel(a).toLowerCase() })
                   : a === 'check_in' && !details.paymentKnown
-                    ? 'Dar entrada como particular'
-                    : ACTION_LABEL[a];
+                    ? t('sheet.checkInPrivate')
+                    : actionLabel(a);
               return (
                 <Button
                   key={a}
@@ -163,7 +169,7 @@ export function BookingDetailSheet({
                 />
               );
             })}
-            {actions.includes('check_in') && !details.paymentKnown ? <Text style={styles.hint}>Convênio? Informe o plano no Operax web antes de dar entrada.</Text> : null}
+            {actions.includes('check_in') && !details.paymentKnown ? <Text style={styles.hint}>{t('sheet.insuranceHint')}</Text> : null}
           </View>
         ) : null}
       </ScrollView>

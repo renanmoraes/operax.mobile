@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent, ScrollView, ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -49,6 +50,7 @@ export function DayTimeline({
   /** Toque no cartão: abre a ficha do agendamento. */
   onPressEvent?: (id: string) => void;
 }) {
+  const { t } = useTranslation('agenda');
   const reduced = useReducedMotion();
   const [now, setNow] = useState(() => nowMinutes());
   const [gridW, setGridW] = useState(0);
@@ -61,8 +63,8 @@ export function DayTimeline({
   const didInitialScroll = useRef(false);
 
   useEffect(() => {
-    const t = setInterval(() => setNow(nowMinutes()), TICK_MS);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setNow(nowMinutes()), TICK_MS);
+    return () => clearInterval(timer);
   }, []);
 
   // Altura que o texto de cada cartão precisa (medida na tela); a escala do dia abre espaço para ela.
@@ -143,19 +145,20 @@ export function DayTimeline({
                   const tone = TONE[ev.tone];
                   const past = ev.endMin <= now;
                   const rel = relativeLabel(ev.startMin, ev.endMin, now);
+                  const isNow = rel === t('timeline.now');
                   const w = gridW / ev.lanes;
                   return (
                     <PressableScale
                       key={ev.id}
                       onPress={() => onPressEvent?.(ev.id)}
-                      accessibilityHint="Abre os detalhes do agendamento"
+                      accessibilityHint={t('timeline.opensDetails')}
                       accessibilityRole="button"
-                      accessibilityLabel={`${clockLabel(ev.startMin)} a ${clockLabel(ev.endMin)}, ${ev.title}, ${ev.person}, ${ev.statusLabel}${rel ? `, ${rel}` : ''}`}
+                      accessibilityLabel={t(rel ? 'timeline.eventLabelRel' : 'timeline.eventLabel', { start: clockLabel(ev.startMin), end: clockLabel(ev.endMin), title: ev.title, person: ev.person, status: ev.statusLabel, rel: rel ?? '' })}
                       style={[
                         styles.card,
                         { top: ev.top + 2, height: ev.height, left: ev.lane * w + 2, width: w - 6, backgroundColor: past ? '#fafbfc' : '#fff' },
                         past && { opacity: 0.6 },
-                        rel === 'Agora' && styles.cardNow,
+                        isNow && styles.cardNow,
                       ]}
                     >
                       <View style={[styles.stripe, { backgroundColor: tone.stripe }]} />
@@ -165,8 +168,8 @@ export function DayTimeline({
                           <View style={styles.cardTop}>
                             <Text style={[styles.cardTime, { flexShrink: 1 }]}>{`${clockLabel(ev.startMin)}–${clockLabel(ev.endMin)}`}</Text>
                             {rel ? (
-                              <View style={[styles.rel, rel === 'Agora' && { backgroundColor: colors.primary }]}>
-                                <Text style={[styles.relText, rel === 'Agora' && { color: '#fff' }]}>{rel}</Text>
+                              <View style={[styles.rel, isNow && { backgroundColor: colors.primary }]}>
+                                <Text style={[styles.relText, isNow && { color: '#fff' }]}>{rel}</Text>
                               </View>
                             ) : null}
                           </View>
@@ -186,7 +189,7 @@ export function DayTimeline({
           </View>
 
           {/* Linha da hora atual: pílula com a hora na coluna das horas e o traço azul até a borda. */}
-          <Animated.View pointerEvents="none" style={[styles.nowWrap, lineStyle]} accessible accessibilityLabel={`Agora, ${clockLabel(now)}`}>
+          <Animated.View pointerEvents="none" style={[styles.nowWrap, lineStyle]} accessible accessibilityLabel={t('timeline.nowAt', { time: clockLabel(now) })}>
             <View style={styles.nowPill}>
               <Text style={styles.nowPillText}>{clockLabel(now)}</Text>
             </View>
@@ -198,9 +201,9 @@ export function DayTimeline({
 
       {!nowVisible ? (
         <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(140)} style={[styles.nowBtnWrap, { bottom: bottomInset + 12 }]}>
-          <PressableScale onPress={() => scrollToNow(true)} accessibilityRole="button" accessibilityLabel="Voltar para a hora atual" style={styles.nowBtn}>
+          <PressableScale onPress={() => scrollToNow(true)} accessibilityRole="button" accessibilityLabel={t('timeline.backToNow')} style={styles.nowBtn}>
             <Ionicons name="time" size={16} color="#fff" />
-            <Text style={styles.nowBtnText}>Agora</Text>
+            <Text style={styles.nowBtnText}>{t('timeline.now')}</Text>
           </PressableScale>
         </Animated.View>
       ) : null}
