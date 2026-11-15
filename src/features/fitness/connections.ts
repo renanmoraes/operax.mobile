@@ -91,8 +91,9 @@ async function savePush(id: ProviderView['id'], prefs: WatchPushPrefs) {
 
 const key = ['fitness', 'connections'] as const;
 
-export function useProviders() {
-  return useQuery({ queryKey: key, queryFn: fetchProviders });
+/** `enabled` falso para empresa sem Fitness: as rotas de relógio são do Fitness e responderiam 403. */
+export function useProviders(enabled = true) {
+  return useQuery({ queryKey: key, queryFn: fetchProviders, enabled });
 }
 
 export function useImportedSessions() {
