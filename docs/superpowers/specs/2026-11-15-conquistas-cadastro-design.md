@@ -47,8 +47,35 @@ alunos" (a empresa pode esconder uma que não combine com ela, como as bíblicas
 | `records` | N recordes pessoais | Davi: 1 recorde |
 | `on_date` | Treinar em um dia específico | Treinar no dia 1º de janeiro |
 | `event_checkin` | Fazer check-in num evento da empresa, pela Operax | Corrida da academia 2026 |
+| `achievements` | Ter outras medalhas (ver abaixo) | Natal 5 vezes · todas as bíblicas · 3 sazonais quaisquer |
 
 As 12 conquistas que já existem viram registros da Operax com esses tipos (não muda nada para o aluno).
+
+### Medalha que depende de outras medalhas
+
+Uma conquista pode ser condicionada a outras. O objetivo `achievements` tem uma lista de condições, e o aluno ganha
+quando **todas** são cumpridas. Cada condição escolhe medalhas e diz quantas vezes:
+
+| Condição | Exemplo |
+| --- | --- |
+| Uma medalha N vezes | "Espírito natalino": ganhar a Corrida de Natal 5 vezes (cinco anos diferentes) |
+| Todas de uma lista | "Peregrino": ter todas as 9 medalhas de Israel e eventos bíblicos |
+| Quaisquer N de uma lista | "Ano inteiro": 3 medalhas quaisquer entre as sazonais |
+| Combinação das anteriores | "Lenda da academia": a medalha 50 treinos **e** a medalha XYZ **e** a Corrida de Natal 2 vezes |
+
+Regras:
+
+- **Contagem:** uma medalha que se renova conta uma vez por ciclo (ano). Uma medalha "sempre" conta uma vez só,
+  então pedir "5 vezes" só faz sentido em medalha anual ou de período que se repete; o formulário avisa.
+- **Quais medalhas entram:** as da Operax e as da própria empresa. A empresa não enxerga as de outra empresa.
+- **Sem ciclo:** A não pode depender de B se B depende de A (direta ou indiretamente). O backend recusa ao salvar,
+  dizendo qual medalha fecha o círculo.
+- **Medalha escondida ou arquivada:** se a empresa esconde uma medalha da Operax que outra medalha exige, o portal avisa
+  antes ("A medalha Peregrino depende desta"). Medalha exigida não pode ser apagada, só arquivada; as já ganhas continuam
+  contando.
+- **Em cascata:** ganhar uma medalha confere na hora as que dependem dela, que podem liberar outras, até parar.
+- **No app:** o detalhe mostra as medalhas exigidas com o progresso de cada uma ("Corrida de Natal 2 de 5") e um toque
+  abre cada uma delas.
 
 ## Evento com check-in
 
@@ -85,7 +112,8 @@ Cada uma com descrição curta contando a passagem e a referência bíblica.
 ## Como o progresso é calculado
 
 - O backend calcula, no `GET /api/public/portal/fitness/achievements`, o progresso de cada conquista
-  publicada e visível para o aluno, a partir dos treinos, recordes, metas semanais e check-ins.
+  publicada e visível para o aluno, a partir dos treinos, recordes, metas semanais e check-ins. As que dependem de
+  outras são calculadas por último, na ordem das dependências.
 - Ao passar da meta, grava o prêmio em `fitness_achievement_awards` (aluno, conquista, **ciclo**: `once`
   ou o ano, data, situação do prêmio). O ciclo é o que permite ganhar a anual de novo no ano seguinte.
 - Salvar um treino ou um check-in também confere as conquistas e manda push "Você ganhou…".
@@ -93,7 +121,8 @@ Cada uma com descrição curta contando a passagem e a referência bíblica.
 ## Tabelas
 
 - `fitness_achievements`: `tenant_id` (nulo = Operax), nome, descrição, como_ganhar, nível, cor_pin,
-  ícone (`{kind: 'preset', name}` ou `{kind: 'upload', url}`), regra (`{type, target, sport?, event_id?, date?}`),
+  ícone (`{kind: 'preset', name}` ou `{kind: 'upload', url}`), regra (`{type, target, sport?, event_id?, date?}`;
+  para `achievements`: `{type: 'achievements', all: [{ids: [...], need: 'all' | número, times: número}]}`),
   janela (`{kind: 'always'|'range'|'annual', from, to}`), prêmio, xp, situação, ordem.
 - `fitness_achievement_visibility`: empresa que escondeu uma conquista da Operax.
 - `fitness_achievement_awards`: único por (aluno, conquista, ciclo); situação do prêmio `none|pending|delivered`.
@@ -109,4 +138,5 @@ Cada uma com descrição curta contando a passagem e a referência bíblica.
 
 ## Fora desta versão
 
-Ranking entre alunos, conquistas em equipe e regras combinadas (E/OU) ficam para depois.
+Ranking entre alunos, conquistas em equipe e regras com OU entre condições ficam para depois (as condições de medalha
+já se combinam com E, e "quaisquer N de uma lista" cobre o caso mais comum de OU).
