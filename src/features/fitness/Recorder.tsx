@@ -313,6 +313,8 @@ export function Recorder({
     const h = BackHandler.addEventListener('hardwareBackPress', () => {
       const p = phaseRef.current;
       if (locked) return true;
+      // Salvando: nada muda até o envio terminar (voltar e continuar gravando perderia o que viesse depois).
+      if (p === 'saving') return true;
       if (p === 'running' || p === 'paused' || p === 'review') {
         if (p === 'review') go('paused');
         else discard();
@@ -459,7 +461,7 @@ export function Recorder({
     return (
       <Screen>
         <NoSwipeBack phase={phase} />
-        <TopBar safe title={t('rec.saveWorkout')} onBack={() => go('paused')} />
+        <TopBar safe title={t('rec.saveWorkout')} onBack={phase === 'saving' ? undefined : () => go('paused')} />
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 28, gap: 18 }} keyboardShouldPersistTaps="handled">
           <View style={styles.summary}>
             {sport.gps && route.length > 1 ? <RouteMap route={route} style={styles.summaryMap} /> : null}
