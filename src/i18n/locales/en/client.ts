@@ -242,6 +242,7 @@ const client: Shape<typeof pt> = {
     subscribe: 'Subscribe',
   },
   class: {
+    cancelSpot: 'Cancel my spot',
     notFound: 'Class not found',
     fallbackTitle: 'Class',
     meta: 'Today · {{start}} – {{end}} · with {{name}}',

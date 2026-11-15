@@ -131,6 +131,10 @@ export default function ClassDetailScreen() {
         ) : (
           <View style={{ flexDirection: 'row', gap: 10 }}>
             {canUndoBookingAnswer() ? <Button label={t('home.undo')} variant="secondary" onPress={() => action.mutate({ id: b.id, action: 'reset' })} style={{ flex: 1 }} /> : null}
+            {/* Vaga aceita e ainda cancelável: libera pela mesma tela de cancelar do compromisso (aula vai pela rota de aula). */}
+            {accepted && b.can_cancel && new Date(b.starts_at).getTime() > now ? (
+              <Button label={t('class.cancelSpot')} variant="secondary" onPress={() => router.push(`/cliente/cancelar/${b.id}`)} style={{ flex: 1 }} />
+            ) : null}
             <Button label={t('cancel.backToAgenda')} onPress={() => router.back()} style={{ flex: 1 }} />
           </View>
         )}

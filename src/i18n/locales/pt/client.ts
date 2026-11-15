@@ -240,6 +240,7 @@ const client = {
     subscribe: 'Assinar',
   },
   class: {
+    cancelSpot: 'Cancelar minha vaga',
     notFound: 'Aula não encontrada',
     fallbackTitle: 'Aula',
     meta: 'Hoje · {{start}} – {{end}} · com {{name}}',
