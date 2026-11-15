@@ -25,7 +25,7 @@ import { SlideToUnlock } from './recorder/SlideToUnlock';
 import { ownedKey } from './owner';
 import { FEELINGS, SPORTS, WORKOUT_TAGS, effortWord, type SportInfo } from './sports';
 import type { FitnessFeeling, FreeSport } from './types';
-import { useActiveCompanySlug, useCompanies } from '@/src/features/client/useClientData';
+import { useActiveCompanyName } from '@/src/features/client/useClientData';
 import { fromRecording, fromStrength } from '@/src/features/share/fromSources';
 import { setShareActivity } from '@/src/features/share/store';
 
@@ -451,12 +451,11 @@ export function Recorder({
   const weak = accuracy != null && accuracy > 25;
   const speed = prefs.speed || sport.rate === 'speed';
 
-  const slug = useActiveCompanySlug();
-  const { data: companies } = useCompanies();
+  const companyName = useActiveCompanyName();
   function share() {
     const base = {
       title: askTitle ? title.trim() || defaultTitle(sport.label, new Date(startedAt.current)) : heading,
-      company: companies?.find((c) => c.slug === slug)?.name ?? 'Operax',
+      company: companyName,
       date: new Date(startedAt.current).toISOString(),
       seconds: elapsed,
     };
@@ -588,6 +587,8 @@ export function Recorder({
     <StepGuideCard steps={guide} index={guideAt.i} doneSeconds={elapsed - guideAt.s0} doneMeters={run.distanceM - guideAt.m0} pace={now} onNext={() => advanceGuide(elapsed, run.distanceM)} compact={showMap} />
   ) : null;
   const draftFirst = phase === 'ready' && !!draft;
+  const confirmClearDraft = () =>
+    void confirmDialog({ title: t('rec.discardTitle'), message: t('rec.discardBody'), confirmLabel: t('rec.discard'), cancelLabel: t('common:actions.back'), tone: 'danger' }).then((ok) => ok && clearDraft());
   return (
     <Screen backdrop="none" style={{ backgroundColor: '#fff' }}>
       <NoSwipeBack phase={phase} />
@@ -728,10 +729,6 @@ export function Recorder({
                   </Muted>
                 </View>
               </View>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <Button label={t('rec.resume')} compact icon="play" onPress={() => restore(draft)} style={{ flex: 1 }} />
-                <Button label={t('rec.discardShort')} compact variant="secondary" onPress={clearDraft} style={{ flex: 1 }} />
-              </View>
             </View>
           ) : null}
           {!sport.gps && phase !== 'ready' ? (
@@ -745,7 +742,13 @@ export function Recorder({
         </ScrollView>
 
         <View style={[styles.controls, { paddingBottom: insets.bottom + 18 }, locked && { opacity: 0 }]} pointerEvents={locked ? 'none' : 'auto'}>
-          {phase === 'ready' ? (
+          {phase === 'ready' && draft ? (
+            // Com treino não salvo, só as duas saídas possíveis: retomar ou descartar (sem "Iniciar", que confundia).
+            <>
+              <BigButton label={t('rec.discardShort')} icon="trash-outline" tone="dark" onPress={confirmClearDraft} />
+              <BigButton label={t('rec.resume')} icon="play" onPress={() => restore(draft)} />
+            </>
+          ) : phase === 'ready' ? (
             <BigButton label={t('rec.start')} icon="play" onPress={() => void start()} />
           ) : phase === 'running' ? (
             <>

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useActiveCompanySlug, useCompanies } from '@/src/features/client/useClientData';
+import { useActiveCompanyName } from '@/src/features/client/useClientData';
 import i18n, { locale } from '@/src/i18n';
 import { useTranslation } from 'react-i18next';
 import { showDialog } from '@/src/design-system/Dialog';
@@ -45,9 +45,7 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
   const insets = useSafeAreaInsets();
   const { t } = useTranslation(['fitness', 'common']);
   // Nome da empresa no cartão de compartilhar (antes era um nome de demonstração fixo).
-  const slug = useActiveCompanySlug();
-  const { data: companies } = useCompanies();
-  const companyName = companies?.find((c) => c.slug === slug)?.name ?? 'Operax';
+  const companyName = useActiveCompanyName();
   const LOAD_HISTORY = useLoadHistory();
   const rows = useMemo(() => flattenWorkout(workout), [workout]);
   const { data: history } = useHistory();

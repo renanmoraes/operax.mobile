@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Badge, Card, EmptyState, IconButton, Loading, Muted, Rise, Screen, TopBar } from '@/src/design-system/ui';
-import { useActiveCompanySlug, useCompanies } from '@/src/features/client/useClientData';
+import { useActiveCompanyName } from '@/src/features/client/useClientData';
 import { fromHistoryDetail } from '@/src/features/share/fromSources';
 import { setShareActivity } from '@/src/features/share/store';
 import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
@@ -26,8 +26,7 @@ export default function ActivityScreen() {
   const history = useHistory();
   const entry = history.data?.find((e) => e.id === id);
   const detail = useActivityDetail(entry?.session_id || entry?.kind === 'free' ? id : undefined);
-  const slug = useActiveCompanySlug();
-  const { data: companies } = useCompanies();
+  const companyName = useActiveCompanyName();
 
   if (history.isLoading) {
     return (
@@ -70,7 +69,7 @@ export default function ActivityScreen() {
             icon="share-outline"
             accessibilityLabel={t('done.share')}
             onPress={() => {
-              setShareActivity(fromHistoryDetail(entry, d, companies?.find((c) => c.slug === slug)?.name ?? 'Operax'));
+              setShareActivity(fromHistoryDetail(entry, d, companyName));
               router.push('/cliente/compartilhar');
             }}
           />
