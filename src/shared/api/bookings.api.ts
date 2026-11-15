@@ -56,10 +56,28 @@ export type BookingsResult =
   | { ok: true; items: ApiBooking[]; total: number }
   | { ok: false; code: 'plan_locked' | 'error'; message: string };
 
+/**
+ * Todos os agendamentos do período, página por página (o backend devolve no máximo 200 por vez).
+ * A agenda pede de ontem a amanhã e filtra o dia local: com uma página só, os de ontem podiam
+ * empurrar os de hoje para fora da resposta.
+ */
+export async function listAllBookings(params: { from: string; to: string }): Promise<BookingsResult> {
+  const PAGE = 200;
+  const items: ApiBooking[] = [];
+  for (let page = 0; page < 20; page++) {
+    const r = await listBookings({ ...params, limit: PAGE, offset: page * PAGE });
+    if (!r.ok) return r;
+    items.push(...r.items);
+    if (r.items.length < PAGE || items.length >= r.total) break;
+  }
+  return { ok: true, items, total: items.length };
+}
+
 export async function listBookings(params?: {
   from?: string;
   to?: string;
   limit?: number;
+  offset?: number;
 }): Promise<BookingsResult> {
   try {
     const { data } = await api.get('/api/scheduling/bookings', { params });

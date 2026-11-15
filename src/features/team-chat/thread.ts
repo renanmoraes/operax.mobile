@@ -17,7 +17,19 @@ export function mergeThread<T extends WithId>(older: T[], latest: T[]): T[] {
  */
 export function retainWindow<T extends WithId>(older: T[], latest: T[]): T[] {
   if (older.length === 0) return older;
+  const byId = new Map(latest.map((m) => [m.id, m]));
+  // Mensagem já guardada que veio de novo na janela: fica a versão mais nova (edição, apagada), na mesma posição.
+  let changed = false;
+  const updated = older.map((o) => {
+    const n = byId.get(o.id);
+    if (n && n !== o) {
+      changed = true;
+      return n;
+    }
+    return o;
+  });
   const ids = new Set(older.map((m) => m.id));
   const fresh = latest.filter((m) => !ids.has(m.id));
-  return fresh.length ? [...older, ...fresh] : older;
+  if (!changed && !fresh.length) return older;
+  return [...updated, ...fresh];
 }

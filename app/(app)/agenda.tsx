@@ -10,7 +10,7 @@ import { colors, text, typography } from '@/src/design-system/tokens';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DayEvent, DayTimeline } from '@/src/features/agenda/DayTimeline';
 import { toMinutes } from '@/src/features/agenda/timeline';
-import { ApiBooking, BookingAction, listBookings, runBookingAction } from '@/src/shared/api/bookings.api';
+import { ApiBooking, BookingAction, listAllBookings, runBookingAction } from '@/src/shared/api/bookings.api';
 import { BookingDetailSheet } from '@/src/features/agenda/BookingDetailSheet';
 import { detailsFromApi, normalizeBookingStatus, STATUS_AFTER } from '@/src/features/agenda/bookingDetails';
 import { Toast, useToast } from '@/src/design-system/Toast';
@@ -72,7 +72,7 @@ function AgendaScreen() {
   const query = useQuery({
     queryKey: ['bookings', bounds.from, bounds.to],
     enabled: mode === 'live',
-    queryFn: () => listBookings({ from: bounds.from, to: bounds.to, limit: 50 }),
+    queryFn: () => listAllBookings({ from: bounds.from, to: bounds.to }),
   });
   const [openId, setOpenId] = useState<string | null>(null);
   const [statusOverride, setStatusOverride] = useState<Record<string, string>>({});
@@ -129,7 +129,9 @@ function AgendaScreen() {
         await runBookingAction(open.id, action, opts);
         await query.refetch();
       }
-      setStatusOverride((prev) => ({ ...prev, [open.id]: STATUS_AFTER[action] }));
+      // Com o login real, o servidor (já recarregado acima) é quem diz o status: guardar um status local
+      // esconderia mudanças feitas depois no web. Só a demonstração, sem servidor, precisa disso.
+      if (mode !== 'live') setStatusOverride((prev) => ({ ...prev, [open.id]: STATUS_AFTER[action] }));
       show(i18n.t(`agenda:agenda.done.${action}`), action === 'cancel' || action === 'reject' || action === 'no_show' ? 'info' : 'success');
       setOpenId(null);
     } catch (e: unknown) {
