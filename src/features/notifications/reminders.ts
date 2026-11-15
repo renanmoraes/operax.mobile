@@ -106,6 +106,18 @@ export function planReminders(bookings: ClientBooking[], now = new Date()): Plan
   return out.sort((a, b) => a.at - b.at).slice(0, MAX_SCHEDULED);
 }
 
+/**
+ * O lembrete já agendado ainda serve? Só se nada do que ele mostra mudou: hora, título, texto (serviço e
+ * profissional) e para onde o toque leva. Senão é cancelado e agendado de novo com o conteúdo de agora.
+ */
+export function sameReminder(
+  scheduled: { title?: string | null; body?: string | null; data?: unknown },
+  wanted: { at: number; title: string; body: string; url: string },
+): boolean {
+  const data = scheduled.data as { at?: number; url?: string } | undefined;
+  return data?.at === wanted.at && scheduled.title === wanted.title && scheduled.body === wanted.body && data?.url === wanted.url;
+}
+
 /** Horários novos desde a última vez (o primeiro sync só memoriza, para não avisar o que já existia). */
 export function newBookings(bookings: ClientBooking[], known: string[] | null, now = new Date()): ClientBooking[] {
   if (!known) return [];
@@ -181,8 +193,7 @@ export async function syncBookingReminders(bookings: ClientBooking[], now = new 
     const keep = new Set<string>();
     for (const n of current) {
       const w = byId.get(n.identifier);
-      const sameTime = w && (n.content.data as { at?: number } | undefined)?.at === w.at && n.content.title === w.title;
-      if (sameTime) keep.add(n.identifier);
+      if (w && sameReminder(n.content, w)) keep.add(n.identifier);
       else {
         await N.cancelScheduledNotificationAsync(n.identifier);
         canceled += 1;

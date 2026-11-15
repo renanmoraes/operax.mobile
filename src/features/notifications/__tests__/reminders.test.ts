@@ -1,8 +1,9 @@
 import type { ClientBooking } from '@/src/features/client/types';
-import { newBookings, planReminders } from '../reminders';
+import { newBookings, planReminders, sameReminder } from '../reminders';
 
 jest.mock('@/src/shared/storage', () => ({ getItem: jest.fn(), setItem: jest.fn() }));
 jest.mock('@/src/shared/db/localDb', () => ({ kvGet: jest.fn(), kvSet: jest.fn() }));
+
 
 const now = new Date(2026, 10, 14, 10, 0);
 const at = (h: number, m = 0, dayPlus = 0) => new Date(2026, 10, 14 + dayPlus, h, m).toISOString();
@@ -50,5 +51,17 @@ describe('lembretes de agenda e aula', () => {
     const list = [booking({ id: 'old' }), booking({ id: 'novo', starts_at: at(15, 0, 2) })];
     expect(newBookings(list, null, now)).toEqual([]);
     expect(newBookings(list, ['old'], now).map((b) => b.id)).toEqual(['novo']);
+  });
+});
+
+describe('lembrete já agendado', () => {
+  it('trocou o profissional na mesma hora: não serve mais e é refeito com o texto novo', () => {
+    const [old] = planReminders([booking({})], now);
+    const [changed] = planReminders([booking({ provider_name: 'Bruno' })], now);
+    const scheduled = { title: old.title, body: old.body, data: { at: old.at, url: old.url } };
+    expect(sameReminder(scheduled, old)).toBe(true);
+    expect(changed.at).toBe(old.at);
+    expect(sameReminder(scheduled, changed)).toBe(false);
+    expect(sameReminder({ ...scheduled, data: { at: old.at, url: '/outro' } }, old)).toBe(false);
   });
 });
