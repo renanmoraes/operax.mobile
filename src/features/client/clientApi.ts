@@ -27,9 +27,18 @@ const live = () => clientDataMode() === 'live';
 const unsupported = (text: string) => new UserFacingError(text);
 
 let lastHome: PortalHome | null = null;
-async function home(fresh = false) {
-  if (fresh || !lastHome) lastHome = await portalHome();
-  return lastHome;
+/**
+ * Geração do cache: trocar de pessoa ou empresa sobe a geração, e a resposta de uma requisição que saiu
+ * antes da troca não grava mais nada (a da empresa A não pode ocupar o lugar da B). Cada chamada devolve
+ * a própria resposta, nunca a variável compartilhada.
+ */
+let cacheGen = 0;
+async function home(fresh = false): Promise<PortalHome> {
+  if (!fresh && lastHome) return lastHome;
+  const gen = cacheGen;
+  const h = await portalHome();
+  if (gen === cacheGen) lastHome = h;
+  return h;
 }
 const liveBooking = async (id: string) => (await home(true)).bookings.find((b) => b.id === id);
 async function refreshedBooking(id: string): Promise<ClientBooking> {
@@ -119,6 +128,7 @@ const ownerOf = (h: PortalHome) => `${h.contact.id}:${h.tenant_slug}`;
 
 /** Troca de pessoa ou empresa: nada da conta anterior pode aparecer na próxima. */
 export function resetClientCache() {
+  cacheGen += 1;
   lastHome = null;
   lastThread = null;
   mediaUrls.clear();
@@ -131,8 +141,9 @@ async function mediaUrl(messageId: string): Promise<string | null> {
   const hit = mediaUrls.get(messageId);
   if (hit && Date.now() - hit.at < MEDIA_TTL) return hit.url;
   try {
+    const gen = cacheGen;
     const { url } = await portalChatMedia(messageId);
-    mediaUrls.set(messageId, { url, at: Date.now() });
+    if (gen === cacheGen) mediaUrls.set(messageId, { url, at: Date.now() });
     return url;
   } catch {
     return null; // sem o link o balão continua mostrando o tipo do anexo
@@ -141,6 +152,7 @@ async function mediaUrl(messageId: string): Promise<string | null> {
 
 /** Conversa inteira. No portal, abrir a conversa (GET me/chat) já marca como lida. */
 async function liveThread(): Promise<ClientChat> {
+  const gen = cacheGen;
   const [chat, h] = await Promise.all([portalChat(), home(true)]);
   const mapped = mapPortalChat(chat, h);
   const withMedia = mapped.messages.filter((m) => m.attachment).slice(-MEDIA_LIMIT);
@@ -152,7 +164,7 @@ async function liveThread(): Promise<ClientChat> {
     }),
   );
   const chatView: ClientChat = { ...mapped, unread: 0, messages: mapped.messages.map((m) => (m.attachment && urls.has(m.id) ? { ...m, attachment: { ...m.attachment, uri: urls.get(m.id)! } } : m)) };
-  lastThread = { owner: ownerOf(h), chat: chatView };
+  if (gen === cacheGen) lastThread = { owner: ownerOf(h), chat: chatView };
   return chatView;
 }
 

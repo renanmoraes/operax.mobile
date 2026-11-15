@@ -97,4 +97,18 @@ describe('dados do cliente com o login real (portal)', () => {
     expect(chat.messages).toEqual([]);
     expect(chat.unread).toBe(1);
   });
+
+  it('resposta da empresa anterior que chega depois da troca não ocupa o cache da nova', async () => {
+    let resolveOld!: (h: portal.PortalHome) => void;
+    m.portalHome.mockReturnValueOnce(new Promise<portal.PortalHome>((r) => (resolveOld = r)));
+    m.portalMyCompanies.mockResolvedValue([]);
+    const old = clientApi.fetchCompanies();
+    clientApi.resetClientCache();
+    resolveOld(home({ tenant_slug: 'empresa-a', capabilities: { scheduling: true, chat: true, training: false } }));
+    await old;
+    m.portalHome.mockResolvedValue(home({ tenant_slug: 'empresa-b', capabilities: { scheduling: true, chat: true, training: true } }));
+    await clientApi.fetchCompanies();
+    // A troca obrigou uma busca nova: a resposta velha não ficou guardada.
+    expect(m.portalHome).toHaveBeenCalledTimes(2);
+  });
 });
