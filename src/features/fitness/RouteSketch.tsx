@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { colors } from '@/src/design-system/tokens';
+import { pathOf, projectRoute } from './routeProjection';
 
 export type LatLng = { lat: number; lng: number };
 export type RouteMapProps = {
@@ -25,31 +26,12 @@ export function RouteSketch({ route, here, style, inset }: RouteMapProps) {
   const pts = useMemo(() => {
     const all = here ? [...route, [here.lat, here.lng] as [number, number]] : route;
     if (!box.w || !box.h || all.length === 0) return null;
-    // Projeção plana: a longitude encolhe com o cosseno da latitude, senão o percurso sai esticado.
-    const lat0 = all.reduce((a, p) => a + p[0], 0) / all.length;
-    const k = Math.cos((lat0 * Math.PI) / 180);
-    const xs = all.map((p) => p[1] * k);
-    const ys = all.map((p) => -p[0]);
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
     const pad = 28;
-    const top = (inset?.top ?? 0) + pad;
-    const bottom = (inset?.bottom ?? 0) + pad;
-    // Trecho curto (ou só a posição atual): enquadra ao menos ~150 m, centrado, para não virar um ponto no canto.
-    const MIN_SPAN = 0.0014;
-    const spanX = Math.max(maxX - minX, MIN_SPAN);
-    const spanY = Math.max(maxY - minY, MIN_SPAN);
-    const scale = Math.min((box.w - pad * 2) / spanX, Math.max(40, box.h - top - bottom) / spanY);
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
-    const midY = top + (box.h - top - bottom) / 2;
-    const xy = all.map((_, i) => ({ x: box.w / 2 + (xs[i] - cx) * scale, y: midY + (ys[i] - cy) * scale }));
+    const xy = projectRoute(all, box.w, box.h, { side: pad, top: (inset?.top ?? 0) + pad, bottom: (inset?.bottom ?? 0) + pad });
     return { line: xy.slice(0, route.length), here: here ? xy[xy.length - 1] : null };
   }, [route, here, box, inset?.top, inset?.bottom]);
 
-  const d = pts?.line.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ') ?? '';
+  const d = pts ? pathOf(pts.line) : '';
   const start = pts?.line[0];
   const end = pts && pts.line.length > 1 ? pts.line[pts.line.length - 1] : null;
   const grid = 26;

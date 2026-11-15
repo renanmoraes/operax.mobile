@@ -17,7 +17,7 @@
         "NSPhotoLibraryUsageDescription": "O Operax precisa acessar suas fotos para enviar imagens no atendimento.",
         "NSCameraUsageDescription": "O Operax usa a câmera para capturar fotos e vídeos do atendimento e para ler o código de barras dos produtos na venda.",
         "NSMicrophoneUsageDescription": "O Operax precisa do microfone para gravar áudios do atendimento quando disponível.",
-        "NSPhotoLibraryAddUsageDescription": "O Operax pode salvar mídias recebidas na sua galeria quando você solicitar.",
+        "NSPhotoLibraryAddUsageDescription": "O Operax salva na sua galeria as imagens que você pedir, como o resumo de um treino para compartilhar.",
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleDevelopmentRegion": "pt-BR"
       },
@@ -110,13 +110,29 @@
         "expo-build-properties",
         {
           "android": {
-            "compileSdkVersion": 36,
+            "compileSdkVersion": 37,
             "targetSdkVersion": 36,
             "minSdkVersion": 26
           }
         }
       ],
       "expo-sharing",
+      [
+        "react-native-share",
+        {
+          "ios": ["instagram-stories", "instagram", "whatsapp"],
+          "android": ["com.instagram.android", "com.whatsapp", "com.whatsapp.w4b"]
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "O Operax precisa acessar suas fotos para enviar imagens no atendimento.",
+          "savePhotosPermission": "O Operax salva na sua galeria as imagens que você pedir, como o resumo de um treino para compartilhar.",
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": ["photo"]
+        }
+      ],
       "expo-sqlite",
       [
         "expo-location",

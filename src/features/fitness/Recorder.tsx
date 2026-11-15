@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { isRejected } from './resultsQueue';
 import { confirmDialog, showDialog } from '@/src/design-system/Dialog';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -24,6 +24,9 @@ import { RestTimer } from './recorder/RestTimer';
 import { ownedKey } from './owner';
 import { FEELINGS, SPORTS, WORKOUT_TAGS, effortWord, type SportInfo } from './sports';
 import type { FitnessFeeling, FreeSport } from './types';
+import { useActiveCompanySlug, useCompanies } from '@/src/features/client/useClientData';
+import { fromRecording, fromStrength } from '@/src/features/share/fromSources';
+import { setShareActivity } from '@/src/features/share/store';
 
 /** O que a gravação entrega para salvar: os números, a trilha e o "como foi". */
 export type RecorderSave = {
@@ -446,6 +449,23 @@ export function Recorder({
   const weak = accuracy != null && accuracy > 25;
   const speed = prefs.speed || sport.rate === 'speed';
 
+  const slug = useActiveCompanySlug();
+  const { data: companies } = useCompanies();
+  function share() {
+    const base = {
+      title: askTitle ? title.trim() || defaultTitle(sport.label, new Date(startedAt.current)) : heading,
+      company: companies?.find((c) => c.slug === slug)?.name ?? 'Operax',
+      date: new Date(startedAt.current).toISOString(),
+      seconds: elapsed,
+    };
+    setShareActivity(
+      sport.gps
+        ? fromRecording(base, { sport: sport.id, preferSpeed: speed, distanceM: run.distanceM, elevationGainM: run.elevationGainM, route, kmMarks: run.kmMarks })
+        : fromStrength(base, { setsDone: sets || null }),
+    );
+    router.push('/cliente/compartilhar');
+  }
+
   if (phase === 'saved' || phase === 'queued') {
     return (
       <Screen>
@@ -463,6 +483,7 @@ export function Recorder({
             {sport.gps && sport.rate === 'pace' ? <DoneStat value={formatPace(averagePace(run, elapsed))} unit="/km" /> : null}
           </View>
           <View style={{ alignSelf: 'stretch', gap: 10, marginTop: 'auto' }}>
+            <Button label={t('done.share')} icon="share-outline" onPress={share} />
             {phase === 'saved' ? <Button label={t('rec.seeHistory')} icon="time-outline" onPress={onHistory} /> : null}
             <Button label={t('rec.finishDone')} variant={phase === 'saved' ? 'secondary' : 'primary'} onPress={onClose} />
           </View>
