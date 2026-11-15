@@ -17,7 +17,9 @@ import { useSocketEvents } from '@/src/shared/realtime/socket';
 import { useQueueDrawer } from '@/src/features/queue/QueueDrawerContext';
 import { QueueDrawer } from '@/src/features/queue/QueueDrawer';
 import { SkeletonList } from '@/src/design-system/Skeleton';
-import { RequirePermission } from '@/src/features/auth/useCan';
+import { RequirePermission, useCan } from '@/src/features/auth/useCan';
+import { NumberFilter, useInboxConnections } from '@/src/features/attendance/channels';
+import { PresenceButton } from '@/src/features/attendance/TeamPresence';
 
 export default function InboxScreenGuarded() {
   const { t } = useTranslation('inbox');
@@ -34,15 +36,21 @@ function InboxScreen() {
   const { mode, user } = useAuth();
   const { open, close, setQueueCount } = useQueueDrawer();
   const [claimingId, setClaimingId] = useState<string | null>(null);
+  const can = useCan();
+  // Empresa com vários números: filtra as conversas de um número só (o servidor filtra; no demo, aqui).
+  const [numberId, setNumberId] = useState<string | null>(null);
+  const { idOf, multi } = useInboxConnections();
+  const filterBy = multi ? numberId : null;
 
   const query = useQuery({
-    queryKey: ['inbox', mode, user?.id],
+    queryKey: ['inbox', mode, user?.id, filterBy],
     enabled: mode === 'live',
     // Reserva se o tempo real cair (o normal é atualizar pelo socket, na hora).
     refetchInterval: 20_000,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const [list, history] = await Promise.all([
-        listConversations({ limit: 50, sort_by: 'unread_first' }),
+        listConversations({ limit: 50, sort_by: 'unread_first', ...(filterBy ? { connection_id: filterBy } : {}) }),
         getMyHistory({ limit: 30 }),
       ]);
       const mapped = (list.data ?? []).map((c) => mapApiConversation(c, user?.id));
@@ -70,20 +78,12 @@ function InboxScreen() {
   );
 
   const { active, queue } = useMemo(() => {
-    if (mode === 'mock') {
-      return {
-        active: sortForHome(
-          mockConversations.filter((c) => c.segment === 'active' || c.ownership === 'mine'),
-        ),
-        queue: mockConversations.filter((c) => c.segment === 'queue' || c.ownership === 'queue'),
-      };
-    }
-    const live = query.data?.live ?? [];
+    const all = mode === 'mock' ? mockConversations.filter((c) => !filterBy || idOf(c) === filterBy) : query.data?.live ?? [];
     return {
-      active: sortForHome(live.filter((c) => c.segment === 'active' || c.ownership === 'mine')),
-      queue: live.filter((c) => c.segment === 'queue' || c.ownership === 'queue'),
+      active: sortForHome(all.filter((c) => c.segment === 'active' || c.ownership === 'mine')),
+      queue: all.filter((c) => c.segment === 'queue' || c.ownership === 'queue'),
     };
-  }, [mode, query.data]);
+  }, [mode, query.data, filterBy, idOf]);
 
   useEffect(() => {
     setQueueCount(queue.length);
@@ -116,8 +116,9 @@ function InboxScreen() {
         title={t('inbox.title')}
         onMenuPress={open}
         menuBadge={queue.length}
-        right={<Badge label={mode === 'live' ? (query.isFetching ? t('inbox.updating') : t('inbox.online')) : t('inbox.demo')} tone={mode === 'live' ? 'success' : 'primary'} />}
+        right={can('teamPresence') ? <PresenceButton /> : <Badge label={mode === 'live' ? (query.isFetching ? t('inbox.updating') : t('inbox.online')) : t('inbox.demo')} tone={mode === 'live' ? 'success' : 'primary'} />}
       />
+      <NumberFilter value={numberId} onChange={setNumberId} />
       <View style={styles.stats}>
         <StatTile value={String(queue.length)} label={t('inbox.inQueue')} accent />
         <StatTile value={String(active.length)} label={t('inbox.withYou')} />

@@ -30,6 +30,7 @@ export function mapApiConversation(c: ApiConversation, currentUserId?: string): 
     segment: closed ? 'history' : mine ? 'active' : inQueue ? 'queue' : 'active',
     ownership: closed ? 'closed' : mine ? 'mine' : inQueue ? 'queue' : 'other',
     within24h,
+    connectionId: c.connection_id ?? c.outbound_connection_id ?? null,
   };
 }
 

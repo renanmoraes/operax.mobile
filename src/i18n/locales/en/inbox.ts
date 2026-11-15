@@ -107,6 +107,7 @@ const inbox: Shape<typeof pt> = {
     status: {
       mine: 'With you',
       queue: 'In queue',
+      other: 'With a teammate',
       closed: 'Closed',
     },
     sent: 'Message sent',

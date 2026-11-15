@@ -8,5 +8,6 @@ import agenda from './agenda';
 import team from './team';
 import staff from './staff';
 import fitness from './fitness';
+import attendance from './attendance';
 
-export default { common, nav, settings, auth, client, inbox, agenda, team, staff, fitness };
+export default { common, nav, settings, auth, client, inbox, agenda, team, staff, fitness, attendance };

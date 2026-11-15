@@ -14,6 +14,8 @@ export type Conversation = {
   segment: ConvSegment;
   ownership: 'mine' | 'queue' | 'other' | 'closed';
   within24h: boolean;
+  /** Número/conexão por onde a conversa chegou (empresa com vários números). */
+  connectionId?: string | null;
 };
 
 export type Message = {

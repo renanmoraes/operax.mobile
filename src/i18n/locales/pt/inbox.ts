@@ -105,6 +105,7 @@ const inbox = {
     status: {
       mine: 'Com você',
       queue: 'Na fila',
+      other: 'Com outra pessoa',
       closed: 'Encerrada',
     },
     sent: 'Mensagem enviada',

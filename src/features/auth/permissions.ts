@@ -33,6 +33,13 @@ export const PERMS = {
   claim: 'conversations:claim',
   release: 'conversations:release',
   transfer: 'conversations:transfer',
+  /** Mandar a conversa para outra fila (o web chama de "encaminhar para a fila"). */
+  transferQueue: 'conversations:send_handoff',
+  queuesRead: 'queues:read',
+  /** Ver quem da equipe está online e mudar a própria disponibilidade. */
+  teamPresence: 'users:view_availability',
+  /** Usar a IA (resumo, sugestões, melhorar o texto). Também precisa do app de IA na empresa. */
+  aiUse: 'ai:use',
   close: 'conversations:close',
   sendMessage: 'conversations:send_message',
   sendMedia: 'conversations:send_media',

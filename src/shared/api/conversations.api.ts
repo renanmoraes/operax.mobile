@@ -20,6 +20,18 @@ export type ApiConversation = {
   };
   preview?: string | null;
   last_message_preview?: string | null;
+  /** Número/conexão por onde a conversa chegou (empresa com vários números). */
+  connection_id?: string | null;
+  /** Número pelo qual a conversa responde (conversa → fila → principal); só no detalhe. */
+  outbound_connection_id?: string | null;
+  /** Resumo e leitura da IA (só com o app de IA da empresa). */
+  ai_summary?: string | null;
+  ai_summary_status?: 'pending' | 'ready' | 'skipped' | 'failed' | null;
+  ai_summary_at?: string | null;
+  ai_summary_rating?: 'up' | 'down' | null;
+  ai_sentiment?: string | null;
+  ai_sentiment_score?: number | null;
+  ai_primary_intent?: string | null;
 };
 
 export type ApiMessage = {

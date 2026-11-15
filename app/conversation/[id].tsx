@@ -43,8 +43,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { SkeletonList } from '@/src/design-system/Skeleton';
 import { RequirePermission, useCan } from '@/src/features/auth/useCan';
 import type { PermKey } from '@/src/features/auth/permissions';
+import { ChannelChip, useInboxConnections } from '@/src/features/attendance/channels';
+import { TransferSheet } from '@/src/features/attendance/TransferSheet';
+import { AiSummaryButton, AiSummarySheet, ReplySuggestions, useAiEnabled } from '@/src/features/attendance/AiAssist';
 
-type Sheet = 'actions' | 'attach' | 'transfer' | 'quick' | 'pix' | 'booking' | null;
+type Sheet = 'actions' | 'attach' | 'transfer' | 'quick' | 'pix' | 'booking' | 'summary' | null;
 
 export default function ConversationScreenGuarded() {
   const { t } = useTranslation(['inbox', 'common']);
@@ -77,6 +80,9 @@ function ConversationScreen() {
   const voice = useVoiceRecorder();
   const [sheet, setSheet] = useState<Sheet>(null);
   const { toast, show } = useToast(2200);
+  const { t: ta } = useTranslation('attendance');
+  const aiOn = useAiEnabled();
+  const connections = useInboxConnections();
   const switchSheet = (next: Sheet) => {
     setSheet(null);
     setTimeout(() => setSheet(next), 320);
@@ -120,6 +126,8 @@ function ConversationScreen() {
       'conversation.closed': onConversationEvent,
       'assignment.claimed': onConversationEvent,
       'assignment.released': onConversationEvent,
+      // Resumo novo da IA pronto.
+      'conversation.summary': onConversationEvent,
     },
     mode === 'live' && !!id,
   );
@@ -161,8 +169,18 @@ function ConversationScreen() {
     );
   }
 
+  const connId = connections.idOf(conversation);
+  const connection = connId ? connections.byId.get(connId) ?? null : null;
+  const lastInboundId = [...thread].reverse().find((m) => m.direction === 'in')?.id ?? null;
+
   const statusLabel =
-    ownership === 'mine' ? t('conversation.status.mine') : ownership === 'queue' ? t('conversation.status.queue') : t('conversation.status.closed');
+    ownership === 'mine'
+      ? t('conversation.status.mine')
+      : ownership === 'queue'
+        ? t('conversation.status.queue')
+        : ownership === 'other'
+          ? t('conversation.status.other')
+          : t('conversation.status.closed');
 
   const runAction = async (action: 'claim' | 'release' | 'close') => {
     if (mode === 'mock') {
@@ -337,6 +355,8 @@ function ConversationScreen() {
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.contactName} numberOfLines={1}>{conversation.contactName}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              {/* Vários números: por qual deles o cliente está falando (a resposta sai por ele). */}
+              {connections.multi && connection ? <ChannelChip connection={connection} size="xs" /> : null}
               <View style={[styles.statusDot, ownership === 'mine' ? { backgroundColor: colors.success } : ownership === 'queue' ? { backgroundColor: colors.warn } : null]} />
               <Muted numberOfLines={1} style={{ fontSize: 12.5 }}>
                 {conversation.queue} · {statusLabel}
@@ -344,6 +364,7 @@ function ConversationScreen() {
             </View>
           </View>
         </Pressable>
+        {aiOn ? <AiSummaryButton onPress={() => setSheet('summary')} /> : null}
         {hasOwnershipAction ? <IconButton icon="ellipsis-horizontal" accessibilityLabel={t('conversation.moreActions')} onPress={() => setSheet('actions')} /> : null}
       </View>
 
@@ -421,6 +442,18 @@ function ConversationScreen() {
             const next = applyQuickReply(draft, resolveQuickReplyVariables(q.body, { name: conversation.contactName }, user?.name ?? ''));
             setDraft(next);
             focusAtEnd(inputRef.current, next);
+          }}
+        />
+      ) : null}
+
+      {aiOn && canCompose && qrTerm === null && !voice.recording ? (
+        <ReplySuggestions
+          conversationId={id}
+          lastInboundId={lastInboundId}
+          draft={draft}
+          onUse={(text) => {
+            setDraft(text);
+            focusAtEnd(inputRef.current, text);
           }}
         />
       ) : null}
@@ -505,10 +538,23 @@ function ConversationScreen() {
         ) : null}
       </BottomSheet>
 
-      <BottomSheet visible={sheet === 'transfer'} onClose={() => setSheet(null)} title={t('conversation.transferTitle')}>
-        <Muted>{t('conversation.transferHint')}</Muted>
-        <Button label={t('conversation.release')} onPress={() => runAction('release')} />
-      </BottomSheet>
+      <TransferSheet
+        visible={sheet === 'transfer'}
+        onClose={() => setSheet(null)}
+        conversationId={id}
+        within24h={conversation.within24h}
+        canRelease={ownershipActions.release && ownership === 'mine'}
+        onRelease={() => void runAction('release')}
+        onTransferred={(name, to) => {
+          setSheet(null);
+          if (mode === 'mock') setOwnership(to === 'agent' ? 'other' : 'queue');
+          else void liveQuery.refetch();
+          show(ta('transfer.done', { name }), 'success', 'swap-horizontal');
+        }}
+        onError={(msg) => show(msg, 'error')}
+      />
+
+      <AiSummarySheet visible={sheet === 'summary'} onClose={() => setSheet(null)} conversationId={id} raw={liveQuery.data?.raw} onChanged={() => void liveQuery.refetch()} />
 
       <ActionsSheet visible={sheet === 'attach'} onClose={() => setSheet(null)} actions={actions} footnote={composeBlock} />
 
