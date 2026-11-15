@@ -28,6 +28,7 @@ import { colors, numbers, radii, shadows, text, typography } from '@/src/design-
 import { useProviders } from '@/src/features/fitness/connections';
 import { ProviderMark, providerDisplayName } from '@/src/features/fitness/brands';
 import { useCheckins, useEvolution, useFitnessSummary, useWeek } from '@/src/features/fitness/useFitness';
+import { useAchievementLevel } from '@/src/features/fitness/achievements';
 import { formatKg, weekdayShort } from '@/src/shared/format';
 import { useActiveCompanySlug , useClientCapabilities, useCompanies } from '@/src/features/client/useClientData';
 import { workoutChips } from '@/src/features/fitness/parts';
@@ -38,6 +39,8 @@ export default function ClientFitnessScreen() {
   const slug = useActiveCompanySlug();
   const { data: week } = useWeek();
   const { data: summary } = useFitnessSummary();
+  // Nível e XP vêm das conquistas (curva do backend); sem acesso a elas, o resumo calculado no app.
+  const lvl = useAchievementLevel() ?? summary?.level ?? null;
   const { data: providers } = useProviders();
   const { data: checkins } = useCheckins();
   const [picked, setPicked] = useState<string | null>(null);
@@ -92,7 +95,7 @@ export default function ClientFitnessScreen() {
                 <View style={{ flexDirection: 'row', gap: 16 }}>
                   <View>
                     <Muted style={{ fontSize: 12 }}>{t('tab.level')}</Muted>
-                    <Num size="sm" style={{ marginTop: 2 }}>{summary?.level.level ?? '–'}</Num>
+                    <Num size="sm" style={{ marginTop: 2 }}>{lvl?.level ?? '–'}</Num>
                   </View>
                   <View style={{ width: 1, backgroundColor: colors.track }} />
                   <View>
@@ -102,13 +105,13 @@ export default function ClientFitnessScreen() {
                 </View>
               </View>
             </View>
-            {summary ? (
+            {lvl ? (
               <Pressable onPress={() => router.push('/cliente/conquistas')} accessibilityRole="button" accessibilityLabel={t('tab.seeLevel')} style={{ marginTop: 16, gap: 8 }}>
                 <View style={styles.rowBetween}>
-                  <Muted style={{ fontSize: 12 }}>{t('tab.levelLine', { label: summary.level.label, level: summary.level.level })}</Muted>
-                  <Muted style={{ fontSize: 12, fontVariant: ['tabular-nums'] }}>{`${summary.level.current.toLocaleString(locale())} / ${summary.level.next.toLocaleString(locale())} XP`}</Muted>
+                  <Muted style={{ fontSize: 12 }}>{t('tab.levelLine', { label: lvl.label, level: lvl.level })}</Muted>
+                  <Muted style={{ fontSize: 12, fontVariant: ['tabular-nums'] }}>{`${lvl.current.toLocaleString(locale())} / ${lvl.next.toLocaleString(locale())} XP`}</Muted>
                 </View>
-                <ProgressBar progress={summary.level.current / summary.level.next} />
+                <ProgressBar progress={lvl.current / lvl.next} />
               </Pressable>
             ) : null}
           </HeroCard>

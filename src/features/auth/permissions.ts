@@ -59,6 +59,8 @@ export const PERMS = {
   sendMedia: 'conversations:send_media',
   comment: 'conversations:comment_internal',
   pixKeysManage: 'conversations:manage_pix_keys',
+  // Eventos: check-in na entrada (ler o ingresso do aluno)
+  eventsCheckin: 'events:register',
   // Kanban
   kanbanMove: 'kanban:move_card',
   // Agenda

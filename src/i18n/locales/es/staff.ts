@@ -2,6 +2,20 @@ import type { Shape } from '../../shape';
 import type pt from '../pt/staff';
 
 const staff: Shape<typeof pt> = {
+  eventCheckin: {
+    again: '{{name}} ya había hecho check-in.',
+    choose: 'Elige el evento',
+    count_one: '{{count}} check-in',
+    count_other: '{{count}} check-ins',
+    done: 'Check-in de {{name}} hecho.',
+    empty: 'No hay eventos activos.',
+    fail: 'No se pudo hacer el check-in.',
+    scan: 'Leer entradas',
+    scanHint: 'Apunta a la entrada en la app del alumno',
+    someone: 'Alumno',
+    title: 'Check-in de evento',
+    won: 'Ganó "{{achievement}}".',
+  },
   common: {
     user: 'Usuario',
     online: 'En línea',
@@ -13,6 +27,7 @@ const staff: Shape<typeof pt> = {
     work: 'Trabajo',
     account: 'Cuenta',
     items: {
+      eventCheckin: { title: 'Check-in de evento', hint: 'Lee la entrada del alumno en la puerta' },
       pos: { title: 'Venta (PDV)', hint: 'Escanea, pesa y cobra' },
       patients: { title: 'Pacientes', hint: 'Pacientes y clientes de la empresa' },
       kanban: { title: 'Kanban', hint: 'Pipeline comercial' },
