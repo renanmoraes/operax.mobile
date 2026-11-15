@@ -17,7 +17,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { logout, user, mode } = useAuth();
   const { t } = useTranslation(['settings', 'common']);
-  const { states, request } = usePermissions(['notifications'], mode === 'live');
+  const { states, request } = usePermissions(['notifications'], mode === 'live' && user?.kind === 'staff');
   const push = states.notifications;
 
   return (

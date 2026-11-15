@@ -35,7 +35,7 @@ export default function NotificationPrefsScreen() {
   const { t } = useTranslation('staff');
   const insets = useSafeAreaInsets();
   const { mode, user } = useAuth();
-  const { states, request } = usePermissions(['notifications'], mode === 'live');
+  const { states, request } = usePermissions(['notifications'], mode === 'live' && user?.kind === 'staff');
   const permission = states.notifications;
   // Começa com o que já veio do servidor junto com o usuário (sem efeito para copiar depois).
   const [prefs, setPrefs] = useState<NotificationPrefsState>(() => {

@@ -51,11 +51,15 @@ export async function getPermission(key: PermissionKey): Promise<PermissionState
   }
 }
 
-export async function requestPermission(key: PermissionKey, opts: { live: boolean }): Promise<PermissionState> {
+/**
+ * `registerPush`: só a equipe com login real registra o aparelho no Operax (`/api/auth/device-tokens` é rota
+ * da equipe; o portal do cliente não tem push). Cliente e demonstração só pedem a permissão ao sistema.
+ */
+export async function requestPermission(key: PermissionKey, opts: { registerPush: boolean }): Promise<PermissionState> {
   switch (key) {
     case 'notifications':
       if (Platform.OS === 'web') return 'unavailable';
-      if (opts.live) {
+      if (opts.registerPush) {
         try {
           await registerDevicePushToken();
         } catch {
@@ -95,7 +99,7 @@ export function openSystemSettings() {
 }
 
 /** Estado das permissões pedidas; reconsulta quando o app volta ao primeiro plano (ex.: depois dos ajustes). */
-export function usePermissions(keys: PermissionKey[], live: boolean) {
+export function usePermissions(keys: PermissionKey[], registerPush: boolean) {
   const [states, setStates] = useState<Partial<Record<PermissionKey, PermissionState>>>({});
   const signature = keys.join(',');
 
@@ -116,11 +120,11 @@ export function usePermissions(keys: PermissionKey[], live: boolean) {
 
   const request = useCallback(
     async (key: PermissionKey) => {
-      const next = await requestPermission(key, { live });
+      const next = await requestPermission(key, { registerPush });
       setStates((prev) => ({ ...prev, [key]: next }));
       return next;
     },
-    [live],
+    [registerPush],
   );
 
   return { states, request, refresh };

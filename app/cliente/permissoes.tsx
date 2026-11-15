@@ -17,7 +17,7 @@ export default function ClientPermissionsScreen() {
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();
   const keys: PermissionKey[] = ['notifications', 'location', 'camera', 'photos'];
-  const { states, request } = usePermissions(keys, mode === 'live');
+  const { states, request } = usePermissions(keys, false); // cliente: só a permissão do sistema (o portal não registra aparelho)
   const caps = useClientCapabilities();
   const { data: providers } = useProviders();
   // Relógio só com treino liberado; câmera serve ao treino (fotos de evolução) e ao chat com anexos (só no demo por enquanto).

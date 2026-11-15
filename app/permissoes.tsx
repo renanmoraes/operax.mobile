@@ -18,9 +18,9 @@ export default function StaffPermissionsScreen() {
   const insets = useSafeAreaInsets();
   const { inicio } = useLocalSearchParams<{ inicio?: string }>();
   const onboarding = inicio === '1';
-  const { mode } = useAuth();
+  const { mode, user } = useAuth();
   const keys: PermissionKey[] = ['notifications', 'camera', 'photos', 'microphone'];
-  const { states, request } = usePermissions(keys, mode === 'live');
+  const { states, request } = usePermissions(keys, mode === 'live' && user?.kind === 'staff');
 
   const media: PermissionState | undefined =
     states.camera === 'granted' && states.photos === 'granted' ? 'granted' : states.camera === 'blocked' || states.photos === 'blocked' ? 'blocked' : states.camera === 'unavailable' ? 'unavailable' : states.camera;

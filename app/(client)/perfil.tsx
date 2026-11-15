@@ -18,11 +18,11 @@ import { appVersionLabel } from '@/src/shared/updates/appVersion';
 export default function ClientPerfilScreen() {
   const { t } = useTranslation('client');
   const insets = useSafeAreaInsets();
-  const { user, logout, switchTenant, mode } = useAuth();
+  const { user, logout, switchTenant } = useAuth();
   const { data: companies } = useCompanies();
   const { data: summary } = useFitnessSummary();
   const { data: providers } = useProviders();
-  const { states, request } = usePermissions(['notifications'], mode === 'live');
+  const { states, request } = usePermissions(['notifications'], false); // cliente: só a permissão do sistema (o portal não registra aparelho)
   const client = user?.kind === 'client' ? user : null;
   const memberships = client?.memberships ?? [];
   const secondaryLine = client?.email || client?.phone || '—';
