@@ -8,7 +8,7 @@
     "pt-BR"
   ],
   "locale": "pt-BR",
-  "device": "android",
+  "device": "iphone",
   "orientation": "portrait",
   "appIcon": "/app-icon.png",
   "slidesByDevice": {
@@ -209,7 +209,7 @@
             "src": "/chips/peso.png",
             "transform": {
               "x": 620,
-              "y": 902,
+              "y": 1037,
               "width": 604,
               "height": 356,
               "rotation": 0,
@@ -316,7 +316,7 @@
             "src": "/chips/compromissos.png",
             "transform": {
               "x": 554,
-              "y": 980,
+              "y": 1074,
               "width": 679,
               "height": 345,
               "rotation": 0,
@@ -359,10 +359,10 @@
             "id": "chip-6-0",
             "src": "/chips/venc.png",
             "transform": {
-              "x": 646,
-              "y": 721,
-              "width": 565,
-              "height": 345,
+              "x": 758,
+              "y": 1509,
+              "width": 480,
+              "height": 293,
               "rotation": 0,
               "zIndex": 7
             }
@@ -667,7 +667,7 @@
             "src": "/chips/peso.png",
             "transform": {
               "x": 509,
-              "y": 601,
+              "y": 691,
               "width": 471,
               "height": 278,
               "rotation": 0,
@@ -774,7 +774,7 @@
             "src": "/chips/compromissos.png",
             "transform": {
               "x": 455,
-              "y": 652,
+              "y": 716,
               "width": 530,
               "height": 269,
               "rotation": 0,
@@ -930,7 +930,7 @@
     ],
     "ipad": [
       {
-        "id": "s_mwhrlqf0_a",
+        "id": "s_mwhs6tji_a",
         "layout": "hero",
         "label": {
           "en": "MEET YOUR APP"
@@ -941,7 +941,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_b",
+        "id": "s_mwhs6tji_b",
         "layout": "device-bottom",
         "label": {
           "en": "FEATURE 01"
@@ -952,7 +952,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_c",
+        "id": "s_mwhs6tji_c",
         "layout": "device-top",
         "label": {
           "en": "FEATURE 02"
@@ -966,7 +966,7 @@
     ],
     "tvos": [
       {
-        "id": "s_mwhrlqf0_d",
+        "id": "s_mwhs6tji_d",
         "layout": "hero",
         "label": {
           "en": "MEET YOUR APP"
@@ -977,7 +977,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_e",
+        "id": "s_mwhs6tji_e",
         "layout": "split-landscape",
         "label": {
           "en": "FEATURE 01"
@@ -988,7 +988,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_f",
+        "id": "s_mwhs6tji_f",
         "layout": "device-top",
         "label": {
           "en": "FEATURE 02"
@@ -1000,7 +1000,7 @@
         "inverted": true
       },
       {
-        "id": "s_mwhrlqf0_g",
+        "id": "s_mwhs6tji_g",
         "layout": "no-device",
         "label": {
           "en": "MORE"
@@ -1013,7 +1013,7 @@
     ],
     "watchos": [
       {
-        "id": "s_mwhrlqf0_h",
+        "id": "s_mwhs6tji_h",
         "layout": "hero",
         "label": {
           "en": "MEET YOUR APP"
@@ -1024,7 +1024,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_i",
+        "id": "s_mwhs6tji_i",
         "layout": "device-bottom",
         "label": {
           "en": "FEATURE 01"
@@ -1035,7 +1035,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_j",
+        "id": "s_mwhs6tji_j",
         "layout": "device-top",
         "label": {
           "en": "FEATURE 02"
@@ -1049,7 +1049,7 @@
     ],
     "carplay": [
       {
-        "id": "s_mwhrlqf0_k",
+        "id": "s_mwhs6tji_k",
         "layout": "split-landscape",
         "label": {
           "en": "CARPLAY"
@@ -1060,7 +1060,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_l",
+        "id": "s_mwhs6tji_l",
         "layout": "device-bottom",
         "label": {
           "en": "FEATURE 01"
@@ -1071,7 +1071,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_m",
+        "id": "s_mwhs6tji_m",
         "layout": "device-top",
         "label": {
           "en": "FEATURE 02"
@@ -1085,7 +1085,7 @@
     ],
     "mac": [
       {
-        "id": "s_mwhrlqf0_n",
+        "id": "s_mwhs6tji_n",
         "layout": "hero",
         "label": {
           "en": "MEET YOUR APP"
@@ -1096,7 +1096,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_o",
+        "id": "s_mwhs6tji_o",
         "layout": "split-landscape",
         "label": {
           "en": "FEATURE 01"
@@ -1107,7 +1107,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_p",
+        "id": "s_mwhs6tji_p",
         "layout": "device-top",
         "label": {
           "en": "FEATURE 02"
@@ -1119,7 +1119,7 @@
         "inverted": true
       },
       {
-        "id": "s_mwhrlqf0_q",
+        "id": "s_mwhs6tji_q",
         "layout": "two-devices",
         "label": {
           "en": "FEATURE 03"
@@ -1131,7 +1131,7 @@
         "screenshotSecondary": ""
       },
       {
-        "id": "s_mwhrlqf0_r",
+        "id": "s_mwhs6tji_r",
         "layout": "no-device",
         "label": {
           "en": "MORE"
@@ -1144,7 +1144,7 @@
     ],
     "android-7": [
       {
-        "id": "s_mwhrlqf0_s",
+        "id": "s_mwhs6tji_s",
         "layout": "hero",
         "label": {
           "en": "MEET YOUR APP"
@@ -1155,7 +1155,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_t",
+        "id": "s_mwhs6tji_t",
         "layout": "split-landscape",
         "label": {
           "en": "FEATURE 01"
@@ -1168,7 +1168,7 @@
     ],
     "android-10": [
       {
-        "id": "s_mwhrlqf0_u",
+        "id": "s_mwhs6tji_u",
         "layout": "hero",
         "label": {
           "en": "MEET YOUR APP"
@@ -1179,7 +1179,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_v",
+        "id": "s_mwhs6tji_v",
         "layout": "split-landscape",
         "label": {
           "en": "FEATURE 01"
@@ -1204,7 +1204,7 @@
     ],
     "duo-outer": [
       {
-        "id": "s_mwhrlqf0_x",
+        "id": "s_mwhs6tji_x",
         "layout": "hero",
         "label": {
           "en": "MEET YOUR APP"
@@ -1215,7 +1215,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_y",
+        "id": "s_mwhs6tji_y",
         "layout": "device-bottom",
         "label": {
           "en": "FEATURE 01"
@@ -1226,7 +1226,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_z",
+        "id": "s_mwhs6tji_z",
         "layout": "two-devices",
         "label": {
           "en": "OPEN IT"
@@ -1238,7 +1238,7 @@
         "screenshotSecondary": ""
       },
       {
-        "id": "s_mwhrlqf0_10",
+        "id": "s_mwhs6tji_10",
         "layout": "device-top",
         "label": {
           "en": "FEATURE 02"
@@ -1250,7 +1250,7 @@
         "inverted": true
       },
       {
-        "id": "s_mwhrlqf0_11",
+        "id": "s_mwhs6tji_11",
         "layout": "no-device",
         "label": {
           "en": "MORE"
@@ -1263,7 +1263,7 @@
     ],
     "duo-outer-landscape": [
       {
-        "id": "s_mwhrlqf0_12",
+        "id": "s_mwhs6tji_12",
         "layout": "hero",
         "label": {
           "en": "TURN IT"
@@ -1274,7 +1274,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_13",
+        "id": "s_mwhs6tji_13",
         "layout": "split-landscape",
         "label": {
           "en": "FEATURE 01"
@@ -1285,7 +1285,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_14",
+        "id": "s_mwhs6tji_14",
         "layout": "device-top",
         "label": {
           "en": "FEATURE 02"
@@ -1299,7 +1299,7 @@
     ],
     "duo-inner": [
       {
-        "id": "s_mwhrlqf0_15",
+        "id": "s_mwhs6tji_15",
         "layout": "hero",
         "label": {
           "en": "UNFOLD IT"
@@ -1310,7 +1310,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_16",
+        "id": "s_mwhs6tji_16",
         "layout": "device-bottom",
         "label": {
           "en": "FEATURE 01"
@@ -1321,7 +1321,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_17",
+        "id": "s_mwhs6tji_17",
         "layout": "two-devices",
         "label": {
           "en": "FOLDED + OPEN"
@@ -1333,7 +1333,7 @@
         "screenshotSecondary": ""
       },
       {
-        "id": "s_mwhrlqf0_18",
+        "id": "s_mwhs6tji_18",
         "layout": "device-top",
         "label": {
           "en": "FEATURE 02"
@@ -1347,7 +1347,7 @@
     ],
     "duo-inner-landscape": [
       {
-        "id": "s_mwhrlqf0_19",
+        "id": "s_mwhs6tji_19",
         "layout": "hero",
         "label": {
           "en": "UNFOLD IT"
@@ -1358,7 +1358,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_1a",
+        "id": "s_mwhs6tji_1a",
         "layout": "two-devices",
         "label": {
           "en": "FOLDED + OPEN"
@@ -1370,7 +1370,7 @@
         "screenshotSecondary": ""
       },
       {
-        "id": "s_mwhrlqf0_1b",
+        "id": "s_mwhs6tji_1b",
         "layout": "split-landscape",
         "label": {
           "en": "FEATURE 02"
@@ -1381,7 +1381,7 @@
         "screenshot": ""
       },
       {
-        "id": "s_mwhrlqf0_1c",
+        "id": "s_mwhs6tji_1c",
         "layout": "device-top",
         "label": {
           "en": "FEATURE 03"
@@ -1393,7 +1393,7 @@
         "inverted": true
       },
       {
-        "id": "s_mwhrlqf0_1d",
+        "id": "s_mwhs6tji_1d",
         "layout": "no-device",
         "label": {
           "en": "MORE"
@@ -1406,7 +1406,7 @@
     ],
     "creative-universal": [
       {
-        "id": "s_mwhrlqf0_1e",
+        "id": "s_mwhs6tji_1e",
         "layout": "split-landscape",
         "label": {
           "en": "NEW"
@@ -1419,7 +1419,7 @@
     ],
     "creative-header": [
       {
-        "id": "s_mwhrlqf0_1f",
+        "id": "s_mwhs6tji_1f",
         "layout": "split-landscape",
         "label": {
           "en": "NEW"
@@ -1432,7 +1432,7 @@
     ],
     "creative-search": [
       {
-        "id": "s_mwhrlqf0_1g",
+        "id": "s_mwhs6tji_1g",
         "layout": "split-landscape",
         "label": {
           "en": "NEW"

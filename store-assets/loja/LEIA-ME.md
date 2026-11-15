@@ -55,6 +55,7 @@ Os selos (`public/chips/`) e o mosaico são imagens geradas de HTML; as capturas
 
 ## Pontos fracos conhecidos
 
+- As capturas cruas do iOS ganharam uma faixa de status (9:41, sinal, Wi-Fi e bateria, 162 px) composta no topo, porque o web não tem barra de status e a ilha do bezel cobria o cabeçalho.
 - A conversa da demo tem uma foto sem imagem (placeholder cinza); ela foi escondida na captura. Não há foto real na demo.
 - O treino livre com GPS foi gravado no web com posições simuladas pelo navegador (o app de verdade, mapa em grade do web). No celular o mapa aparece com ruas.
 - A tela da agenda mostra a hora atual da captura; o horário "Em N min" muda conforme o relógio.
