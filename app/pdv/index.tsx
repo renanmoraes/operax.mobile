@@ -121,6 +121,11 @@ function PosSaleScreen() {
     const id = setTimeout(() => setTerm(q.trim()), 250);
     return () => clearTimeout(id);
   }, [q]);
+  // O texto de agora, para quem termina depois de um await (a busca do Enter).
+  const qRef = useRef(q);
+  useEffect(() => {
+    qRef.current = q;
+  }, [q]);
   const searching = q.trim().length >= 2 && !/^\d+$/.test(q.trim());
   const results = useQuery({ queryKey: ['pos', 'products', mode, term], queryFn: () => client.searchProducts(term), enabled: term.length >= 2 && !/^\d+$/.test(term) });
 
@@ -199,11 +204,22 @@ function PosSaleScreen() {
     }
   };
 
-  const submitSearch = () => {
+  const submitSearch = async () => {
     const raw = q.trim();
     if (!raw) return;
     if (/^\d+$/.test(raw) || variantFromLabelQr(raw)) return void lookup(raw, false);
-    const list = results.data ?? [];
+    // A lista na tela pode ser da busca anterior (o termo ainda não passou pelo atraso de 250 ms): só
+    // vale a do texto enviado. Fora isso, busca esse texto agora (o cache do react-query reaproveita).
+    let list: PosProduct[];
+    try {
+      list =
+        term === raw && results.isSuccess && !results.isFetching
+          ? results.data
+          : await qc.fetchQuery({ queryKey: ['pos', 'products', mode, raw], queryFn: () => client.searchProducts(raw), staleTime: 30_000 });
+    } catch {
+      return show(t('search.failed'), 'error');
+    }
+    if (qRef.current.trim() !== raw) return; // a pessoa continuou digitando enquanto buscava
     const exact = list.filter((p) => p.barcode?.toLowerCase() === raw.toLowerCase() || p.sku?.toLowerCase() === raw.toLowerCase());
     const pick = exact.length === 1 ? exact[0] : list.length === 1 ? list[0] : null;
     if (pick) addFromSearch(pick);
@@ -349,7 +365,7 @@ function PosSaleScreen() {
             ref={searchRef}
             value={q}
             onChangeText={setQ}
-            onSubmitEditing={submitSearch}
+            onSubmitEditing={() => void submitSearch()}
             returnKeyType="search"
             placeholder={t('search.placeholder')}
             placeholderTextColor="#6b7486"
