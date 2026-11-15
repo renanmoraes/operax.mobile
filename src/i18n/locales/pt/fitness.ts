@@ -372,6 +372,9 @@ const fitness = {
     rounds: 'Rounds',
     tabata: 'Tabata',
   },
+  offline: {
+    storeFail: 'Sem internet e sem espaço para guardar no celular agora. O treino continua aqui: libere espaço ou tente de novo.',
+  },
   part: {
     endurance: 'Resistência',
     exercise: 'Exercício',

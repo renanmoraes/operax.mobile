@@ -1,4 +1,4 @@
-import { kvGet, kvSet } from '@/src/shared/db/localDb';
+import { kvGet, kvSetDurable } from '@/src/shared/db/localDb';
 import { isAxiosError } from 'axios';
 import { fitnessOwner, ownedKey } from './owner';
 import type { FreeActivityBody, RecordResultBody } from './types';
@@ -62,9 +62,11 @@ async function read<T>(base: string, who?: string): Promise<T[]> {
   return (await kvGet<T[]>(key)) ?? [];
 }
 
+/** Lança se não conseguir guardar: quem chama mantém o treino na tela em vez de dizer que guardou. */
 async function write<T>(base: string, queue: T[], who?: string) {
   const key = ownedKey(base, who);
-  if (key) await kvSet(key, queue);
+  if (!key) throw new Error('Sem conta ativa para guardar o treino');
+  await kvSetDurable(key, queue);
 }
 
 export const loadQueue = () => read<RecordResultBody>(KEY);

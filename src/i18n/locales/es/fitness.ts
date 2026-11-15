@@ -374,6 +374,9 @@ const fitness: Shape<typeof pt> = {
     rounds: 'Rondas',
     tabata: 'Tabata',
   },
+  offline: {
+    storeFail: 'Sin internet y sin espacio para guardarlo en el teléfono ahora. El entreno sigue aquí: libera espacio o inténtalo de nuevo.',
+  },
   part: {
     endurance: 'Resistencia',
     exercise: 'Ejercicio',

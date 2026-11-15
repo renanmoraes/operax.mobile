@@ -1,6 +1,17 @@
 import { enqueue, flushQueue, type QueueSender } from '../resultsQueue';
 import type { RecordResultBody } from '../types';
 
+// Banco local de mentira (nos testes não há SQLite). `mockFail.on` simula o celular sem espaço.
+const mockStore = new Map<string, unknown>();
+const mockFail = { on: false };
+jest.mock('@/src/shared/db/localDb', () => ({
+  kvGet: async (k: string) => (mockStore.has(k) ? mockStore.get(k) : null),
+  kvSetDurable: async (k: string, v: unknown) => {
+    if (mockFail.on) throw new Error('disco cheio');
+    mockStore.set(k, v);
+  },
+}));
+
 const body = (key: string): RecordResultBody => ({
   workout_id: 'w-a',
   part_index: 0,
@@ -81,5 +92,13 @@ describe('fila por conta', () => {
     expect(sent).toEqual(['c1']);
     owner.setFitnessOwner('live:client:c:t1');
     expect((await q.loadQueue()).map((b) => b.idempotency_key)).toEqual(['c2', 'c3']);
+  });
+
+  it('sem espaço para guardar: avisa (rejeita) em vez de fingir que guardou', async () => {
+    owner.setFitnessOwner('live:client:e:t1');
+    mockFail.on = true;
+    await expect(q.queueResults([body('e1')])).rejects.toThrow();
+    mockFail.on = false;
+    expect(await q.loadQueue()).toEqual([]);
   });
 });

@@ -63,7 +63,13 @@ function RegisterResult({ workout, partIndex }: { workout: FitnessWorkoutView; p
         return;
       }
       // Sem internet: fica na fila e vai sozinho quando a conexão voltar.
-      await queueResults([body]);
+      try {
+        await queueResults([body]);
+      } catch {
+        // Nem no celular deu para guardar: mantém o formulário para tentar de novo.
+        setError(i18n.t('fitness:offline.storeFail'));
+        return;
+      }
       setState('queued');
     }
   }

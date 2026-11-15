@@ -95,7 +95,13 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
         void showDialog({ title: t('rec.saveFailTitle'), message: t('done.rejected'), tone: 'warn' });
         return;
       }
-      await queueResults(bodies.slice(sent));
+      try {
+        await queueResults(bodies.slice(sent));
+      } catch {
+        // Nem no celular deu para guardar (armazenamento cheio…): o treino fica aqui para tentar de novo.
+        void showDialog({ title: t('rec.saveFailTitle'), message: t('offline.storeFail'), tone: 'warn' });
+        return;
+      }
       // Já está guardado na fila para enviar depois: pode liberar o rascunho e não envia de novo daqui.
       await clearFinishedSession(workout.id);
       setQueued(true);

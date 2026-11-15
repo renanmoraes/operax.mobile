@@ -230,6 +230,25 @@ export async function kvGet<T>(key: string): Promise<T | null> {
   }
 }
 
+/**
+ * Escrita que precisa ficar guardada de verdade (fila de treinos offline): falha avisa (lança), em vez de
+ * fingir que salvou. No celular, só vale o banco SQLite (memória não sobrevive a fechar o app); no
+ * navegador, o localStorage.
+ */
+export async function kvSetDurable(key: string, value: unknown): Promise<void> {
+  const raw = JSON.stringify(value);
+  const db = await localDb();
+  if (db) {
+    await db.runAsync('INSERT INTO kv (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at', [key, raw, new Date().toISOString()]);
+    return;
+  }
+  if (Platform.OS !== 'web') throw new Error('Banco local indisponível');
+  const ls = globalThis.localStorage;
+  if (!ls) throw new Error('Armazenamento do navegador indisponível');
+  ls.setItem(WEB_KV + key, raw);
+  mem.kv.set(key, raw);
+}
+
 export async function kvSet(key: string, value: unknown): Promise<void> {
   try {
     const raw = JSON.stringify(value);
