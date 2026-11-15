@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import i18n, { locale } from '@/src/i18n';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,6 +53,9 @@ function Spark({ values }: { values: number[] }) {
   );
 }
 
+/** Hora atual em ms (fora do componente: os cronômetros só leem o relógio em eventos e no tique). */
+const wallClock = () => Date.now();
+
 export default function WorkoutSessionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   return <WorkoutGate id={id}>{(workout) => (flattenWorkout(workout).length ? <WorkoutSession workout={workout} /> : <NoSetsSession workout={workout} />)}</WorkoutGate>;
@@ -84,10 +87,19 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
   const [logs, setLogs] = useState<SetLog[][]>(() => rows.map(() => []));
   const [kg, setKg] = useState(rows[0]?.kg ?? 0);
   const [reps, setReps] = useState(rows[0]?.reps ?? 0);
-  const [elapsed, setElapsed] = useState(0);
+  // Cronômetros pelo relógio (não por contagem de segundos): com a tela bloqueada o iPhone para os timers
+  // do app, e ao voltar o tempo do treino e o descanso precisam estar certos.
+  const [now, setNow] = useState(wallClock);
   const [paused, setPaused] = useState(false);
-  const [rest, setRest] = useState(0);
+  /** Tempo de treino: o acumulado até a última pausa + o trecho correndo desde `since`. */
+  const [clock, setClock] = useState<{ base: number; since: number | null }>(() => ({ base: 0, since: wallClock() }));
+  /** Descanso correndo: termina em `restUntil`. Pausado: os segundos que faltavam ficam em `restFrozen`. */
+  const [restUntil, setRestUntil] = useState<number | null>(null);
+  const [restFrozen, setRestFrozen] = useState(0);
   const [restTotal, setRestTotal] = useState(60);
+  const elapsedAt = (t: number) => Math.floor(clock.base + (clock.since != null ? Math.max(0, t - clock.since) / 1000 : 0));
+  const elapsed = elapsedAt(now);
+  const rest = paused ? restFrozen : restUntil != null ? Math.max(0, Math.ceil((restUntil - now) / 1000)) : 0;
   const [voice, setVoice] = useState(true);
   const { toast, show } = useToast(2600);
   const [listOpen, setListOpen] = useState(false);
@@ -109,7 +121,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
       if (d && d.logs.length === rows.length) {
         setIdx(d.idx);
         setLogs(d.logs);
-        setElapsed(d.elapsed);
+        setClock({ base: d.elapsed, since: wallClock() });
         const p = nextPrescription(rows[d.idx], d.logs[d.idx]?.length ?? 0);
         setKg(p.kg);
         setReps(p.reps);
@@ -119,19 +131,48 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
   }, [workout.id, rows]);
 
   useEffect(() => {
-    if (ready) void saveDraft({ workoutId: workout.id, idx, logs, elapsed });
+    if (ready) void saveDraft({ workoutId: workout.id, idx, logs, elapsed: elapsedAt(wallClock()) });
     // Salva ao mudar de exercício ou série; o cronômetro (elapsed) fica de fora para não gravar a cada segundo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, idx, logs, workout.id]);
 
   useEffect(() => {
-    const t = setInterval(() => {
-      if (paused) return;
-      setElapsed((e) => e + 1);
-      setRest((r) => (r > 0 ? r - 1 : 0));
-    }, 1000);
-    return () => clearInterval(t);
-  }, [paused]);
+    const tick = () => setNow(wallClock());
+    const t = setInterval(tick, 1000);
+    // Voltou para o app: acerta na hora (o tempo que passou bloqueado conta, o descanso pode ter acabado).
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') tick();
+    });
+    return () => {
+      clearInterval(t);
+      sub.remove();
+    };
+  }, []);
+
+  function startRest(seconds: number) {
+    if (paused) setRestFrozen(seconds);
+    else setRestUntil(wallClock() + seconds * 1000);
+  }
+
+  function skipRest() {
+    setRestUntil(null);
+    setRestFrozen(0);
+  }
+
+  function togglePause() {
+    const t = wallClock();
+    if (!paused) {
+      setClock((c) => ({ base: c.base + (c.since != null ? Math.max(0, t - c.since) / 1000 : 0), since: null }));
+      setRestFrozen(restUntil != null ? Math.max(0, Math.ceil((restUntil - t) / 1000)) : 0);
+      setRestUntil(null);
+    } else {
+      setClock((c) => ({ base: c.base, since: t }));
+      if (restFrozen > 0) setRestUntil(t + restFrozen * 1000);
+      setRestFrozen(0);
+    }
+    setNow(t);
+    setPaused(!paused);
+  }
 
   useEffect(() => () => {
     void Speech.stop();
@@ -147,7 +188,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
     const p = nextPrescription(rows[i], logs[i]?.length ?? 0);
     setKg(p.kg);
     setReps(p.reps);
-    setRest(0);
+    skipRest();
   }
 
   function completeSet() {
@@ -162,7 +203,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
       setReps(upcoming.reps);
       const restAfter = row.sets[doneCount - 1]?.rest ?? row.restSeconds;
       if (restAfter > 0) {
-        setRest(restAfter);
+        startRest(restAfter);
         setRestTotal(restAfter);
       }
     }
@@ -170,13 +211,13 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
 
   function finish() {
     // O rascunho só é apagado depois que o resultado for salvo (na tela de conclusão).
-    setFinishedSession({ workoutId: workout.id, idx, logs, elapsed, finishedAt: new Date().toISOString(), resultKey: newIdempotencyKey() });
+    setFinishedSession({ workoutId: workout.id, idx, logs, elapsed: elapsedAt(wallClock()), finishedAt: new Date().toISOString(), resultKey: newIdempotencyKey() });
     Speech.stop();
     router.replace('/cliente/treino/concluido');
   }
 
   const primary = resting
-    ? { label: i18n.t('fitness:rest.skipA11y'), onPress: () => setRest(0) }
+    ? { label: i18n.t('fitness:rest.skipA11y'), onPress: skipRest }
     : exDone
       ? isLast
         ? { label: i18n.t('fitness:session.finish'), onPress: finish }
@@ -283,7 +324,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
             <View style={{ flex: 1 }}>
               <Text style={styles.restTitle}>{i18n.t('fitness:rest.title')}</Text>
               <Muted style={{ marginTop: 4, lineHeight: 19 }}>{i18n.t('fitness:session.upNext', { n: done.length + 1, kg: formatKg(kg), reps })}</Muted>
-              <PressableScale onPress={() => { setRest((r) => r + 15); setRestTotal((t) => Math.max(t, rest + 15)); }} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:rest.plus15A11y')} style={styles.more}>
+              <PressableScale onPress={() => { startRest(rest + 15); setRestTotal((t) => Math.max(t, rest + 15)); }} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:rest.plus15A11y')} style={styles.more}>
                 <Text style={styles.moreText}>+15 s</Text>
               </PressableScale>
             </View>
@@ -343,7 +384,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
               accessibilityLabel: paused ? i18n.t('fitness:session.resumeA11y') : i18n.t('fitness:session.pauseA11y'),
               tone: 'primary',
               active: paused,
-              onPress: () => setPaused((p) => !p),
+              onPress: togglePause,
             },
             {
               icon: 'play-skip-forward',

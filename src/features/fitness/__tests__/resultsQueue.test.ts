@@ -112,3 +112,23 @@ describe('fila por conta', () => {
     expect((await q.loadQueue()).map((b) => b.idempotency_key)).toEqual(['f1']);
   });
 });
+
+describe('troca de conta ou empresa em andamento', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const owner = require('../owner') as typeof import('../owner');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { flushAll } = require('../resultsQueue') as typeof import('../resultsQueue');
+
+  it('sem dono enquanto o token já é o da conta nova: nada da fila sai', async () => {
+    owner.setFitnessOwner('live:client:h:t1');
+    const release = owner.suspendFitnessOwner();
+    expect(owner.fitnessOwner()).toBe('');
+    const send = jest.fn(async () => ({ ok: true as const }));
+    expect(await flushAll({ result: send, activity: send })).toBe(false);
+    expect(send).not.toHaveBeenCalled();
+    owner.setFitnessOwner('live:client:h:t2'); // a empresa nova foi instalada
+    release();
+    release(); // soltar de novo não desconta outra troca
+    expect(owner.fitnessOwner()).toBe('live:client:h:t2');
+  });
+});

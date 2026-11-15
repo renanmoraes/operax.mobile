@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { onlineManager, useQueryClient } from '@tanstack/react-query';
+import { suspendFitnessOwner } from '@/src/features/fitness/owner';
 import { AuthUser, ClientUser, StaffUser, getMeApi, loginApi, logoutApi, registerDevicePushToken, verifyMfaApi } from '@/src/shared/api/auth.api';
 import {
   PortalLoginResult,
@@ -148,8 +149,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [mfaToken, setMfaToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const qc = useQueryClient();
-  // Troca de conta: as consultas ficam pausadas até a tela da conta nova estar no lugar (ver `switchTo`).
-  const resumeAfterSwitch = useRef<(() => void) | null>(null);
+  // Troca de conta/empresa: o que ficou pausado (consultas, fila de treino) só volta depois que a conta
+  // nova está no lugar (ver `switchTo` e `enterPortal`).
+  const afterCommit = useRef<(() => void)[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<Accounts>({});
   const [returnRole, setReturnRole] = useState<Role | null>(null);
@@ -256,7 +258,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // A tela da conta nova já está no lugar (a antiga desmontou): as consultas podem voltar.
   useEffect(() => {
-    resumeAfterSwitch.current?.();
+    const pending = afterCommit.current;
+    afterCommit.current = [];
+    pending.forEach((fn) => fn());
   }, [role, isAuthenticated, user, mode]);
 
   // As funções de dados do cliente (agenda, chat, treino) seguem o modo do login.
@@ -283,7 +287,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      * Resultado de login do portal: guarda a identidade, abre a sessão da empresa (se veio uma)
      * e monta o usuário. Sem empresa ainda, vai para a escolha de empresa.
      */
+    /** Solta `fn` depois do próximo desenho (a conta nova já instalada); a reserva cobre quando nada mudou. */
+    function releaseAfterCommit(fn: () => void) {
+      let done = false;
+      const once = () => {
+        if (done) return;
+        done = true;
+        fn();
+      };
+      afterCommit.current.push(once);
+      setTimeout(once, 1500);
+    }
+
+    /**
+     * Entrar no portal e trocar de empresa: o token da empresa nova é instalado antes de ela virar a dona
+     * dos treinos guardados; a fila offline fica parada nesse intervalo (senão sairia com o token errado).
+     */
     async function enterPortal(result: PortalLoginResult): Promise<'blocked' | 'ok'> {
+      const resumeOwner = suspendFitnessOwner();
+      try {
+        return await enterPortalNow(result);
+      } finally {
+        releaseAfterCommit(resumeOwner);
+      }
+    }
+
+    async function enterPortalNow(result: PortalLoginResult): Promise<'blocked' | 'ok'> {
       if (!result.session && result.companies.length === 0) return 'blocked';
       // Antes de qualquer chamada `me/*`: o token de cliente é o que vai no cabeçalho.
       await setSavedRole('client');
@@ -321,21 +350,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function switchTo(target: Role, known: Accounts, opts?: { leaving?: boolean }): Promise<boolean> {
       if (!known[target]) return false;
       const wasOnline = onlineManager.isOnline();
-      let resumed = false;
-      const resume = () => {
-        if (resumed) return;
-        resumed = true;
-        resumeAfterSwitch.current = null;
-        onlineManager.setOnline(wasOnline);
-      };
+      // A fila de treino também para: o dono só muda depois do token.
+      const resumeOwner = suspendFitnessOwner();
       onlineManager.setOnline(false);
       await qc.cancelQueries();
       try {
         return await switchAccount(target, known, opts);
       } finally {
-        // Solta depois do próximo desenho (a tela antiga já desmontou); a reserva cobre quando nada mudou.
-        resumeAfterSwitch.current = resume;
-        setTimeout(resume, 1500);
+        // Solta depois do próximo desenho (a tela antiga já desmontou).
+        releaseAfterCommit(() => {
+          onlineManager.setOnline(wasOnline);
+          resumeOwner();
+        });
       }
     }
 
