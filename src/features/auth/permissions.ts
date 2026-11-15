@@ -38,6 +38,8 @@ export const PERMS = {
   queuesRead: 'queues:read',
   /** Ver quem da equipe está online e mudar a própria disponibilidade. */
   teamPresence: 'users:view_availability',
+  /** Cadastro de usuários: lista da equipe para transferir quando falta a permissão de ver presença. */
+  usersRead: 'users:read',
   /** Usar a IA (resumo, sugestões, melhorar o texto). Também precisa do app de IA na empresa. */
   aiUse: 'ai:use',
   // PDV (venda em campo)

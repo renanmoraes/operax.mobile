@@ -74,6 +74,7 @@ const attendance: Shape<typeof pt> = {
   },
   transfer: {
     agentsHint: 'Primero aparece quien tiene Operax abierto. Solo puedes transferir a quien atiende este número.',
+    agentsHintPlain: 'Elige quién la recibirá. Solo puedes transferir a quien atiende este número.',
     chats_zero: 'Ninguna conversación',
     chats_one: '{{count}} conversación',
     chats_other: '{{count}} conversaciones',

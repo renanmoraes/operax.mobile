@@ -30,6 +30,23 @@ export async function getTeamPresence(): Promise<TeamMember[]> {
   return (Array.isArray(data) ? data : data?.data ?? []) as TeamMember[];
 }
 
+export type TransferTarget = { id: string; name: string; email?: string | null };
+
+/**
+ * Atendentes para transferir sem os dados de presença (quem não tem `users:view_availability`): a busca leve
+ * da equipe (`chat:read`) ou o cadastro de usuários (`users:read`). Só ativos.
+ */
+export async function listTransferTargets(source: 'search' | 'users'): Promise<TransferTarget[]> {
+  type Row = { id: string; name?: string | null; email?: string | null; status?: string };
+  const rows: Row[] =
+    source === 'search'
+      ? ((await api.get('/api/users/search', { params: { limit: 200 } })).data ?? [])
+      : ((await api.get('/api/users', { params: { limit: 500, status: 'active' } })).data?.data ?? []);
+  return (Array.isArray(rows) ? rows : [])
+    .filter((u) => !u.status || u.status === 'active')
+    .map((u) => ({ id: u.id, name: u.name || u.email || '—', email: u.email ?? null }));
+}
+
 export async function getMyAvailability(): Promise<{ status: Availability; active_conversation_count?: number }> {
   const { data } = await api.get('/api/users/me/availability');
   return data;

@@ -72,6 +72,7 @@ const attendance = {
   },
   transfer: {
     agentsHint: 'Quem está com o Operax aberto aparece primeiro. Só dá para transferir para quem atende este número.',
+    agentsHintPlain: 'Escolha quem vai receber. Só dá para transferir para quem atende este número.',
     chats_zero: 'Nenhuma conversa',
     chats_one: '{{count}} conversa',
     chats_other: '{{count}} conversas',

@@ -10,7 +10,7 @@ import { useAuth } from '@/src/features/auth/AuthContext';
 import { useCan } from '@/src/features/auth/useCan';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
 import { transferConversation, transferConversationToQueue } from '@/src/shared/api/conversations.api';
-import { listQueues, type Queue, type TeamMember } from '@/src/shared/api/attendance.api';
+import { listQueues, listTransferTargets, type Queue, type TeamMember, type TransferTarget } from '@/src/shared/api/attendance.api';
 import { PRESENCE_COLOR, presenceOf, sortByPresence } from './presence';
 import { useTeamPresence } from './TeamPresence';
 
@@ -52,7 +52,11 @@ export function TransferSheet({
   const { mode, user } = useAuth();
   const can = useCan();
   const live = mode === 'live';
-  const canAgent = can('transfer') && can('teamPresence');
+  // Transferir para atendente só pede `conversations:transfer`. A presença (online, carga) é um extra de
+  // quem pode vê-la; sem ela, a lista vem da busca da equipe ou do cadastro, sem os indicadores.
+  const withPresence = can('teamPresence');
+  const listSource: 'search' | 'users' | null = withPresence ? null : can('teamChat') ? 'search' : can('usersRead') ? 'users' : null;
+  const canAgent = can('transfer') && (withPresence || listSource !== null);
   const canQueue = can('transferQueue') && can('queuesRead');
   const [picked, setPicked] = useState<Tab | null>(null);
   const tab: Tab = picked ?? (canAgent && within24h ? 'agent' : 'queue');
@@ -60,8 +64,17 @@ export function TransferSheet({
   // Confirmação dentro da folha (um diálogo por cima de outra folha some atrás dela em alguns aparelhos).
   const [confirm, setConfirm] = useState<{ to: Tab; id: string; name: string } | null>(null);
 
-  const { team, loading: teamLoading } = useTeamPresence(visible && canAgent);
+  const { team, loading: presenceLoading } = useTeamPresence(visible && canAgent && withPresence);
   const agents = sortByPresence(team.filter((m) => m.id !== user?.id));
+  const plainQ = useQuery({
+    queryKey: ['transfer-targets', listSource],
+    enabled: visible && live && canAgent && !withPresence && listSource !== null,
+    staleTime: 5 * 60_000,
+    queryFn: () => listTransferTargets(listSource!),
+  });
+  const plain = (plainQ.data ?? []).filter((m) => m.id !== user?.id);
+  const teamLoading = withPresence ? presenceLoading : live && plainQ.isLoading;
+  const agentCount = withPresence ? agents.length : plain.length;
   const queuesQ = useQuery({ queryKey: ['queues'], enabled: visible && live && canQueue, staleTime: 5 * 60_000, queryFn: listQueues });
   const queues = live ? queuesQ.data ?? [] : DEMO_QUEUES;
 
@@ -119,13 +132,13 @@ export function TransferSheet({
           <Notice icon="time-outline" text={t('transfer.windowClosed')} />
         ) : (
           <>
-            <Muted style={styles.hint}>{t('transfer.agentsHint')}</Muted>
+            <Muted style={styles.hint}>{withPresence ? t('transfer.agentsHint') : t('transfer.agentsHintPlain')}</Muted>
             <ScrollView style={{ maxHeight: 340 }} contentContainerStyle={{ gap: 6 }}>
               {teamLoading ? <ActivityIndicator color={colors.primary} style={{ paddingVertical: 20 }} /> : null}
-              {!teamLoading && agents.length === 0 ? <Muted style={styles.empty}>{t('transfer.noAgents')}</Muted> : null}
-              {agents.map((m) => (
-                <AgentRow key={m.id} m={m} onPress={() => setConfirm({ to: 'agent', id: m.id, name: m.name })} />
-              ))}
+              {!teamLoading && agentCount === 0 ? <Muted style={styles.empty}>{t('transfer.noAgents')}</Muted> : null}
+              {withPresence
+                ? agents.map((m) => <AgentRow key={m.id} m={m} onPress={() => setConfirm({ to: 'agent', id: m.id, name: m.name })} />)
+                : plain.map((m) => <PlainAgentRow key={m.id} m={m} onPress={() => setConfirm({ to: 'agent', id: m.id, name: m.name })} />)}
             </ScrollView>
           </>
         )
@@ -190,6 +203,20 @@ function AgentRow({ m, onPress }: { m: TeamMember; onPress: () => void }) {
         </Text>
       </View>
       {off ? null : <Ionicons name="arrow-forward-circle" size={24} color={colors.primary} />}
+    </Pressable>
+  );
+}
+
+/** Atendente sem os dados de presença: dá para escolher qualquer um da equipe. */
+function PlainAgentRow({ m, onPress }: { m: TransferTarget; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={m.name} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+      <Avatar initials={initialsOf(m.name)} size={40} tone="soft" />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={styles.name} numberOfLines={1}>{m.name}</Text>
+        {m.email ? <Text style={styles.meta} numberOfLines={1}>{m.email}</Text> : null}
+      </View>
+      <Ionicons name="arrow-forward-circle" size={24} color={colors.primary} />
     </Pressable>
   );
 }

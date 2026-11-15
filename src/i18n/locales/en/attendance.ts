@@ -74,6 +74,7 @@ const attendance: Shape<typeof pt> = {
   },
   transfer: {
     agentsHint: 'People with Operax open show first. You can only transfer to someone who handles this number.',
+    agentsHintPlain: 'Choose who will receive it. You can only transfer to someone who handles this number.',
     chats_zero: 'No chats',
     chats_one: '{{count}} chat',
     chats_other: '{{count}} chats',
