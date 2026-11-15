@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { Recorder, type RecorderSave } from '@/src/features/fitness/Recorder';
 import { partLabel, plannedMeters } from '@/src/features/fitness/parts';
-import { newIdempotencyKey, queueResults } from '@/src/features/fitness/resultsQueue';
+import { isRejected, newIdempotencyKey, queueResults } from '@/src/features/fitness/resultsQueue';
 import { sportInfo } from '@/src/features/fitness/sports';
 import { guideSteps } from '@/src/features/fitness/coach';
 import { useRecordResult } from '@/src/features/fitness/useFitness';
@@ -38,7 +38,9 @@ function PlannedRecord({ workout, partIndex }: { workout: FitnessWorkoutView; pa
     try {
       await record.mutateAsync(body);
       return 'saved';
-    } catch {
+    } catch (e) {
+      // Recusado pelo servidor: a tela de salvar avisa e fica aberta (na fila sumiria em silêncio).
+      if (isRejected(e)) throw e;
       await queueResults([body]);
       return 'queued';
     }

@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { isRejected } from './resultsQueue';
 import { confirmDialog, showDialog } from '@/src/design-system/Dialog';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, Vibration, View } from 'react-native';
@@ -55,7 +56,8 @@ const DRAFT_BASE = 'fitness_recording_draft';
 /** Por conta (ver owner.ts): o rascunho de um aluno não aparece para outro no mesmo celular. */
 const draftStoreKey = () => ownedKey(DRAFT_BASE);
 const DRAFT_MAX_AGE_MS = 6 * 3600_000;
-type Draft = { key: string; startedAt: number; banked: number; savedAt: number; run: Omit<RunState, 'last' | 'recent'> };
+/** `guide`: etapa do treino do professor e de onde ela começou; `sets`: séries marcadas na musculação. */
+type Draft = { key: string; startedAt: number; banked: number; savedAt: number; run: Omit<RunState, 'last' | 'recent'>; guide?: { i: number; s0: number; m0: number }; sets?: number };
 
 const run0 = () => emptyRun();
 /** Número com 1 casa no formato do idioma ("12,5" / "12.5"). */
@@ -173,8 +175,8 @@ export function Recorder({
     lastDraftAt.current = now;
     const bankedNow = banked.current + (runningSince.current ? now - runningSince.current : 0);
     const { last: _l, recent: _r, ...keep } = run;
-    void kvSet(k, { key: draftKey, startedAt: startedAt.current, banked: bankedNow, savedAt: now, run: keep } satisfies Draft);
-  }, [run, phase, draftKey, elapsed]);
+    void kvSet(k, { key: draftKey, startedAt: startedAt.current, banked: bankedNow, savedAt: now, run: keep, guide: guideRef.current, sets } satisfies Draft);
+  }, [run, phase, draftKey, elapsed, sets]);
 
   function restore(d: Draft) {
     startedAt.current = d.startedAt;
@@ -183,6 +185,11 @@ export function Recorder({
     runningSince.current = null;
     setElapsed(Math.round(d.banked / 1000));
     setRun({ ...emptyRun(), ...d.run, last: null, recent: [] });
+    // Retoma na etapa em que estava (senão a primeira etapa seria medida contra o treino inteiro e repetiria as etapas feitas).
+    const g = d.guide ?? { i: 0, s0: 0, m0: 0 };
+    guideRef.current = g;
+    setGuideAt(g);
+    setSets(d.sets ?? 0);
     setDraft(null);
     trackAction('treino retomado do rascunho', { sport: sport.id });
     go('paused');
@@ -406,7 +413,11 @@ export function Recorder({
     } catch (e) {
       void reportError(e, { context: 'salvar treino gravado' });
       go('review');
-      void showDialog({ title: t('rec.saveFailTitle'), message: t('rec.saveFailBody'), tone: 'warn', icon: 'cloud-offline-outline' });
+      void showDialog(
+        isRejected(e)
+          ? { title: t('rec.saveFailTitle'), message: t('rec.rejectedBody'), tone: 'warn' }
+          : { title: t('rec.saveFailTitle'), message: t('rec.saveFailBody'), tone: 'warn', icon: 'cloud-offline-outline' },
+      );
     }
   }
 

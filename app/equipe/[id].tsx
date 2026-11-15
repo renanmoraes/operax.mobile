@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ReactNode, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { FlatList, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, TextInputInstance, View } from 'react-native';
@@ -64,11 +64,14 @@ function TeamChatConversationScreen() {
 
   const channel = channels.find((c) => c.id === id);
 
-  // Esta conversa está aberta: não avisa sobre ela e zera as não lidas.
+  // Esta conversa está aberta e NA TELA: não avisa sobre ela e zera as não lidas. Foto ou PDF aberto por
+  // cima (visualizador) tira o foco: a conversa deixa de contar como vista até voltar.
+  const focused = useIsFocused();
   useEffect(() => {
+    if (!focused) return;
     setOpenChannel(id ?? null);
     return () => setOpenChannel(null);
-  }, [id, setOpenChannel]);
+  }, [id, setOpenChannel, focused]);
 
   useSyncExternalStore(demoTeamChat.subscribe, demoTeamChat.version, demoTeamChat.version);
   // Mensagens mais antigas que a página atual: carregadas sob demanda e mantidas ao atualizar.
@@ -109,8 +112,8 @@ function TeamChatConversationScreen() {
   // Mensagem nova chegando com a conversa aberta já conta como lida.
   const lastId = thread[thread.length - 1]?.id;
   useEffect(() => {
-    if (live && lastId && id) markRead(id);
-  }, [live, lastId, id, markRead]);
+    if (live && focused && lastId && id) markRead(id);
+  }, [live, focused, lastId, id, markRead]);
 
   const refreshLive = () => {
     void qc.invalidateQueries({ queryKey: ['team-chat', 'messages', id] });

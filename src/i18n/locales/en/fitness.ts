@@ -445,6 +445,7 @@ const fitness: Shape<typeof pt> = {
     queued: 'Saved on your phone',
     queuedBody: 'You\'re offline. It\'ll go to your history automatically when you\'re back online.',
     recording: 'Recording',
+    rejectedBody: 'The server rejected this workout. Check the details and try again; your workout is still here.',
     resume: 'Resume',
     saveFailBody: 'Please try again in a moment. Your workout is still saved on your phone.',
     saveFailTitle: 'Couldn\'t save',

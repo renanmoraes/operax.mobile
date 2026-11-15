@@ -8,7 +8,7 @@ import { Badge, Body, Button, Card, Field, Muted, Rise, Screen, Segmented, TopBa
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { partLabel, partLines } from '@/src/features/fitness/parts';
-import { newIdempotencyKey, queueResults } from '@/src/features/fitness/resultsQueue';
+import { isRejected, newIdempotencyKey, queueResults } from '@/src/features/fitness/resultsQueue';
 import { useRecordResult } from '@/src/features/fitness/useFitness';
 import type { FitnessWodLevel, FitnessWorkoutView } from '@/src/features/fitness/types';
 import { isoDate } from '@/src/shared/format';
@@ -56,7 +56,12 @@ function RegisterResult({ workout, partIndex }: { workout: FitnessWorkoutView; p
     try {
       await record.mutateAsync(body);
       setState('saved');
-    } catch {
+    } catch (e) {
+      // Recusado pelo servidor: avisa e mantém o formulário para corrigir (na fila sumiria em silêncio).
+      if (isRejected(e)) {
+        setError(i18n.t('fitness:done.rejected'));
+        return;
+      }
       // Sem internet: fica na fila e vai sozinho quando a conexão voltar.
       await queueResults([body]);
       setState('queued');

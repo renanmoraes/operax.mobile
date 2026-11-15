@@ -8,8 +8,8 @@ import { clientDataMode } from './dataMode';
 import { UserFacingError } from './userFacingError';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import type { ChatMessage, ClientBooking, OutgoingAttachment } from './types';
-import { useEffect } from 'react';
-import { describe, notifyNow, syncBookingReminders } from '@/src/features/notifications/reminders';
+import { useEffect, useRef } from 'react';
+import { clearBookingReminders, describe, notifyNow, syncBookingReminders } from '@/src/features/notifications/reminders';
 
 const keys = {
   companies: ['client', 'companies'] as const,
@@ -102,11 +102,25 @@ export function useClassAction() {
 /** Mantém os lembretes do aparelho iguais à agenda (só com login real e agenda liberada). */
 export function useBookingReminders() {
   const caps = useClientCapabilities();
+  const { user } = useAuth();
+  const tenant = user?.kind === 'client' ? user.active_tenant_id : null;
   const { data } = useBookings();
+  // Trocou de empresa: os lembretes da anterior saem (senão tocariam com o link abrindo na empresa nova).
+  const lastTenant = useRef(tenant);
   useEffect(() => {
-    if (!data || clientDataMode() !== 'live' || !caps.scheduling) return;
-    void syncBookingReminders(data);
-  }, [data, caps.scheduling]);
+    if (lastTenant.current === tenant) return;
+    lastTenant.current = tenant;
+    void clearBookingReminders();
+  }, [tenant]);
+  useEffect(() => {
+    if (clientDataMode() !== 'live') return;
+    // Empresa sem agenda no portal: nenhum lembrete pode ficar agendado.
+    if (caps.loaded && !caps.scheduling) {
+      void clearBookingReminders();
+      return;
+    }
+    if (data && caps.scheduling) void syncBookingReminders(data);
+  }, [data, caps.scheduling, caps.loaded]);
 }
 
 export function useChats() {

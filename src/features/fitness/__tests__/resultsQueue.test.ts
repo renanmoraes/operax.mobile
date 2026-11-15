@@ -44,3 +44,42 @@ describe('fila offline de resultados', () => {
     expect(rest).toHaveLength(1);
   });
 });
+
+describe('fila por conta', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const owner = require('../owner') as typeof import('../owner');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const q = require('../resultsQueue') as typeof import('../resultsQueue');
+
+  it('chave só com caracteres que o armazenamento seguro aceita', () => {
+    expect(owner.ownedKey('fila', 'live:client:3f2a-uuid:t 1/x')).toBe('fila.live_client_3f2a-uuid_t_1_x');
+    expect(owner.ownedKey('fila', '')).toBeNull();
+  });
+
+  it('cada conta vê só a própria fila', async () => {
+    owner.setFitnessOwner('live:client:a:t1');
+    await q.queueResults([body('a1')]);
+    owner.setFitnessOwner('live:client:b:t1');
+    expect(await q.loadQueue()).toEqual([]);
+    owner.setFitnessOwner('live:client:a:t1');
+    expect((await q.loadQueue()).map((b) => b.idempotency_key)).toEqual(['a1']);
+  });
+
+  it('trocou de conta no meio do envio: para e não manda o resto com o login novo', async () => {
+    owner.setFitnessOwner('live:client:c:t1');
+    await q.queueResults([body('c1'), body('c2'), body('c3')]);
+    const sent: string[] = [];
+    const changed = await q.flushAll({
+      result: async (b) => {
+        sent.push(b.idempotency_key);
+        owner.setFitnessOwner('live:client:d:t1'); // a pessoa trocou de conta depois do primeiro envio
+        return { ok: true };
+      },
+      activity: async () => ({ ok: true }),
+    });
+    expect(changed).toBe(true);
+    expect(sent).toEqual(['c1']);
+    owner.setFitnessOwner('live:client:c:t1');
+    expect((await q.loadQueue()).map((b) => b.idempotency_key)).toEqual(['c2', 'c3']);
+  });
+});

@@ -443,6 +443,7 @@ const fitness = {
     queued: 'Guardado no celular',
     queuedBody: 'Sem internet agora. Ele vai sozinho para o histórico quando a conexão voltar.',
     recording: 'Gravando',
+    rejectedBody: 'O servidor recusou este treino. Confira os dados e tente de novo; o treino continua aqui.',
     resume: 'Retomar',
     saveFailBody: 'Tente de novo em instantes. O treino continua guardado no celular.',
     saveFailTitle: 'Não deu para salvar',

@@ -14,7 +14,10 @@ export function fitnessOwner(): string {
   return owner;
 }
 
-/** Chave de armazenamento do dono atual; `null` sem conta (não grava nem lê). */
-export function ownedKey(base: string): string | null {
-  return owner ? `${base}:${owner}` : null;
+/**
+ * Chave de armazenamento de um dono (o atual, se não for dito); `null` sem conta (não grava nem lê).
+ * Só letras, números, `.`, `-` e `_`: é o que o armazenamento seguro do celular aceita como chave.
+ */
+export function ownedKey(base: string, who: string = owner): string | null {
+  return who ? `${base}.${who.replace(/[^A-Za-z0-9._-]/g, '_')}` : null;
 }

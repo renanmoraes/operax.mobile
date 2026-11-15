@@ -200,11 +200,27 @@ export async function recentBreadcrumbs(n = 25): Promise<Breadcrumb[]> {
 }
 
 // ---------- cache chave/valor ----------
+// Navegador: guarda também no localStorage, para a fila offline e os rascunhos sobreviverem ao recarregar.
+const WEB_KV = 'operax_kv:';
+function webKvGet(key: string): string | null {
+  try {
+    return globalThis.localStorage?.getItem(WEB_KV + key) ?? null;
+  } catch {
+    return null;
+  }
+}
+function webKvSet(key: string, raw: string) {
+  try {
+    globalThis.localStorage?.setItem(WEB_KV + key, raw);
+  } catch {
+    // cheio ou modo privado
+  }
+}
 export async function kvGet<T>(key: string): Promise<T | null> {
   try {
     const db = await localDb();
     if (!db) {
-      const v = mem.kv.get(key);
+      const v = mem.kv.get(key) ?? webKvGet(key);
       return v ? (JSON.parse(v) as T) : null;
     }
     const r = await db.getFirstAsync<{ value: string }>('SELECT value FROM kv WHERE key = ?', [key]);
@@ -220,6 +236,7 @@ export async function kvSet(key: string, value: unknown): Promise<void> {
     const db = await localDb();
     if (!db) {
       mem.kv.set(key, raw);
+      webKvSet(key, raw);
       return;
     }
     await db.runAsync('INSERT INTO kv (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at', [key, raw, new Date().toISOString()]);

@@ -445,6 +445,7 @@ const fitness: Shape<typeof pt> = {
     queued: 'Guardado en el teléfono',
     queuedBody: 'Sin internet ahora. Irá solo a tu historial cuando vuelva la conexión.',
     recording: 'Grabando',
+    rejectedBody: 'El servidor rechazó este entreno. Revisa los datos e inténtalo de nuevo; el entreno sigue aquí.',
     resume: 'Reanudar',
     saveFailBody: 'Inténtalo de nuevo en unos instantes. El entreno sigue guardado en el teléfono.',
     saveFailTitle: 'No se pudo guardar',
