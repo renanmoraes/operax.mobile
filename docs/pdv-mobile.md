@@ -52,7 +52,7 @@ Regras combinadas com o dono (2026-11-14):
 - Folhas: `WeighSheet` (peso/valor), `DiscountSheet`, `CustomerSheet` (busca + cadastro em passos),
   `CheckoutSheet`, `ReceiptActions` (PDF e envio pela empresa), `ScannerModal` (câmera, leitura seguida).
 - `posClient.ts` escolhe entre o servidor e a demonstração (produtos de exemplo, vendas na memória).
-- Envio pela empresa: `POST /apps/pos/sales/:id/receipt/send` `{channel: 'whatsapp'|'email', to?}`. Resposta
+- Envio pela empresa (em produção desde `backend-v2.172.34`): `POST /apps/pos/sales/:id/receipt/send` `{channel: 'whatsapp'|'email', to?}`. Resposta
   `{channel, to, via: 'session'|'template'|'email'}`; 422 com `code: 'template_required'` quando a janela de
   24 h está fechada e não há modelo aprovado.
 

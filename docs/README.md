@@ -20,10 +20,17 @@ Documentação de kickoff do app nativo (iOS/Android). Fonte canônica de produt
 | [11-push-catalogo.md](11-push-catalogo.md) | Push defaults ON (dia zero) |
 | [12-api-gaps.md](12-api-gaps.md) | Gaps do probe automático |
 | [13-saude-do-celular.md](13-saude-do-celular.md) | Apple Saúde e Health Connect (Galaxy): o que lê e o contrato de envio |
+| [atendimento.md](atendimento.md) | Números/canais, presença, transferir, IA no atendimento |
+| [pdv-mobile.md](pdv-mobile.md) | PDV no celular (venda, comprovante, vendas do dia) |
+| [treino-gravacao.md](treino-gravacao.md) | Gravação de treino e treino livre com GPS |
+| [notificacoes.md](notificacoes.md) | Lembretes locais e avisos |
+| [i18n.md](i18n.md) | Idiomas (pt, en, es) |
+| [aso/](aso/) | Publicação nas lojas: metadados, checklist, prints |
 | [adr/](adr/) | ADRs |
 
-## Estado atual
+## Estado atual (2026-11-15)
 
-- **Fase 1:** telas navegáveis com mocks (P0–P4)
-- **Push:** requisito desde o dia zero (tudo ON por padrão) — ver 11-push-catalogo.md
-- Wiring auth Bearer + POST device-tokens no login: próxima entrega
+- App ligado à API real para equipe e cliente; modo demonstração para teste e prints.
+- PR #1 (redesign + atendimento + treino + PDV Fase 1) mergeado na `main`.
+- API com as rotas do app em produção: `backend-v2.172.34` (ver [12-api-gaps.md](12-api-gaps.md)).
+- Próximo: prints e envio às lojas (ver [aso/store-readiness-checklist.md](aso/store-readiness-checklist.md)); PDV Fase 2.
