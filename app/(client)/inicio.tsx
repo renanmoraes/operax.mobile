@@ -59,6 +59,10 @@ export default function ClientHomeScreen() {
   const today = week?.days.find((d) => d.date === week.today);
   const todayWorkout = today?.items?.[0];
   const todayDone = !!today?.done;
+  const workoutParts = todayWorkout?.title.split('·').map((s) => s.trim()) ?? [];
+  const workoutName = workoutParts[1] ?? workoutParts[0];
+  const workoutLabel = workoutParts.length > 1 ? workoutParts[0] : null;
+  const exerciseCount = todayWorkout?.parts[0]?.type === 'strength' ? todayWorkout.parts[0].items.length : 0;
   const chat = chats?.find((c) => c.unread > 0) ?? chats?.[0];
   const lastTeam = chat ? [...chat.messages].reverse().find((m) => m.from === 'team') : undefined;
   const textMsg = chat ? [...chat.messages].reverse().find((m) => m.from === 'team' && m.text) : undefined;
@@ -127,13 +131,21 @@ export default function ClientHomeScreen() {
                 <Muted style={{ fontFamily: typography.fontFamilySemiBold, fontSize: 12 }}>{todayDone ? t('home.done') : t('home.today')}</Muted>
               </View>
               <Text style={styles.tileTitle} numberOfLines={2}>
-                {todayWorkout ? todayWorkout.title.split('·')[1]?.trim() ?? todayWorkout.title : t('home.restDay')}
+                {todayWorkout ? workoutName : t('home.restDay')}
               </Text>
-              <Muted style={{ marginTop: 4 }}>{todayWorkout ? t('home.workoutMeta', { label: todayWorkout.title.split('·')[0].trim(), count: todayWorkout.parts[0]?.type === 'strength' ? todayWorkout.parts[0].items.length : 0 }) : t('home.lightStretch')}</Muted>
+              <Muted style={{ marginTop: 4 }} numberOfLines={1}>
+                {!todayWorkout
+                  ? t('home.lightStretch')
+                  : workoutLabel
+                    ? t('home.workoutMeta', { label: workoutLabel, count: exerciseCount })
+                    : t('home.exerciseCount', { count: exerciseCount })}
+              </Muted>
               {todayWorkout && !todayDone ? (
-                <View style={styles.startPill}>
-                  <Ionicons name="play" size={12} color="#fff" />
-                  <Text style={styles.startPillText}>{t('home.start')}</Text>
+                <View style={styles.startWrap}>
+                  <View style={styles.startPill}>
+                    <Ionicons name="play" size={12} color="#fff" />
+                    <Text style={styles.startPillText}>{t('home.start')}</Text>
+                  </View>
                 </View>
               ) : null}
             </Card>
@@ -222,9 +234,10 @@ const styles = StyleSheet.create({
   confirmed: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18, height: 50, paddingLeft: 16, paddingRight: 4, borderRadius: 999, backgroundColor: colors.successSoft },
   confirmedText: { flex: 1, fontFamily: typography.fontFamilyBold, fontSize: 14, color: colors.success },
   grid: { flexDirection: 'row', gap: 12, marginTop: 12 },
-  tile: { minHeight: 180, borderRadius: radii.xl },
+  tile: { flex: 1, minHeight: 180, borderRadius: radii.xl },
   tileTitle: { marginTop: 14, ...text.section, color: colors.text },
-  startPill: { marginTop: 'auto', alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.primary },
+  startWrap: { marginTop: 'auto', paddingTop: 14 },
+  startPill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.primary },
   startPillText: { color: '#fff', fontFamily: typography.fontFamilySemiBold, fontSize: 13 },
   dots: { marginTop: 'auto', paddingTop: 12, flexDirection: 'row', justifyContent: 'space-between' },
   dot: { width: 16, height: 16, borderRadius: 8 },

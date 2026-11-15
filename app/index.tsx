@@ -22,7 +22,8 @@ export default function Index() {
     );
   }
 
-  if (role == null) {
+  // Sem sessão, o app sempre abre na escolha "Sou cliente / Sou da equipe", mesmo com um papel lembrado.
+  if (role == null || (!isAuthenticated && !needsMfa)) {
     return <Redirect href={resolveAuthRoute({ phase: 'role_unselected' })} />;
   }
 

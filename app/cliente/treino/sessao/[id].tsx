@@ -11,7 +11,7 @@ import { ActionRow, EmptyState, IconButton, Muted, Num, PressableScale, Progress
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { colors, gradients, radii, shadows, text, typography, glass } from '@/src/design-system/tokens';
-import { flattenWorkout, nextPrescription } from '@/src/features/fitness/flatten';
+import { flattenWorkout, nextPrescription, stepLoad } from '@/src/features/fitness/flatten';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { useLoadHistory } from '@/src/features/fitness/useFitness';
 import type { FitnessWorkoutView } from '@/src/features/fitness/types';
@@ -27,7 +27,7 @@ function Stepper({ label, value, unit, onMinus, onPlus }: { label: string; value
         <PressableScale onPress={onMinus} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:session.decrease', { what: label.toLowerCase() })} scaleTo={0.9} style={styles.stepBtn}>
           <Ionicons name="remove" size={22} color={colors.primary} />
         </PressableScale>
-        <Num size="lg" accessibilityLiveRegion="polite">
+        <Num size="lg" fit accessibilityLiveRegion="polite" style={styles.stepValue}>
           {value}
           {unit ? <Text style={{ fontSize: 13, color: colors.textMuted }}>{` ${unit}`}</Text> : null}
         </Num>
@@ -342,7 +342,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
         ) : (
           <>
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
-              <Stepper label={i18n.t('fitness:session.load')} value={formatKg(kg)} unit="kg" onMinus={() => setKg((v) => Math.max(0, v - step))} onPlus={() => setKg((v) => v + step)} />
+              <Stepper label={i18n.t('fitness:session.load')} value={formatKg(kg)} unit="kg" onMinus={() => setKg((v) => stepLoad(v, step, -1))} onPlus={() => setKg((v) => stepLoad(v, step, 1))} />
               <Stepper label={i18n.t('fitness:log.reps')} value={String(reps)} onMinus={() => setReps((v) => Math.max(1, v - 1))} onPlus={() => setReps((v) => v + 1)} />
             </View>
             {LOAD_HISTORY[exId] ? (
@@ -474,6 +474,7 @@ const styles = StyleSheet.create({
   stepper: { flex: 1, padding: 12, borderRadius: radii.lg + 2, backgroundColor: glass(0.88), ...shadows.card },
   stepLabel: { textAlign: 'center', fontFamily: typography.fontFamilySemiBold, fontSize: 12, color: colors.textMuted },
   stepRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  stepValue: { flex: 1, textAlign: 'center', marginHorizontal: 4 },
   stepBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primaryWash, alignItems: 'center', justifyContent: 'center' },
   lastCard: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 10, paddingVertical: 12, paddingHorizontal: 14, borderRadius: radii.lg, backgroundColor: 'rgba(255,255,255,0.88)' },
   lastValue: { marginTop: 2, fontFamily: typography.fontFamilyBold, fontSize: 14, color: colors.text, fontVariant: ['tabular-nums'] },

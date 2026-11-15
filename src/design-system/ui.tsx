@@ -284,15 +284,23 @@ export function Num({
   style,
   accessibilityLabel,
   accessibilityLiveRegion,
+  fit = false,
 }: {
   children: ReactNode;
   size?: NumberSize;
   style?: StyleProp<TextStyle>;
   accessibilityLabel?: string;
   accessibilityLiveRegion?: 'none' | 'polite' | 'assertive';
+  /** Uma linha só: encolhe a fonte em vez de quebrar quando o espaço é curto. */
+  fit?: boolean;
 }) {
   return (
-    <Text style={[numbers[size], styles.num, style]} accessibilityLabel={accessibilityLabel} accessibilityLiveRegion={accessibilityLiveRegion}>
+    <Text
+      style={[numbers[size], styles.num, style]}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityLiveRegion={accessibilityLiveRegion}
+      {...(fit ? { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.6 } : {})}
+    >
       {children}
     </Text>
   );

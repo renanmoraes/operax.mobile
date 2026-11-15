@@ -109,6 +109,14 @@ function fromExercise(w: FitnessWorkoutView, item: FitnessExerciseItem, partInde
   };
 }
 
+/** Próxima carga no seletor: de 12 com passo 2,5 vai a 12,5 (não 14,5). Conta em centésimos para não acumular erro. */
+export function stepLoad(kg: number, step: number, dir: 1 | -1): number {
+  const c = Math.round(kg * 100);
+  const s = Math.round(step * 100);
+  const k = dir > 0 ? Math.floor(c / s) + 1 : Math.ceil(c / s) - 1;
+  return Math.max(0, k * s) / 100;
+}
+
 /** Carga e repetições da próxima série ainda não feita (drop set: o estágio seguinte, não o primeiro). */
 export function nextPrescription(row: Pick<ExerciseRow, 'kg' | 'reps' | 'sets'>, doneCount: number): { kg: number; reps: number } {
   const s = row.sets[Math.min(doneCount, row.sets.length - 1)];
