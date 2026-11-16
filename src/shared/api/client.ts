@@ -56,21 +56,18 @@ async function refreshAccessToken(role: SavedRole): Promise<string | null> {
 }
 
 /**
- * Renova a sessão da conta ao abrir o app: a equipe troca o refresh token (vale 90 dias a partir de agora) e o cliente pede
- * uma sessão nova da mesma empresa ao portal. Quem usa o app nunca precisa entrar de novo. Devolve falso se a sessão já
- * tinha caído (outro aparelho entrou, a empresa desconectou ou venceu); erro de rede sobe para quem chamou.
+ * Renova a sessão da conta ao abrir o app, para quem usa nunca precisar entrar de novo.
+ * - Equipe: não gira o token aqui. Recarregar o perfil já renova quando o token de acesso venceu (pelo interceptor), e a
+ *   sessão do celular vale 90 dias a partir de cada renovação; girar a cada abertura só arriscaria perder a resposta e
+ *   ficar com um token velho.
+ * - Cliente: pede uma sessão nova da mesma empresa ao portal (`me/renew`).
+ * `gone`: a sessão já tinha caído (outro aparelho entrou, a empresa desconectou). `skip`: esta sessão não renova (aberta antes
+ * da regra ou sem identidade) e segue até vencer. Erro de rede ou de servidor sobe para quem chamou.
  */
-export async function renewSession(role: SavedRole): Promise<boolean> {
-  if (role === 'staff') {
-    try {
-      return !!(await refreshAccessToken('staff'));
-    } catch (e) {
-      if (isAxiosError(e) && e.response && [401, 403].includes(e.response.status)) return false;
-      throw e;
-    }
-  }
+export async function renewSession(role: SavedRole): Promise<'ok' | 'gone' | 'skip'> {
+  if (role === 'staff') return 'ok';
   const access = await getAccessToken('client');
-  if (!access) return false;
+  if (!access) return 'gone';
   try {
     const { data } = await axios.post(
       `${API_URL}/api/public/portal/me/renew`,
@@ -78,14 +75,16 @@ export async function renewSession(role: SavedRole): Promise<boolean> {
       { headers: { 'X-Client': MOBILE_CLIENT_HEADER, Authorization: `Bearer ${access}`, Accept: 'application/json' }, timeout: 30_000 },
     );
     const next = data?.access_token as string | undefined;
-    if (!next) return false;
+    if (!next) return 'skip';
     // A pessoa trocou de empresa enquanto renovava: o token da empresa nova fica; a renovação da antiga é descartada.
-    if ((await getAccessToken('client')) !== access) return true;
+    if ((await getAccessToken('client')) !== access) return 'ok';
     const identity = (data?.identity_token as string | null | undefined) ?? (await getRefreshToken('client')) ?? '';
     await setTokens(next, identity, 'client');
-    return true;
+    return 'ok';
   } catch (e) {
-    if (isAxiosError(e) && e.response && [401, 403].includes(e.response.status)) return false;
+    if (isAxiosError(e) && e.response && [401, 403].includes(e.response.status)) return 'gone';
+    // 400: esta sessão não renova (antes da regra, ou sem identidade); 404: servidor ainda sem a renovação.
+    if (isAxiosError(e) && e.response && [400, 404].includes(e.response.status)) return 'skip';
     throw e;
   }
 }

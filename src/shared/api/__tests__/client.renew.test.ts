@@ -21,25 +21,27 @@ beforeEach(async () => {
 afterEach(() => jest.restoreAllMocks());
 
 describe('renovar a sessão ao abrir o app', () => {
-  it('a equipe troca o refresh token', async () => {
-    jest.spyOn(axios, 'post').mockResolvedValue({ data: { access_token: 'novo-staff', refresh_token: 'novo-refresh' } });
-    await expect(renewSession('staff')).resolves.toBe(true);
-    expect(await getAccessToken('staff')).toBe('novo-staff');
-    expect(await getRefreshToken('staff')).toBe('novo-refresh');
+  it('a equipe não gira o token a cada abertura (recarregar o perfil renova quando precisa)', async () => {
+    const post = jest.spyOn(axios, 'post');
+    await expect(renewSession('staff')).resolves.toBe('ok');
+    expect(post).not.toHaveBeenCalled();
+    expect(await getRefreshToken('staff')).toBe('r-staff');
   });
 
   it('o cliente ganha sessão nova da mesma empresa pelo portal', async () => {
     const post = jest.spyOn(axios, 'post').mockResolvedValue({ data: { access_token: 'sessao-nova', identity_token: 'identidade-nova' } });
-    await expect(renewSession('client')).resolves.toBe(true);
+    await expect(renewSession('client')).resolves.toBe('ok');
     expect(String(post.mock.calls[0][0])).toContain('/api/public/portal/me/renew');
     expect(await getAccessToken('client')).toBe('sessao-nova');
     expect(await getRefreshToken('client')).toBe('identidade-nova');
   });
 
-  it('sessão que caiu (outro aparelho, empresa desconectou) devolve falso', async () => {
+  it('sessão que caiu (outro aparelho, empresa desconectou) devolve gone; a que não renova devolve skip', async () => {
     jest.spyOn(axios, 'post').mockRejectedValue(httpError(401));
-    await expect(renewSession('client')).resolves.toBe(false);
-    await expect(renewSession('staff')).resolves.toBe(false);
+    await expect(renewSession('client')).resolves.toBe('gone');
+    jest.spyOn(axios, 'post').mockRejectedValue(httpError(400));
+    await expect(renewSession('client')).resolves.toBe('skip');
+    expect(await getAccessToken('client')).toBe('sessao-cliente');
   });
 
   it('sem internet o erro sobe e é reconhecido como falta de rede (a sessão guardada fica)', async () => {

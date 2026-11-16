@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
+import { isAxiosError } from 'axios';
 import { onlineManager, useQueryClient } from '@tanstack/react-query';
 import { suspendFitnessOwner } from '@/src/features/fitness/owner';
 import { AuthUser, ClientUser, StaffUser, getMeApi, loginApi, logoutApi, registerDevicePushToken, verifyMfaApi } from '@/src/shared/api/auth.api';
@@ -313,21 +314,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const renew = async () => {
       if (Date.now() - lastRenew.current < 60_000) return;
       lastRenew.current = Date.now();
+      const sessionGone = async () => {
+        // A sessão caiu (outro aparelho entrou, a empresa desconectou): sai desta conta por completo.
+        await clearTokens(role).catch(() => undefined);
+        if (role === 'staff') disconnectSocket();
+        setAccounts((prev) => {
+          const next = { ...prev };
+          delete next[role];
+          return next;
+        });
+        setAuthenticated(false);
+        setUser(null);
+      };
       try {
-        const ok = await renewSession(role);
+        const result = await renewSession(role);
         // Trocou de conta ou saiu enquanto renovava: o resultado é da conta antiga e não mexe na tela.
         if (!alive || (await getSavedRole()) !== role) return;
-        if (!ok) {
-          // A sessão caiu (outro aparelho entrou, a empresa desconectou): sai desta conta por completo.
-          await clearTokens(role).catch(() => undefined);
-          if (role === 'staff') disconnectSocket();
-          setAccounts((prev) => {
-            const next = { ...prev };
-            delete next[role];
-            return next;
-          });
-          setAuthenticated(false);
-          setUser(null);
+        if (result === 'gone') {
+          await sessionGone();
           return;
         }
         const current = userRef.current;
@@ -348,9 +352,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               );
         if (!alive || (await getSavedRole()) !== role) return;
         setUser(fresh);
-      } catch {
+      } catch (e) {
         // Sem internet ou servidor fora: a sessão continua; a próxima volta para a frente tenta de novo.
-        lastRenew.current = 0;
+        if (isTransientError(e)) {
+          lastRenew.current = 0;
+          return;
+        }
+        // O perfil recusou a sessão (401 depois de tentar renovar): ela caiu.
+        if (alive && (await getSavedRole()) === role && isAxiosError(e) && e.response?.status === 401) await sessionGone();
       }
     };
     const sub = AppState.addEventListener('change', (state) => state === 'active' && void renew());
