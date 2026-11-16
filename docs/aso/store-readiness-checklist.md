@@ -12,7 +12,9 @@ Skills: `app-launch`, `app-rejection-recovery`, `aso-audit`, `android-aso`.
 - [x] `eas.json` com profiles `preview` e `production`
 - [x] Build Android AAB production — ver links abaixo
 - [ ] Build iOS production — bloqueado: credenciais Apple interativas (`eas credentials:configure-build -p ios -e production`)
-- [x] Version `1.0.0` (remote versioning EAS; Android versionCode 3)
+- [x] Version `1.1.0` (remote versioning EAS). Runtime `1.0.0` = builds de julho (versionCode 1–3), sem o módulo nativo
+  da gravação em segundo plano; runtime `1.1.0` = builds a partir de versionCode 5. Atualização pelo ar da main
+  só vai para a runtime `1.1.0`; para a `1.0.0`, publicar de uma branch sem a PR #7.
 
 ### Privacidade & permissões
 
