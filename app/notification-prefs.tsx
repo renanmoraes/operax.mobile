@@ -13,7 +13,7 @@ import {
   NotificationPrefsState,
 } from '@/src/features/notifications/catalog';
 import { useAuth } from '@/src/features/auth/AuthContext';
-import { openSystemSettings, usePermissions } from '@/src/features/permissions/permissions';
+import { openSystemSettings, pushTargetFor, usePermissions } from '@/src/features/permissions/permissions';
 import { updateNotificationPrefs } from '@/src/shared/api/profile.api';
 
 const CATEGORY_ICONS: Record<PushCategoryId, IconName> = {
@@ -35,7 +35,7 @@ export default function NotificationPrefsScreen() {
   const { t } = useTranslation('staff');
   const insets = useSafeAreaInsets();
   const { mode, user } = useAuth();
-  const { states, request } = usePermissions(['notifications'], mode === 'live' && user?.kind === 'staff');
+  const { states, request } = usePermissions(['notifications'], pushTargetFor(mode, user?.kind));
   const permission = states.notifications;
   // Começa com o que já veio do servidor junto com o usuário (sem efeito para copiar depois).
   const [prefs, setPrefs] = useState<NotificationPrefsState>(() => {

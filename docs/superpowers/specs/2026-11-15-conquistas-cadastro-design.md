@@ -153,3 +153,16 @@ Implementado e solto no backend-v2.172.37 / frontend-v1.169.37, com o app na bra
 - **Check-in:** vale só para inscrição confirmada, de três formas: o aluno lê o QR do evento (muda a cada 2 minutos), a equipe lê o ingresso do aluno (vale 10 minutos) ou a equipe marca na lista.
 - **Escopo:** só vale para empresa com Fitness ativo no portal. Sem Fitness, nada novo é conferido, e o que já foi ganho fica guardado.
 - **Push "Você ganhou":** ficou de fora, porque o backend ainda não manda push ao aluno. O app comemora as conquistas novas quando o aluno abre a tela.
+
+## Depois do primeiro release (15/11/2026, à noite)
+
+- **QR impresso do check-in.** Além do QR da tela (muda a cada 2 minutos), o evento tem um QR fixo para imprimir e colar na
+  entrada, sem ninguém da equipe logado. O código (`ep1`) é assinado com uma chave do próprio evento, não com os segredos do
+  servidor; a equipe pode trocar o QR (chave e versão novas) e o papel antigo responde "foi trocado". Vale só para evento
+  com início, só na janela do check-in e só para inscrição confirmada. O app não mudou: ele já mandava o texto lido.
+- **Teto de XP decidido pela academia.** Cada nível tem um teto (padrão: o dobro do XP do nível, 100 a 1.600), em
+  Fitness → Conquistas → Teto de XP. Vale para o XP escolhido e para o padrão, nas conquistas da academia e nas da Operax.
+- **Push quando o aluno ganha conquista.** O app registra o aparelho do aluno no portal (`/api/public/portal/me/push-tokens`)
+  ao entrar, se a permissão já foi dada, ou quando ele permite na tela de permissões; ao sair, revoga. O push sai no idioma
+  do app quando ele ganha sem estar na tela (treino salvo, conquista dada pela equipe, check-in feito pela equipe) e o toque
+  abre Conquistas. O mesmo serviço de push do portal serve às próximas features.

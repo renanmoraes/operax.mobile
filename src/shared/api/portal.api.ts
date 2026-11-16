@@ -95,6 +95,11 @@ export const portalMyCompanies = async () => (await api.get(`${BASE}/me/companie
 export const portalSwitch = async (access_id: string) => (await api.post(`${BASE}/me/switch`, { access_id })).data as PortalLoginResult;
 export const portalLogout = async () => void (await api.post(`${BASE}/me/logout`, {}));
 
+/** Aparelho do aluno nesta empresa: o servidor manda por push as conquistas (e os próximos avisos do portal). */
+export type PortalPushTokenInput = { token: string; platform: 'ios' | 'android' | 'unknown'; app_version?: string; lang: 'pt' | 'en' | 'es' };
+export const portalRegisterPushToken = async (body: PortalPushTokenInput) => void (await api.post(`${BASE}/me/push-tokens`, body));
+export const portalRevokePushToken = async (token: string) => void (await api.delete(`${BASE}/me/push-tokens`, { data: { token } }));
+
 export const portalConfirmBooking = async (id: string) => (await api.post(`${BASE}/me/bookings/${id}/confirm`, {})).data as { status: string };
 export const portalCancelBooking = async (id: string, reason?: string) =>
   (await api.post(`${BASE}/me/bookings/${id}/cancel`, { reason: reason?.slice(0, 300) })).data as { status: string };

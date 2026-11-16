@@ -6,7 +6,7 @@ import { Button, Display, Muted, Rise, Screen, TopBar } from '@/src/design-syste
 import { spacing } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { PermissionCard, StatusAction } from '@/src/features/permissions/PermissionCard';
-import { markStaffOnboardingSeen, type PermissionKey, usePermissions } from '@/src/features/permissions/permissions';
+import { markStaffOnboardingSeen, type PermissionKey, pushTargetFor, usePermissions } from '@/src/features/permissions/permissions';
 import type { PermissionState } from '@/src/features/permissions/permissionState';
 
 /**
@@ -20,7 +20,7 @@ export default function StaffPermissionsScreen() {
   const onboarding = inicio === '1';
   const { mode, user } = useAuth();
   const keys: PermissionKey[] = ['notifications', 'camera', 'photos', 'microphone'];
-  const { states, request } = usePermissions(keys, mode === 'live' && user?.kind === 'staff');
+  const { states, request } = usePermissions(keys, pushTargetFor(mode, user?.kind));
 
   const media: PermissionState | undefined =
     states.camera === 'granted' && states.photos === 'granted' ? 'granted' : states.camera === 'blocked' || states.photos === 'blocked' ? 'blocked' : states.camera === 'unavailable' ? 'unavailable' : states.camera;
