@@ -1,4 +1,4 @@
-export type Channel = 'whatsapp' | 'instagram' | 'messenger';
+export type Channel = 'whatsapp' | 'instagram' | 'messenger' | `hub:${string}`;
 export type ConvSegment = 'active' | 'queue' | 'history';
 
 export type Conversation = {
@@ -150,6 +150,19 @@ export const teamUsers = [
 
 export const conversations: Conversation[] = [
   {
+    id: 'cv-ml',
+    contactName: 'Bruno Almeida',
+    contactId: '',
+    lastMessage: 'O produto chega até sexta?',
+    updatedAt: '11:20',
+    unread: 1,
+    queue: 'Vendas online',
+    channel: 'hub:mercado-livre',
+    segment: 'active',
+    ownership: 'mine',
+    within24h: true,
+  },
+  {
     id: 'cv1',
     contactName: 'Maria Silva',
     contactId: 'c1',
@@ -206,6 +219,8 @@ export const conversations: Conversation[] = [
 ];
 
 export const messages: Message[] = [
+  { id: 'm-ml1', conversationId: 'cv-ml', direction: 'in', type: 'text', body: 'Oi! Comprei o tênis ontem. O produto chega até sexta?', at: '11:18' },
+  { id: 'm-ml2', conversationId: 'cv-ml', direction: 'in', type: 'text', body: 'O produto chega até sexta?', at: '11:20' },
   {
     id: 'm1',
     conversationId: 'cv1',

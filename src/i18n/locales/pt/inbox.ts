@@ -153,6 +153,23 @@ const inbox = {
     transferHint: 'No mobile, libere para a fila ou use o web para escolher atendente.',
     cannotReply: 'Não dá para responder agora',
     booked: 'Agendado: {{summary}}',
+    hub: {
+      attachA11y: 'Mais ações: agendar',
+      replyingVia: 'Resposta via {{channel}} · {{account}}',
+      replyingViaChannel: 'Resposta via {{channel}}',
+      order: 'Pedido {{number}}',
+      orders: '{{count}} pedidos ligados',
+      noOrder: 'Sem pedido ligado',
+      closed: '{{channel}} encerrou esta conversa: não dá mais para responder por aqui.',
+      placeholderClosed: 'Conversa encerrada no canal',
+      textOnly: '{{channel}} só aceita texto: anexo, áudio, Pix e mensagem ativa não saem por esse canal.',
+      kind: {
+        buyer_chat: 'Conversa com o comprador',
+        post_sale: 'Pós-venda',
+        product_question: 'Pergunta no anúncio',
+        support_ticket: 'Atendimento do canal',
+      },
+    },
   },
   booking: {
     today: 'Hoje',

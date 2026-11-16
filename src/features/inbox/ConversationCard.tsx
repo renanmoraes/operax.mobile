@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Avatar, Badge, Card, Muted } from '@/src/design-system/ui';
 import { colors, typography } from '@/src/design-system/tokens';
 import type { Conversation } from '@/src/mocks/data';
-import { ChannelChip, useInboxConnections } from '@/src/features/attendance/channels';
+import { ChannelChip, isMarketplaceChannel, useInboxConnections } from '@/src/features/attendance/channels';
 
 const channelLabel: Record<string, string> = { whatsapp: 'WhatsApp', instagram: 'Instagram', messenger: 'Messenger', app: 'App' };
 
@@ -31,7 +31,10 @@ export function ConversationCard({ item, onPress }: { item: Conversation; onPres
         <View style={styles.top}>
           <Text style={styles.name} numberOfLines={1}>{item.contactName}</Text>
           {/* Empresa com vários números: o selo diz por qual número/canal a conversa chegou, na cor do número. */}
-          {multi && !isApp ? (
+          {/* Marketplace: o selo diz qual (Mercado Livre, Shopee...) mesmo com um número só. */}
+          {isMarketplaceChannel(item.channel) ? (
+            <ChannelChip channel={item.channel} size="xs" />
+          ) : multi && !isApp ? (
             <ChannelChip connection={connection} channel={item.channel} size="xs" />
           ) : (
             <Badge label={channel} tone={isApp ? 'primary' : item.channel === 'whatsapp' ? 'success' : 'neutral'} />

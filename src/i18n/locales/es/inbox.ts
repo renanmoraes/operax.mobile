@@ -155,6 +155,23 @@ const inbox: Shape<typeof pt> = {
     transferHint: 'En el móvil, libera a la cola o usa la web para elegir agente.',
     cannotReply: 'No se puede responder ahora',
     booked: 'Agendado: {{summary}}',
+    hub: {
+      attachA11y: 'Más acciones: agendar',
+      replyingVia: 'Respuesta vía {{channel}} · {{account}}',
+      replyingViaChannel: 'Respuesta vía {{channel}}',
+      order: 'Pedido {{number}}',
+      orders: '{{count}} pedidos vinculados',
+      noOrder: 'Sin pedido vinculado',
+      closed: '{{channel}} cerró esta conversación: ya no se puede responder por aquí.',
+      placeholderClosed: 'Conversación cerrada en el canal',
+      textOnly: '{{channel}} solo acepta texto: adjuntos, audio, Pix y mensajes de plantilla no salen por este canal.',
+      kind: {
+        buyer_chat: 'Conversación con el comprador',
+        post_sale: 'Posventa',
+        product_question: 'Pregunta en el anuncio',
+        support_ticket: 'Atención del canal',
+      },
+    },
   },
   booking: {
     today: 'Hoy',
