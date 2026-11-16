@@ -26,6 +26,7 @@
     },
     "android": {
       "package": "digital.operax.mobile",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#050a14",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

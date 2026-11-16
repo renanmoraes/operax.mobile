@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "23381247970",
+    "project_id": "operax-d3f71",
+    "storage_bucket": "operax-d3f71.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:23381247970:android:0bd782fdcf78f4a1091bbb",
+        "android_client_info": {
+          "package_name": "digital.operax.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBoXPSRR6Um20qvSlcmSX5xCuRYmUNqqiA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

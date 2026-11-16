@@ -41,6 +41,7 @@
         "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID"
       },
       "android": {
+        "serviceAccountKeyPath": "./fcm-service-account.json",
         "track": "internal",
         "releaseStatus": "draft"
       }

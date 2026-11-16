@@ -7,7 +7,11 @@ Skills: `app-launch`, `app-rejection-recovery`, `aso-audit`, `android-aso`.
 ### Contas & build
 
 - [ ] Conta Apple Developer + App Store Connect app criado (`digital.operax.mobile`)
-- [ ] Conta Google Play Console + app criado
+- [x] Conta Google Play Console + app criado (16/11/2026, conta Operax, app `Operax: Atendimento e Fila`)
+- [x] `eas submit` Android: chave da conta `firebase-adminsdk-fbsvc@operax-d3f71` (arquivo `fcm-service-account.json`,
+  fora do git) convidada no Play Console com permissão de lançamento. A política da organização no Google Cloud
+  bloqueia chave nova de conta de serviço, por isso reaproveita a do Firebase.
+- [x] Push Android: `google-services.json` do Firebase `operax-d3f71` ligado no `app.json` (a partir do versionCode 8)
 - [x] EAS project real — `projectId` `5dcb948b-9371-4830-8324-29ef9a87e4e3` (conta `operaxdigitals-team`)
 - [x] `eas.json` com profiles `preview` e `production`
 - [x] Build Android AAB production — ver links abaixo

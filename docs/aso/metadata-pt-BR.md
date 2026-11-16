@@ -83,36 +83,38 @@ Primeira versão pública do Operax Mobile:
 
 `Operax: Atendimento e Fila` (28)
 
-### Short description (≤80)
+### Short description (≤80) — usada no Play Console em 16/11/2026
 
 ```
-Fila, posse e mensagens do CRM Operax no celular. Assuma e responda em campo.
+Atendimento com IA, PDV, agenda e treino da sua empresa Operax, no celular.
 ```
-(78 chars) — keywords: fila, posse, CRM, Operax, celular, campo
+(75 chars)
 
-### Full description (indexada)
+### Full description (indexada) — usada no Play Console em 16/11/2026
 
 ```
-Operax Mobile é o app de atendimento em campo do CRM Operax: fila, posse com tempo máximo, conversas e push para a equipe não perder o cliente.
+O Operax Mobile leva o Operax da sua empresa para o celular: atendimento ao cliente, vendas no balcão e agenda para a equipe, e aulas e treinos para os clientes.
 
-Ideal para recepção, comercial e clínicas que já usam Operax no computador e precisam responder no celular.
+PARA A EQUIPE
+• Fila de atendimento: assuma conversas e responda de onde estiver
+• Resumo da conversa e sugestões de resposta com IA
+• Transfira o atendimento para quem está online
+• PDV: venda por unidade ou por peso, receba e calcule o troco
+• Agenda do dia em linha do tempo
+• Avisos por notificação para não perder mensagem
+• Chat interno da equipe
 
-DESTAQUES
-• Fila de atendimento com Assumir
-• Lista dos seus atendimentos ativos
-• Conversa com mídia, respostas rápidas e templates
-• Avisos e categorias de notificação push
-• Agenda do dia e atalhos (Kanban, histórico, perfil)
-• Login com código da empresa — mesma conta do web
+PARA OS CLIENTES
+• Agenda de aulas: confirme presença e aceite vagas que abrirem
+• Ficha de treino com cronômetro da sessão
+• Corrida e pedal com GPS, mesmo com a tela bloqueada
+• Evolução, histórico e conquistas
 
-COMO USAR
-1. Instale e entre com e-mail, senha e código da empresa
-2. Abra a fila pelo menu e Assuma um contato
-3. Responda; libere ou encerre quando concluir
+COMO ENTRAR
+Equipe: código da empresa, e-mail e senha do Operax.
+Clientes: encontre sua empresa e use o acesso liberado por ela.
 
-Requer assinatura/tenant Operax. Ao entrar no celular, a sessão no computador é encerrada (política de sessão exclusiva).
-
-Baixe o Operax: atendimento, fila e CRM no bolso da sua equipe.
+O app é para empresas que usam o Operax. Não há cadastro aberto: o acesso é liberado pela própria empresa.
 ```
 
 ---
