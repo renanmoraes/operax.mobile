@@ -6,6 +6,7 @@ import { addDays, isoDate, startOfDay, startOfWeek } from '@/src/shared/format';
 import { clientDataMode } from '@/src/features/client/dataMode';
 import { adherenceStreak, bestAdherenceStreak, DayState, levelFromXp, mergeResultIntoHistory, xpFrom } from './derive';
 import { buildCheckins, buildHistory, LOAD_HISTORY, WORKOUTS, workoutForWeekday } from './mockData';
+import type { HealthWorkout } from './health/mapWorkouts';
 import type { ActivityDetail, BodyCheckin, FitnessEvolution, FitnessHistoryEntry, FitnessResultView, FitnessWorkoutView, FreeActivityBody, RecordResultBody, WeekView } from './types';
 
 /**
@@ -146,6 +147,15 @@ export async function fetchMediaUrl(mediaFileId: string): Promise<string | null>
 
 /** Demonstração: o caminho de cada treino livre gravado nesta sessão do app, para o detalhe do histórico. */
 const demoDetails = new Map<string, ActivityDetail>();
+
+/**
+ * POST /health/workouts — treinos lidos do Saúde (iPhone) ou do Health Connect (Android). O backend não duplica
+ * (chave por origem e id do registro), então reenviar é seguro. No modo demonstração não manda nada.
+ */
+export async function sendHealthWorkouts(workouts: HealthWorkout[]): Promise<{ imported: number; matched: number; ignored: number; failed: string[] }> {
+  if (!live()) return { imported: 0, matched: 0, ignored: 0, failed: [] };
+  return (await api.post(`${F}/health/workouts`, { workouts })).data as { imported: number; matched: number; ignored: number; failed: string[] };
+}
 
 /** POST /activities — treino livre gravado no app (sem ficha). Idempotente por `idempotency_key`. */
 export async function recordFreeActivity(body: FreeActivityBody): Promise<{ ok: true }> {

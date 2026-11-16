@@ -31,6 +31,7 @@ describe('mapeia treinos do Saúde (iPhone) e do Health Connect (Android)', () =
       source: 'apple_health',
       external_id: 'A1',
       sport: 'Corrida',
+      sport_key: 'running',
       started_at: '2026-11-14T08:00:00.000Z',
       duration_seconds: 1860,
       distance_meters: 5120,
@@ -68,6 +69,7 @@ describe('mapeia treinos do Saúde (iPhone) e do Health Connect (Android)', () =
       source: 'health_connect',
       external_id: 'HC1',
       sport: 'Caminhada',
+      sport_key: 'walking',
       started_at: '2026-11-14T07:00:00.000Z',
       duration_seconds: 2400,
       distance_meters: 3300,
@@ -75,6 +77,7 @@ describe('mapeia treinos do Saúde (iPhone) e do Health Connect (Android)', () =
       avg_hr: 104,
       device: 'Samsung Galaxy Watch6',
       origin: 'Samsung Health',
+      origin_package: 'com.sec.android.app.shealth',
     });
   });
 });
