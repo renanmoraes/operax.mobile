@@ -47,12 +47,17 @@ export async function askSummaryPermission(): Promise<void> {
   }
 }
 
+/** Sobe a cada limpeza: um resumo que estava a caminho (esperando permissão ou canal) não volta depois dela. */
+let generation = 0;
+
 export async function showLiveSummary(title: string, body: string): Promise<void> {
+  const mine = generation;
   const N = await notifications();
   if (!N) return;
   try {
     if (!(await N.getPermissionsAsync()).granted) return;
     const channel = await ensureChannel(N);
+    if (mine !== generation) return;
     await N.scheduleNotificationAsync({
       identifier: ID,
       // Sem `url`: tocar só traz o app de volta para a gravação (que continua aberta).
@@ -65,6 +70,7 @@ export async function showLiveSummary(title: string, body: string): Promise<void
 }
 
 export async function clearLiveSummary(): Promise<void> {
+  generation++;
   const N = await notifications();
   if (!N) return;
   try {

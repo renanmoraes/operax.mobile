@@ -1,6 +1,7 @@
 import i18n from '@/src/i18n';
 import { gpsGate, isPoolChoice, liveSummary, NO_GPS_OFFER_MS, parsePoolLength, restoredBanked, swimDistance } from '../background/liveLogic';
-import { bufferedSince, clearBuffer, handleLiveTask, onLiveFixes, trimBuffer } from '../background/liveTracking';
+import { bufferedSince, clearBuffer, handleLiveTask, LIVE_MAX_MS, liveRecordingToResume, onLiveFixes, trimBuffer } from '../background/liveTracking';
+import { formatKm } from '../runTracker';
 import type { GpsPoint } from '../runTracker';
 
 const mockStore = new Map<string, unknown>();
@@ -10,6 +11,18 @@ jest.mock('@/src/shared/db/localDb', () => ({
     mockStore.set(k, v);
   },
 }));
+let mockTracking = false;
+const mockStop = jest.fn(async () => {
+  mockTracking = false;
+});
+jest.mock('expo-location', () => ({
+  hasStartedLocationUpdatesAsync: async () => mockTracking,
+  stopLocationUpdatesAsync: () => mockStop(),
+  startLocationUpdatesAsync: async () => undefined,
+  Accuracy: {},
+  ActivityType: {},
+}));
+jest.mock('expo-task-manager', () => ({ defineTask: () => undefined, isAvailableAsync: async () => true }));
 jest.mock('@/src/shared/telemetry/errorReporter', () => ({ reportError: async () => undefined, trackAction: () => undefined }));
 
 const granted = { perm: 'granted' as const, servicesOn: true, hasFix: true, accuracy: 8, searchingMs: 0 };
@@ -63,11 +76,40 @@ describe('piscina da natação', () => {
 });
 
 describe('retomar depois de o app ser fechado', () => {
-  it('gravando: soma o tempo até o último sinal; pausado: o tempo guardado', () => {
+  it('com GPS: soma até o último sinal recebido; pausado: o tempo guardado', () => {
     const d = { banked: 600_000, savedAt: 1_000_000 };
-    expect(restoredBanked({ ...d, live: true }, 1_300_000)).toBe(900_000);
-    expect(restoredBanked({ ...d, live: false }, 1_300_000)).toBe(600_000);
-    expect(restoredBanked({ ...d, live: true }, 900_000)).toBe(600_000);
+    expect(restoredBanked({ ...d, live: true }, 1_300_000, true)).toBe(900_000);
+    expect(restoredBanked({ ...d, live: false }, 1_300_000, true)).toBe(600_000);
+    expect(restoredBanked({ ...d, live: true }, 900_000, true)).toBe(600_000);
+  });
+  it('sem GPS: soma até 30 min; passou disso (esqueceu de finalizar), volta só com o tempo guardado', () => {
+    const d = { banked: 600_000, savedAt: 1_000_000, live: true };
+    expect(restoredBanked(d, 1_000_000 + 20 * 60_000, false)).toBe(600_000 + 20 * 60_000);
+    expect(restoredBanked(d, 1_000_000 + 3 * 60 * 60_000, false)).toBe(600_000);
+  });
+  it('GPS ligado de outra conta, velho demais ou sem dono: desliga e apaga a reserva; da mesma conta: volta', async () => {
+    mockStore.clear();
+    const now = 10 * LIVE_MAX_MS;
+    const meta = { route: '/cliente/treinar/run', draftKey: 'k', startedAt: now - 60_000, owner: 'live:client:a:t1' };
+    mockTracking = true;
+    mockStore.set('fitness_live_meta', meta);
+    await expect(liveRecordingToResume('live:client:a:t1', now)).resolves.toEqual(meta);
+    await expect(liveRecordingToResume('live:client:b:t1', now)).resolves.toBeNull();
+    expect(mockTracking).toBe(false);
+    mockTracking = true;
+    mockStore.set('fitness_live_meta', { ...meta, startedAt: now - LIVE_MAX_MS - 1 });
+    await expect(liveRecordingToResume('live:client:a:t1', now)).resolves.toBeNull();
+    expect(mockTracking).toBe(false);
+    await expect(liveRecordingToResume('live:client:a:t1', now)).resolves.toBeNull();
+  });
+});
+
+describe('distância no idioma do app', () => {
+  it('vírgula em português e ponto em inglês', async () => {
+    expect(formatKm(5120)).toBe('5,12');
+    await i18n.changeLanguage('en');
+    expect(formatKm(5120)).toBe('5.12');
+    await i18n.changeLanguage('pt');
   });
 });
 

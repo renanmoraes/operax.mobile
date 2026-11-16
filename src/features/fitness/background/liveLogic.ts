@@ -56,14 +56,20 @@ export function swimDistance(pool: PoolChoice | null, lengths: number): number {
   return Math.round(pool.m * Math.floor(lengths) * 10) / 10;
 }
 
+/** Sem GPS, intervalo maior que isto com o app fechado não conta como treino (esqueceu de finalizar). */
+export const MAX_UNTRACKED_GAP_MS = 30 * 60_000;
+
 /**
  * Tempo (ms) ao retomar um rascunho. Gravando quando foi guardado (`live`): o treino seguiu enquanto o app
- * estava fechado, então soma o intervalo até `until` (o último ponto do GPS recebido em segundo plano ou,
- * sem GPS, agora). Pausado: o tempo guardado.
+ * estava fechado, então soma o intervalo até `until`. Com GPS, `until` é o último ponto recebido em segundo
+ * plano (prova de que o treino seguia). Sem GPS não há prova: soma só até 30 min; passou disso, volta com o
+ * tempo guardado (o aluno esqueceu de finalizar e não ganha horas de treino a mais). Pausado: o tempo guardado.
  */
-export function restoredBanked(d: { banked: number; savedAt: number; live?: boolean }, until: number): number {
+export function restoredBanked(d: { banked: number; savedAt: number; live?: boolean }, until: number, gps: boolean): number {
   if (!d.live) return d.banked;
-  return d.banked + Math.max(0, until - d.savedAt);
+  const gap = Math.max(0, until - d.savedAt);
+  if (!gps && gap > MAX_UNTRACKED_GAP_MS) return d.banked;
+  return d.banked + gap;
 }
 
 /** Resumo da tela bloqueada: com GPS, tempo, distância e ritmo (ou velocidade); sem GPS, quando começou. */

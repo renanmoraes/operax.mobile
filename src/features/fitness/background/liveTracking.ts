@@ -24,8 +24,13 @@ const META_KEY = 'fitness_live_meta';
 /** Teto da reserva (~4 h a 1 ponto/s): o rascunho esvazia ela a cada 10 s; isto só cresce com o app fechado. */
 const BUFFER_MAX = 15_000;
 
-/** Qual gravação está com o GPS ligado: a tela para voltar e quando começou. */
-export type LiveMeta = { route: string; draftKey: string; startedAt: number };
+/** Qual gravação está com o GPS ligado: a tela para voltar, quando começou e de quem é (conta e empresa). */
+export type LiveMeta = { route: string; draftKey: string; startedAt: number; owner: string };
+/** Gravação com o GPS ligado há mais que isto é sobra (app fechado sem finalizar): desliga ao abrir o app. */
+export const LIVE_MAX_MS = 6 * 60 * 60_000;
+/** Com a tela recebendo os pontos, a reserva vai para o aparelho no máximo a cada 10 s (o rascunho cobre o resto). */
+const PERSIST_EVERY_MS = 10_000;
+let lastPersist = 0;
 
 type Listener = (points: GpsPoint[]) => void;
 let listener: Listener | null = null;
@@ -68,6 +73,10 @@ export function bufferPoints(points: GpsPoint[]): Promise<void> {
     const fresh = points.filter((p) => p.at > last).sort((a, b) => a.at - b.at);
     if (!fresh.length) return;
     buffer = [...cur, ...fresh].slice(-BUFFER_MAX);
+    // Sem ninguém na tela (app fechado ou acordado só para a tarefa), grava sempre; com a tela viva, espaçado.
+    const now = Date.now();
+    if (listener && now - lastPersist < PERSIST_EVERY_MS) return;
+    lastPersist = now;
     await kvSet(BUFFER_KEY, buffer);
   });
 }
@@ -131,7 +140,7 @@ export async function startLiveTracking(meta: LiveMeta, notice: { title: string;
       activityType: Location.ActivityType.Fitness,
       pausesUpdatesAutomatically: false,
       showsBackgroundLocationIndicator: true,
-      foregroundService: { notificationTitle: notice.title, notificationBody: notice.body, notificationColor: colors.primary, killServiceOnDestroy: false },
+      foregroundService: { notificationTitle: notice.title, notificationBody: notice.body, notificationColor: colors.primary, killServiceOnDestroy: true },
     });
     await kvSet(META_KEY, meta);
     return true;
@@ -160,8 +169,23 @@ export async function stopLiveTracking(): Promise<void> {
   await kvSet(META_KEY, null);
 }
 
-/** Gravação com o GPS ainda ligado (o app foi reaberto no meio dela): a tela para voltar. */
-export async function liveRecordingToResume(): Promise<LiveMeta | null> {
+/** Qual gravação está com o GPS ligado agora (ou nenhuma). */
+export async function liveMeta(): Promise<LiveMeta | null> {
   if (!(await isLiveTrackingOn())) return null;
   return kvGet<LiveMeta>(META_KEY);
+}
+
+/**
+ * Gravação com o GPS ainda ligado (o app foi reaberto no meio dela): a tela para voltar. De outra conta ou
+ * empresa, ou ligada há mais de 6 h (sobra de um app fechado sem finalizar): desliga o GPS e apaga a reserva.
+ */
+export async function liveRecordingToResume(owner: string, now = Date.now()): Promise<LiveMeta | null> {
+  const meta = await liveMeta();
+  if (!meta && !(await isLiveTrackingOn())) return null;
+  if (!meta || !owner || meta.owner !== owner || now - meta.startedAt > LIVE_MAX_MS) {
+    await stopLiveTracking();
+    await clearBuffer();
+    return null;
+  }
+  return meta;
 }

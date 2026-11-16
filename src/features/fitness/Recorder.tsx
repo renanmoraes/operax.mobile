@@ -19,13 +19,13 @@ import { reportError, trackAction } from '@/src/shared/telemetry/errorReporter';
 import { RouteMap } from './RouteMap';
 import { addPoint, averagePace, currentPace, decimateTrack, defaultTitle, emptyRun, formatKm, formatPace, haversine, kmSplits, MAX_ACCURACY_M, resumeAt, type GpsPoint, type RunState, type Track } from './runTracker';
 import { gpsGate, isPoolChoice, liveSummary, NO_GPS_OFFER_MS, parsePoolLength, POOL_PRESETS, restoredBanked, swimDistance, type PoolChoice } from './background/liveLogic';
-import { bufferedSince, clearBuffer, onLiveFixes, startLiveTracking, stopLiveTracking, toGpsPoint, trimBuffer } from './background/liveTracking';
+import { bufferedSince, clearBuffer, liveMeta, onLiveFixes, startLiveTracking, stopLiveTracking, toGpsPoint, trimBuffer } from './background/liveTracking';
 import { askSummaryPermission, clearLiveSummary, showLiveSummary } from './background/lockScreen';
 import { kmCue, stepCue, stepProgress, type GuideStep } from './coach';
 import { StepGuideCard } from './recorder/StepGuideCard';
 import { RestTimer } from './recorder/RestTimer';
 import { SlideToUnlock } from './recorder/SlideToUnlock';
-import { ownedKey } from './owner';
+import { fitnessOwner, ownedKey } from './owner';
 import { FEELINGS, SPORTS, WORKOUT_TAGS, effortWord, type SportInfo } from './sports';
 import type { FitnessFeeling, FreeSport } from './types';
 import { useActiveCompanyName } from '@/src/features/client/useClientData';
@@ -80,7 +80,8 @@ type Draft = {
   startedAt: number;
   banked: number;
   savedAt: number;
-  run: Omit<RunState, 'last' | 'recent'>;
+  /** Com o último ponto: a retomada liga o primeiro ponto da reserva a ele, sem perder o trecho do meio. */
+  run: Omit<RunState, 'recent'>;
   guide?: { i: number; s0: number; m0: number };
   sets?: number;
   live?: boolean;
@@ -232,8 +233,12 @@ export function Recorder({
       const mine = !!d && d.key === draftKey && Date.now() - d.savedAt < DRAFT_MAX_AGE_MS && d.banked >= 5000;
       if (mine) setDraft(d);
       // GPS de segundo plano ligado sem gravação para retomar (sobra de um app fechado): desliga.
-      // Só ainda na largada: se a pessoa já tocou em Iniciar, o GPS ligado é o desta gravação.
-      if ((!mine || !d?.live) && phaseRef.current === 'ready' && !starting.current) void stopLiveTracking();
+      // Só ainda na largada e só se o GPS é desta gravação: outra gravação aberta continua a dela.
+      if ((!mine || !d?.live) && phaseRef.current === 'ready' && !starting.current) {
+        void liveMeta().then((meta) => {
+          if (meta && meta.draftKey === draftKey && phaseRef.current === 'ready' && !starting.current) void stopLiveTracking();
+        });
+      }
     });
   }, [draftKey]);
 
@@ -275,7 +280,7 @@ export function Recorder({
     const now = Date.now();
     lastDraftAt.current = now;
     const bankedNow = banked.current + (runningSince.current ? now - runningSince.current : 0);
-    const { last: _l, recent: _r, ...keep } = runRef.current;
+    const { recent: _r, ...keep } = runRef.current;
     const d: Draft = { key: draftKey, startedAt: startedAt.current, banked: bankedNow, savedAt: now, run: keep, guide: guideRef.current, sets: setsRef.current, live: p === 'running', noGps: noGpsRef.current, pool: poolRef.current };
     // Os pontos do GPS até aqui já estão no rascunho: a reserva do segundo plano guarda só os de depois.
     void kvSet(k, d).then(() => trimBuffer(now - 5000));
@@ -292,12 +297,12 @@ export function Recorder({
     // Gravando quando o app foi fechado: soma o que o GPS de segundo plano guardou e o tempo que passou.
     const withGps = sport.gps && !d.noGps;
     const points = d.live && withGps ? await bufferedSince(d.savedAt) : [];
-    let r: RunState = { ...emptyRun(), ...d.run, last: null, recent: [] };
+    let r: RunState = { ...emptyRun(), ...d.run, last: d.run.last ?? null, recent: [] };
     for (const p of points) r = addPoint(r, p, d.startedAt, sport.tracker);
     const until = withGps ? (points[points.length - 1]?.at ?? d.savedAt) : Date.now();
     startedAt.current = d.startedAt;
     setStartMs(d.startedAt);
-    banked.current = restoredBanked(d, Math.min(Date.now(), until));
+    banked.current = restoredBanked(d, Math.min(Date.now(), until), withGps);
     runningSince.current = null;
     setElapsed(Math.round(banked.current / 1000));
     setRun(r);
@@ -426,7 +431,7 @@ export function Recorder({
   /** Gravando: o GPS que segue com a tela bloqueada; se o aparelho não deixar (Expo Go, web), o GPS comum. */
   const startTracking = useCallback(async () => {
     if (!sport.gps || noGpsRef.current) return;
-    const ok = bgOn.current || (await startLiveTracking({ route: resumeRoute, draftKey, startedAt: startedAt.current }, { title: i18n.t('fitness:live.serviceTitle'), body: i18n.t('fitness:live.serviceBody') }));
+    const ok = bgOn.current || (await startLiveTracking({ route: resumeRoute, draftKey, startedAt: startedAt.current, owner: fitnessOwner() }, { title: i18n.t('fitness:live.serviceTitle'), body: i18n.t('fitness:live.serviceBody') }));
     if (!alive.current) {
       if (ok) void stopLiveTracking();
       return;
@@ -475,6 +480,8 @@ export function Recorder({
       const now = Date.now();
       const secs = Math.round((banked.current + (now - (runningSince.current ?? now))) / 1000);
       setElapsed(secs);
+      // Tela bloqueada: o resumo anda com o relógio (a cada 15 s), mesmo parado, sem ponto novo de GPS.
+      if (AppState.currentState !== 'active') pushSummaryRef.current(false);
       // Parado com pausa automática ligada: pausa sozinho e volta quando a pessoa anda.
       if (sport.gps && !noGpsRef.current && prefsRef.current.autoPause && now - lastMoveAt.current > AUTO_PAUSE_MS) pauseRef.current(true);
       // Treino do professor: etapa cumprida (tempo ou distância) passa para a próxima e avisa.
@@ -561,8 +568,9 @@ export function Recorder({
         stopWatch();
         trackAction('treino sem gps', { sport: sport.id, reason: gate.ok ? 'ok' : gate.reason });
       }
-      // Resumo da tela bloqueada: a permissão de notificação é pedida aqui, quando faz sentido (uma vez só).
-      if (prefsRef.current.lockSummary) await askSummaryPermission();
+      // Permissão de notificação, pedida aqui quando faz sentido (uma vez só): para o resumo da tela bloqueada e,
+      // no Android com GPS, para o aviso obrigatório do serviço de localização aparecer (Android 13 ou mais novo).
+      if (prefsRef.current.lockSummary || (Platform.OS === 'android' && sport.gps && !noGpsRef.current)) await askSummaryPermission();
       clearDraft();
       startedAt.current = Date.now();
       setStartMs(startedAt.current);
@@ -983,7 +991,7 @@ export function Recorder({
                 <View style={{ flex: 1 }}>
                   <Text style={styles.draftTitle}>{t('rec.unsaved')}</Text>
                   <Muted style={{ fontSize: 12.5 }}>
-                    {[t('rec.startedAtTime', { time: new Date(draft.startedAt).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) }), formatClock(Math.round(restoredBanked(draft, sport.gps && !draft.noGps ? draft.savedAt : Date.now()) / 1000)), sport.gps && !draft.noGps ? `${formatKm(draft.run.distanceM)} km` : null].filter(Boolean).join(' · ')}
+                    {[t('rec.startedAtTime', { time: new Date(draft.startedAt).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) }), formatClock(Math.round(restoredBanked(draft, sport.gps && !draft.noGps ? draft.savedAt : Date.now(), !!(sport.gps && !draft.noGps)) / 1000)), sport.gps && !draft.noGps ? `${formatKm(draft.run.distanceM)} km` : null].filter(Boolean).join(' · ')}
                   </Muted>
                 </View>
               </View>

@@ -1,4 +1,4 @@
-import i18n from '@/src/i18n';
+import i18n, { locale } from '@/src/i18n';
 
 /**
  * Cálculos da gravação de corrida/bike com o GPS do celular (função pura: testável sem aparelho).
@@ -172,8 +172,9 @@ export function formatPace(secPerKm: number | null): string {
   return `${Math.floor(total / 60)}'${String(total % 60).padStart(2, '0')}"`;
 }
 
+/** Distância em km com duas casas, no formato do idioma do app ("5,12" em pt e es, "5.12" em en). */
 export function formatKm(m: number): string {
-  return (m / 1000).toFixed(2).replace('.', ',');
+  return new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(m / 1000);
 }
 
 /** Trilha para o servidor: 3 a 1500 pontos (o backend recusa fora disso), com as colunas do GPS alinhadas. */
