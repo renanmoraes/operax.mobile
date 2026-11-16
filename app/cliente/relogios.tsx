@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
 import i18n from '@/src/i18n';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Badge, Button, Card, HeroCard, IconTile, Muted, Num, Rise, Screen, SectionHeader, T, TopBar } from '@/src/design-system/ui';
+import { Badge, Button, Card, HeroCard, IconButton, IconTile, Muted, Num, Rise, Screen, SectionHeader, T, TopBar } from '@/src/design-system/ui';
 import { colors, text } from '@/src/design-system/tokens';
 import {
   useConnectProvider,
@@ -12,7 +12,7 @@ import {
   useSyncProvider,
 } from '@/src/features/fitness/connections';
 import { HealthCard } from '@/src/features/fitness/health/HealthCard';
-import { DataSourceAttribution, GarminAttribution, ProviderMark, providerDisplayName, StravaConnectButton, WorksWithZepp } from '@/src/features/fitness/brands';
+import { DataSourceAttribution, GarminAttribution, ProviderMark, providerDisplayName, WorksWithZepp } from '@/src/features/fitness/brands';
 import { HEALTH_PLATFORM } from '@/src/features/fitness/health/healthStore';
 import { BRAND_WALL, phoneHealthCards, pushProvider, receiveProviders, sendTargets } from '@/src/features/fitness/integrations';
 import { FlowHeader, GalaxyCard, PushPrefsCard, SendCard, SoonCard } from '@/src/features/fitness/watchParts';
@@ -42,19 +42,21 @@ function ProviderCard({ p }: { p: ProviderView }) {
             <Muted style={{ marginTop: 2 }}>{i18n.t('fitness:watch.autoImport')}</Muted>
           )}
         </View>
+        {/* Conectar fica à direita, na linha do nome, como o "Em breve" dos outros cartões. */}
+        {p.state === 'available' && !p.connected ? (
+          busy ? (
+            <View style={styles.connectSlot}><ActivityIndicator color={colors.primary} /></View>
+          ) : (
+            <IconButton icon="link" tone="soft" size={40} accessibilityLabel={i18n.t('fitness:watch.connect', { name })} onPress={() => connect.mutate(p.id)} />
+          )
+        ) : null}
       </View>
       {p.id === 'zepp' && p.state === 'available' ? <WorksWithZepp /> : null}
-      {p.state === 'available' ? (
-        p.connected ? (
-          <View style={styles.actions}>
-            <Button label={i18n.t('fitness:watch.sync')} variant="soft" compact icon="sync" loading={sync.isPending} onPress={() => sync.mutate(p.id)} style={{ flex: 1 }} />
-            <Button label={i18n.t('fitness:watch.disconnect')} variant="ghost" compact onPress={() => disconnect.mutate(p.id)} style={{ flex: 1 }} />
-          </View>
-        ) : p.id === 'strava' ? (
-          <StravaConnectButton disabled={busy} onPress={() => connect.mutate(p.id)} />
-        ) : (
-          <Button label={i18n.t('fitness:watch.connect', { name })} compact loading={busy} onPress={() => connect.mutate(p.id)} style={{ alignSelf: 'flex-start' }} />
-        )
+      {p.state === 'available' && p.connected ? (
+        <View style={styles.actions}>
+          <Button label={i18n.t('fitness:watch.sync')} variant="soft" compact icon="sync" loading={sync.isPending} onPress={() => sync.mutate(p.id)} style={{ flex: 1 }} />
+          <Button label={i18n.t('fitness:watch.disconnect')} variant="ghost" compact onPress={() => disconnect.mutate(p.id)} style={{ flex: 1 }} />
+        </View>
       ) : null}
     </Card>
   );
@@ -165,6 +167,7 @@ const styles = StyleSheet.create({
   providerTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   providerName: { ...text.section, color: colors.text },
   actions: { flexDirection: 'row', gap: 8 },
+  connectSlot: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   statusRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5, marginTop: 3 },
   statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.success },
   session: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
