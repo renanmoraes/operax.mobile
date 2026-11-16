@@ -58,7 +58,12 @@ export type SessionDraft = {
 ```
 
 `started[i]` não serve pro status (isso é só `logs`, ver tabela acima) — ele serve só pra decidir qual relógio
-está correndo para o `idx` atual, inclusive ao reabrir o app (ver "Retomar o draft" abaixo).
+está correndo para o `idx` atual, inclusive ao reabrir o app (ver "Retomar o draft" abaixo). Regra única, sem
+exceção: `started[i]` vira `false` toda vez que o `idx` sai de `i` (seja terminando o exercício, pulando, ou
+trocando pela prévia). Então **toda troca de exercício sempre passa pelo estado 4** de novo, mesmo que aquele
+exercício já tivesse sido iniciado antes (um `incomplete` retomado também exige o toque em "Iniciar
+exercício") — o único jeito de pular o estado 4 é reabrir o app **sem** o `idx` ter mudado (ver "Retomar o
+draft").
 
 Regra de contagem, reaproveitando o relógio de parede que já existe (`wallClock`, `clock.since`/`base`): em
 todo momento, exatamente **um** acumulador está "ligado" (recebendo o tempo que passa), e cada evento abaixo
@@ -139,9 +144,13 @@ a sensação de "o treino está me levando pro próximo", e o toque explícito d
 
 Pausar / Pular / Encerrar (o `ActionRow` do rodapé) ficam visíveis e funcionando nos quatro estados, inclusive
 na prévia (abaixo). "Pular" e o "próximo" automático (depois da última série) sempre vão para o **próximo
-exercício ainda não `done` na ordem do treino** a partir do `idx` atual — não necessariamente `idx + 1`, que
-pode já estar `done` se o aluno terminou ele antes pela prévia. Se não sobrar nenhum exercício não-`done`,
-é tratado como se fosse o último (vai direto pro resumo/"Finalizar treino", sem estados 3/4).
+exercício ainda não `done` na ordem do treino, procurando só pra frente a partir do `idx` atual** (sem dar a
+volta pros de trás) — não necessariamente `idx + 1`, que pode já estar `done` se o aluno terminou ele antes
+pela prévia. Um `incomplete` conta como "não `done`" pra essa busca (entra na lista de próximos). Se não
+sobrar nenhum exercício não-`done` daí pra frente, é tratado como se fosse o último (vai direto pro
+resumo/"Finalizar treino", sem estados 3/4) — mesmo que exista algum `pending`/`incomplete` antes do `idx`
+atual (ficou pra trás por ter sido pulado via prévia); esses só voltam a ser alcançáveis pela prévia
+("Ver treino" → "Finalizar e vir para cá"), nunca pelo fluxo automático.
 
 ## Navegação sequencial (itens 2, 4, 6)
 
@@ -161,10 +170,9 @@ mesma tela de sessão (um sub-estado, não uma rota nova):
   - Se o ativo tem séries pendentes, deixa como está (fica `incomplete`, sem apagar o que já foi logado — o
     status é sempre recalculado de `logs`, não precisa de ação explícita de "marcar") e troca o `idx` para o
     escolhido.
-  - O exercício escolhido vira o novo `idx`, com `started[idx]` no valor que já tinha (`false` se é a
-    primeira vez, ou o que tinha ficado de uma visita anterior) — cai no estado 4 "Pronto pra começar" se
-    `started` for `false`, ou direto em "Treinando" se já tinha sido iniciado antes (ex.: retomando um
-    `incomplete` em que já tinha tocado "Iniciar exercício" da primeira vez).
+  - O exercício escolhido vira o novo `idx` e cai no estado 4 "Pronto pra começar" — sempre, mesmo que seja
+    um `incomplete` que já tinha sido iniciado antes (regra única da seção anterior: trocar de exercício
+    sempre reseta `started` para `false`; só reabrir o app no mesmo `idx` pula direto pro estado 1).
 - Botão secundário "Voltar ao treino" fecha a prévia e volta pro exercício ativo, sem mudar nada (cobre o
   item 6 — espiar o próximo exercício numa pausa e voltar).
 
