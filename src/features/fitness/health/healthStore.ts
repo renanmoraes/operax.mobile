@@ -22,8 +22,12 @@ export type HealthAvailability =
 
 export const HEALTH_PLATFORM: 'ios' | 'android' | null = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : null;
 
-// Há Expo Go que diz `bare` no executionEnvironment; a config do Expo Go só existe dentro dele.
-const isExpoGo = () => Constants.executionEnvironment === ExecutionEnvironment.StoreClient || Constants.expoGoConfig != null;
+// Há Expo Go que diz `bare` no executionEnvironment, então valem também o dono do app e o `extra.expoGo` do manifesto.
+// Não usar `Constants.expoGoConfig`: no build de verdade ele devolve o manifesto embutido (não nulo) e travaria a Saúde.
+const isExpoGo = () =>
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient ||
+  Constants.appOwnership === 'expo' ||
+  Constants.manifest2?.extra?.expoGo != null;
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 type HealthKitModule = typeof import('@kingstinct/react-native-healthkit');

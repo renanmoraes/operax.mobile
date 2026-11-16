@@ -209,7 +209,7 @@ const client = {
     notifOff: 'Desativadas',
     calendar: 'Calendário do celular',
     calendarSub: 'Assinar a agenda',
-    watches: 'Relógios e apps',
+    watches: 'Dispositivos e apps',
     watchesSub: 'Garmin, Apple Watch, Galaxy Watch, Strava e mais',
     privacy: 'Privacidade',
     privacySub: 'Fotos de evolução: você e seu personal',

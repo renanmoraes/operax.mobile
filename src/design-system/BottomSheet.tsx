@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import i18n from '@/src/i18n';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, motion, radii, shadows, text, zIndex } from './tokens';
@@ -10,6 +10,7 @@ const easeOut = Easing.bezier(...motion.easeOut);
 /**
  * Folha que sobe de baixo: fundo escurece, a folha desliza.
  * Toque fora ou no voltar do Android fecha. Sobe junto com o teclado quando há campos.
+ * Conteúdo mais alto que a folha rola por dentro, para o botão do fim não ficar embaixo da barra do sistema.
  */
 export function BottomSheet({
   visible,
@@ -49,7 +50,9 @@ export function BottomSheet({
               {title}
             </Text>
           ) : null}
-          <View style={[{ gap: 10 }, contentStyle]}>{children}</View>
+          <ScrollView style={styles.body} contentContainerStyle={[{ gap: 10 }, contentStyle]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} bounces={false}>
+            {children}
+          </ScrollView>
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
@@ -69,6 +72,7 @@ const styles = StyleSheet.create({
     zIndex: zIndex.sheet,
     ...shadows.hero,
   },
+  body: { flexGrow: 0, flexShrink: 1 },
   grabber: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: colors.track, marginBottom: 14 },
   title: { ...text.title, color: colors.text, marginBottom: 12 },
 });

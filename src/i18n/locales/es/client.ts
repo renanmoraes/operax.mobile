@@ -211,7 +211,7 @@ const client: Shape<typeof pt> = {
     notifOff: 'Desactivadas',
     calendar: 'Calendario del celular',
     calendarSub: 'Suscribirse a la agenda',
-    watches: 'Relojes y apps',
+    watches: 'Dispositivos y apps',
     watchesSub: 'Garmin, Apple Watch, Galaxy Watch, Strava y más',
     privacy: 'Privacidad',
     privacySub: 'Fotos de progreso: tú y tu entrenador',
