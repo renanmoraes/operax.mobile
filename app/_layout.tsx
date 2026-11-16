@@ -154,14 +154,34 @@ function UpdateBanner() {
  * (senão a rota protegida manda para o início e o aviso se perde).
  */
 function NotificationRouter() {
-  const { ready, isAuthenticated } = useAuth();
+  const { ready, isAuthenticated, user, switchTenant, accounts, switchAccount } = useAuth();
   const canOpen = ready && isAuthenticated;
   const canOpenRef = useRef(canOpen);
-  const pending = useRef<string | null>(null);
+  // O aviso do aluno diz de qual empresa veio: se outra estiver aberta, troca antes de abrir a tela.
+  const tenantRef = useRef({ user, switchTenant, accounts, switchAccount });
+  useEffect(() => {
+    tenantRef.current = { user, switchTenant, accounts, switchAccount };
+  }, [user, switchTenant, accounts, switchAccount]);
+  const goTo = async (url: string, slug: string | null) => {
+    const { user: u, switchTenant: change, accounts: saved, switchAccount: changeAccount } = tenantRef.current;
+    // Aviso do aluno com a conta da equipe aberta: troca para a conta do aluno (se está salva) e abre a tela dele.
+    if (url.startsWith('/cliente') && u?.kind === 'staff') {
+      if (!saved.client) return;
+      await changeAccount('client').catch(() => undefined);
+      router.push(url as never);
+      return;
+    }
+    if (slug && u?.kind === 'client') {
+      const target = u.memberships?.find((m) => m.tenant_slug === slug);
+      if (target && target.tenant_id !== u.active_tenant_id) await change(target.tenant_id).catch(() => undefined);
+    }
+    router.push(url as never);
+  };
+  const pending = useRef<{ url: string; slug: string | null } | null>(null);
   useEffect(() => {
     canOpenRef.current = canOpen;
     if (canOpen && pending.current) {
-      router.push(pending.current as never);
+      void goTo(pending.current.url, pending.current.slug);
       pending.current = null;
     }
   }, [canOpen]);
@@ -178,8 +198,9 @@ function NotificationRouter() {
         // Lembrete local já traz a tela do app; push do Operax traz o link do web (convertido aqui).
         const url = typeof data.url === 'string' && data.url.startsWith('/') ? data.url : data.notificationId || data.link ? linkToAppRoute(data.link, data) : null;
         if (!url) return;
-        if (canOpenRef.current) router.push(url as never);
-        else pending.current = url;
+        const slug = typeof data.tenant_slug === 'string' ? data.tenant_slug : null;
+        if (canOpenRef.current) void goTo(url, slug);
+        else pending.current = { url, slug };
       };
       sub = N.addNotificationResponseReceivedListener((r) => open(r.notification.request.content.data));
       // App aberto pelo toque na notificação (estava fechado).

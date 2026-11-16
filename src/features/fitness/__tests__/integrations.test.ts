@@ -1,4 +1,4 @@
-import { phoneHealthCards, pushProvider, receiveProviders, sendTargets, toggleKind } from '../integrations';
+import { phoneHealthCards, pushProvider, receiveProviders, sendTargets, toggleKind, watchGroups } from '../integrations';
 import type { ProviderView } from '../types';
 
 const p = (id: ProviderView['id'], state: ProviderView['state'], connected = false): ProviderView => ({
@@ -30,6 +30,22 @@ describe('integrações de relógio', () => {
     const r = receiveProviders([p('garmin', 'available'), p('strava', 'available'), p('coros', 'soon'), p('apple', 'soon'), p('zepp', 'soon')]);
     expect(r.ready.map((x) => x.id)).toEqual(['garmin', 'strava']);
     expect(r.soon.map((x) => x.id)).toEqual(['coros', 'zepp']);
+  });
+
+  it('relógios num grupo (uma conexão: manda e traz) e o Strava, que só traz, no outro; conectados primeiro', () => {
+    const g = watchGroups([p('garmin', 'available', true), p('strava', 'available'), p('polar', 'available'), p('apple', 'soon'), p('coros', 'soon'), p('zepp', 'soon')]);
+    expect(g.watches.map((x) => [x.id, x.state, x.connected])).toEqual([
+      ['garmin', 'available', true],
+      ['polar', 'available', false],
+      ['apple', 'soon', false],
+      ['coros', 'soon', false],
+      ['zepp', 'soon', false],
+    ]);
+    expect(g.apps.map((x) => x.id)).toEqual(['strava']);
+    // Polar conectado sobe para o topo; relógio novo do backend entra no fim.
+    const h = watchGroups([p('garmin', 'available'), p('polar', 'available', true), p('suunto' as ProviderView['id'], 'soon')]);
+    expect(h.watches.map((x) => x.id)).toEqual(['polar', 'garmin', 'apple', 'coros', 'zepp', 'suunto']);
+    expect(h.apps).toEqual([]);
   });
 
   it('Galaxy Watch só aparece no Android', () => {

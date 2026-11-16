@@ -1,4 +1,4 @@
-import { Image, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Image, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
@@ -14,7 +14,7 @@ type SourceView = ImportedSessionView['sources'][number];
  * - Garmin: na conexão, nome completo "Garmin Connect™" com o ícone oficial, sem alterar.
  *   Onde aparece dado do Garmin, atribuição "Garmin [modelo]" junto do título; sem modelo, só "Garmin".
  *   A etiqueta Garmin não vai em avatar, selo ou onde não há dado do Garmin.
- * - Strava: conectar só pelo botão oficial "Connect with Strava"; dado vindo do Strava leva
+ * - Strava: conecta com o botão padrão do app, como os outros (decisão do dono em 15/11/2026); dado vindo do Strava leva
  *   "Powered by Strava". Não sugerir que o app é feito ou patrocinado pelo Strava.
  * - Zepp: o pacote oficial só traz o selo "Works with Zepp | Zepp OS", que afirma compatibilidade.
  *   Ele aparece apenas quando a conexão com a Zepp estiver disponível; até lá, a inicial.
@@ -29,7 +29,6 @@ type SourceView = ImportedSessionView['sources'][number];
 
 const GARMIN_TILE = require('@/assets/brand/watches/garmin-connect-tile.png');
 const GARMIN_TAG = require('@/assets/brand/watches/garmin-tag-black.png');
-const STRAVA_CONNECT = require('@/assets/brand/watches/strava-connect-orange.png');
 const STRAVA_POWERED = require('@/assets/brand/watches/strava-powered-orange.png');
 const ZEPP_WORKS_WITH = require('@/assets/brand/watches/zepp-works-with-horizontal.png');
 
@@ -105,21 +104,6 @@ export function ProviderMark({ id, label, size = 44, muted, ring }: { id: BrandI
     <View style={[styles.mark, frame, { backgroundColor: muted ? '#f0f2f5' : colors.primaryWash }]} accessible={false}>
       <Text style={[text.title, { fontSize: Math.round(size * 0.4), color: muted ? colors.textMuted : colors.primaryDeep }]}>{label.slice(0, 1)}</Text>
     </View>
-  );
-}
-
-/** Botão oficial do Strava (237×48). Não muda cor, texto nem proporção. */
-export function StravaConnectButton({ onPress, disabled }: { onPress: () => void; disabled?: boolean }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel="Connect with Strava"
-      style={({ pressed }) => [{ alignSelf: 'flex-start', opacity: disabled ? 0.5 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] }]}
-    >
-      <Image source={STRAVA_CONNECT} style={{ width: 237, height: 48 }} resizeMode="contain" />
-    </Pressable>
   );
 }
 

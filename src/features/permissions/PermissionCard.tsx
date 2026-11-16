@@ -16,30 +16,33 @@ export function StatusAction({ state, onRequest, grantLabel }: { state: Permissi
   return <Button label={grantLabel} compact onPress={onRequest} />;
 }
 
-/** Cartão de uma permissão. Com `onPress`, o cartão inteiro abre a tela do assunto (ex.: Relógios). */
+/**
+ * Cartão de uma permissão. Com `onPress`, o topo (ícone, título e texto) abre a tela do assunto (ex.: Relógios). A ação fica
+ * fora da área tocável: botão dentro de botão quebra na web e confunde o leitor de tela.
+ */
 export function PermissionCard({ icon, title, body, action, index, onPress }: { icon: IconName; title: string; body: string; action: ReactNode; index: number; onPress?: () => void }) {
-  const card = (
-    <Card style={styles.card}>
-      <View style={styles.cardTop}>
-        <IconTile icon={icon} size={46} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>{title}</Text>
-          <Muted style={styles.cardBody}>{body}</Muted>
-        </View>
-        {onPress ? <Ionicons name="chevron-forward" size={18} color={colors.textMuted} style={{ alignSelf: 'center' }} /> : null}
+  const top = (
+    <View style={styles.cardTop}>
+      <IconTile icon={icon} size={46} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.cardTitle}>{title}</Text>
+        <Muted style={styles.cardBody}>{body}</Muted>
       </View>
-      <View style={styles.cardAction}>{action}</View>
-    </Card>
+      {onPress ? <Ionicons name="chevron-forward" size={18} color={colors.textMuted} style={{ alignSelf: 'center' }} /> : null}
+    </View>
   );
   return (
     <Rise index={index}>
-      {onPress ? (
-        <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={title}>
-          {card}
-        </PressableScale>
-      ) : (
-        card
-      )}
+      <Card style={styles.card}>
+        {onPress ? (
+          <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={title}>
+            {top}
+          </PressableScale>
+        ) : (
+          top
+        )}
+        <View style={styles.cardAction}>{action}</View>
+      </Card>
     </Rise>
   );
 }

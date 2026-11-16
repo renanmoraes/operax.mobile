@@ -6,7 +6,7 @@ import { Button, Display, Muted, Rise, Screen } from '@/src/design-system/ui';
 import { PermissionCard, StatusAction } from '@/src/features/permissions/PermissionCard';
 import { spacing } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
-import { markClientOnboardingSeen, PermissionKey, usePermissions } from '@/src/features/permissions/permissions';
+import { markClientOnboardingSeen, PermissionKey, pushTargetFor, usePermissions } from '@/src/features/permissions/permissions';
 import type { PermissionState } from '@/src/features/permissions/permissionState';
 import { useProviders } from '@/src/features/fitness/connections';
 import { providerDisplayName } from '@/src/features/fitness/brands';
@@ -17,7 +17,7 @@ export default function ClientPermissionsScreen() {
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();
   const keys: PermissionKey[] = ['notifications', 'location', 'camera', 'photos'];
-  const { states, request } = usePermissions(keys, false); // cliente: só a permissão do sistema (o portal não registra aparelho)
+  const { states, request } = usePermissions(keys, pushTargetFor(mode, 'client')); // aluno com login real: o aparelho recebe push do portal
   const caps = useClientCapabilities();
   const { data: providers } = useProviders(caps.training);
   // Relógio só com treino liberado; câmera serve ao treino (fotos de evolução) e ao chat com anexos (só no demo por enquanto).
