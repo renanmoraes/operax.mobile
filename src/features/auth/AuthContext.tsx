@@ -35,6 +35,7 @@ import {
 import i18n from '@/src/i18n';
 import { connectSocket, disconnectSocket } from '@/src/shared/realtime/socket';
 import { registerForPushNotificationsAsync } from '@/src/features/notifications/push';
+import { registerClientPush, revokeClientPush } from '@/src/features/notifications/clientPush';
 import { clearBookingReminders } from '@/src/features/notifications/reminders';
 
 type AuthMode = 'mock' | 'live';
@@ -238,6 +239,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole('client');
           setUser(me);
           setAuthenticated(true);
+          // Push do aluno: só registra se a permissão já foi dada (o pedido fica na tela de permissões).
+          void registerClientPush({ prompt: false }).catch(() => undefined);
         }
       } catch {
         try {
@@ -268,6 +271,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setClientDataMode(mode);
   }, [mode]);
+
+  // Aluno trocou o idioma do app: o push passa a chegar no idioma novo (o servidor guarda junto com o aparelho).
+  useEffect(() => {
+    if (mode !== 'live' || role !== 'client' || !isAuthenticated) return;
+    const onChange = () => void registerClientPush({ prompt: false }).catch(() => undefined);
+    i18n.on('languageChanged', onChange);
+    return () => i18n.off('languageChanged', onChange);
+  }, [mode, role, isAuthenticated]);
 
   const value = useMemo<AuthState>(() => {
     function remember(r: Role, u: AuthUser, demo: boolean) {
@@ -342,6 +353,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (result.session) {
         await setTokens(result.session.access_token, portalIdentity.current ?? '', 'client');
         next = await loadPortalUser(result.companies);
+        // Conta da empresa aberta (login ou troca de empresa): o aparelho passa a receber o push dela.
+        void registerClientPush({ prompt: false }).catch(() => undefined);
       } else {
         next = portalUserWithoutSession(result.companies);
       }
@@ -642,6 +655,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout: async () => {
         const current = role;
         if (mode === 'live' && current === 'client') {
+          // Antes do logout: a revogação ainda precisa da sessão do aluno.
+          await revokeClientPush();
           await portalLogout().catch(() => undefined);
           await clearTokens('client');
           // Saiu da conta de cliente: os lembretes dela não podem tocar depois.

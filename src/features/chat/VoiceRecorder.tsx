@@ -32,7 +32,7 @@ export function useVoiceRecorder() {
   }, [state.durationMillis, state.metering, recording]);
 
   const start = useCallback(async (): Promise<PermissionState> => {
-    const permission = await requestPermission('microphone', { registerPush: false });
+    const permission = await requestPermission('microphone', { push: null });
     if (permission !== 'granted') return permission;
     await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
     await recorder.prepareToRecordAsync();

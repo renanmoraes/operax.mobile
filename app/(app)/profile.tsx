@@ -9,7 +9,7 @@ import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { AccountSwitcher } from '@/src/features/auth/AccountSwitcher';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
-import { openSystemSettings, usePermissions } from '@/src/features/permissions/permissions';
+import { openSystemSettings, pushTargetFor, usePermissions } from '@/src/features/permissions/permissions';
 import { API_URL } from '@/src/shared/config';
 import { appVersionLabel } from '@/src/shared/updates/appVersion';
 
@@ -17,7 +17,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { logout, user, mode } = useAuth();
   const { t } = useTranslation(['settings', 'common']);
-  const { states, request } = usePermissions(['notifications'], mode === 'live' && user?.kind === 'staff');
+  const { states, request } = usePermissions(['notifications'], pushTargetFor(mode, user?.kind));
   const push = states.notifications;
 
   return (

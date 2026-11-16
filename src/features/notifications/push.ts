@@ -6,6 +6,25 @@ export type PushRegistrationResult =
   | { status: 'denied' }
   | { status: 'unavailable'; reason: string };
 
+const easProjectId = (): string | undefined =>
+  Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId ?? undefined;
+
+/**
+ * Token do aparelho só se a pessoa já deixou o app notificar, sem abrir o pedido do sistema.
+ * Serve para registrar em silêncio ao entrar na conta (o pedido fica na tela de permissões).
+ */
+export async function grantedPushToken(): Promise<string | null> {
+  if (Platform.OS === 'web') return null;
+  try {
+    const Notifications = await import('expo-notifications');
+    if ((await Notifications.getPermissionsAsync()).status !== 'granted') return null;
+    const projectId = easProjectId();
+    return (await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined)).data;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Pede permissão e obtém Expo push token.
  * Em Expo Go / simulador pode falhar — tratamos como unavailable sem quebrar o app.
@@ -45,11 +64,7 @@ export async function registerForPushNotificationsAsync(): Promise<PushRegistrat
       return { status: 'denied' };
     }
 
-    const projectId =
-      Constants.expoConfig?.extra?.eas?.projectId ??
-      Constants.easConfig?.projectId ??
-      undefined;
-
+    const projectId = easProjectId();
     const tokenResponse = await Notifications.getExpoPushTokenAsync(
       projectId ? { projectId } : undefined,
     );

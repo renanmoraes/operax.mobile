@@ -13,20 +13,20 @@ import { useProviders } from '@/src/features/fitness/connections';
 import { providerDisplayName } from '@/src/features/fitness/brands';
 import { useFitnessSummary } from '@/src/features/fitness/useFitness';
 import { useAchievementLevel } from '@/src/features/fitness/achievements';
-import { usePermissions } from '@/src/features/permissions/permissions';
+import { pushTargetFor, usePermissions } from '@/src/features/permissions/permissions';
 import { appVersionLabel } from '@/src/shared/updates/appVersion';
 
 export default function ClientPerfilScreen() {
   const { t } = useTranslation('client');
   const insets = useSafeAreaInsets();
-  const { user, logout, switchTenant } = useAuth();
+  const { user, logout, switchTenant, mode } = useAuth();
   const { data: companies } = useCompanies();
   const { data: summary } = useFitnessSummary();
   const lvl = useAchievementLevel();
   // Relógios é do Fitness: empresa sem Fitness não vê a linha nem consulta as conexões.
   const caps = useClientCapabilities();
   const { data: providers } = useProviders(caps.training);
-  const { states, request } = usePermissions(['notifications'], false); // cliente: só a permissão do sistema (o portal não registra aparelho)
+  const { states, request } = usePermissions(['notifications'], pushTargetFor(mode, 'client')); // aluno com login real: o aparelho recebe push do portal
   const client = user?.kind === 'client' ? user : null;
   const memberships = client?.memberships ?? [];
   const secondaryLine = client?.email || client?.phone || '—';

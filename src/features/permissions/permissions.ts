@@ -5,6 +5,7 @@ import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from '
 import { getHealthAvailability, requestHealthAccess } from '@/src/features/fitness/health/healthStore';
 import { registerForPushNotificationsAsync } from '@/src/features/notifications/push';
 import { registerDevicePushToken } from '@/src/shared/api/auth.api';
+import { registerClientPush } from '@/src/features/notifications/clientPush';
 import { getItem, setItem } from '@/src/shared/storage';
 import { PermissionState, SystemPermissionResponse, toPermissionState } from './permissionState';
 
@@ -51,22 +52,25 @@ export async function getPermission(key: PermissionKey): Promise<PermissionState
   }
 }
 
+/** Para onde o token do aparelho sobe: conta da equipe, conta do aluno no portal, ou nenhuma (demonstração). */
+export type PushTarget = 'staff' | 'client' | null;
+export const pushTargetFor = (mode: string, kind: 'staff' | 'client' | undefined): PushTarget =>
+  mode === 'live' && kind ? kind : null;
+
 /**
- * `registerPush`: só a equipe com login real registra o aparelho no Operax (`/api/auth/device-tokens` é rota
- * da equipe; o portal do cliente não tem push). Cliente e demonstração só pedem a permissão ao sistema.
+ * `push`: com login real, o aparelho é registrado no Operax — a equipe em `/api/auth/device-tokens`, o aluno no portal
+ * (`/me/push-tokens`). Na demonstração só pede a permissão ao sistema.
  */
-export async function requestPermission(key: PermissionKey, opts: { registerPush: boolean }): Promise<PermissionState> {
+export async function requestPermission(key: PermissionKey, opts: { push: PushTarget }): Promise<PermissionState> {
   switch (key) {
     case 'notifications':
       if (Platform.OS === 'web') return 'unavailable';
-      if (opts.registerPush) {
-        try {
-          await registerDevicePushToken();
-        } catch {
-          /* token não subiu agora; o estado da permissão continua valendo */
-        }
-      } else {
-        await registerForPushNotificationsAsync();
+      try {
+        if (opts.push === 'staff') await registerDevicePushToken();
+        else if (opts.push === 'client') await registerClientPush({ prompt: true });
+        else await registerForPushNotificationsAsync();
+      } catch {
+        /* token não subiu agora; o estado da permissão continua valendo */
       }
       return readNotifications();
     case 'camera':
@@ -99,7 +103,7 @@ export function openSystemSettings() {
 }
 
 /** Estado das permissões pedidas; reconsulta quando o app volta ao primeiro plano (ex.: depois dos ajustes). */
-export function usePermissions(keys: PermissionKey[], registerPush: boolean) {
+export function usePermissions(keys: PermissionKey[], push: PushTarget) {
   const [states, setStates] = useState<Partial<Record<PermissionKey, PermissionState>>>({});
   const signature = keys.join(',');
 
@@ -120,11 +124,11 @@ export function usePermissions(keys: PermissionKey[], registerPush: boolean) {
 
   const request = useCallback(
     async (key: PermissionKey) => {
-      const next = await requestPermission(key, { registerPush });
+      const next = await requestPermission(key, { push });
       setStates((prev) => ({ ...prev, [key]: next }));
       return next;
     },
-    [registerPush],
+    [push],
   );
 
   return { states, request, refresh };
