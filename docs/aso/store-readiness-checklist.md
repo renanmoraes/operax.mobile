@@ -29,6 +29,8 @@ Skills: `app-launch`, `app-rejection-recovery`, `aso-audit`, `android-aso`.
   - Play Data Safety e App Privacy (ASC): localização **precisa** e dados de condicionamento físico, ligados ao usuário,
     usados só para o funcionamento do app.
   - iOS: `UIBackgroundModes: location`; textos de localização em pt/en/es (`app.json` e `locales/ios/*.json`).
+  - Áudio do chat não toca em segundo plano: `expo-audio` com `enableBackgroundPlayback: false` (sem serviço
+    `mediaPlayback` no Android e sem modo `audio` no iOS). Não religar sem uso real: as duas lojas recusam.
   - No Android aparecem dois avisos fixos durante o treino com GPS (serviço de localização e resumo da tela
     bloqueada, se ligado nos ajustes da gravação).
 

@@ -95,7 +95,8 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "O Operax usa o microfone para você gravar e mandar áudios no chat com a equipe."
+          "microphonePermission": "O Operax usa o microfone para você gravar e mandar áudios no chat com a equipe.",
+          "enableBackgroundPlayback": false
         }
       ],
       [
