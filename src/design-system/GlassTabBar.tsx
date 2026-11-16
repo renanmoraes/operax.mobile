@@ -1,6 +1,6 @@
 import { ComponentProps, ReactNode, useEffect, useState } from 'react';
 import i18n from '@/src/i18n';
-import { LayoutChangeEvent, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { Tabs } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import Animated, { Easing, interpolate, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -200,9 +200,8 @@ const styles = StyleSheet.create({
     borderColor: colors.glassBorder,
     ...shadows.nav,
   },
-  webGlass: {
-    backdropFilter: 'blur(18px)',
-  },
+  // Só na web (CSS); os tipos do React Native 0.88 não conhecem a propriedade.
+  webGlass: { backdropFilter: 'blur(18px)' } as ViewStyle,
   tint: { backgroundColor: colors.glass },
   item: {
     height: COLLAPSED,

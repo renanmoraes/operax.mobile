@@ -57,6 +57,7 @@ function PlannedRecord({ workout, partIndex }: { workout: FitnessWorkoutView; pa
       askTitle={false}
       guide={guideSteps(part)}
       draftKey={`ficha:${workout.id}:${partIndex}`}
+      resumeRoute={`/cliente/treino/gravar/${workout.id}?parte=${partIndex}`}
       onSave={save}
       onClose={() => router.replace('/(client)/fitness')}
       onHistory={() => router.replace('/cliente/historico')}

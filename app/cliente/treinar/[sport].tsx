@@ -23,8 +23,11 @@ export default function FreeRecordScreen() {
       sport: sport!.id,
       started_at: new Date(r.startedAt).toISOString(),
       seconds: r.seconds,
-      ...(sport!.gps && r.distanceM >= 10 ? { distance_m: Math.round(r.distanceM) } : {}),
-      ...(sport!.gps ? { elevation_gain_m: Math.round(r.elevationGainM) } : {}),
+      // Com GPS ou natação (piscinas × tamanho da piscina); sem GPS a distância não é medida.
+      ...(r.distanceM >= 10 ? { distance_m: Math.round(r.distanceM) } : {}),
+      ...(sport!.gps && r.track ? { elevation_gain_m: Math.round(r.elevationGainM) } : {}),
+      ...(r.poolLengthM ? { pool_length_m: r.poolLengthM } : {}),
+      ...(r.poolLengths ? { pool_lengths: r.poolLengths } : {}),
       ...(r.title ? { title: r.title } : {}),
       ...(r.feeling ? { feeling: r.feeling } : {}),
       ...(r.effort ? { effort: r.effort } : {}),
@@ -51,6 +54,8 @@ export default function FreeRecordScreen() {
 
   return (
     <Recorder
+      // Trocar de esporte monta uma gravação nova (GPS, piscina e ajustes de cada esporte).
+      key={sport.id}
       sport={sport}
       heading={sport.label}
       subtitle={i18n.t('fitness:freeWorkout')}
@@ -58,6 +63,7 @@ export default function FreeRecordScreen() {
       askTag
       onPickSport={(next) => router.replace(`/cliente/treinar/${next}`)}
       draftKey={`livre:${sport.id}`}
+      resumeRoute={`/cliente/treinar/${sport.id}`}
       onSave={save}
       onClose={() => (router.canGoBack() ? router.back() : router.replace('/(client)/fitness'))}
       onHistory={() => router.replace('/cliente/historico')}

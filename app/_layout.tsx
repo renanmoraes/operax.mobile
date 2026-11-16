@@ -19,8 +19,10 @@ import { AnimatedSplash } from '@/src/design-system/AnimatedSplash';
 import { IncomingBanner } from '@/src/features/team-chat/IncomingBanner';
 import { TeamChatProvider } from '@/src/features/team-chat/TeamChatContext';
 import { resetClientCache } from '@/src/features/client/clientApi';
-import { setFitnessOwner } from '@/src/features/fitness/owner';
+import { fitnessOwner, setFitnessOwner } from '@/src/features/fitness/owner';
 import { resetFinishedSessionMemory } from '@/src/features/fitness/sessionStore';
+// Também registra a tarefa do GPS de segundo plano: precisa existir antes de qualquer tela (o Android pode acordar o app só para ela).
+import { liveRecordingToResume, stopLiveTracking } from '@/src/features/fitness/background/liveTracking';
 import { colors } from '@/src/design-system/tokens';
 import { installErrorReporter, reportError, setReporterSession, trackRoute } from '@/src/shared/telemetry/errorReporter';
 import { Button } from '@/src/design-system/ui';
@@ -114,6 +116,7 @@ export default function RootLayout() {
           <AccountCacheReset />
           <DialogHost />
           <NotificationRouter />
+          <ResumeRecording />
           <UpdateBanner />
           </TeamChatProvider>
         </AuthProvider>
@@ -212,6 +215,23 @@ function NotificationRouter() {
   return null;
 }
 
+/** App reaberto com o GPS do treino ainda gravando (o sistema fechou a tela no meio): volta direto para a gravação. */
+function ResumeRecording() {
+  const { ready, isAuthenticated, user } = useAuth();
+  const done = useRef(false);
+  useEffect(() => {
+    if (Platform.OS === 'web' || done.current || !ready || !isAuthenticated || user?.kind !== 'client') return;
+    done.current = true;
+    // Só a gravação desta conta e empresa volta; de outra (ou velha demais) desliga o GPS.
+    void liveRecordingToResume(fitnessOwner())
+      .then((m) => {
+        if (m?.route?.startsWith('/cliente/')) router.push(m.route as never);
+      })
+      .catch(() => undefined);
+  }, [ready, isAuthenticated, user?.kind]);
+  return null;
+}
+
 /**
  * Dados em memória pertencem a uma conta. Ao sair, entrar ou trocar de conta/empresa, apaga tudo
  * o que foi carregado (chaves Pix, conversas, agenda…) para nada de uma empresa aparecer na outra.
@@ -228,6 +248,8 @@ function AccountCacheReset() {
   setFitnessOwner(user ? key : '');
   useEffect(() => {
     if (last.current === key) return;
+    // Saiu ou trocou de conta/empresa (havia alguém antes): a gravação com GPS ligado era da conta anterior.
+    if (last.current.split(':')[1] !== '-' && Platform.OS !== 'web') void stopLiveTracking();
     last.current = key;
     qc.removeQueries();
     resetClientCache();
