@@ -11,8 +11,8 @@ import { ActionRow, EmptyState, IconButton, Muted, Num, PressableScale, Progress
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { colors, gradients, radii, shadows, text, typography, glass } from '@/src/design-system/tokens';
-import { flattenWorkout, nextPrescription, stepLoad } from '@/src/features/fitness/flatten';
-import { nextOpenIndex, transitionRest } from '@/src/features/fitness/sessionStatus';
+import { flattenWorkout, nextPrescription, stepLoad, type ExerciseRow } from '@/src/features/fitness/flatten';
+import { exerciseStatus, nextOpenIndex, transitionRest, type ExerciseStatus } from '@/src/features/fitness/sessionStatus';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { useLoadHistory } from '@/src/features/fitness/useFitness';
 import type { FitnessWorkoutView } from '@/src/features/fitness/types';
@@ -51,6 +51,31 @@ function Spark({ values }: { values: number[] }) {
       <Polyline points={pts.map((p) => p.join(',')).join(' ')} stroke={colors.primary} strokeWidth={2.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
       <Circle cx={last[0]} cy={last[1]} r={4} fill={colors.primary} />
     </Svg>
+  );
+}
+
+function PreviewPanel({ row, status, doneCount, onFinish, onBack }: { row: ExerciseRow; status: ExerciseStatus; doneCount: number; onFinish: () => void; onBack: () => void }) {
+  const statusLabel =
+    status === 'done' ? i18n.t('fitness:session.previewStatusDone') : status === 'incomplete' ? i18n.t('fitness:session.previewStatusIncomplete', { done: doneCount, total: row.sets.length }) : i18n.t('fitness:session.previewStatusPending');
+  return (
+    <View>
+      <View style={styles.exHead} accessible accessibilityLabel={i18n.t('fitness:session.previewA11y', { name: row.name })}>
+        <LinearGradient colors={gradients.media} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.thumb} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.name}>{row.name}</Text>
+          <Text style={styles.prescription}>{row.prescription}</Text>
+          <Text style={styles.howTo}>{statusLabel}</Text>
+        </View>
+      </View>
+      {status !== 'done' ? (
+        <PressableScale onPress={onFinish} accessibilityRole="button" style={[styles.primary, { marginTop: 18 }]}>
+          <Text style={styles.primaryText}>{i18n.t('fitness:session.previewFinish')}</Text>
+        </PressableScale>
+      ) : null}
+      <Pressable onPress={onBack} accessibilityRole="button" style={{ marginTop: 12, alignItems: 'center' }}>
+        <Text style={styles.howTo}>{i18n.t('fitness:session.previewBack')}</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -114,11 +139,12 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
   const [voice, setVoice] = useState(true);
   const { toast, show } = useToast(2600);
   const [listOpen, setListOpen] = useState(false);
+  /** Exercício aberto em modo só leitura (toque no segmento/lista/"A seguir"); `null` = sem prévia. */
+  const [previewIdx, setPreviewIdx] = useState<number | null>(null);
 
   const row = rows[idx];
   const done = logs[idx] ?? [];
   const exDone = done.length >= row.sets.length;
-  const isLast = idx === rows.length - 1;
   const resting = rest > 0;
   /** true enquanto o exercício ativo ainda não foi "Iniciado" — mostra transição (3) ou o gate (4). */
   const isGated = !started[idx];
@@ -260,14 +286,6 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
     if (voice) Speech.speak(text, { language: locale() });
   }
 
-  function goTo(i: number) {
-    setIdx(i);
-    const p = nextPrescription(rows[i], logs[i]?.length ?? 0);
-    setKg(p.kg);
-    setReps(p.reps);
-    skipRest();
-  }
-
   function completeSet() {
     const next = logs.map((l, i) => (i === idx ? [...l, { kg, reps }] : l));
     setLogs(next);
@@ -316,6 +334,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
   }
 
   function finishAndGoTo(targetIdx: number) {
+    setPreviewIdx(null);
     if (targetIdx === idx) return;
     setJustFinished(null);
     setExplicitGateOpen(false);
@@ -346,7 +365,8 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
     router.replace('/cliente/treino/concluido');
   }
 
-  const hasNext = nextOpenIndex(rows, logs, idx) !== -1;
+  const nextIdx = nextOpenIndex(rows, logs, idx);
+  const hasNext = nextIdx !== -1;
   const primary = isGated
     ? { label: i18n.t('fitness:session.startEx'), onPress: tapStartExercise }
     : resting
@@ -376,9 +396,9 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
           <Ionicons name={voice ? 'volume-high-outline' : 'volume-mute-outline'} size={20} color={voice ? colors.primary : colors.textMuted} />
         </PressableScale>
       </View>
-      <View style={[styles.stateBadge, inGate ? styles.stateBadgeReady : inExTransition || resting ? styles.stateBadgeResting : styles.stateBadgeTraining]}>
-        <Text style={styles.stateBadgeText}>
-          {inGate ? i18n.t('fitness:session.badgeReady') : inExTransition ? i18n.t('fitness:session.badgeChanging') : resting ? i18n.t('fitness:session.badgeResting') : i18n.t('fitness:session.badgeTraining')}
+      <View style={[styles.stateBadge, inGate ? styles.stateBadgeReady : inExTransition ? styles.stateBadgeResting : exDone ? styles.stateBadgeDone : resting ? styles.stateBadgeResting : styles.stateBadgeTraining]}>
+        <Text style={[styles.stateBadgeText, !inGate && !inExTransition && exDone && { color: '#fff' }]}>
+          {inGate ? i18n.t('fitness:session.badgeReady') : inExTransition ? i18n.t('fitness:session.badgeChanging') : exDone ? i18n.t('fitness:session.exDone') : resting ? i18n.t('fitness:session.badgeResting') : i18n.t('fitness:session.badgeTraining')}
         </Text>
       </View>
 
@@ -388,7 +408,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
           return (
             <Pressable
               key={r.key}
-              onPress={() => goTo(i)}
+              onPress={() => (i === idx ? undefined : setPreviewIdx(i))}
               hitSlop={{ top: 10, bottom: 10 }}
               accessibilityRole="button"
               accessibilityLabel={i18n.t('fitness:session.goToEx', { n: i + 1, name: r.name })}
@@ -415,6 +435,16 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16 }}>
+        {previewIdx != null ? (
+          <PreviewPanel
+            row={rows[previewIdx]}
+            status={exerciseStatus(rows[previewIdx], logs[previewIdx] ?? [], false)}
+            doneCount={logs[previewIdx]?.length ?? 0}
+            onFinish={() => finishAndGoTo(previewIdx)}
+            onBack={() => setPreviewIdx(null)}
+          />
+        ) : (
+          <>
         <View style={styles.exHead}>
           <PressableScale
             onPress={() => router.push(`/cliente/exercicio/${exId}?treino=${workout.id}`)}
@@ -453,12 +483,12 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
 
         {inGate ? (
           <View style={styles.restCard}>
-            {justFinished?.restKind === 'ring' || justFinished == null ? null : (
+            {justFinished?.restKind === 'stopwatch' ? (
               <View style={styles.stopwatch}>
                 <Num size="xl">{bucketElapsed}</Num>
                 <Muted style={{ fontSize: 12 }}>{i18n.t('fitness:session.seconds')}</Muted>
               </View>
-            )}
+            ) : null}
             <View style={{ flex: 1 }}>
               {justFinished ? <Text style={styles.prevDone}>{i18n.t('fitness:session.prevDone', { name: justFinished.name })}</Text> : null}
               <Text style={styles.restTitle}>{i18n.t('fitness:session.badgeReady')}</Text>
@@ -521,26 +551,30 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
           </>
         )}
 
-        {!isLast ? (
+        {hasNext ? (
           <Pressable
-            onPress={() => goTo(idx + 1)}
+            onPress={() => setPreviewIdx(nextIdx)}
             accessibilityRole="button"
-            accessibilityLabel={`A seguir: ${rows[idx + 1].name}. Ir agora`}
+            accessibilityLabel={`A seguir: ${rows[nextIdx].name}. Ir agora`}
             style={({ pressed }) => [styles.nextRow, pressed && { opacity: 0.7 }]}
           >
             <Text style={styles.nextLabel}>A seguir</Text>
-            <Text style={styles.nextName} numberOfLines={1}>{rows[idx + 1].name}</Text>
+            <Text style={styles.nextName} numberOfLines={1}>{rows[nextIdx].name}</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </Pressable>
         ) : null}
+          </>
+        )}
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 18 }]}>
-        <PressableScale onPress={primary.onPress} accessibilityRole="button" accessibilityLabel={primary.label} style={styles.primary}>
-          <Text style={styles.primaryText} numberOfLines={1}>{primary.label}</Text>
-        </PressableScale>
+        {previewIdx == null ? (
+          <PressableScale onPress={primary.onPress} accessibilityRole="button" accessibilityLabel={primary.label} style={styles.primary}>
+            <Text style={styles.primaryText} numberOfLines={1}>{primary.label}</Text>
+          </PressableScale>
+        ) : null}
         <ActionRow
-          style={{ marginTop: 10 }}
+          style={{ marginTop: previewIdx == null ? 10 : 0 }}
           items={[
             {
               icon: paused ? 'play' : 'pause',
@@ -555,7 +589,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
               label: i18n.t('fitness:rest.skip'),
               accessibilityLabel: i18n.t('fitness:session.skipA11y'),
               disabled: !hasNext,
-              onPress: () => finishAndGoTo(nextOpenIndex(rows, logs, idx)),
+              onPress: () => finishAndGoTo(nextIdx),
             },
             { icon: 'flag', label: i18n.t('fitness:session.end'), accessibilityLabel: i18n.t('fitness:session.endA11y'), tone: 'danger', onPress: finish },
           ]}
@@ -571,7 +605,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
             <Pressable
               key={r.key}
               onPress={() => {
-                goTo(i);
+                if (i !== idx) setPreviewIdx(i);
                 setListOpen(false);
               }}
               accessibilityRole="button"
@@ -601,6 +635,7 @@ const styles = StyleSheet.create({
   stateBadge: { marginHorizontal: 16, marginTop: 4, alignSelf: 'flex-start', paddingVertical: 5, paddingHorizontal: 12, borderRadius: 999 },
   stateBadgeTraining: { backgroundColor: colors.primaryWash },
   stateBadgeResting: { backgroundColor: '#fff2e3' },
+  stateBadgeDone: { backgroundColor: colors.success },
   stateBadgeReady: { backgroundColor: '#f0f1f4' },
   stateBadgeText: { fontFamily: typography.fontFamilyBold, fontSize: 11.5, letterSpacing: 0.3, color: colors.text },
   stopwatch: { width: 132, height: 132, borderRadius: 66, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...shadows.card },
