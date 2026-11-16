@@ -7,6 +7,7 @@ import { Body, Button, Field, Muted, Segmented } from '@/src/design-system/ui';
 import { colors, radii } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { AuthShell } from '@/src/features/auth/AuthShell';
+import { maskIdentifier } from '@/src/features/auth/identifier';
 import { ALLOW_MOCK } from '@/src/shared/config';
 
 type Method = 'password' | 'otp';
@@ -97,7 +98,7 @@ export default function ClientLoginScreen() {
         onChangeText={(v) => {
           clearError();
           setBlocked(false);
-          setIdentifier(v);
+          setIdentifier(maskIdentifier(v));
         }}
         placeholder={t('fields.emailOrPhonePlaceholder')}
       />

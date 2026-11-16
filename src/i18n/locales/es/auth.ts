@@ -31,9 +31,9 @@ const auth: Shape<typeof pt> = {
     isTeam: '¿Eres del equipo?',
     signInAsTeam: 'Entrar como equipo',
     withPassword: 'Con contraseña',
-    bySms: 'Código por SMS',
-    smsInfo: 'Te enviamos un código de 6 dígitos a tu celular. Sin contraseña que recordar.',
-    forgot: '¿Olvidaste tu contraseña? Usa el código por SMS.',
+    bySms: 'Con código',
+    smsInfo: 'Escribe tu e-mail o celular: el código de 6 dígitos llega por e-mail o WhatsApp. Sin contraseña que recordar.',
+    forgot: '¿Olvidaste tu contraseña? Entra con un código.',
   },
   clientOtp: {
     createTitle: 'Crea tu contraseña',

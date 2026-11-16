@@ -29,9 +29,9 @@ const auth = {
     isTeam: 'É da equipe?',
     signInAsTeam: 'Entrar como equipe',
     withPassword: 'Com senha',
-    bySms: 'Código por SMS',
-    smsInfo: 'Mandamos um código de 6 dígitos para o seu celular. Sem senha para lembrar.',
-    forgot: 'Esqueceu a senha? Use o código por SMS.',
+    bySms: 'Com código',
+    smsInfo: 'Digite o e-mail ou o celular: o código de 6 dígitos chega no e-mail ou no WhatsApp. Sem senha para lembrar.',
+    forgot: 'Esqueceu a senha? Entre com o código.',
   },
   clientOtp: {
     createTitle: 'Crie sua senha',
