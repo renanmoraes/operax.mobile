@@ -36,6 +36,7 @@ const attendance: Shape<typeof pt> = {
   channel: {
     instagram: 'Instagram',
     messenger: 'Messenger',
+    marketplace: 'Marketplace',
     other: 'Other channel',
     telegram: 'Telegram',
     webchat: 'Website chat',

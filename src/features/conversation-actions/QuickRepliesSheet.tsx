@@ -21,6 +21,7 @@ export function QuickRepliesSheet({
   onPick,
   onTemplates,
   within24h,
+  showTemplates = true,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -29,6 +30,8 @@ export function QuickRepliesSheet({
   onPick: (q: QuickReplyLike) => void;
   onTemplates: () => void;
   within24h: boolean;
+  /** Falso onde mensagem ativa não existe (marketplace) ou o perfil não pode usar. */
+  showTemplates?: boolean;
 }) {
   const { t } = useTranslation('inbox');
   const [search, setSearch] = useState('');
@@ -80,6 +83,7 @@ export function QuickRepliesSheet({
           ))
         )}
       </ScrollView>
+      {showTemplates ? (
       <Pressable onPress={onTemplates} accessibilityRole="button" style={({ pressed }) => [styles.templates, pressed && { opacity: 0.8 }]}>
         <View style={styles.templatesIcon}>
           <Ionicons name="document-text" size={18} color="#c2410c" />
@@ -90,6 +94,7 @@ export function QuickRepliesSheet({
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </Pressable>
+      ) : null}
     </BottomSheet>
   );
 }

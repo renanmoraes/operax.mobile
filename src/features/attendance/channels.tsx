@@ -34,13 +34,27 @@ const CHANNEL_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
   messenger: 'chatbubbles',
   telegram: 'paper-plane',
   webchat: 'globe-outline',
+  marketplace: 'storefront-outline',
+};
+
+/** Conversa de marketplace (Hub Comercial): o canal é `hub:<canal>`, por exemplo `hub:mercado-livre`. */
+export const isMarketplaceChannel = (channel: string | null | undefined): boolean => (channel ?? '').toLowerCase().startsWith('hub:');
+
+/** Nome de marca de cada marketplace, igual ao site (não se traduz). */
+const MARKETPLACE_NAMES: Record<string, string> = {
+  'mercado-livre': 'Mercado Livre',
+  amazon: 'Amazon',
+  shopee: 'Shopee',
+  magalu: 'Magalu',
+  ifood: 'iFood Mercado',
+  'tiktok-shop': 'TikTok Shop',
 };
 
 /** Nome do canal ("Instagram", "Chat no site"; marketplaces como `hub:mercado-livre` → "Mercado Livre"). */
 export function channelName(channel: string | null | undefined): string {
   const c = (channel ?? '').toLowerCase();
-  if (c.startsWith('hub:')) return c.slice(4).split(/[-_]/).map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w)).join(' ');
-  if (c === 'whatsapp' || c === 'instagram' || c === 'messenger' || c === 'telegram' || c === 'webchat') return i18n.t(`attendance:channel.${c}`);
+  if (isMarketplaceChannel(c)) return MARKETPLACE_NAMES[c.slice(4)] ?? i18n.t('attendance:channel.marketplace');
+  if (c === 'whatsapp' || c === 'instagram' || c === 'messenger' || c === 'telegram' || c === 'webchat' || c === 'marketplace') return i18n.t(`attendance:channel.${c}`);
   return i18n.t('attendance:channel.other');
 }
 
@@ -71,7 +85,9 @@ export function useInboxConnections() {
     const byId = new Map(connections.map((c) => [c.id, c]));
     /** Número por onde a conversa chegou (no demo, distribuído entre os de exemplo). */
     const idOf = (conv: { id: string; channel: string; connectionId?: string | null }) => (live ? conv.connectionId ?? null : demoConnectionFor(conv));
-    return { connections, byId, idOf, multi: connections.length > 1 };
+    // A conexão do Hub Comercial (marketplace) não é um número: não liga o selo de número nem entra no filtro.
+    const numbers = connections.filter((c) => (c.channel_type ?? '').toLowerCase() !== 'marketplace');
+    return { connections: numbers, byId, idOf, multi: numbers.length > 1 };
   }, [live, data]);
 }
 

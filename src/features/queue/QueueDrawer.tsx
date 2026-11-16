@@ -22,14 +22,9 @@ import { colors, radii, shadows, spacing, text, typography, zIndex } from '@/src
 import type { Conversation } from '@/src/mocks/data';
 import { useQueueDrawer } from './QueueDrawerContext';
 import { useCan } from '@/src/features/auth/useCan';
+import { channelName } from '@/src/features/attendance/channels';
 
 const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.86, 360);
-
-const channelLabel = {
-  whatsapp: 'WhatsApp',
-  instagram: 'Instagram',
-  messenger: 'Messenger',
-} as const;
 
 type Props = {
   items: Conversation[];
@@ -106,7 +101,7 @@ export function QueueDrawer({ items, claimingId, onClaim }: Props) {
                   </View>
                 </View>
                 <View style={styles.itemFoot}>
-                  <Badge label={`${item.queue} · ${channelLabel[item.channel] ?? t('card.channelOther')}`} />
+                  <Badge label={`${item.queue} · ${channelName(item.channel)}`} />
                   {canClaim ? (
                     <Button
                       label={t('queue.claim')}

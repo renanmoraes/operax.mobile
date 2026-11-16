@@ -43,9 +43,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { SkeletonList } from '@/src/design-system/Skeleton';
 import { RequirePermission, useCan } from '@/src/features/auth/useCan';
 import type { PermKey } from '@/src/features/auth/permissions';
-import { ChannelChip, useInboxConnections } from '@/src/features/attendance/channels';
+import { ChannelChip, channelName, isMarketplaceChannel, useInboxConnections } from '@/src/features/attendance/channels';
+import { DEMO_HUB_CONTEXT, getHubConversationContext, type HubConversationContext } from '@/src/shared/api/hub.api';
 import { TransferSheet } from '@/src/features/attendance/TransferSheet';
 import { AiSummaryButton, AiSummarySheet, ReplySuggestions, useAiEnabled } from '@/src/features/attendance/AiAssist';
+
+// Marketplace só recebe texto: anexo, Pix e mensagem ativa não saem pelo canal (agendar não envia nada, fica).
+const HUB_ACTIONS = new Set(['booking']);
 
 type Sheet = 'actions' | 'attach' | 'transfer' | 'quick' | 'pix' | 'booking' | 'summary' | null;
 
@@ -115,7 +119,10 @@ function ConversationScreen() {
   useConversationRoom(id, mode === 'live');
   const onConversationEvent = (payload: unknown) => {
     const cid = (payload as { conversationId?: string; conversation_id?: string } | undefined)?.conversationId ?? (payload as { conversation_id?: string } | undefined)?.conversation_id;
-    if (!cid || cid === id) void liveQuery.refetch();
+    if (!cid || cid === id) {
+      void liveQuery.refetch();
+      void qc.invalidateQueries({ queryKey: ['hub-context', id] });
+    }
   };
   useSocketEvents(
     {
@@ -149,6 +156,18 @@ function ConversationScreen() {
     },
     onError: () => showToast(t('conversation.sendFailed'), 'error'),
   });
+
+  // Marketplace (Hub Comercial): por qual loja a resposta sai, os pedidos da conversa e se o canal ainda deixa responder.
+  const isHub = isMarketplaceChannel(conversation?.channel);
+  const hubQuery = useQuery({
+    queryKey: ['hub-context', id],
+    enabled: mode === 'live' && isHub && !!id,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    queryFn: () => getHubConversationContext(id),
+  });
+  const hubContext: HubConversationContext | null = !isHub ? null : mode === 'live' ? hubQuery.data ?? null : DEMO_HUB_CONTEXT;
+  const hubClosed = !!hubContext?.closed_remotely;
 
   if (!conversation) {
     if (liveQuery.isLoading) {
@@ -250,8 +269,15 @@ function ConversationScreen() {
 
   // Perfil sem permissão de enviar: conversa só para leitura (o campo de mensagem nem aparece).
   const canSend = can('sendMessage');
-  const canCompose = canSend && conversation.within24h && ownership === 'mine';
-  const composeBlock = !conversation.within24h ? t('conversation.blocked24h') : ownership !== 'mine' ? t('conversation.blockedClaim') : undefined;
+  const hubName = isHub ? channelName(conversation.channel) : '';
+  const canCompose = canSend && conversation.within24h && ownership === 'mine' && !hubClosed;
+  const composeBlock = hubClosed
+    ? t('conversation.hub.closed', { channel: hubName })
+    : !conversation.within24h
+      ? t('conversation.blocked24h')
+      : ownership !== 'mine'
+        ? t('conversation.blockedClaim')
+        : undefined;
   // Transferir abre a folha com atendente e/ou fila: basta poder uma das duas (fila: mandar para fila + ver filas).
   const canTransfer = can('transfer') || (can('transferQueue') && can('queuesRead'));
   const ownershipActions = { claim: can('claim'), release: can('release'), transfer: canTransfer, close: can('close') };
@@ -301,7 +327,23 @@ function ConversationScreen() {
       },
     },
   ];
-  const actions: ConversationAction[] = allActions.filter((a) => can(a.perm));
+  const actions: ConversationAction[] = allActions.filter((a) => can(a.perm) && (!isHub || HUB_ACTIONS.has(a.key)));
+  const hubKindLabel: Record<HubConversationContext['thread_kind'], string> = {
+    buyer_chat: t('conversation.hub.kind.buyer_chat'),
+    post_sale: t('conversation.hub.kind.post_sale'),
+    product_question: t('conversation.hub.kind.product_question'),
+    support_ticket: t('conversation.hub.kind.support_ticket'),
+  };
+  const hubOrders = hubContext?.orders ?? null;
+  const hubOrderText =
+    hubOrders === null
+      ? null
+      : hubOrders.length === 0
+        ? t('conversation.hub.noOrder')
+        : hubOrders.length === 1
+          ? t('conversation.hub.order', { number: hubOrders[0].external_order_number ?? hubOrders[0].external_order_id })
+          : t('conversation.hub.orders', { count: hubOrders.length });
+  const hubDetail = hubContext ? [hubKindLabel[hubContext.thread_kind], hubOrderText].filter(Boolean).join(' · ') : null;
 
   const appendLocal = (m: Omit<Message, 'id' | 'conversationId' | 'direction' | 'at' | 'status'>) =>
     setLocalMsgs((prev) => [
@@ -358,7 +400,11 @@ function ConversationScreen() {
             <Text style={styles.contactName} numberOfLines={1}>{conversation.contactName}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
               {/* Vários números: por qual deles o cliente está falando (a resposta sai por ele). */}
-              {connections.multi && connection ? <ChannelChip connection={connection} size="xs" /> : null}
+              {isHub ? (
+                <ChannelChip channel={conversation.channel} size="xs" />
+              ) : connections.multi && connection ? (
+                <ChannelChip connection={connection} size="xs" />
+              ) : null}
               <View style={[styles.statusDot, ownership === 'mine' ? { backgroundColor: colors.success } : ownership === 'queue' ? { backgroundColor: colors.warn } : null]} />
               <Muted numberOfLines={1} style={{ fontSize: 12.5 }}>
                 {conversation.queue} · {statusLabel}
@@ -383,6 +429,28 @@ function ConversationScreen() {
             <Text style={styles.link}>{t('conversation.templatesLink')}</Text>
           </Pressable>
           ) : null}
+        </View>
+      ) : null}
+
+      {isHub && hubContext ? (
+        <View style={[styles.hubStrip, hubClosed && styles.hubStripClosed]} accessibilityRole="summary">
+          <View style={[styles.hubIcon, hubClosed && { backgroundColor: colors.dangerSoft }]}>
+            <Ionicons name={hubClosed ? 'lock-closed-outline' : 'storefront-outline'} size={17} color={hubClosed ? colors.dangerText : colors.primary} />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.hubTitle, hubClosed && { color: colors.dangerText }]} numberOfLines={hubClosed ? 3 : 1}>
+              {hubClosed
+                ? t('conversation.hub.closed', { channel: hubName })
+                : hubContext.account_name
+                  ? t('conversation.hub.replyingVia', { channel: hubName, account: hubContext.account_name })
+                  : t('conversation.hub.replyingViaChannel', { channel: hubName })}
+            </Text>
+            {hubDetail ? (
+              <Text style={styles.hubDetail} numberOfLines={1}>
+                {hubDetail}
+              </Text>
+            ) : null}
+          </View>
         </View>
       ) : null}
 
@@ -476,7 +544,7 @@ function ConversationScreen() {
             onPress={() => setSheet('attach')}
             style={styles.attachBtn}
             accessibilityRole="button"
-            accessibilityLabel={t('conversation.attachA11y')}
+            accessibilityLabel={isHub ? t('conversation.hub.attachA11y') : t('conversation.attachA11y')}
           >
             <Ionicons name="add" size={24} color={colors.primary} />
           </Pressable>
@@ -495,10 +563,18 @@ function ConversationScreen() {
             inputRef={inputRef}
             value={draft}
             onChangeText={setDraft}
-            placeholder={!conversation.within24h ? t('conversation.placeholderTemplate') : ownership !== 'mine' ? t('conversation.placeholderClaim') : t('conversation.placeholderMessage')}
+            placeholder={
+              hubClosed
+                ? t('conversation.hub.placeholderClosed')
+                : !conversation.within24h
+                  ? t('conversation.placeholderTemplate')
+                  : ownership !== 'mine'
+                    ? t('conversation.placeholderClaim')
+                    : t('conversation.placeholderMessage')
+            }
             editable={canCompose}
           />
-          {draft.trim() || !canCompose || !can('sendMedia') ? (
+          {draft.trim() || !canCompose || !can('sendMedia') || isHub ? (
             <Pressable
               onPress={() => {
                 if (!draft.trim() || !canCompose) return;
@@ -558,7 +634,12 @@ function ConversationScreen() {
 
       <AiSummarySheet visible={sheet === 'summary'} onClose={() => setSheet(null)} conversationId={id} raw={liveQuery.data?.raw} onChanged={() => void liveQuery.refetch()} />
 
-      <ActionsSheet visible={sheet === 'attach'} onClose={() => setSheet(null)} actions={actions} footnote={composeBlock} />
+      <ActionsSheet
+        visible={sheet === 'attach'}
+        onClose={() => setSheet(null)}
+        actions={actions}
+        footnote={composeBlock ?? (isHub ? t('conversation.hub.textOnly', { channel: hubName }) : undefined)}
+      />
 
       <QuickRepliesSheet
         visible={sheet === 'quick'}
@@ -566,6 +647,7 @@ function ConversationScreen() {
         live={mode === 'live'}
         demoItems={mockQuickReplies}
         within24h={conversation.within24h}
+        showTemplates={!isHub && can('templates')}
         onPick={(q) => {
           setSheet(null);
           const body = resolveQuickReplyVariables(q.body, { name: conversation.contactName }, user?.name ?? '');
@@ -642,6 +724,22 @@ const styles = StyleSheet.create({
   },
   readOnly: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingTop: 14, backgroundColor: '#fff', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   readOnlyText: { flex: 1, fontFamily: typography.fontFamilyMedium, fontSize: 13.5, lineHeight: 19, color: colors.textSoft },
+  hubStrip: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: colors.cardBg,
+    borderRadius: radii.lg,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    ...shadows.card,
+  },
+  hubStripClosed: { backgroundColor: colors.dangerSoft, shadowOpacity: 0, elevation: 0 },
+  hubIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primaryWash, alignItems: 'center', justifyContent: 'center' },
+  hubTitle: { fontFamily: typography.fontFamilyBold, fontSize: 13.5, lineHeight: 18, color: colors.text },
+  hubDetail: { fontFamily: typography.fontFamilyMedium, fontSize: 12.5, lineHeight: 17, color: colors.textSoft, marginTop: 1 },
   claimText: { flex: 1, fontFamily: typography.fontFamilyMedium, fontSize: 13.5, lineHeight: 19, color: colors.textSoft },
   link: { color: colors.warnText, fontFamily: typography.fontFamilyBold, fontSize: 13, textDecorationLine: 'underline' },
   bubble: { maxWidth: '82%', borderRadius: BUBBLE_RADIUS, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 7 },

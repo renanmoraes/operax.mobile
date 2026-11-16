@@ -1,3 +1,4 @@
+import { isMarketplaceChannel } from '@/src/features/attendance/channels';
 import i18n, { locale } from '@/src/i18n';
 import type { ApiConversation, ApiMessage } from '@/src/shared/api/conversations.api';
 import type { Conversation, Message } from '@/src/mocks/data';
@@ -14,9 +15,12 @@ export function mapApiConversation(c: ApiConversation, currentUserId?: string): 
   const closed = c.status === 'closed' || c.status === 'expired';
   const inQueue = !assigned && !closed;
   const mine = !!currentUserId && assigned === currentUserId;
-  const within24h = c.service_window_expires_at
-    ? new Date(c.service_window_expires_at).getTime() > Date.now()
-    : true;
+  // Marketplace não tem janela de 24 h: responde enquanto o canal mantiver a conversa aberta.
+  const within24h = isMarketplaceChannel(c.channel)
+    ? true
+    : c.service_window_expires_at
+      ? new Date(c.service_window_expires_at).getTime() > Date.now()
+      : true;
 
   return {
     id: c.id,

@@ -34,6 +34,7 @@ const attendance = {
   channel: {
     instagram: 'Instagram',
     messenger: 'Messenger',
+    marketplace: 'Marketplace',
     other: 'Outro canal',
     telegram: 'Telegram',
     webchat: 'Chat no site',

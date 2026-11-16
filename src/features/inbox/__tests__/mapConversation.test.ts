@@ -82,3 +82,21 @@ describe('mensagens no formato atual da API', () => {
     expect(mapApiMessage({ id: '3', direction: 'outbound', message_type: 'template', template_name: 'lembrete_consulta', created_at: '2026-11-14T19:23:54Z' }, 'c').body).toBe('Modelo: lembrete_consulta');
   });
 });
+
+describe('conversa de marketplace', () => {
+  it('não tem janela de 24 h: responde enquanto o canal mantiver a conversa aberta', () => {
+    const c = mapApiConversation(
+      {
+        id: 'h1',
+        status: 'open',
+        channel: 'hub:mercado-livre',
+        assigned_user_id: 'u1',
+        contact: { name: 'Comprador' },
+        service_window_expires_at: new Date(Date.now() - 3600_000).toISOString(),
+      },
+      'u1',
+    );
+    expect(c.within24h).toBe(true);
+    expect(c.channel).toBe('hub:mercado-livre');
+  });
+});

@@ -155,6 +155,23 @@ const inbox: Shape<typeof pt> = {
     transferHint: 'On mobile, release to the queue or use the web app to pick an agent.',
     cannotReply: 'Can\'t reply right now',
     booked: 'Booked: {{summary}}',
+    hub: {
+      attachA11y: 'More actions: book',
+      replyingVia: 'Replying via {{channel}} · {{account}}',
+      replyingViaChannel: 'Replying via {{channel}}',
+      order: 'Order {{number}}',
+      orders: '{{count}} linked orders',
+      noOrder: 'No linked order',
+      closed: '{{channel}} closed this conversation: you can no longer reply here.',
+      placeholderClosed: 'Conversation closed on the channel',
+      textOnly: '{{channel}} only accepts text: attachments, audio, Pix and template messages are not sent through this channel.',
+      kind: {
+        buyer_chat: 'Chat with the buyer',
+        post_sale: 'Post-sale',
+        product_question: 'Question on the listing',
+        support_ticket: 'Channel support',
+      },
+    },
   },
   booking: {
     today: 'Today',
