@@ -11,6 +11,9 @@ Skills: `app-launch`, `app-rejection-recovery`, `aso-audit`, `android-aso`.
 - [x] `eas submit` Android: chave da conta `firebase-adminsdk-fbsvc@operax-d3f71` (arquivo `fcm-service-account.json`,
   fora do git) convidada no Play Console com permissão de lançamento. A política da organização no Google Cloud
   bloqueia chave nova de conta de serviço, por isso reaproveita a do Firebase.
+- [x] Play produção: 1.1.0 (versionCode 10) no teste interno e enviada para revisão em produção (Brasil) em
+  16/11/2026. App marcado como **grátis** (o Play Console criou como pago; corrigido antes do envio).
+- [ ] iOS: inscrição no Apple Developer Program travada ("maximum number of attempts"), chamado aberto na Apple.
 - [x] Push Android: `google-services.json` do Firebase `operax-d3f71` ligado no `app.json` (a partir do versionCode 8)
 - [x] EAS project real — `projectId` `5dcb948b-9371-4830-8324-29ef9a87e4e3` (conta `operaxdigitals-team`)
 - [x] `eas.json` com profiles `preview` e `production`
