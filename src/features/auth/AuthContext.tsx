@@ -1,4 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
+import { isAxiosError } from 'axios';
 import { onlineManager, useQueryClient } from '@tanstack/react-query';
 import { suspendFitnessOwner } from '@/src/features/fitness/owner';
 import { AuthUser, ClientUser, StaffUser, getMeApi, loginApi, logoutApi, registerDevicePushToken, verifyMfaApi } from '@/src/shared/api/auth.api';
@@ -32,6 +34,7 @@ import {
   setTokens,
   SavedRole,
 } from '@/src/shared/api/token-store';
+import { isTransientError, renewSession } from '@/src/shared/api/client';
 import i18n from '@/src/i18n';
 import { connectSocket, disconnectSocket } from '@/src/shared/realtime/socket';
 import { registerForPushNotificationsAsync } from '@/src/features/notifications/push';
@@ -164,10 +167,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /** Guarda a empresa escolhida no demo de cliente entre uma troca e outra. */
   const demoClientRef = useRef<ClientUser>(DEMO_CLIENT_USER);
 
+  /** Restauração da sessão guardada; roda de novo quando a primeira tentativa caiu por falta de internet. */
+  const restoreRef = useRef<(() => Promise<void>) | null>(null);
+  const restorePending = useRef(false);
+
   useEffect(() => {
     let alive = true;
     let savedRole: Role | null = null;
-    (async () => {
+    const run = async () => {
+      restorePending.current = false;
       try {
         await migrateLegacyTokens();
         const [staffSummary, clientSummary] = await Promise.all([getAccountSummary('staff'), getAccountSummary('client')]);
@@ -242,7 +250,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Push do aluno: só registra se a permissão já foi dada (o pedido fica na tela de permissões).
           void registerClientPush({ prompt: false }).catch(() => undefined);
         }
-      } catch {
+      } catch (e) {
+        // Sem internet ao abrir: a sessão guardada continua valendo. O app tenta de novo quando a conexão voltar ou quando
+        // volta para a frente; quem entrou uma vez não precisa entrar de novo.
+        if (isTransientError(e)) {
+          restorePending.current = true;
+          if (alive) setRole(savedRole);
+          return;
+        }
         try {
           await clearTokens(savedRole ?? undefined);
         } catch {
@@ -254,11 +269,105 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } finally {
         if (alive) setReady(true);
       }
-    })();
+    };
+    restoreRef.current = run;
+    void run();
     return () => {
       alive = false;
+      restoreRef.current = null;
     };
   }, []);
+
+  // Restauração que caiu por falta de internet: tenta de novo a cada 15 s e quando o app volta para a frente. Se a pessoa
+  // entrou na mão nesse meio-tempo, não refaz nada por cima.
+  const authedRef = useRef(false);
+  useEffect(() => {
+    authedRef.current = isAuthenticated;
+  }, [isAuthenticated]);
+  useEffect(() => {
+    const retry = () => {
+      if (restorePending.current && !authedRef.current) void restoreRef.current?.();
+    };
+    const timer = setInterval(retry, 15_000);
+    const sub = AppState.addEventListener('change', (state) => state === 'active' && retry());
+    return () => {
+      clearInterval(timer);
+      sub.remove();
+    };
+  }, []);
+
+  /*
+   * Cada vez que o app volta para a frente (no máximo uma vez por minuto), renova a sessão e recarrega o perfil com as
+   * permissões: a equipe troca o refresh token e o cliente pede uma sessão nova ao portal. Sessão que caiu (outro aparelho,
+   * a empresa desconectou) leva para a entrada; sem internet, nada muda e tenta na próxima vez.
+   */
+  const lastRenew = useRef(0);
+  const userRef = useRef<AuthUser | null>(null);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+  useEffect(() => {
+    if (mode !== 'live' || !isAuthenticated || !role) return;
+    // Acabou de entrar ou de restaurar: a sessão e o perfil estão frescos; a próxima volta para a frente renova.
+    lastRenew.current = Date.now();
+    let alive = true;
+    const renew = async () => {
+      if (Date.now() - lastRenew.current < 60_000) return;
+      lastRenew.current = Date.now();
+      const sessionGone = async () => {
+        // A sessão caiu (outro aparelho entrou, a empresa desconectou): sai desta conta por completo.
+        await clearTokens(role).catch(() => undefined);
+        if (role === 'staff') disconnectSocket();
+        setAccounts((prev) => {
+          const next = { ...prev };
+          delete next[role];
+          return next;
+        });
+        setAuthenticated(false);
+        setUser(null);
+      };
+      try {
+        const result = await renewSession(role);
+        // Trocou de conta ou saiu enquanto renovava: o resultado é da conta antiga e não mexe na tela.
+        if (!alive || (await getSavedRole()) !== role) return;
+        if (result === 'gone') {
+          await sessionGone();
+          return;
+        }
+        const current = userRef.current;
+        const fresh =
+          role === 'staff'
+            ? await getMeApi()
+            : await loadPortalUser(
+                // Se a lista de empresas falhar agora, fica a que a tela já mostrava (não some o seletor por uma falha passageira).
+                current && current.kind === 'client'
+                  ? current.memberships.map((m) => ({
+                      access_id: m.tenant_id,
+                      tenant_slug: m.tenant_slug ?? '',
+                      brand_name: m.tenant_name,
+                      logo_url: m.logo_url ?? null,
+                      primary_color: null,
+                    }))
+                  : [],
+              );
+        if (!alive || (await getSavedRole()) !== role) return;
+        setUser(fresh);
+      } catch (e) {
+        // Sem internet ou servidor fora: a sessão continua; a próxima volta para a frente tenta de novo.
+        if (isTransientError(e)) {
+          lastRenew.current = 0;
+          return;
+        }
+        // O perfil recusou a sessão (401 depois de tentar renovar): ela caiu.
+        if (alive && (await getSavedRole()) === role && isAxiosError(e) && e.response?.status === 401) await sessionGone();
+      }
+    };
+    const sub = AppState.addEventListener('change', (state) => state === 'active' && void renew());
+    return () => {
+      alive = false;
+      sub.remove();
+    };
+  }, [mode, isAuthenticated, role]);
 
   // A tela da conta nova já está no lugar (a antiga desmontou): as consultas podem voltar.
   useEffect(() => {

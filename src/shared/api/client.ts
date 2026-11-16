@@ -1,4 +1,4 @@
-import axios, { AxiosError, InternalAxiosRequestConfig, isCancel } from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig, isAxiosError, isCancel } from 'axios';
 import { API_URL, MOBILE_CLIENT_HEADER } from '@/src/shared/config';
 import { clearTokens, getAccessToken, getRefreshToken, getSavedRole, SavedRole, setTokens } from './token-store';
 import { refreshSocketAuth } from '@/src/shared/realtime/socket';
@@ -55,6 +55,49 @@ async function refreshAccessToken(role: SavedRole): Promise<string | null> {
   return refreshing[role]!;
 }
 
+/**
+ * Renova a sessão da conta ao abrir o app, para quem usa nunca precisar entrar de novo.
+ * - Equipe: não gira o token aqui. Recarregar o perfil já renova quando o token de acesso venceu (pelo interceptor), e a
+ *   sessão do celular vale 90 dias a partir de cada renovação; girar a cada abertura só arriscaria perder a resposta e
+ *   ficar com um token velho.
+ * - Cliente: pede uma sessão nova da mesma empresa ao portal (`me/renew`).
+ * `gone`: a sessão já tinha caído (outro aparelho entrou, a empresa desconectou). `skip`: esta sessão não renova (aberta antes
+ * da regra ou sem identidade) e segue até vencer. Erro de rede ou de servidor sobe para quem chamou.
+ */
+export async function renewSession(role: SavedRole): Promise<'ok' | 'gone' | 'skip'> {
+  if (role === 'staff') return 'ok';
+  const access = await getAccessToken('client');
+  if (!access) return 'gone';
+  try {
+    const { data } = await axios.post(
+      `${API_URL}/api/public/portal/me/renew`,
+      {},
+      { headers: { 'X-Client': MOBILE_CLIENT_HEADER, Authorization: `Bearer ${access}`, Accept: 'application/json' }, timeout: 30_000 },
+    );
+    const next = data?.access_token as string | undefined;
+    if (!next) return 'skip';
+    // A pessoa trocou de empresa enquanto renovava: o token da empresa nova fica; a renovação da antiga é descartada.
+    if ((await getAccessToken('client')) !== access) return 'ok';
+    const identity = (data?.identity_token as string | null | undefined) ?? (await getRefreshToken('client')) ?? '';
+    await setTokens(next, identity, 'client');
+    return 'ok';
+  } catch (e) {
+    if (isAxiosError(e) && e.response && [401, 403].includes(e.response.status)) return 'gone';
+    // 400: esta sessão não renova (antes da regra, ou sem identidade); 404: servidor ainda sem a renovação.
+    if (isAxiosError(e) && e.response && [400, 404].includes(e.response.status)) return 'skip';
+    throw e;
+  }
+}
+
+/**
+ * Falha passageira: sem resposta do servidor (sem internet, tempo esgotado) ou servidor fora (5xx, deploy). A sessão guardada
+ * continua valendo; só 401/403 encerram.
+ */
+export function isTransientError(e: unknown): boolean {
+  if (!isAxiosError(e)) return false;
+  return !e.response || e.response.status >= 500;
+}
+
 api.interceptors.request.use(async (config) => {
   // Repetição depois de renovar já vem com a conta marcada: mantém a mesma.
   const role = (config as RetriableConfig)._role ?? (await getSavedRole()) ?? 'staff';
@@ -109,7 +152,10 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${access}`;
         original._role = role;
         return api(original);
-      } catch {
+      } catch (refreshError) {
+        // Renovação que não chegou ao servidor (sem internet) ou pegou o servidor fora (5xx): a sessão guardada continua e
+        // o erro sobe como transitório, para quem chamou não tratar como sessão encerrada.
+        if (refreshError !== error && isTransientError(refreshError)) return Promise.reject(refreshError);
         // Só a conta que falhou sai; a outra (talvez a aberta agora) continua.
         await clearTokens(role);
       }

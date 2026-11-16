@@ -1,6 +1,7 @@
 import { create } from 'axios';
 import { API_URL, MOBILE_CLIENT_HEADER } from '@/src/shared/config';
 import { api } from './client';
+import { deviceId } from './deviceId';
 
 /**
  * Portal do cliente (mesmas rotas do portal web: `/api/public/portal`).
@@ -12,6 +13,11 @@ const BASE = '/api/public/portal';
 
 /** Chamadas sem sessão (login, código, escolher empresa): cliente HTTP sem os interceptores do app. */
 const publicApi = create({ baseURL: API_URL, timeout: 30_000, headers: { 'X-Client': MOBILE_CLIENT_HEADER, Accept: 'application/json' } });
+// O login leva o identificador do aparelho: entrar de novo neste celular mantém a vaga dele (ver `deviceId.ts`).
+publicApi.interceptors.request.use(async (config) => {
+  config.headers['X-Device-Id'] = await deviceId();
+  return config;
+});
 
 export type PortalCompany = {
   access_id: string;
