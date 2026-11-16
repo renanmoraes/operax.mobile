@@ -42,6 +42,46 @@ export function receiveProviders(providers: ProviderView[] = []) {
   return { ready: list.filter((p) => p.state === 'available'), soon: list.filter((p) => p.state === 'soon') };
 }
 
+/** Uma linha da tela de Relógios: o app/relógio, se já dá para conectar e o estado da conexão. */
+export interface IntegrationItem {
+  id: ProviderView['id'];
+  label: string;
+  state: ProviderView['state'];
+  connected: boolean;
+  /** Dados do backend (status, última sincronização, envio). Ausente no relógio que ainda não chegou ao backend. */
+  provider?: ProviderView;
+}
+
+/** Só traz o treino feito (não é relógio): o Strava. O resto é relógio, que manda o plano e traz o treino. */
+const APPS_ONLY_IN: ProviderView['id'][] = ['strava'];
+/** Relógios na ordem da tela: os mais usados no Brasil primeiro. */
+const WATCH_ORDER: ProviderView['id'][] = ['garmin', 'polar', 'apple', 'coros', 'zepp'];
+
+/**
+ * A tela de Relógios em dois grupos, cada app uma vez: relógios (uma conexão só, que manda o treino do plano e traz o
+ * treino feito) e apps que só trazem o treino feito (Strava). Em cada grupo, conectados primeiro, depois os que dá
+ * para conectar, depois os que vêm em breve.
+ */
+export function watchGroups(providers: ProviderView[] = []) {
+  const byId = new Map(providers.map((p) => [p.id, p]));
+  const item = (id: ProviderView['id'], fallback: string): IntegrationItem => {
+    const p = byId.get(id);
+    return { id, label: p?.label ?? fallback, state: p?.state ?? 'soon', connected: !!p?.connected, provider: p };
+  };
+  const rank = (i: IntegrationItem) => (i.connected ? 0 : i.state === 'available' ? 1 : 2);
+  const sort = (list: IntegrationItem[]) => list.map((i, n) => ({ i, n })).sort((a, b) => rank(a.i) - rank(b.i) || a.n - b.n).map((x) => x.i);
+  const known = new Set<string>([...WATCH_ORDER, ...APPS_ONLY_IN]);
+  const watches = [
+    ...WATCH_ORDER.map((id) => item(id, id === 'apple' ? 'Apple Watch' : id[0].toUpperCase() + id.slice(1))),
+    // Relógio novo que o backend passe a listar entra no fim, sem esperar a tela conhecer.
+    ...providers.filter((p) => !known.has(p.id)).map((p) => item(p.id, p.label)),
+  ];
+  return {
+    watches: sort(watches),
+    apps: sort(APPS_ONLY_IN.filter((id) => byId.has(id)).map((id) => item(id, id))),
+  };
+}
+
 /** Cartões do celular que aparecem em cada sistema (Galaxy Watch só no Android, pelo Health Connect). */
 export function phoneHealthCards(platform: HealthPlatform): ('health' | 'galaxy')[] {
   return platform === 'android' ? ['health', 'galaxy'] : ['health'];
