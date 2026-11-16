@@ -724,14 +724,15 @@ function finish() {
 }
 ```
 
-- [ ] **Step 12: `npx tsc --noEmit --noUnusedLocals` limpo nesse arquivo**
+- [ ] **Step 12: Conferir que não há erro de digitação/import**
 
-Nesse ponto a tela ainda não usa `justFinished`/`tapStartExercise`/`finishAndGoTo` na JSX além do que já foi
-escrito (isso continua no Task 5/6) — não deve sobrar "declared but never read" de verdade, já que `finish`,
-`completeSet` e o `useEffect` do Step 8 já consomem a maior parte do estado novo. Qualquer erro de tipo
-restante (não aviso de lint) precisa ser corrigido antes de prosseguir.
+Com `--noUnusedLocals`, `npx tsc` **vai** acusar `tapStartExercise` e `finishAndGoTo` como não usadas (só são
+chamadas a partir do Task 5/6), e possivelmente `explicitGateOpen` como atribuída mas não lida — isso é
+esperado neste ponto, não precisa resolver agora. Rode só pra conferir que não há erro de **tipo** de verdade
+(import errado, campo faltando no `SessionDraft`/`FinishedSession`, etc.):
 
 Run: `npx tsc --noEmit --noUnusedLocals`
+Expected: só os avisos de "declared but never used/read" citados acima; nenhum outro erro.
 
 - [ ] **Step 13: Commit**
 
@@ -764,7 +765,8 @@ const isGated = !started[idx];
  */
 const inExTransition = isGated && justFinished?.restKind === 'ring' && !explicitGateOpen && rest > 0;
 const inGate = isGated && !inExTransition;
-const bucketElapsed = bucket.kind === 'rest' && bucket.idx === idx && bucketSince != null ? Math.floor((now - bucketSince) / 1000) : Math.floor(restSecondsArr[idx]);
+/** Segundos de descanso/transição acumulados pro exercício atual, já somando o trecho em andamento (não reinicia numa pausa, ao contrário de `now - bucketSince` sozinho). */
+const bucketElapsed = Math.floor(liveSeconds(restSecondsArr, 'rest', idx, now));
 ```
 
 `resting` continua controlando o card de descanso **entre séries** (estado 2) exatamente como hoje — só
@@ -823,7 +825,7 @@ teoria ser verdadeiros ao mesmo tempo só pro caso "último exercício, sem pró
     <View style={{ flex: 1 }}>
       <Text style={styles.prevDone}>{i18n.t('fitness:session.prevDone', { name: justFinished?.name })}</Text>
       <Muted style={{ marginTop: 4, lineHeight: 19 }}>{i18n.t('fitness:session.nextEx', { name: row.name })}</Muted>
-      <PressableScale onPress={() => setExplicitGateOpen(true)} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:rest.skipA11y')} style={styles.more}>
+      <PressableScale onPress={() => { setExplicitGateOpen(true); skipRest(); }} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:rest.skipA11y')} style={styles.more}>
         <Text style={styles.moreText}>{i18n.t('fitness:rest.skip')}</Text>
       </PressableScale>
     </View>
@@ -907,11 +909,11 @@ Task 4/Step 10):
 },
 ```
 
-- [ ] **Step 5: `isLast` sai; `exDone` fica**
+- [ ] **Step 5: `exDone` fica; `isLast` só sai no Task 6**
 
-`isLast` (linha ~110) não é mais usado depois dos passos acima — apague essa linha. `exDone` (linha ~109)
-continua necessária (Steps 1/3/4) — **não apague**. Se o TypeScript/ESLint acusar alguma outra referência
-esquecida a `isLast`, remova também (ex.: o bloco "A seguir", tratado no Task 6).
+`exDone` (linha ~109) continua necessária (Steps 1/3/4) — **não apague**. `isLast` (linha ~110) ainda é usado
+pelo bloco "A seguir" (`{!isLast ? ... : null}`, linha ~360), que só é reescrito no Task 6/Step 3 — **não
+apague `isLast` ainda**, senão o `tsc` deste commit acusa referência indefinida nesse bloco.
 
 - [ ] **Step 6: Verificação manual**
 
@@ -990,7 +992,8 @@ const nextIdx = nextOpenIndex(rows, logs, idx);
 (calculado uma vez no corpo do componente, perto de `hasNext` do Task 5 — aliás `hasNext` pode virar
 `nextIdx !== -1` direto, sem recalcular `nextOpenIndex` duas vezes). O rótulo do bloco passa a mostrar
 `rows[nextIdx].name` em vez de `rows[idx + 1].name`, pelo mesmo motivo do "Pular": o próximo de verdade pode
-não ser `idx + 1` se algo no meio já estiver `done`.
+não ser `idx + 1` se algo no meio já estiver `done`. Essa era a última referência a `isLast` (Task 5/Step 5
+deixou de propósito) — apague a linha `const isLast = idx === rows.length - 1;` agora.
 
 - [ ] **Step 4: Painel da prévia**
 
