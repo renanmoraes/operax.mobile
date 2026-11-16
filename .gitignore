@@ -46,3 +46,6 @@ yarn-error.*
 
 # Chaves de conta de serviço do Google (FCM etc.): nunca no git. Sobem para o EAS com `eas credentials`.
 *service-account*.json
+
+# Chaves de conta de serviço (Firebase/FCM e Google) ficam só na máquina, nunca no git
+*service-account*.json
