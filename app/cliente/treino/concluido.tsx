@@ -20,7 +20,7 @@ import { fitnessOwner } from '@/src/features/fitness/owner';
 import { clearFinishedSession, FinishedSession, getFinishedSession, loadFinishedSession, resultKeyOf } from '@/src/features/fitness/sessionStore';
 import type { FitnessFeeling, FitnessWorkoutView } from '@/src/features/fitness/types';
 import { useHistory, useLoadHistory, useRecordResult } from '@/src/features/fitness/useFitness';
-import { formatClock, formatKg, isoDate } from '@/src/shared/format';
+import { formatClock, formatDuration, formatKg, isoDate } from '@/src/shared/format';
 
 const feel = (key: FitnessFeeling, icon: IconName) => ({ key, icon, get label() { return i18n.t(`fitness:done.feeling.${key}`); } });
 const FEELINGS: { key: FitnessFeeling; label: string; icon: IconName }[] = [
@@ -66,6 +66,9 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
   const bars = [...past.map((e) => ({ label: e.date.slice(8, 10) + '/' + e.date.slice(5, 7), v: e.volume_kg ?? 0 })), { label: t('sheet.today'), v: volume }];
   const maxV = Math.max(1, ...bars.map((b) => b.v));
   const elapsed = session?.elapsed ?? 0;
+  const activeTotal = session?.activeSeconds?.reduce((n, v) => n + v, 0) ?? 0;
+  const restTotal = session?.restSeconds?.reduce((n, v) => n + v, 0) ?? 0;
+  const showActiveRest = Math.round(activeTotal / 60) > 0 || Math.round(restTotal / 60) > 0;
 
   function share() {
     setShareActivity(
@@ -162,6 +165,9 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
                 { value: `${setsDone}/${totalSets(rows)}`, label: t('sheet.setsUnit') },
               ]}
             />
+            {showActiveRest ? (
+              <Muted style={{ marginTop: 10, textAlign: 'center' }}>{t('done.activeRestSummary', { active: formatDuration(activeTotal), rest: formatDuration(restTotal) })}</Muted>
+            ) : null}
           </Rise>
         </View>
 
