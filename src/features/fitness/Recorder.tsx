@@ -2,7 +2,7 @@ import { router, Stack } from 'expo-router';
 import { isRejected } from './resultsQueue';
 import { confirmDialog, showDialog } from '@/src/design-system/Dialog';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, Vibration, View } from 'react-native';
+import { AppState, BackHandler, Platform, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, Vibration, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -17,7 +17,10 @@ import { formatClock } from '@/src/shared/format';
 import { kvGet, kvSet } from '@/src/shared/db/localDb';
 import { reportError, trackAction } from '@/src/shared/telemetry/errorReporter';
 import { RouteMap } from './RouteMap';
-import { addPoint, averagePace, currentPace, decimateTrack, defaultTitle, emptyRun, formatKm, formatPace, haversine, kmSplits, resumeAt, type RunState, type Track } from './runTracker';
+import { addPoint, averagePace, currentPace, decimateTrack, defaultTitle, emptyRun, formatKm, formatPace, haversine, kmSplits, MAX_ACCURACY_M, resumeAt, type GpsPoint, type RunState, type Track } from './runTracker';
+import { gpsGate, isPoolChoice, liveSummary, NO_GPS_OFFER_MS, parsePoolLength, POOL_PRESETS, restoredBanked, swimDistance, type PoolChoice } from './background/liveLogic';
+import { bufferedSince, clearBuffer, onLiveFixes, startLiveTracking, stopLiveTracking, toGpsPoint, trimBuffer } from './background/liveTracking';
+import { askSummaryPermission, clearLiveSummary, showLiveSummary } from './background/lockScreen';
 import { kmCue, stepCue, stepProgress, type GuideStep } from './coach';
 import { StepGuideCard } from './recorder/StepGuideCard';
 import { RestTimer } from './recorder/RestTimer';
@@ -44,10 +47,17 @@ export type RecorderSave = {
   tag?: string;
   /** Musculação: séries marcadas no descanso. */
   sets?: number;
+  /** Natação: tamanho da piscina (m) e piscinas nadadas; a distância já vem em `distanceM`. */
+  poolLengthM?: number;
+  poolLengths?: number;
 };
 
 type Phase = 'ready' | 'running' | 'paused' | 'review' | 'saving' | 'saved' | 'queued';
-type Prefs = { keepAwake: boolean; showMap: boolean; speed: boolean; voice: boolean; autoPause: boolean };
+type Prefs = { keepAwake: boolean; showMap: boolean; speed: boolean; voice: boolean; autoPause: boolean; lockSummary: boolean };
+/** Tamanho da piscina: preferência do aluno (por conta), perguntada antes de nadar. */
+const POOL_BASE = 'fitness_pool_length';
+/** Resumo da tela bloqueada: no máximo uma atualização a cada tanto (bateria). */
+const SUMMARY_EVERY_MS = 15_000;
 /** Parado por mais que isto com pausa automática ligada: pausa sozinho (semáforo, água). */
 const AUTO_PAUSE_MS = 12_000;
 const PREFS_KEY = 'fitness_recorder_prefs';
@@ -60,15 +70,33 @@ const DRAFT_BASE = 'fitness_recording_draft';
 /** Por conta (ver owner.ts): o rascunho de um aluno não aparece para outro no mesmo celular. */
 const draftStoreKey = () => ownedKey(DRAFT_BASE);
 const DRAFT_MAX_AGE_MS = 6 * 3600_000;
-/** `guide`: etapa do treino do professor e de onde ela começou; `sets`: séries marcadas na musculação. */
-type Draft = { key: string; startedAt: number; banked: number; savedAt: number; run: Omit<RunState, 'last' | 'recent'>; guide?: { i: number; s0: number; m0: number }; sets?: number };
+/**
+ * `guide`: etapa do treino do professor e de onde ela começou; `sets`: séries marcadas na musculação.
+ * `live`: estava gravando quando foi guardado (o treino seguiu com o app fechado); `noGps`: começou sem GPS;
+ * `pool`: piscina da natação.
+ */
+type Draft = {
+  key: string;
+  startedAt: number;
+  banked: number;
+  savedAt: number;
+  run: Omit<RunState, 'last' | 'recent'>;
+  guide?: { i: number; s0: number; m0: number };
+  sets?: number;
+  live?: boolean;
+  noGps?: boolean;
+  pool?: PoolChoice | null;
+};
 
 const run0 = () => emptyRun();
 /** Número com 1 casa no formato do idioma ("12,5" / "12.5"). */
+/** Metros com até 1 casa no formato do idioma ("1.250" / "33,3"). */
+const meters = (n: number) => new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(n);
 const num1 = (n: number) => new Intl.NumberFormat(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n);
 
 function KeepAwake() {
-  useKeepAwake();
+  // No navegador o pedido de tela acesa pode ser recusado (aba escondida): desligar depois não pode derrubar a tela.
+  useKeepAwake(undefined, { suppressDeactivateWarnings: true });
   return null;
 }
 
@@ -90,8 +118,11 @@ export function Recorder({
   guide,
   onPickSport,
   askTag,
+  resumeRoute,
 }: {
   sport: SportInfo;
+  /** Tela desta gravação: se o app for reaberto com o GPS ainda gravando, volta direto para cá. */
+  resumeRoute: string;
   /** Etapas do treino do professor (ficha): a gravação conduz uma a uma e avisa a troca. */
   guide?: GuideStep[];
   /** Treino livre: trocar o esporte na tela de largada. */
@@ -123,7 +154,27 @@ export function Recorder({
   const [here, setHere] = useState<{ lat: number; lng: number } | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   // Pausa automática começa ligada na bike (semáforo); na corrida, desligada (parar para respirar também é treino).
-  const [prefs, setPrefs] = useState<Prefs>({ keepAwake: true, showMap: true, speed: sport.rate === 'speed', voice: true, autoPause: sport.id === 'bike' });
+  const [prefs, setPrefs] = useState<Prefs>({ keepAwake: true, showMap: true, speed: sport.rate === 'speed', voice: true, autoPause: sport.id === 'bike', lockSummary: true });
+  /** Começou sem GPS (sem permissão ou sem sinal): grava só o tempo. */
+  const [noGps, setNoGps] = useState(false);
+  const noGpsRef = useRef(false);
+  const gps = sport.gps && !noGps;
+  const [servicesOn, setServicesOn] = useState<boolean | null>(null);
+  const [waitedLong, setWaitedLong] = useState(false);
+  const [pool, setPool] = useState<PoolChoice | null>(null);
+  const poolRef = useRef<PoolChoice | null>(null);
+  const [poolOther, setPoolOther] = useState<string | null>(null);
+  /** A piscina veio da última vez (não foi escolhida agora). */
+  const [poolRemembered, setPoolRemembered] = useState(false);
+  const [lengths, setLengths] = useState('');
+  /** GPS de segundo plano ligado (segue com a tela bloqueada). */
+  const bgOn = useRef(false);
+  /** Largada em andamento (permissões e GPS ligando): segura toque duplo. */
+  const starting = useRef(false);
+  const lastSummaryAt = useRef(0);
+  const alive = useRef(true);
+  const onFixRef = useRef<(p: GpsPoint) => void>(() => undefined);
+  const pushSummaryRef = useRef<(force: boolean) => void>(() => undefined);
   const prefsRef = useRef(prefs);
   const [view, setView] = useState<'map' | 'numbers'>('map');
   const [autoPaused, setAutoPaused] = useState(false);
@@ -154,51 +205,113 @@ export function Recorder({
   const watchGen = useRef(0);
   const [draft, setDraft] = useState<Draft | null>(null);
   const lastDraftAt = useRef(0);
+  const setsRef = useRef(0);
+
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
+  // Os intervalos, o GPS de segundo plano e o resumo da tela bloqueada leem o estado vivo por aqui.
+  useEffect(() => {
+    prefsRef.current = prefs;
+    runRef.current = run;
+    guideRef.current = guideAt;
+    setsRef.current = sets;
+    poolRef.current = pool;
+    onFixRef.current = onFix;
+    pushSummaryRef.current = pushSummary;
+  });
 
   useEffect(() => {
     const k = draftStoreKey();
     if (!k) return;
     void kvGet<Draft>(k).then((d) => {
-      if (d && d.key === draftKey && Date.now() - d.savedAt < DRAFT_MAX_AGE_MS && d.banked >= 5000) setDraft(d);
+      const mine = !!d && d.key === draftKey && Date.now() - d.savedAt < DRAFT_MAX_AGE_MS && d.banked >= 5000;
+      if (mine) setDraft(d);
+      // GPS de segundo plano ligado sem gravação para retomar (sobra de um app fechado): desliga.
+      // Só ainda na largada: se a pessoa já tocou em Iniciar, o GPS ligado é o desta gravação.
+      if ((!mine || !d?.live) && phaseRef.current === 'ready' && !starting.current) void stopLiveTracking();
     });
   }, [draftKey]);
+
+  // Natação: o tamanho da piscina vem da última vez (preferência do aluno).
+  useEffect(() => {
+    if (sport.id !== 'swim') return;
+    const k = ownedKey(POOL_BASE);
+    if (!k) return;
+    void kvGet<PoolChoice>(k).then((p) => {
+      // Já escolheu (ou retomou um rascunho) antes de a preferência chegar: fica o que está.
+      if (!isPoolChoice(p) || poolRef.current) return;
+      setPool(p);
+      setPoolRemembered(true);
+    });
+  }, [sport.id]);
+  const choosePool = (p: PoolChoice | null) => {
+    setPool(p);
+    setPoolRemembered(false);
+    const k = ownedKey(POOL_BASE);
+    if (k && p) void kvSet(k, p);
+  };
 
   const dropDraft = () => {
     const k = draftStoreKey();
     if (k) void kvSet(k, null);
+    void clearBuffer();
   };
   const clearDraft = () => {
     setDraft(null);
     dropDraft();
   };
 
-  // Grava o rascunho a cada ~10 s gravando (pelo cronômetro: musculação não tem GPS mudando nada) e sempre que muda de fase.
-  useEffect(() => {
-    if (phase !== 'running' && phase !== 'paused' && phase !== 'review') return;
-    const now = Date.now();
-    if (phase === 'running' && now - lastDraftAt.current < 10_000) return;
+  /** Guarda o rascunho agora (a cada ~10 s gravando, a cada troca de fase e ao ir para segundo plano). */
+  const persistDraft = useCallback(() => {
+    const p = phaseRef.current;
+    if (p !== 'running' && p !== 'paused' && p !== 'review') return;
     const k = draftStoreKey();
     if (!k) return;
+    const now = Date.now();
     lastDraftAt.current = now;
     const bankedNow = banked.current + (runningSince.current ? now - runningSince.current : 0);
-    const { last: _l, recent: _r, ...keep } = run;
-    void kvSet(k, { key: draftKey, startedAt: startedAt.current, banked: bankedNow, savedAt: now, run: keep, guide: guideRef.current, sets } satisfies Draft);
-  }, [run, phase, draftKey, elapsed, sets]);
+    const { last: _l, recent: _r, ...keep } = runRef.current;
+    const d: Draft = { key: draftKey, startedAt: startedAt.current, banked: bankedNow, savedAt: now, run: keep, guide: guideRef.current, sets: setsRef.current, live: p === 'running', noGps: noGpsRef.current, pool: poolRef.current };
+    // Os pontos do GPS até aqui já estão no rascunho: a reserva do segundo plano guarda só os de depois.
+    void kvSet(k, d).then(() => trimBuffer(now - 5000));
+  }, [draftKey]);
 
-  function restore(d: Draft) {
+  // Pelo cronômetro: musculação não tem GPS mudando nada.
+  useEffect(() => {
+    if (phase !== 'running' && phase !== 'paused' && phase !== 'review') return;
+    if (phase === 'running' && Date.now() - lastDraftAt.current < 10_000) return;
+    persistDraft();
+  }, [run, phase, elapsed, sets, persistDraft]);
+
+  async function restore(d: Draft) {
+    // Gravando quando o app foi fechado: soma o que o GPS de segundo plano guardou e o tempo que passou.
+    const withGps = sport.gps && !d.noGps;
+    const points = d.live && withGps ? await bufferedSince(d.savedAt) : [];
+    let r: RunState = { ...emptyRun(), ...d.run, last: null, recent: [] };
+    for (const p of points) r = addPoint(r, p, d.startedAt, sport.tracker);
+    const until = withGps ? (points[points.length - 1]?.at ?? d.savedAt) : Date.now();
     startedAt.current = d.startedAt;
     setStartMs(d.startedAt);
-    banked.current = d.banked;
+    banked.current = restoredBanked(d, Math.min(Date.now(), until));
     runningSince.current = null;
-    setElapsed(Math.round(d.banked / 1000));
-    setRun({ ...emptyRun(), ...d.run, last: null, recent: [] });
+    setElapsed(Math.round(banked.current / 1000));
+    setRun(r);
+    noGpsRef.current = !!d.noGps;
+    setNoGps(!!d.noGps);
+    if (d.noGps) stopWatch();
+    if (d.pool !== undefined) setPool(d.pool);
     // Retoma na etapa em que estava (senão a primeira etapa seria medida contra o treino inteiro e repetiria as etapas feitas).
     const g = d.guide ?? { i: 0, s0: 0, m0: 0 };
     guideRef.current = g;
     setGuideAt(g);
     setSets(d.sets ?? 0);
     setDraft(null);
-    trackAction('treino retomado do rascunho', { sport: sport.id });
+    trackAction('treino retomado do rascunho', { sport: sport.id, live: !!d.live, points: points.length });
     go('paused');
   }
 
@@ -216,12 +329,6 @@ export function Recorder({
       return next;
     });
 
-  useEffect(() => {
-    prefsRef.current = prefs;
-    runRef.current = run;
-    guideRef.current = guideAt;
-  });
-
   /** Avisos de voz (km, etapa, pausa): dá para treinar sem olhar o celular. */
   const say = useCallback((t: string) => {
     if (!prefsRef.current.voice) return;
@@ -232,51 +339,134 @@ export function Recorder({
     }
   }, []);
 
+  /** Cada posição do GPS (o comum e o de segundo plano): o sinal, a pausa automática e a gravação. */
+  function onFix(p: GpsPoint) {
+    setAccuracy(p.accuracy);
+    setHere({ lat: p.lat, lng: p.lng });
+    const prev = prevLoc.current;
+    // Ponto repetido ou fora de ordem (os dois GPS na troca de um para o outro): já foi contado.
+    if (prev && p.at <= prev.at) return;
+    const cur = { lat: p.lat, lng: p.lng, at: p.at };
+    prevLoc.current = cur;
+    // Velocidade pelo deslocamento entre leituras: o GPS do celular nem sempre informa.
+    const ms = prev ? haversine(prev, cur) / ((cur.at - prev.at) / 1000) : 0;
+    if (ms > 0.9 && (p.accuracy ?? 0) <= MAX_ACCURACY_M) lastMoveAt.current = Date.now();
+    if (phaseRef.current === 'paused' && autoPausedRef.current && ms > 1.4) resumeRef.current(true);
+    if (phaseRef.current !== 'running' || noGpsRef.current) return;
+    setRun((s) => addPoint(s, p, startedAt.current, sport.tracker));
+  }
+
+  /** Resumo na tela bloqueada (tempo, distância, ritmo). `force`: na hora (pausa, saída do app); senão a cada 15 s. */
+  const pushSummary = useCallback(
+    (force: boolean) => {
+      const p = phaseRef.current;
+      if (!prefsRef.current.lockSummary || (p !== 'running' && p !== 'paused')) return;
+      const now = Date.now();
+      if (!force && now - lastSummaryAt.current < SUMMARY_EVERY_MS) return;
+      lastSummaryAt.current = now;
+      const elapsedS = Math.round((banked.current + (runningSince.current ? now - runningSince.current : 0)) / 1000);
+      const s = liveSummary({ sport: heading, paused: p === 'paused', elapsedS, gps: sport.gps && !noGpsRef.current, distanceM: runRef.current.distanceM, speed: prefsRef.current.speed || sport.rate === 'speed', startedAt: startedAt.current });
+      void showLiveSummary(s.title, s.body);
+    },
+    [heading, sport.gps, sport.rate],
+  );
+
+  // Pontos do GPS de segundo plano (com a tela bloqueada também): mesmo caminho do GPS comum.
+  useEffect(
+    () =>
+      onLiveFixes((points) => {
+        for (const p of points) onFixRef.current(p);
+        if (AppState.currentState !== 'active') pushSummaryRef.current(false);
+      }),
+    [],
+  );
+
   // GPS ligado desde a tela de largada: o sinal já está pronto quando a pessoa toca em Iniciar.
   const watch = useCallback(async () => {
     if (sub.current) return;
     const gen = ++watchGen.current;
-    const started = await Location.watchPositionAsync({ accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 2 }, (loc) => {
-      setAccuracy(loc.coords.accuracy ?? null);
-      setHere({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-      // Velocidade pelo deslocamento entre leituras: o GPS do celular nem sempre informa.
-      const prev = prevLoc.current;
-      const cur = { lat: loc.coords.latitude, lng: loc.coords.longitude, at: loc.timestamp };
-      prevLoc.current = cur;
-      const ms = prev && cur.at > prev.at ? haversine(prev, cur) / ((cur.at - prev.at) / 1000) : 0;
-      if (ms > 0.9 && (loc.coords.accuracy ?? 0) <= 25) lastMoveAt.current = Date.now();
-      if (phaseRef.current === 'paused' && autoPausedRef.current && ms > 1.4) resumeRef.current(true);
-      if (phaseRef.current !== 'running') return;
-      setRun((s) =>
-        addPoint(s, { at: loc.timestamp, lat: loc.coords.latitude, lng: loc.coords.longitude, altitude: loc.coords.altitude ?? null, accuracy: loc.coords.accuracy ?? null, speed: loc.coords.speed ?? null }, startedAt.current, sport.tracker),
-      );
-    });
+    const started = await Location.watchPositionAsync({ accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 2 }, (loc) => onFixRef.current(toGpsPoint(loc)));
     // Saiu da tela (ou desligou) enquanto o GPS ligava: desliga na hora, senão ficaria ligado gastando bateria.
     if (gen !== watchGen.current) {
       started.remove();
       return;
     }
     sub.current = started;
-  }, [sport.tracker]);
-  const stopWatch = () => {
+  }, []);
+  const stopWatch = useCallback(() => {
     watchGen.current += 1;
     sub.current?.remove();
     sub.current = null;
-  };
+  }, []);
+
+  /** Largada: confere a permissão e se a localização do celular está ligada, e liga o GPS para achar o sinal. */
+  const prepareGps = useCallback(async () => {
+    if (!sport.gps || noGpsRef.current) return;
+    const p = await Location.getForegroundPermissionsAsync();
+    if (!alive.current) return; // saiu da tela antes de o sistema responder: não liga o GPS
+    setPerm(p.granted ? 'granted' : p.canAskAgain ? 'unknown' : 'denied');
+    if (!p.granted) return;
+    const on = await Location.hasServicesEnabledAsync().catch(() => true);
+    if (!alive.current) return;
+    setServicesOn(on);
+    if (on) await watch().catch((e) => void reportError(e, { context: 'gps preparar' }));
+  }, [sport.gps, watch]);
 
   useEffect(() => {
     if (!sport.gps) return;
-    let gone = false;
-    void Location.getForegroundPermissionsAsync().then((p) => {
-      if (gone) return; // saiu da tela antes de o sistema responder: não liga o GPS
-      setPerm(p.granted ? 'granted' : p.canAskAgain ? 'unknown' : 'denied');
-      if (p.granted) void watch().catch((e) => void reportError(e, { context: 'gps preparar' }));
-    });
+    void prepareGps();
+    // Muito tempo sem sinal bom: aparece a saída "Iniciar sem GPS".
+    const t = setTimeout(() => setWaitedLong(true), NO_GPS_OFFER_MS);
     return () => {
-      gone = true;
+      clearTimeout(t);
       stopWatch();
     };
-  }, [sport.gps, watch]);
+  }, [sport.gps, prepareGps, stopWatch]);
+
+  /** Gravando: o GPS que segue com a tela bloqueada; se o aparelho não deixar (Expo Go, web), o GPS comum. */
+  const startTracking = useCallback(async () => {
+    if (!sport.gps || noGpsRef.current) return;
+    const ok = bgOn.current || (await startLiveTracking({ route: resumeRoute, draftKey, startedAt: startedAt.current }, { title: i18n.t('fitness:live.serviceTitle'), body: i18n.t('fitness:live.serviceBody') }));
+    if (!alive.current) {
+      if (ok) void stopLiveTracking();
+      return;
+    }
+    bgOn.current = ok;
+    if (ok) stopWatch();
+    else await watch();
+  }, [sport.gps, resumeRoute, draftKey, watch, stopWatch]);
+  const stopTracking = useCallback(() => {
+    stopWatch();
+    bgOn.current = false;
+    void stopLiveTracking();
+    void clearLiveSummary();
+  }, [stopWatch]);
+
+  // Saiu da tela: o GPS de segundo plano e o resumo da tela bloqueada não ficam ligados sozinhos.
+  useEffect(
+    () => () => {
+      if (bgOn.current) void stopLiveTracking();
+      void clearLiveSummary();
+    },
+    [],
+  );
+
+  // App para trás (tela bloqueada, outro app): guarda o rascunho e mostra o resumo; de volta, tira o resumo.
+  useEffect(() => {
+    const s = AppState.addEventListener('change', (st) => {
+      if (st === 'active') {
+        lastSummaryAt.current = 0;
+        void clearLiveSummary();
+        // Voltou dos Ajustes (permissão, localização ligada): confere de novo antes de largar.
+        if (phaseRef.current === 'ready') void prepareGps();
+        return;
+      }
+      if (st !== 'background') return;
+      persistDraft();
+      pushSummaryRef.current(true);
+    });
+    return () => s.remove();
+  }, [persistDraft, prepareGps]);
 
   // Cronômetro: tempo de relógio menos as pausas.
   useEffect(() => {
@@ -286,7 +476,7 @@ export function Recorder({
       const secs = Math.round((banked.current + (now - (runningSince.current ?? now))) / 1000);
       setElapsed(secs);
       // Parado com pausa automática ligada: pausa sozinho e volta quando a pessoa anda.
-      if (sport.gps && prefsRef.current.autoPause && now - lastMoveAt.current > AUTO_PAUSE_MS) pauseRef.current(true);
+      if (sport.gps && !noGpsRef.current && prefsRef.current.autoPause && now - lastMoveAt.current > AUTO_PAUSE_MS) pauseRef.current(true);
       // Treino do professor: etapa cumprida (tempo ou distância) passa para a próxima e avisa.
       const g = guideRef.current;
       if (guide && g.i < guide.length && stepProgress(guide[g.i], secs - g.s0, runRef.current.distanceM - g.m0).done) advanceGuide(secs, runRef.current.distanceM);
@@ -322,11 +512,11 @@ export function Recorder({
   const discard = useCallback(() => {
     void confirmDialog({ title: t('rec.discardTitle'), message: t('rec.discardBody'), confirmLabel: t('rec.discard'), cancelLabel: t('rec.keepTraining'), tone: 'danger' }).then((ok) => {
       if (!ok) return;
-      stopWatch();
+      stopTracking();
       dropDraft();
       onClose();
     });
-  }, [onClose, t]);
+  }, [onClose, t, stopTracking]);
 
   // Voltar do Android no meio do treino não sai sem querer.
   useEffect(() => {
@@ -345,32 +535,58 @@ export function Recorder({
     return () => h.remove();
   }, [discard, go, locked]);
 
-  async function start() {
-    if (sport.gps && perm !== 'granted') {
-      const p = await Location.requestForegroundPermissionsAsync();
-      setPerm(p.granted ? 'granted' : 'denied');
-      if (!p.granted) return;
+  /**
+   * Largada. Com GPS, só sai com sinal bom (ver `gpsGate`); `withoutGps`: o aluno escolheu gravar só o tempo
+   * (sem permissão, localização desligada ou sem sinal). Natação: precisa do tamanho da piscina.
+   */
+  async function start(withoutGps = false) {
+    if (starting.current) return;
+    if (sport.gps && !withoutGps) {
+      if (perm !== 'granted') {
+        // Primeiro toque: pede a localização; o Iniciar libera quando o sinal ficar bom.
+        const p = await Location.requestForegroundPermissionsAsync();
+        // Recusou agora: mostra o caminho dos Ajustes e a saída sem GPS (na próxima abertura pergunta de novo, se puder).
+        setPerm(p.granted ? 'granted' : 'denied');
+        if (p.granted) void prepareGps();
+        return;
+      }
+      if (!gate.ok) return;
     }
+    if (sport.id === 'swim' && !pool) return;
+    starting.current = true;
     try {
-      if (sport.gps) await watch();
-    } catch (e) {
-      void reportError(e, { context: 'gps iniciar' });
+      if (withoutGps) {
+        noGpsRef.current = true;
+        setNoGps(true);
+        stopWatch();
+        trackAction('treino sem gps', { sport: sport.id, reason: gate.ok ? 'ok' : gate.reason });
+      }
+      // Resumo da tela bloqueada: a permissão de notificação é pedida aqui, quando faz sentido (uma vez só).
+      if (prefsRef.current.lockSummary) await askSummaryPermission();
+      clearDraft();
+      startedAt.current = Date.now();
+      setStartMs(startedAt.current);
+      try {
+        await startTracking();
+      } catch (e) {
+        void reportError(e, { context: 'gps iniciar' });
+      }
+      if (!alive.current) return;
+      runningSince.current = Date.now();
+      banked.current = 0;
+      setRun(emptyRun());
+      setElapsed(0);
+      trackAction('treino iniciado', { sport: sport.id, background: bgOn.current });
+      lastMoveAt.current = Date.now();
+      const g0 = { i: 0, s0: 0, m0: 0 };
+      guideRef.current = g0;
+      setGuideAt(g0);
+      setSets(0);
+      go('running');
+      say(guide?.length ? `${t('rec.say.started')} ${stepCue(guide[0])}` : t('rec.say.started'));
+    } finally {
+      starting.current = false;
     }
-    clearDraft();
-    startedAt.current = Date.now();
-    setStartMs(startedAt.current);
-    runningSince.current = Date.now();
-    banked.current = 0;
-    setRun(emptyRun());
-    setElapsed(0);
-    trackAction('treino iniciado', { sport: sport.id });
-    lastMoveAt.current = Date.now();
-    const g0 = { i: 0, s0: 0, m0: 0 };
-    guideRef.current = g0;
-    setGuideAt(g0);
-    setSets(0);
-    go('running');
-    say(guide?.length ? `${t('rec.say.started')} ${stepCue(guide[0])}` : t('rec.say.started'));
   }
 
   function pause(auto = false) {
@@ -384,6 +600,7 @@ export function Recorder({
     setAutoPaused(auto);
     go('paused');
     say(auto ? t('rec.say.autoPaused') : t('rec.say.paused'));
+    if (AppState.currentState !== 'active') pushSummaryRef.current(true);
   }
 
   function resume(auto = false) {
@@ -393,11 +610,12 @@ export function Recorder({
     lastMoveAt.current = Date.now();
     if (!auto) say(t('rec.say.resumed'));
     else say(t('rec.say.resuming'));
-    // Voltou da tela de salvar depois de uma falha: o GPS foi desligado ao tentar salvar.
-    if (sport.gps) void watch().catch((e) => void reportError(e, { context: 'gps continuar' }));
+    // Voltou da tela de salvar depois de uma falha (ou retomou um rascunho): o GPS estava desligado.
+    if (gps) void startTracking().catch((e) => void reportError(e, { context: 'gps continuar' }));
     runningSince.current = Date.now();
     setRun((s) => resumeAt(s));
     go('running');
+    if (AppState.currentState !== 'active') pushSummaryRef.current(true);
   }
   useEffect(() => {
     pauseRef.current = pause;
@@ -414,21 +632,24 @@ export function Recorder({
 
   async function save() {
     go('saving');
-    stopWatch();
+    stopTracking();
     const seconds = Math.max(1, Math.round(banked.current / 1000));
+    const laps = poolLaps;
     try {
       const out = await onSave({
         startedAt: startedAt.current,
         seconds,
-        distanceM: run.distanceM,
-        elevationGainM: run.elevationGainM,
-        track: sport.gps ? decimateTrack(run.track) : undefined,
+        distanceM: sport.id === 'swim' ? swimDistance(pool, laps) : gps ? run.distanceM : 0,
+        elevationGainM: gps ? run.elevationGainM : 0,
+        track: gps ? decimateTrack(run.track) : undefined,
+        poolLengthM: sport.id === 'swim' && pool?.kind === 'pool' ? pool.m : undefined,
+        poolLengths: sport.id === 'swim' && pool?.kind === 'pool' && laps > 0 ? laps : undefined,
         title: askTitle ? title.trim() || defaultTitle(sport.label, new Date(startedAt.current)) : undefined,
         feeling,
         effort,
         notes: notes.trim() || undefined,
         tag,
-        sets: sport.gps ? undefined : sets || undefined,
+        sets: gps ? undefined : sets || undefined,
       });
       dropDraft();
       go(out);
@@ -448,8 +669,12 @@ export function Recorder({
   const kmh = elapsed > 0 ? (run.distanceM / elapsed) * 3.6 : 0;
   const splits = useMemo(() => kmSplits(run), [run]);
   const route = useMemo(() => run.track.lat.map((la, i) => [la, run.track.lon[i]] as [number, number]), [run.track]);
-  const weak = accuracy != null && accuracy > 25;
+  const weak = accuracy != null && accuracy > MAX_ACCURACY_M;
   const speed = prefs.speed || sport.rate === 'speed';
+  // Largada com GPS: o Iniciar espera um sinal bom (ou a escolha de gravar só o tempo).
+  const gate = sport.gps ? gpsGate({ perm, servicesOn, hasFix: !!here, accuracy, searchingMs: waitedLong ? NO_GPS_OFFER_MS : 0 }) : ({ ok: true } as const);
+  const poolLaps = Math.min(2000, Math.max(0, Math.floor(Number(lengths) || 0)));
+  const swimM = sport.id === 'swim' ? swimDistance(pool, poolLaps) : 0;
 
   const companyName = useActiveCompanyName();
   function share() {
@@ -460,7 +685,7 @@ export function Recorder({
       seconds: elapsed,
     };
     setShareActivity(
-      sport.gps
+      gps
         ? fromRecording(base, { sport: sport.id, preferSpeed: speed, distanceM: run.distanceM, elevationGainM: run.elevationGainM, route, kmMarks: run.kmMarks })
         : fromStrength(base, { setsDone: sets || null }),
     );
@@ -476,12 +701,13 @@ export function Recorder({
           </LinearGradient>
           <Text style={styles.doneTitle}>{phase === 'saved' ? t('rec.saved') : t('rec.queued')}</Text>
           <Muted style={styles.doneSub}>
-            {phase === 'saved' ? t(sport.gps ? 'rec.savedBodyGps' : 'rec.savedBody') : t('rec.queuedBody')}
+            {phase === 'saved' ? t(gps ? 'rec.savedBodyGps' : 'rec.savedBody') : t('rec.queuedBody')}
           </Muted>
           <View style={styles.doneStats}>
-            {sport.gps ? <DoneStat value={formatKm(run.distanceM)} unit="km" /> : null}
+            {gps ? <DoneStat value={formatKm(run.distanceM)} unit="km" /> : null}
+            {swimM > 0 ? <DoneStat value={meters(swimM)} unit="m" /> : null}
             <DoneStat value={formatClock(elapsed)} unit={t('rec.timeUnit')} />
-            {sport.gps && sport.rate === 'pace' ? <DoneStat value={formatPace(averagePace(run, elapsed))} unit="/km" /> : null}
+            {gps && sport.rate === 'pace' ? <DoneStat value={formatPace(averagePace(run, elapsed))} unit="/km" /> : null}
           </View>
           <View style={{ alignSelf: 'stretch', gap: 10, marginTop: 'auto' }}>
             <Button label={t('done.share')} icon="share-outline" onPress={share} />
@@ -501,20 +727,29 @@ export function Recorder({
         <TopBar safe title={t('rec.saveWorkout')} onBack={phase === 'saving' ? undefined : () => go('paused')} />
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 28, gap: 18 }} keyboardShouldPersistTaps="handled">
           <View style={styles.summary}>
-            {sport.gps && route.length > 1 ? <RouteMap route={route} style={styles.summaryMap} /> : null}
+            {gps && route.length > 1 ? <RouteMap route={route} style={styles.summaryMap} /> : null}
             <View style={styles.summaryRow}>
-              {!sport.gps ? (
+              {!gps ? (
                 <LinearGradient colors={['#e3ecff', '#ddf3ff']} style={styles.summaryTile}>
                   <MaterialCommunityIcons name={sport.icon} size={30} color={colors.primary} />
                 </LinearGradient>
               ) : null}
-              <SummaryCell label={sport.gps ? t('rec.time') : t('rec.sportTime', { sport: sport.label })} value={formatClock(seconds)} />
-              {!sport.gps && sets ? <SummaryCell label={t('rec.sets')} value={String(sets)} /> : null}
-              {sport.gps ? <SummaryCell label={t('rec.distance')} value={`${formatKm(run.distanceM)} km`} /> : null}
-              {sport.gps ? <SummaryCell label={speed ? t('rec.speed') : t('rec.pace')} value={speed ? `${num1(seconds ? (run.distanceM / seconds) * 3.6 : 0)} km/h` : `${formatPace(averagePace(run, seconds))}/km`} /> : null}
-              {sport.gps ? <SummaryCell label={t('rec.climb')} value={`${Math.round(run.elevationGainM)} m`} /> : null}
+              <SummaryCell label={gps ? t('rec.time') : t('rec.sportTime', { sport: sport.label })} value={formatClock(seconds)} />
+              {!gps && sets ? <SummaryCell label={t('rec.sets')} value={String(sets)} /> : null}
+              {swimM > 0 ? <SummaryCell label={t('rec.distance')} value={`${meters(swimM)} m`} /> : null}
+              {swimM > 0 && seconds > 0 ? <SummaryCell label={t('rec.pool.pace')} value={formatPace((seconds / swimM) * 100)} /> : null}
+              {gps ? <SummaryCell label={t('rec.distance')} value={`${formatKm(run.distanceM)} km`} /> : null}
+              {gps ? <SummaryCell label={speed ? t('rec.speed') : t('rec.pace')} value={speed ? `${num1(seconds ? (run.distanceM / seconds) * 3.6 : 0)} km/h` : `${formatPace(averagePace(run, seconds))}/km`} /> : null}
+              {gps ? <SummaryCell label={t('rec.climb')} value={`${Math.round(run.elevationGainM)} m`} /> : null}
             </View>
           </View>
+
+          {sport.id === 'swim' && pool?.kind === 'pool' ? (
+            <View style={{ gap: 6 }}>
+              <Field label={t('rec.pool.lengths')} value={lengths} onChangeText={(v) => setLengths(v.replace(/\D/g, '').slice(0, 4))} keyboardType="number-pad" placeholder="40" />
+              <Muted style={{ fontSize: 12.5 }}>{swimM > 0 ? t('rec.pool.total', { m: meters(swimM), pool: meters(pool.m) }) : t('rec.pool.lengthsHint', { pool: meters(pool.m) })}</Muted>
+            </View>
+          ) : null}
 
           {askTitle ? <Field label={t('rec.name')} value={title} onChangeText={(v) => setTitle(v.slice(0, 80))} placeholder={defaultTitle(sport.label, new Date(startMs))} /> : null}
 
@@ -581,14 +816,37 @@ export function Recorder({
   }
 
   const active = phase === 'running' || phase === 'paused';
-  const showMap = sport.gps && view === 'map';
+  const showMap = gps && view === 'map';
   const paused = phase === 'paused';
   const guideCard = guide?.length && active ? (
     <StepGuideCard steps={guide} index={guideAt.i} doneSeconds={elapsed - guideAt.s0} doneMeters={run.distanceM - guideAt.m0} pace={now} onNext={() => advanceGuide(elapsed, run.distanceM)} compact={showMap} />
   ) : null;
   const draftFirst = phase === 'ready' && !!draft;
+  const customPool = pool?.kind === 'pool' && !(POOL_PRESETS as readonly number[]).includes(pool.m);
+  const needsPermission = !gate.ok && gate.reason === 'permission';
+  const poolMissing = sport.id === 'swim' && !pool;
+  const startBlocked = (!gate.ok && !needsPermission) || poolMissing;
+  // Por que o Iniciar ainda não libera (e a saída sem GPS quando não tem sinal ou permissão).
+  const startNote: { text: string; icon: keyof typeof Ionicons.glyphMap; warn: boolean; offerNoGps: boolean } | null =
+    phase !== 'ready' || draft
+      ? null
+      : !gate.ok
+        ? {
+            text: t(`rec.gate.${gate.reason}`, { m: Math.round(accuracy ?? 0), max: MAX_ACCURACY_M }),
+            icon: gate.reason === 'permission' ? 'navigate-outline' : gate.reason === 'searching' || gate.reason === 'weak' ? 'locate-outline' : 'alert-circle-outline',
+            warn: gate.reason === 'denied' || gate.reason === 'servicesOff',
+            offerNoGps: gate.offerNoGps,
+          }
+        : poolMissing
+          ? { text: t('rec.gate.pool'), icon: 'water-outline', warn: false, offerNoGps: false }
+          : null;
   const confirmClearDraft = () =>
-    void confirmDialog({ title: t('rec.discardTitle'), message: t('rec.discardBody'), confirmLabel: t('rec.discard'), cancelLabel: t('common:actions.back'), tone: 'danger' }).then((ok) => ok && clearDraft());
+    void confirmDialog({ title: t('rec.discardTitle'), message: t('rec.discardBody'), confirmLabel: t('rec.discard'), cancelLabel: t('common:actions.back'), tone: 'danger' }).then((ok) => {
+      if (!ok) return;
+      clearDraft();
+      // Rascunho de um app fechado no meio: o GPS de segundo plano ainda podia estar ligado.
+      void stopLiveTracking();
+    });
   return (
     <Screen backdrop="none" style={{ backgroundColor: '#fff' }}>
       <NoSwipeBack phase={phase} />
@@ -598,7 +856,7 @@ export function Recorder({
           <RouteMap route={route} here={here} follow style={StyleSheet.absoluteFill} inset={{ top: insets.top + 96, bottom: 30 }} />
           <LinearGradient colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0)']} style={[styles.mapFade, { height: insets.top + 70 }]} pointerEvents="none" />
         </View>
-      ) : sport.gps ? (
+      ) : gps ? (
         // Vista dos números (sem mapa): faixa curta no topo, que vira laranja na pausa.
         <View style={[styles.numbersTop, { height: insets.top + 90 }, paused && styles.bandPaused]} />
       ) : (
@@ -618,7 +876,7 @@ export function Recorder({
       <View style={[styles.topRow, { top: insets.top + 8 }]}>
         {phase === 'ready' ? (
           <RoundButton icon="close" onPress={onClose} label={t('common:actions.close')} />
-        ) : sport.gps ? (
+        ) : gps ? (
           <RoundButton icon={view === 'map' ? 'speedometer-outline' : 'map-outline'} onPress={() => setView(view === 'map' ? 'numbers' : 'map')} label={view === 'map' ? t('rec.viewNumbers') : t('rec.viewMap')} />
         ) : (
           <View style={{ width: 44 }} />
@@ -637,7 +895,7 @@ export function Recorder({
         <RoundButton icon="options-outline" onPress={() => setSettingsOpen(true)} label={t('rec.settings')} />
       </View>
 
-      {sport.gps && !(paused && showMap) && (showMap || phase === 'ready') ? (
+      {gps && !(paused && showMap) && (showMap || phase === 'ready') ? (
         <View style={[styles.gpsChip, { top: insets.top + 62 }, weak || !here ? styles.gpsWeak : null]}>
           <View style={[styles.gpsDot, { backgroundColor: !here ? colors.textMuted : weak ? colors.warn : colors.success }]} />
           <Text style={styles.gpsText}>{perm === 'denied' ? t('rec.noLocation') : !here ? t('rec.gpsSearching') : t(weak ? 'rec.gpsWeak' : 'rec.gpsReady', { m: Math.round(accuracy ?? 0) })}</Text>
@@ -664,14 +922,14 @@ export function Recorder({
             </>
           )}
 
-          {sport.gps && !showMap && phase !== 'ready' ? (
+          {gps && !showMap && phase !== 'ready' ? (
             <View style={styles.bigDistance}>
               <Text style={styles.bigDistanceValue} accessibilityLabel={t('rec.kmA11y', { km: formatKm(run.distanceM) })}>{formatKm(run.distanceM)}</Text>
               <Text style={styles.label}>{t('rec.distanceKm')}</Text>
             </View>
           ) : null}
 
-          {sport.gps && !draftFirst ? (
+          {gps && !draftFirst ? (
             <View style={styles.pair}>
               <View style={styles.pairCell}>
                 <Text style={styles.label}>{speed ? (showMap || phase === 'ready' ? t('rec.speed') : t('rec.average')) : t('rec.avgPace')}</Text>
@@ -694,7 +952,7 @@ export function Recorder({
 
           {guideCard}
 
-          {sport.gps && phase !== 'ready' ? (
+          {gps && phase !== 'ready' ? (
             <View style={styles.minor}>
               {/* Nos números grandes o ritmo atual já está no par de cima: aqui fica a máxima (bike) ou nada. */}
               {showMap || speed ? <Minor label={speed ? t('rec.max') : t('rec.currentPace')} value={speed ? `${num1(run.maxSpeedMs * 3.6)} km/h` : `${formatPace(now)} /km`} /> : null}
@@ -703,16 +961,16 @@ export function Recorder({
             </View>
           ) : null}
 
-          {goalMeters && sport.gps ? (
+          {goalMeters && gps ? (
             <View style={{ marginTop: 16, gap: 6 }}>
               <ProgressBar progress={Math.min(1, run.distanceM / goalMeters)} />
               <Muted style={{ fontSize: 12.5 }}>{t('rec.goal', { km: formatKm(goalMeters) })}</Muted>
             </View>
           ) : null}
 
-          {sport.gps && splits.length ? <Splits splits={splits} speed={speed} /> : null}
+          {gps && splits.length ? <Splits splits={splits} speed={speed} /> : null}
 
-          {perm === 'denied' ? (
+          {gps && perm === 'denied' ? (
             <View style={styles.perm}>
               <Text style={styles.permText}>{t('rec.locationNeeded')}</Text>
               <Button label={t('rec.settingsShort')} variant="soft" compact onPress={() => void Linking.openSettings()} />
@@ -725,21 +983,69 @@ export function Recorder({
                 <View style={{ flex: 1 }}>
                   <Text style={styles.draftTitle}>{t('rec.unsaved')}</Text>
                   <Muted style={{ fontSize: 12.5 }}>
-                    {[t('rec.startedAtTime', { time: new Date(draft.startedAt).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) }), formatClock(Math.round(draft.banked / 1000)), sport.gps ? `${formatKm(draft.run.distanceM)} km` : null].filter(Boolean).join(' · ')}
+                    {[t('rec.startedAtTime', { time: new Date(draft.startedAt).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) }), formatClock(Math.round(restoredBanked(draft, sport.gps && !draft.noGps ? draft.savedAt : Date.now()) / 1000)), sport.gps && !draft.noGps ? `${formatKm(draft.run.distanceM)} km` : null].filter(Boolean).join(' · ')}
                   </Muted>
                 </View>
               </View>
             </View>
           ) : null}
-          {!sport.gps && phase !== 'ready' ? (
+          {!gps && phase !== 'ready' ? (
             <View style={styles.timerInfo}>
               <Minor label={t('rec.startedAt')} value={new Date(startMs).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })} />
               <Minor label={t('rec.status')} value={phase === 'paused' ? t('rec.pausedLabel') : t('rec.recording')} />
+              {sport.id === 'swim' && pool ? <Minor label={t('rec.pool.short')} value={pool.kind === 'pool' ? `${meters(pool.m)} m` : t('rec.pool.open')} /> : null}
+              {noGps ? <Minor label={t('rec.gpsLabel')} value={t('rec.gpsOff')} /> : null}
             </View>
           ) : null}
-          {!sport.gps && active && (sport.id === 'strength' || sport.id === 'other') ? <RestTimer sets={sets} onSets={setSets} active={phase === 'running'} say={say} /> : null}
-          {phase === 'ready' && !sport.gps && !draft ? <Muted style={styles.readyHint}>{t('rec.timerHint')}</Muted> : null}
+          {!gps && active && (sport.id === 'strength' || sport.id === 'other') ? <RestTimer sets={sets} onSets={setSets} active={phase === 'running'} say={say} /> : null}
+          {phase === 'ready' && sport.id === 'swim' && !draft ? (
+            <View style={styles.poolCard}>
+              <View style={styles.rowBetween}>
+                <Text style={styles.ask}>{t('rec.pool.title')}</Text>
+                {pool && poolRemembered ? <Muted style={{ fontSize: 12 }}>{t('rec.pool.remembered')}</Muted> : null}
+              </View>
+              <View style={styles.tags} accessibilityRole="radiogroup">
+                {POOL_PRESETS.map((m) => (
+                  <PoolChip key={m} label={`${m} m`} on={pool?.kind === 'pool' && pool.m === m && poolOther === null} onPress={() => { setPoolOther(null); choosePool({ kind: 'pool', m }); }} />
+                ))}
+                <PoolChip label={customPool && poolOther === null ? `${meters(pool.m)} m` : t('rec.pool.other')} on={poolOther !== null || customPool} onPress={() => setPoolOther(customPool ? String(pool.m).replace('.', ',') : '')} />
+                <PoolChip label={t('rec.pool.open')} on={pool?.kind === 'open'} onPress={() => { setPoolOther(null); choosePool({ kind: 'open' }); }} />
+              </View>
+              {poolOther !== null ? (
+                <Field
+                  label={t('rec.pool.otherLabel')}
+                  value={poolOther}
+                  keyboardType="decimal-pad"
+                  placeholder="33,3"
+                  onChangeText={(v) => {
+                    const clean = v.replace(/[^\d.,]/g, '').slice(0, 5);
+                    setPoolOther(clean);
+                    const m = parsePoolLength(clean);
+                    if (m) choosePool({ kind: 'pool', m });
+                    else choosePool(null);
+                  }}
+                />
+              ) : null}
+              <Muted style={{ fontSize: 12.5, lineHeight: 18 }}>{poolOther !== null && !pool ? t('rec.pool.range') : t('rec.pool.hint')}</Muted>
+            </View>
+          ) : null}
+          {phase === 'ready' && !gps && !draft ? <Muted style={styles.readyHint}>{t('rec.timerHint')}</Muted> : null}
         </ScrollView>
+
+        {startNote ? (
+          <View style={[styles.startNote, startNote.warn && styles.startNoteWarn]} accessibilityLiveRegion="polite">
+            <View style={styles.startNoteRow}>
+              <Ionicons name={startNote.icon} size={17} color={startNote.warn ? colors.warnText : colors.primary} />
+              <Text style={[styles.startNoteText, startNote.warn && { color: colors.warnText }]}>{startNote.text}</Text>
+            </View>
+            {startNote.offerNoGps ? (
+              <Pressable onPress={() => void start(true)} accessibilityRole="button" hitSlop={6} style={styles.noGps}>
+                <Ionicons name="timer-outline" size={16} color={colors.primaryDeep} />
+                <Text style={styles.noGpsText}>{t('rec.gate.noGps')}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
 
         <View style={[styles.controls, { paddingBottom: insets.bottom + 18 }, locked && { opacity: 0 }]} pointerEvents={locked ? 'none' : 'auto'}>
           {phase === 'ready' && draft ? (
@@ -749,7 +1055,11 @@ export function Recorder({
               <BigButton label={t('rec.resume')} icon="play" onPress={() => restore(draft)} />
             </>
           ) : phase === 'ready' ? (
-            <BigButton label={t('rec.start')} icon="play" onPress={() => void start()} />
+            needsPermission ? (
+              <BigButton label={t('rec.allowGps')} icon="navigate" onPress={() => void start()} />
+            ) : (
+              <BigButton label={t('rec.start')} icon="play" disabled={startBlocked} onPress={() => void start()} />
+            )
           ) : phase === 'running' ? (
             <>
               <SideButton icon="lock-closed-outline" label={t('rec.lock')} onPress={() => setLocked(true)} />
@@ -778,10 +1088,11 @@ export function Recorder({
           <View style={styles.handle} />
           <Text style={styles.settingsTitle}>{t('rec.settings')}</Text>
           <PrefRow title={t('rec.pref.awake')} subtitle={t('rec.pref.awakeSub')} value={prefs.keepAwake} onChange={(v) => changePref('keepAwake', v)} />
-          <PrefRow title={t('rec.pref.voice')} subtitle={sport.gps ? t('rec.pref.voiceSubGps') : t('rec.pref.voiceSub')} value={prefs.voice} onChange={(v) => changePref('voice', v)} />
-          {sport.gps ? <PrefRow title={t('rec.autoPausedLabel')} subtitle={t('rec.pref.autoPauseSub')} value={prefs.autoPause} onChange={(v) => changePref('autoPause', v)} /> : null}
-          {sport.gps ? <PrefRow title={t('rec.pref.startMap')} subtitle={t('rec.pref.startMapSub')} value={prefs.showMap} onChange={(v) => { changePref('showMap', v); setView(v ? 'map' : 'numbers'); }} /> : null}
-          {sport.gps && sport.rate === 'pace' ? <PrefRow title={t('rec.pref.speed')} subtitle={t('rec.pref.speedSub')} value={prefs.speed} onChange={(v) => changePref('speed', v)} /> : null}
+          <PrefRow title={t('rec.pref.voice')} subtitle={gps ? t('rec.pref.voiceSubGps') : t('rec.pref.voiceSub')} value={prefs.voice} onChange={(v) => changePref('voice', v)} />
+          {gps ? <PrefRow title={t('rec.autoPausedLabel')} subtitle={t('rec.pref.autoPauseSub')} value={prefs.autoPause} onChange={(v) => changePref('autoPause', v)} /> : null}
+          {gps ? <PrefRow title={t('rec.pref.startMap')} subtitle={t('rec.pref.startMapSub')} value={prefs.showMap} onChange={(v) => { changePref('showMap', v); setView(v ? 'map' : 'numbers'); }} /> : null}
+          {gps && sport.rate === 'pace' ? <PrefRow title={t('rec.pref.speed')} subtitle={t('rec.pref.speedSub')} value={prefs.speed} onChange={(v) => changePref('speed', v)} /> : null}
+          {Platform.OS !== 'web' ? <PrefRow title={t('rec.pref.lockSummary')} subtitle={t('rec.pref.lockSummarySub')} value={prefs.lockSummary} onChange={(v) => changePref('lockSummary', v)} /> : null}
           <Muted style={{ marginTop: 6, lineHeight: 18 }}>{t('rec.lockNote')}</Muted>
           <Button label={t('rec.ok')} onPress={() => setSettingsOpen(false)} style={{ marginTop: 14 }} />
         </View>
@@ -816,14 +1127,22 @@ function NoSwipeBack({ phase }: { phase: Phase }) {
   return <Stack.Screen options={{ gestureEnabled: phase === 'ready' || phase === 'saved' || phase === 'queued' }} />;
 }
 
-function BigButton({ label, icon, tone = 'primary', onPress, accessibilityLabel }: { label?: string; icon: keyof typeof Ionicons.glyphMap; tone?: 'primary' | 'dark'; onPress: () => void; accessibilityLabel?: string }) {
+function BigButton({ label, icon, tone = 'primary', onPress, accessibilityLabel, disabled }: { label?: string; icon: keyof typeof Ionicons.glyphMap; tone?: 'primary' | 'dark'; onPress: () => void; accessibilityLabel?: string; disabled?: boolean }) {
   return (
     <View style={{ alignItems: 'center', gap: 8 }}>
-      <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} trackLabel={accessibilityLabel ?? label} scaleTo={0.94} style={[styles.big, tone === 'dark' ? styles.bigDark : styles.bigPrimary]}>
+      <PressableScale onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityState={{ disabled: !!disabled }} accessibilityLabel={accessibilityLabel ?? label} trackLabel={accessibilityLabel ?? label} scaleTo={0.94} style={[styles.big, disabled ? styles.bigOff : tone === 'dark' ? styles.bigDark : styles.bigPrimary]}>
         <Ionicons name={icon} size={34} color="#fff" style={icon === 'play' ? { marginLeft: 4 } : undefined} />
       </PressableScale>
-      {label ? <Text style={styles.bigLabel}>{label}</Text> : null}
+      {label ? <Text style={[styles.bigLabel, disabled && { color: colors.textMuted }]}>{label}</Text> : null}
     </View>
+  );
+}
+
+function PoolChip({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="radio" accessibilityState={{ selected: on }} style={[styles.tag, styles.poolChip, on && styles.tagOn]}>
+      <Text style={[styles.tagText, on && { color: '#fff' }]}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -970,6 +1289,15 @@ const styles = StyleSheet.create({
   big: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center' },
   bigPrimary: { backgroundColor: colors.primary, ...shadows.button },
   bigDark: { backgroundColor: colors.chromeNavy },
+  bigOff: { backgroundColor: colors.textMuted, opacity: 0.45 },
+  startNote: { gap: 8, marginTop: 4, paddingVertical: 11, paddingHorizontal: 14, borderRadius: radii.md, backgroundColor: colors.primaryWash },
+  startNoteWarn: { backgroundColor: colors.warnSoft },
+  startNoteRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
+  startNoteText: { flex: 1, ...text.callout, color: colors.primaryDeep },
+  noGps: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: '#fff' },
+  noGpsText: { fontFamily: typography.fontFamilyBold, fontSize: 13, color: colors.primaryDeep },
+  poolCard: { marginTop: 18, gap: 12, padding: 16, borderRadius: radii.lg, backgroundColor: '#f6f8fc' },
+  poolChip: { minWidth: 64, alignItems: 'center' },
   bigLabel: { fontFamily: typography.fontFamilyBold, fontSize: 13.5, color: colors.text },
   side: { width: 64, height: 84, alignItems: 'center', justifyContent: 'center', gap: 4 },
   sideLabel: { fontFamily: typography.fontFamilySemiBold, fontSize: 12, color: colors.textSoft },

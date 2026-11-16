@@ -12,7 +12,8 @@
       "bundleIdentifier": "digital.operax.mobile",
       "infoPlist": {
         "UIBackgroundModes": [
-          "remote-notification"
+          "remote-notification",
+          "location"
         ],
         "NSPhotoLibraryUsageDescription": "O Operax precisa acessar suas fotos para enviar imagens no atendimento.",
         "NSCameraUsageDescription": "O Operax usa a câmera para capturar fotos e vídeos do atendimento e para ler o código de barras dos produtos na venda.",
@@ -140,10 +141,11 @@
           "locationWhenInUsePermission": "O Operax usa sua localização durante o treino para medir distância, ritmo, velocidade e altitude da corrida ou do pedal.",
           "locationAlwaysAndWhenInUsePermission": "O Operax usa sua localização durante o treino, mesmo com a tela apagada, para medir distância, ritmo e altitude.",
           "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": true,
           "locationAlwaysPermission": "O Operax usa sua localização durante o treino, mesmo com a tela apagada, para medir distância, ritmo e altitude.",
           "locationFullAccuracyPermission": "O Operax precisa da localização precisa durante o treino para medir a distância e desenhar o caminho certo.",
           "motionUsagePermission": false,
-          "isIosBackgroundLocationEnabled": false
+          "isIosBackgroundLocationEnabled": true
         }
       ],
       [

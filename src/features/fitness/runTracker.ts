@@ -161,7 +161,7 @@ export function currentPace(state: RunState): number | null {
 }
 
 /** Ritmo médio (s/km) do tempo em movimento. */
-export function averagePace(state: RunState, elapsedS: number): number | null {
+export function averagePace(state: Pick<RunState, 'distanceM'>, elapsedS: number): number | null {
   if (state.distanceM < 20 || elapsedS <= 0) return null;
   return (elapsedS / state.distanceM) * 1000;
 }

@@ -192,6 +192,9 @@ export interface FreeActivityBody {
   tag?: string;
   /** Musculação: séries marcadas. */
   sets?: number;
+  /** Natação: tamanho da piscina (m) e piscinas nadadas (a distância vai em `distance_m`). A API ainda não guarda. */
+  pool_length_m?: number;
+  pool_lengths?: number;
   idempotency_key: string;
   recording?: { track?: RecordingTrack };
 }

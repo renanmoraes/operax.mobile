@@ -21,6 +21,8 @@ import { TeamChatProvider } from '@/src/features/team-chat/TeamChatContext';
 import { resetClientCache } from '@/src/features/client/clientApi';
 import { setFitnessOwner } from '@/src/features/fitness/owner';
 import { resetFinishedSessionMemory } from '@/src/features/fitness/sessionStore';
+// Também registra a tarefa do GPS de segundo plano: precisa existir antes de qualquer tela (o Android pode acordar o app só para ela).
+import { liveRecordingToResume } from '@/src/features/fitness/background/liveTracking';
 import { colors } from '@/src/design-system/tokens';
 import { installErrorReporter, reportError, setReporterSession, trackRoute } from '@/src/shared/telemetry/errorReporter';
 import { Button } from '@/src/design-system/ui';
@@ -114,6 +116,7 @@ export default function RootLayout() {
           <AccountCacheReset />
           <DialogHost />
           <NotificationRouter />
+          <ResumeRecording />
           <UpdateBanner />
           </TeamChatProvider>
         </AuthProvider>
@@ -188,6 +191,22 @@ function NotificationRouter() {
       sub?.remove();
     };
   }, []);
+  return null;
+}
+
+/** App reaberto com o GPS do treino ainda gravando (o sistema fechou a tela no meio): volta direto para a gravação. */
+function ResumeRecording() {
+  const { ready, isAuthenticated, user } = useAuth();
+  const done = useRef(false);
+  useEffect(() => {
+    if (Platform.OS === 'web' || done.current || !ready || !isAuthenticated || user?.kind !== 'client') return;
+    done.current = true;
+    void liveRecordingToResume()
+      .then((m) => {
+        if (m?.route?.startsWith('/cliente/')) router.push(m.route as never);
+      })
+      .catch(() => undefined);
+  }, [ready, isAuthenticated, user?.kind]);
   return null;
 }
 
