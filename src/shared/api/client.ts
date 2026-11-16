@@ -1,4 +1,4 @@
-import axios, { AxiosError, InternalAxiosRequestConfig, isCancel } from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig, isAxiosError, isCancel } from 'axios';
 import { API_URL, MOBILE_CLIENT_HEADER } from '@/src/shared/config';
 import { clearTokens, getAccessToken, getRefreshToken, getSavedRole, SavedRole, setTokens } from './token-store';
 import { refreshSocketAuth } from '@/src/shared/realtime/socket';
@@ -53,6 +53,44 @@ async function refreshAccessToken(role: SavedRole): Promise<string | null> {
     });
   }
   return refreshing[role]!;
+}
+
+/**
+ * Renova a sessão da conta ao abrir o app: a equipe troca o refresh token (vale 90 dias a partir de agora) e o cliente pede
+ * uma sessão nova da mesma empresa ao portal. Quem usa o app nunca precisa entrar de novo. Devolve falso se a sessão já
+ * tinha caído (outro aparelho entrou, a empresa desconectou ou venceu); erro de rede sobe para quem chamou.
+ */
+export async function renewSession(role: SavedRole): Promise<boolean> {
+  if (role === 'staff') {
+    try {
+      return !!(await refreshAccessToken('staff'));
+    } catch (e) {
+      if (isAxiosError(e) && e.response && [401, 403].includes(e.response.status)) return false;
+      throw e;
+    }
+  }
+  const access = await getAccessToken('client');
+  if (!access) return false;
+  try {
+    const { data } = await axios.post(
+      `${API_URL}/api/public/portal/me/renew`,
+      {},
+      { headers: { 'X-Client': MOBILE_CLIENT_HEADER, Authorization: `Bearer ${access}`, Accept: 'application/json' }, timeout: 30_000 },
+    );
+    const next = data?.access_token as string | undefined;
+    if (!next) return false;
+    const identity = (data?.identity_token as string | null | undefined) ?? (await getRefreshToken('client')) ?? '';
+    await setTokens(next, identity, 'client');
+    return true;
+  } catch (e) {
+    if (isAxiosError(e) && e.response && [401, 403].includes(e.response.status)) return false;
+    throw e;
+  }
+}
+
+/** Erro sem resposta do servidor (sem internet, tempo esgotado): a sessão guardada continua valendo. */
+export function isNetworkError(e: unknown): boolean {
+  return isAxiosError(e) ? !e.response : false;
 }
 
 api.interceptors.request.use(async (config) => {
