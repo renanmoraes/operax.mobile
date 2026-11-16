@@ -9,6 +9,19 @@ export type PushRegistrationResult =
 const easProjectId = (): string | undefined =>
   Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId ?? undefined;
 
+/** Canal de notificação do Android que o servidor usa nos avisos (equipe e aluno). Criar de novo não muda nada. */
+async function ensureAndroidChannel(Notifications: typeof import('expo-notifications')) {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync('operax-default', {
+    name: 'Operax',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#1e4ed8',
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    bypassDnd: false,
+  });
+}
+
 /**
  * Token do aparelho só se a pessoa já deixou o app notificar, sem abrir o pedido do sistema.
  * Serve para registrar em silêncio ao entrar na conta (o pedido fica na tela de permissões).
@@ -18,6 +31,9 @@ export async function grantedPushToken(): Promise<string | null> {
   try {
     const Notifications = await import('expo-notifications');
     if ((await Notifications.getPermissionsAsync()).status !== 'granted') return null;
+    // No Android 12 ou antes a permissão já vem dada e a pessoa pode nunca passar pelo pedido: o canal que o servidor
+    // usa (`operax-default`) precisa existir mesmo assim, senão o aviso cai no canal genérico, sem som nem destaque.
+    await ensureAndroidChannel(Notifications);
     const projectId = easProjectId();
     return (await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined)).data;
   } catch {
@@ -43,16 +59,7 @@ export async function registerForPushNotificationsAsync(): Promise<PushRegistrat
       }),
     });
 
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('operax-default', {
-        name: 'Operax',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#1e4ed8',
-        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-        bypassDnd: false,
-      });
-    }
+    await ensureAndroidChannel(Notifications);
 
     const { status: existing } = await Notifications.getPermissionsAsync();
     let finalStatus = existing;

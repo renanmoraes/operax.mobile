@@ -418,9 +418,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthenticated(true);
         setReturnRole(null);
         await connectSocket();
-        // Push só existe para a equipe: a rota é da equipe e a sessão do portal não registra aparelho
-        // (um 401 com o token do cliente apagaria a sessão dele, que não tem como renovar).
+        // Cada conta registra o aparelho na rota dela: a equipe em /auth/device-tokens, o aluno no portal (só se a
+        // permissão já foi dada; nunca com o token da outra conta).
         if (target === 'staff') void registerDevicePushToken();
+        else void registerClientPush({ prompt: false }).catch(() => undefined);
         return true;
       } catch (e) {
         const status = (e as { response?: { status?: number } })?.response?.status;
@@ -655,8 +656,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout: async () => {
         const current = role;
         if (mode === 'live' && current === 'client') {
-          // Antes do logout: a revogação ainda precisa da sessão do aluno.
-          await revokeClientPush();
+          // Antes do logout: a revogação ainda precisa da sessão do aluno. No máximo 3 s: rede ruim não segura a saída.
+          await Promise.race([revokeClientPush(), new Promise((r) => setTimeout(r, 3000))]);
           await portalLogout().catch(() => undefined);
           await clearTokens('client');
           // Saiu da conta de cliente: os lembretes dela não podem tocar depois.
