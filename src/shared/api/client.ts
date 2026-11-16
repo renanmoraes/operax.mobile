@@ -79,6 +79,8 @@ export async function renewSession(role: SavedRole): Promise<boolean> {
     );
     const next = data?.access_token as string | undefined;
     if (!next) return false;
+    // A pessoa trocou de empresa enquanto renovava: o token da empresa nova fica; a renovação da antiga é descartada.
+    if ((await getAccessToken('client')) !== access) return true;
     const identity = (data?.identity_token as string | null | undefined) ?? (await getRefreshToken('client')) ?? '';
     await setTokens(next, identity, 'client');
     return true;
@@ -88,9 +90,13 @@ export async function renewSession(role: SavedRole): Promise<boolean> {
   }
 }
 
-/** Erro sem resposta do servidor (sem internet, tempo esgotado): a sessão guardada continua valendo. */
-export function isNetworkError(e: unknown): boolean {
-  return isAxiosError(e) ? !e.response : false;
+/**
+ * Falha passageira: sem resposta do servidor (sem internet, tempo esgotado) ou servidor fora (5xx, deploy). A sessão guardada
+ * continua valendo; só 401/403 encerram.
+ */
+export function isTransientError(e: unknown): boolean {
+  if (!isAxiosError(e)) return false;
+  return !e.response || e.response.status >= 500;
 }
 
 api.interceptors.request.use(async (config) => {
@@ -147,7 +153,10 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${access}`;
         original._role = role;
         return api(original);
-      } catch {
+      } catch (refreshError) {
+        // Renovação que não chegou ao servidor (sem internet) ou pegou o servidor fora (5xx): a sessão guardada continua e
+        // o erro sobe como transitório, para quem chamou não tratar como sessão encerrada.
+        if (refreshError !== error && isTransientError(refreshError)) return Promise.reject(refreshError);
         // Só a conta que falhou sai; a outra (talvez a aberta agora) continua.
         await clearTokens(role);
       }
