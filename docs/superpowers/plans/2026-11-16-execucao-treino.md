@@ -208,8 +208,7 @@ describe('migração do draft (campos de tempo ativo/descanso)', () => {
 
   it('draft antigo sem os campos novos vem migrado: started pela presença de séries, segundos zerados', async () => {
     setFitnessOwner('ana:academia');
-    const key = Object.keys(Object.fromEntries(mockStore)); // placeholder, ver nota abaixo
-    // Simula um draft salvo por uma versão antiga do app, sem os três campos.
+    // Simula um draft salvo por uma versão antiga do app, sem os três campos novos.
     await saveDraft({ workoutId: 'w1', idx: 0, logs: [[{ kg: 40, reps: 10 }], []], elapsed: 30 } as SessionDraft);
     const loaded = await loadDraft('w1');
     expect(loaded?.started).toEqual([true, false]);
@@ -218,9 +217,6 @@ describe('migração do draft (campos de tempo ativo/descanso)', () => {
   });
 });
 ```
-
-Remova a linha `const key = ...` do segundo teste (sobrou de rascunho, não serve pra nada — é só pra deixar
-claro que o teste simula gravação direta, sem precisar inspecionar a chave).
 
 - [ ] **Step 2: Rodar e confirmar que falha**
 
@@ -251,7 +247,7 @@ Logo abaixo da definição de `SetLog`/antes de `loadDraft`, acrescente a migra�
 
 ```ts
 /** Drafts salvos antes dos campos de tempo ativo/descanso não os têm — preenche com um padrão razoável. */
-function migrateDraft(d: SessionDraft): SessionDraft {
+function migrateDraft<T extends SessionDraft>(d: T): T {
   if (d.started && d.activeSeconds && d.restSeconds) return d;
   return {
     ...d,
@@ -284,7 +280,7 @@ export async function loadFinishedSession(): Promise<FinishedSession | null> {
   if (!key) return null;
   const session = await kvGet<FinishedSession>(key);
   if (fitnessOwner() !== who) return null;
-  const migrated = session ? (migrateDraft(session) as FinishedSession) : null;
+  const migrated = session ? migrateDraft(session) : null;
   finished = migrated ? { who, session: migrated } : null;
   return migrated;
 }
@@ -443,9 +439,10 @@ activeRestSummary: '{{active}} activo · {{rest}} de descanso',
 
 - [ ] **Step 2: Conferir que os três arquivos têm as mesmas chaves**
 
-Run: `npm run test:unit -- --testPathPattern=i18n` (há um teste em `src/i18n/__tests__/i18n.test.ts` que
-costuma checar paridade de chaves entre idiomas — se existir essa checagem, ela aponta qualquer chave faltando
-num dos três arquivos).
+Run: `npm run test:unit -- --testPathPattern=i18n`
+
+`src/i18n/__tests__/i18n.test.ts` compara `pt` contra `en`/`es`: mesmas chaves e mesmas variáveis `{{x}}` em
+cada texto. Qualquer chave esquecida num dos três arquivos, ou uma variável digitada diferente, falha aqui.
 Expected: PASS
 
 - [ ] **Step 3: Commit**
@@ -524,20 +521,13 @@ useEffect(() => {
 }, [workout.id, rows]);
 ```
 
-- [ ] **Step 4: Salvar os campos novos no draft**
+- [ ] **Step 4: `flushBucket`/`switchBucket` e leitura "ao vivo" dos acumuladores**
 
-No `useEffect` que chama `saveDraft` (linha ~133-137), acrescente os três campos:
-
-```ts
-useEffect(() => {
-  if (ready) void saveDraft({ workoutId: workout.id, idx, logs, elapsed: elapsedAt(wallClock()), started, activeSeconds, restSeconds: restSecondsArr });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [ready, idx, logs, started, activeSeconds, restSecondsArr, workout.id]);
-```
-
-- [ ] **Step 5: `flushBucket`/`switchBucket` — trocar qual acumulador está ligado**
-
-Logo antes de `function startRest(seconds: number) {` (linha ~152), acrescente:
+Logo antes de `function startRest(seconds: number) {` (linha ~152), acrescente. `currentActiveSeconds`/
+`currentRestSeconds` existem porque `setActiveSeconds`/`setRestSecondsArr` são assíncronos (React) — ler os
+state arrays logo depois de chamar `flushBucket` na mesma função daria o valor de **antes** do flush. Essas
+duas funções calculam o total certo na hora, somando o que já foi persistido com o trecho do bucket atual
+ainda em andamento (mesmo princípio do `elapsedAt` que já existe no arquivo pro relógio geral):
 
 ```ts
 /** Soma o tempo desde que o bucket ligou no array certo, sem mudar o que está ligado agora. */
@@ -555,7 +545,36 @@ function switchBucket(next: { idx: number; kind: 'active' | 'rest' }) {
   setBucket(next);
   setBucketSince(paused ? null : t);
 }
+
+/** `kind`/`i` com o trecho do bucket atual já somado, sem esperar o próximo render. */
+function liveSeconds(base: number[], kind: 'active' | 'rest', i: number, t: number): number {
+  const live = bucket.kind === kind && bucket.idx === i && bucketSince != null ? Math.max(0, t - bucketSince) / 1000 : 0;
+  return base[i] + live;
+}
+function currentActiveSeconds(t = wallClock()) {
+  return activeSeconds.map((_, i) => liveSeconds(activeSeconds, 'active', i, t));
+}
+function currentRestSeconds(t = wallClock()) {
+  return restSecondsArr.map((_, i) => liveSeconds(restSecondsArr, 'rest', i, t));
+}
 ```
+
+- [ ] **Step 5: Salvar os campos novos no draft, com o trecho em andamento incluído**
+
+No `useEffect` que chama `saveDraft` (linha ~133-137), troque por:
+
+```ts
+useEffect(() => {
+  if (ready) {
+    const t = wallClock();
+    void saveDraft({ workoutId: workout.id, idx, logs, elapsed: elapsedAt(t), started, activeSeconds: currentActiveSeconds(t), restSeconds: currentRestSeconds(t) });
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [ready, idx, logs, started, activeSeconds, restSecondsArr, bucket, workout.id]);
+```
+
+(Acrescentei `bucket` nas dependências: sem isso, uma troca de bucket sem troca de `idx`/`logs` — ex.: tocar
+"Iniciar exercício" — não dispararia o save.)
 
 - [ ] **Step 6: `togglePause` também congela/retoma o bucket**
 
@@ -581,9 +600,11 @@ function togglePause() {
 }
 ```
 
-- [ ] **Step 7: `completeSet` dispara a transição (ou o fim do treino) ao fechar um exercício**
+- [ ] **Step 7: `completeSet` — descanso entre séries liga o bucket de descanso; exercício fechado dispara a transição**
 
-Substitua o corpo de `completeSet` (linha ~194-210) por:
+**Não apague** a linha `const exDone = done.length >= row.sets.length;` que já existe no componente (linha
+~109) — ela continua necessária pro caso do último exercício (ver Task 5, Step 1). Substitua o corpo de
+`completeSet` (linha ~194-210) por:
 
 ```ts
 function completeSet() {
@@ -599,15 +620,16 @@ function completeSet() {
     if (restAfter > 0) {
       startRest(restAfter);
       setRestTotal(restAfter);
+      switchBucket({ idx, kind: 'rest' }); // descanso entre séries conta como restSeconds[idx], não activeSeconds[idx]
     }
     return;
   }
-  // Exercício fechado: acha o próximo não concluído (pode já não ser idx + 1).
+  // Exercício fechado: acha o próximo não concluído (pode já não ser idx + 1— ver nextOpenIndex).
   const nextIdx = nextOpenIndex(rows, next, idx);
-  if (nextIdx === -1) return; // último: a tela de resumo/"Finalizar treino" de hoje já cuida disso
+  if (nextIdx === -1) return; // último: fica com exDone=true pro idx atual, tela de resumo cuida do resto (Task 5)
   const volume = next[idx].reduce((n, s) => n + s.kg * s.reps, 0);
   const tr = transitionRest(row);
-  setJustFinished({ name: exName, volume, restKind: tr.kind });
+  setJustFinished({ name: row.name, volume, restKind: tr.kind });
   setExplicitGateOpen(false);
   setIdx(nextIdx);
   setStarted((arr) => arr.map((v, i) => (i === nextIdx ? false : v)));
@@ -624,7 +646,27 @@ function completeSet() {
 }
 ```
 
-- [ ] **Step 8: Tocar "Iniciar exercício" liga o relógio ativo**
+(`row.name` no lugar do antigo `exName`: `exName` é o nome do **estágio** atual dentro de um superset/drop
+set, não o nome do bloco — pro card "✓ {{name}} concluído" o nome do bloco é o que faz sentido.)
+
+- [ ] **Step 8: Bucket de descanso entre séries volta pra ativo sozinho, quando o descanso acaba ou é pulado**
+
+Esse efeito cobre os dois jeitos do descanso **entre séries** terminar (o anel chega a zero sozinho, ou o
+aluno toca "Pular descanso") sem duplicar lógica nos dois lugares. A condição `started[idx]` é o que
+diferencia esse caso do descanso da **transição entre exercícios** (Step 7/Task 5), onde `bucket.kind` também
+é `'rest'`, mas o exercício ainda não foi iniciado — ali quem decide sair do estado é o Task 5 (gate),
+não este efeito. Acrescente logo depois de `togglePause`:
+
+```ts
+useEffect(() => {
+  if (!resting && started[idx] && bucket.kind === 'rest' && bucket.idx === idx) {
+    switchBucket({ idx, kind: 'active' });
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [resting, idx, started]);
+```
+
+- [ ] **Step 9: Tocar "Iniciar exercício" liga o relógio ativo**
 
 Depois de `completeSet`, acrescente:
 
@@ -638,15 +680,60 @@ function tapStartExercise() {
 }
 ```
 
-- [ ] **Step 9: `npx tsc --noEmit --noUnusedLocals` limpo nesse arquivo**
+- [ ] **Step 10: `finishAndGoTo` — troca manual de exercício (prévia e "Pular")**
 
-Nesse ponto a tela ainda não usa `started`/`justFinished`/`tapStartExercise` na JSX (isso é o Task 5), então
-espere avisos de "declared but never read" em alguns — são esperados até o próximo task. Confirme só que não
-há erro de tipo genuíno (ex.: `SessionDraft` exigindo os três campos novos no `saveDraft`).
+Usada pelo "Pular" do rodapé (Task 5) e pela prévia (Task 6) — fica aqui porque é puramente lógica de estado,
+igual as outras funções deste task. Depois de `tapStartExercise`, acrescente:
+
+```ts
+function finishAndGoTo(targetIdx: number) {
+  if (targetIdx === idx) return;
+  setJustFinished(null);
+  setExplicitGateOpen(false);
+  setIdx(targetIdx);
+  setStarted((arr) => arr.map((v, i) => (i === targetIdx ? false : v)));
+  switchBucket({ idx: targetIdx, kind: 'rest' });
+  skipRest();
+  const p = nextPrescription(rows[targetIdx], logs[targetIdx]?.length ?? 0);
+  setKg(p.kg);
+  setReps(p.reps);
+}
+```
+
+- [ ] **Step 11: `finish()` inclui os três campos novos, com o trecho em andamento somado**
+
+Substitua a função `finish` (linha ~212-217) por:
+
+```ts
+function finish() {
+  const t = wallClock();
+  // O rascunho só é apagado depois que o resultado for salvo (na tela de conclusão).
+  setFinishedSession({
+    workoutId: workout.id,
+    idx,
+    logs,
+    elapsed: elapsedAt(t),
+    started,
+    activeSeconds: currentActiveSeconds(t),
+    restSeconds: currentRestSeconds(t),
+    finishedAt: new Date().toISOString(),
+    resultKey: newIdempotencyKey(),
+  });
+  Speech.stop();
+  router.replace('/cliente/treino/concluido');
+}
+```
+
+- [ ] **Step 12: `npx tsc --noEmit --noUnusedLocals` limpo nesse arquivo**
+
+Nesse ponto a tela ainda não usa `justFinished`/`tapStartExercise`/`finishAndGoTo` na JSX além do que já foi
+escrito (isso continua no Task 5/6) — não deve sobrar "declared but never read" de verdade, já que `finish`,
+`completeSet` e o `useEffect` do Step 8 já consomem a maior parte do estado novo. Qualquer erro de tipo
+restante (não aviso de lint) precisa ser corrigido antes de prosseguir.
 
 Run: `npx tsc --noEmit --noUnusedLocals`
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 13: Commit**
 
 ```bash
 git add app/cliente/treino/sessao/\[id\].tsx
@@ -662,20 +749,27 @@ git commit -m "feat: sessão de treino acumula tempo ativo/descanso por exercíc
 
 - [ ] **Step 1: Derivar a fase atual**
 
-Logo depois da linha que calcula `const resting = rest > 0;` (linha ~111), acrescente:
+**Mantenha** a linha `const exDone = done.length >= row.sets.length;` que já existe no componente (linha
+~109) — ela só fica `true` pro `idx` atual no caso do **último exercício sem próximo** (`completeSet` do
+Task 4 não avança o `idx` nesse caso; em qualquer outra situação o `idx` já mudou antes de alguém conseguir ler
+`exDone` como `true`). Logo depois da linha que calcula `const resting = rest > 0;` (linha ~111), acrescente:
 
 ```ts
 /** true enquanto o exercício ativo ainda não foi "Iniciado" — mostra transição (3) ou o gate (4). */
 const isGated = !started[idx];
-const gateOpen = explicitGateOpen || (justFinished?.restKind === 'ring' && rest <= 0);
-const inExTransition = isGated && justFinished != null && !gateOpen;
+/**
+ * Transição com anel: só sai do anel quando ele zera ou o aluno pula. Sem anel (cronômetro crescente ou
+ * primeiro exercício do treino, `justFinished` nulo), não tem o que esperar — cai direto no gate (estado 4),
+ * mostrando o cronômetro como informação dentro da própria tela "Pronto pra começar" (Step 3).
+ */
+const inExTransition = isGated && justFinished?.restKind === 'ring' && !explicitGateOpen && rest > 0;
 const inGate = isGated && !inExTransition;
-const bucketElapsed = bucket.kind === 'rest' && bucket.idx === idx && bucketSince != null ? Math.floor((now - bucketSince) / 1000) : restSecondsArr[idx];
+const bucketElapsed = bucket.kind === 'rest' && bucket.idx === idx && bucketSince != null ? Math.floor((now - bucketSince) / 1000) : Math.floor(restSecondsArr[idx]);
 ```
 
-`resting` continua controlando o card de descanso **entre séries** (estado 2) exatamente como hoje, só que
-agora só se aplica quando `!isGated` (exercício já iniciado) — isso já é verdade na prática porque
-`completeSet` só chama `startRest` nesse branch quando o exercício não fechou.
+`resting` continua controlando o card de descanso **entre séries** (estado 2) exatamente como hoje — só
+importa quando `!isGated` (exercício já iniciado), porque `completeSet` só chama `startRest` nesse branch
+quando o exercício não fechou, e porque o botão primário (Step 4) checa `isGated` antes de checar `resting`.
 
 - [ ] **Step 2: Badge de estado no topo**
 
@@ -699,47 +793,51 @@ stateBadgeReady: { backgroundColor: '#f0f1f4' },
 stateBadgeText: { fontFamily: typography.fontFamilyBold, fontSize: 11.5, letterSpacing: 0.3, color: colors.text },
 ```
 
-- [ ] **Step 3: Substituir o card de "exercício concluído" pela transição (estado 3) e o gate (estado 4)**
+- [ ] **Step 3: Substituir o ramo "exercício concluído" pela transição (estado 3) e o gate (estado 4)**
 
-O bloco atual (linha ~318-357) tem três ramos: `resting ? <restCard> : exDone ? <doneCard> : <steppers>`. Como
-agora `idx` já avança pro próximo exercício assim que o atual fecha (Task 4, Step 7), **não existe mais
-`exDone` nesse ponto da árvore** — quem estava com todas as séries feitas já não é mais o `idx` atual. Troque
-a condição `resting ? ... : exDone ? ... : ...` por:
+O bloco atual (linha ~318-357) tem três ramos: `resting ? <restCard> : exDone ? <doneCard> : <steppers>`.
+Troque a condição por (nessa ordem — `isGated` sempre vem antes de `exDone`/`resting`, porque os três podem em
+teoria ser verdadeiros ao mesmo tempo só pro caso "último exercício, sem próximo", que nunca fica `isGated`):
 
 ```tsx
 {inGate ? (
   <View style={styles.restCard}>
-    {justFinished ? <Text style={styles.prevDone}>{i18n.t('fitness:session.prevDone', { name: justFinished.name })}</Text> : null}
+    {justFinished?.restKind === 'ring' || justFinished == null ? null : (
+      <View style={styles.stopwatch}>
+        <Num size="xl">{bucketElapsed}</Num>
+        <Muted style={{ fontSize: 12 }}>{i18n.t('fitness:session.seconds')}</Muted>
+      </View>
+    )}
     <View style={{ flex: 1 }}>
+      {justFinished ? <Text style={styles.prevDone}>{i18n.t('fitness:session.prevDone', { name: justFinished.name })}</Text> : null}
       <Text style={styles.restTitle}>{i18n.t('fitness:session.badgeReady')}</Text>
       <Muted style={{ marginTop: 4, lineHeight: 19 }}>{i18n.t('fitness:session.readyHint')}</Muted>
     </View>
   </View>
-) : inExTransition && justFinished?.restKind === 'ring' ? (
+) : inExTransition ? (
   <View style={styles.restCard}>
     <ProgressRing size={132} stroke={10} progress={rest / restTotal} accessibilityLabel={i18n.t('fitness:session.restA11y', { count: rest })}>
       <Num size="xl">{rest}</Num>
       <Muted style={{ fontSize: 12 }}>{i18n.t('fitness:session.seconds')}</Muted>
     </ProgressRing>
     <View style={{ flex: 1 }}>
-      <Text style={styles.prevDone}>{i18n.t('fitness:session.prevDone', { name: justFinished.name })}</Text>
-      <Muted style={{ marginTop: 4, lineHeight: 19 }}>{i18n.t('fitness:session.nextEx', { name: exName })}</Muted>
+      <Text style={styles.prevDone}>{i18n.t('fitness:session.prevDone', { name: justFinished?.name })}</Text>
+      <Muted style={{ marginTop: 4, lineHeight: 19 }}>{i18n.t('fitness:session.nextEx', { name: row.name })}</Muted>
       <PressableScale onPress={() => setExplicitGateOpen(true)} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:rest.skipA11y')} style={styles.more}>
         <Text style={styles.moreText}>{i18n.t('fitness:rest.skip')}</Text>
       </PressableScale>
     </View>
   </View>
-) : inExTransition ? (
-  <View style={styles.restCard}>
-    <View style={styles.stopwatch}>
-      <Num size="xl">{bucketElapsed}</Num>
-      <Muted style={{ fontSize: 12 }}>{i18n.t('fitness:session.seconds')}</Muted>
+) : exDone ? (
+  <LinearGradient colors={['rgba(79,216,255,0.18)', 'rgba(30,78,216,0.2)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.doneCard}>
+    <View style={styles.doneIcon}>
+      <Ionicons name="checkmark" size={24} color={colors.primary} />
     </View>
     <View style={{ flex: 1 }}>
-      <Text style={styles.prevDone}>{i18n.t('fitness:session.prevDone', { name: justFinished?.name })}</Text>
-      <Muted style={{ marginTop: 4, lineHeight: 19 }}>{i18n.t('fitness:session.nextEx', { name: exName })}</Muted>
+      <Text style={styles.restTitle}>{i18n.t('fitness:session.exDone')}</Text>
+      <Muted style={{ marginTop: 3, color: colors.textSoft }}>{i18n.t('fitness:session.volume', { kg: volume.toLocaleString(locale()) })}</Muted>
     </View>
-  </View>
+  </LinearGradient>
 ) : resting ? (
   <View style={styles.restCard}>
     <ProgressRing size={132} stroke={10} progress={rest / restTotal} accessibilityLabel={i18n.t('fitness:session.restA11y', { count: rest })}>
@@ -777,23 +875,27 @@ Acrescente `stopwatch: { width: 132, height: 132, borderRadius: 66, backgroundCo
 
 - [ ] **Step 4: Botão primário e rodapé**
 
-O cálculo de `primary` (linha ~219-225) precisa de um ramo pro gate — substitua por:
+O cálculo de `primary` (linha ~219-225) precisa checar `isGated` **antes** de `resting`/`exDone` — senão, nas
+janelas em que o exercício ainda não foi iniciado mas `resting` e `exDone` são os dois `false` (cronômetro
+crescente, ou anel pausado com `restFrozen === 0`), o botão cairia em "Completar série" de um exercício que
+nunca foi iniciado. Substitua por:
 
 ```ts
 const hasNext = nextOpenIndex(rows, logs, idx) !== -1;
-const primary = inGate
+const primary = isGated
   ? { label: i18n.t('fitness:session.startEx'), onPress: tapStartExercise }
   : resting
     ? { label: i18n.t('fitness:rest.skipA11y'), onPress: skipRest }
-    : { label: i18n.t('fitness:session.completeSet', { n: done.length + 1 }), onPress: completeSet };
+    : exDone
+      ? { label: i18n.t('fitness:session.finish'), onPress: finish }
+      : { label: i18n.t('fitness:session.completeSet', { n: done.length + 1 }), onPress: completeSet };
 ```
 
-(Removido o ramo antigo `exDone ? (isLast ? finish : goTo(idx+1)) : ...`: isso tudo já é resolvido no
-`completeSet`/`nextOpenIndex` do Task 4 — quando não sobra próximo, `completeSet` simplesmente não avança e a
-tela de "Finalizar treino" de hoje continua funcionando sem mudança, porque `exDone` nunca fica `true` pro
-`idx` atual nessa versão.)
+(`exDone` só chega a `true` aqui no caso "último exercício, sem próximo" — ver Step 1 e Task 4/Step 7 — então
+esse ramo é exatamente o "Finalizar treino" que já existe hoje, sem mudança de comportamento.)
 
-No `ActionRow` do rodapé (linha ~378-398), troque o item "Pular":
+No `ActionRow` do rodapé (linha ~378-398), troque o item "Pular" (`finishAndGoTo` já foi escrita no
+Task 4/Step 10):
 
 ```ts
 {
@@ -805,21 +907,23 @@ No `ActionRow` do rodapé (linha ~378-398), troque o item "Pular":
 },
 ```
 
-(`finishAndGoTo` é escrito no Task 6 — deixe o `onPress` apontando pra ela agora, mesmo que ainda não exista;
-o Task 6 é o próximo passo da mesma tarefa de implementação, então não fica quebrado por mais que um commit.)
+- [ ] **Step 5: `isLast` sai; `exDone` fica**
 
-- [ ] **Step 5: `isLast`/`exDone` somem — limpar**
-
-`isLast` e `exDone` (linha ~109-110) não são mais usados depois dos passos acima — apague as duas linhas. Se o
-TypeScript/ESLint acusar alguma outra referência esquecida a elas, remova também.
+`isLast` (linha ~110) não é mais usado depois dos passos acima — apague essa linha. `exDone` (linha ~109)
+continua necessária (Steps 1/3/4) — **não apague**. Se o TypeScript/ESLint acusar alguma outra referência
+esquecida a `isLast`, remova também (ex.: o bloco "A seguir", tratado no Task 6).
 
 - [ ] **Step 6: Verificação manual**
 
-Suba o app: `npx expo start --web`, entre no modo demo, abra um treino com descanso definido no último set de
-um exercício e outro sem. Confirme: badge troca de cor/texto nos 4 estados; ao terminar o último set de um
-exercício aparece o anel (ou cronômetro, conforme o exercício escolhido) com o nome do que acabou de fechar;
-o botão primário vira "Iniciar exercício" e só depois do toque os steppers aparecem. Tire um print de cada
-estado (pode usar o navegador embutido) pra conferir contra a spec.
+Suba o app: `npx expo start --web`, entre no modo demo, abra um treino. Nenhum exercício do `mockData` atual
+(`src/features/fitness/mockData.ts`) tem o último set sem `rest_seconds` definido, então o cronômetro
+crescente não aparece nos dados de demonstração como estão — pra testar esse ramo, remova temporariamente o
+`rest_seconds` do último set de um exercício de teste local (não comite isso) ou peça pra alguém no time
+ajustar o mock num commit separado depois. Confirme: badge troca de cor/texto nos 4 estados; ao terminar o
+último set de um exercício com descanso aparece o anel com o nome do que acabou de fechar e some sozinho ao
+zerar; o botão primário vira "Iniciar exercício" e só depois do toque os steppers aparecem; no último
+exercício do treino, ao terminar a última série aparece o card "Exercício concluído" de sempre com o botão
+"Finalizar treino". Tire um print de cada estado (pode usar o navegador embutido) pra conferir contra a spec.
 
 - [ ] **Step 7: Commit**
 
@@ -843,9 +947,11 @@ Junto dos outros `useState` do componente, acrescente:
 const [previewIdx, setPreviewIdx] = useState<number | null>(null);
 ```
 
-- [ ] **Step 2: `finishAndGoTo` — troca de exercício pela prévia (ou pelo "Pular")**
+- [ ] **Step 2: `finishAndGoTo` precisa fechar a prévia também**
 
-Logo depois de `tapStartExercise` (Task 4, Step 8), acrescente:
+`finishAndGoTo` já foi escrita no Task 4/Step 10 (ela não depende de `previewIdx`, só troca o `idx`). Edite-a
+pra fechar a prévia antes de trocar, senão o painel de prévia continua aberto depois do toque em "Finalizar e
+vir para cá":
 
 ```ts
 function finishAndGoTo(targetIdx: number) {
@@ -873,10 +979,18 @@ onPress={() => (i === idx ? undefined : setPreviewIdx(i))}
 ```
 
 (No `BottomSheet`, mantenha o `setListOpen(false)` depois.) A função `goTo` original não é mais chamada por
-nenhuma UI depois disso — apague-a (linha ~186-192) e remova a chamada que sobrou em
-"A seguir" (linha ~360-371: troque `onPress={() => goTo(idx + 1)}` por
-`onPress={() => setPreviewIdx(idx + 1)}`, só quando `!isLast`; como `isLast` foi removido no Task 5, use
-`idx + 1 < rows.length` na condição que envolve esse bloco).
+nenhuma UI depois disso — apague-a (linha ~186-192). O bloco "A seguir" (linha ~360-371) também não deve mais
+chamar `goTo`: troque `onPress={() => goTo(idx + 1)}` por `onPress={() => setPreviewIdx(nextIdx)}`, e a
+condição que envolve o bloco (hoje `!isLast`) por `nextIdx !== -1`, usando:
+
+```ts
+const nextIdx = nextOpenIndex(rows, logs, idx);
+```
+
+(calculado uma vez no corpo do componente, perto de `hasNext` do Task 5 — aliás `hasNext` pode virar
+`nextIdx !== -1` direto, sem recalcular `nextOpenIndex` duas vezes). O rótulo do bloco passa a mostrar
+`rows[nextIdx].name` em vez de `rows[idx + 1].name`, pelo mesmo motivo do "Pular": o próximo de verdade pode
+não ser `idx + 1` se algo no meio já estiver `done`.
 
 - [ ] **Step 4: Painel da prévia**
 
@@ -937,10 +1051,27 @@ import type { ExerciseRow } from '@/src/features/fitness/flatten';
 import { exerciseStatus, nextOpenIndex, transitionRest, type ExerciseStatus } from '@/src/features/fitness/sessionStatus';
 ```
 
-- [ ] **Step 5: Rodapé continua ativo durante a prévia**
+- [ ] **Step 5: Esconder o botão primário durante a prévia; `ActionRow` continua**
 
 O `ActionRow` (Pausar/Pular/Encerrar) já está fora do `ScrollView`, então continua visível durante a prévia
-sem mudança nenhuma — só confirme visualmente no passo manual abaixo que os três continuam clicáveis.
+sem mudança nenhuma. Mas o **botão primário** (o pill grande acima do `ActionRow`, calculado em `primary` no
+Task 5/Step 4) continua mostrando "Completar série"/"Iniciar exercício" do exercício **ativo**, escondido atrás
+do painel de prévia — como a prévia já tem seu próprio botão "Finalizar e vir para cá" dentro do `PreviewPanel`
+(Step 4), esconda o primário de fora enquanto `previewIdx != null`. No JSX do rodapé (linha ~374-377):
+
+```tsx
+<View style={[styles.footer, { paddingBottom: insets.bottom + 18 }]}>
+  {previewIdx == null ? (
+    <PressableScale onPress={primary.onPress} accessibilityRole="button" accessibilityLabel={primary.label} style={styles.primary}>
+      <Text style={styles.primaryText} numberOfLines={1}>{primary.label}</Text>
+    </PressableScale>
+  ) : null}
+  <ActionRow
+    style={{ marginTop: previewIdx == null ? 10 : 0 }}
+    items={[ /* ...itens existentes, sem mudança... */ ]}
+  />
+</View>
+```
 
 - [ ] **Step 6: Verificação manual**
 
