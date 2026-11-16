@@ -21,10 +21,14 @@ export type HealthWorkout = {
   device: string | null;
   /** App que gravou no Health Connect (ex.: Samsung Health). */
   origin?: string;
+  /** Pacote do app que gravou no Health Connect (ex.: com.strava): o backend recusa o que veio do Strava. */
+  origin_package?: string;
+  /** Esporte em chave fixa, para o backend (o `sport` acima é o nome traduzido para a tela). */
+  sport_key: SportKey | 'other';
 };
 
 // Valores de HKWorkoutActivityType (Apple).
-type SportKey = 'functional' | 'cycling' | 'dance' | 'strength' | 'hiking' | 'running' | 'swimming' | 'walking' | 'yoga' | 'hiit' | 'pilates';
+export type SportKey = 'functional' | 'cycling' | 'dance' | 'strength' | 'hiking' | 'running' | 'swimming' | 'walking' | 'yoga' | 'hiit' | 'pilates';
 const APPLE_SPORT: Record<number, SportKey> = { 11: 'functional', 13: 'cycling', 14: 'dance', 20: 'strength', 24: 'hiking', 37: 'running', 46: 'swimming', 50: 'strength', 52: 'walking', 57: 'yoga', 63: 'hiit', 66: 'pilates' };
 
 // Valores de ExerciseSessionRecord.exerciseType (Health Connect).
@@ -78,6 +82,7 @@ export function fromAppleWorkout(w: AppleWorkoutLike, avgHr?: number | null): He
     source: 'apple_health',
     external_id: w.uuid,
     sport: sportFromApple(w.workoutActivityType),
+    sport_key: APPLE_SPORT[w.workoutActivityType] ?? 'other',
     started_at: w.startDate.toISOString(),
     duration_seconds: toSeconds(w.duration, w.startDate, w.endDate),
     distance_meters: toMeters(w.totalDistance),
@@ -108,6 +113,7 @@ export function fromHealthConnectSession(
     source: 'health_connect',
     external_id: s.metadata?.id ?? `${s.startTime}-${s.exerciseType}`,
     sport: sportFromHealthConnect(s.exerciseType),
+    sport_key: HC_SPORT[s.exerciseType] ?? 'other',
     started_at: start.toISOString(),
     duration_seconds: Math.max(0, Math.round((end.getTime() - start.getTime()) / 1000)),
     distance_meters: extras.distance_meters ? Math.round(extras.distance_meters) : null,
@@ -115,5 +121,6 @@ export function fromHealthConnectSession(
     avg_hr: extras.avg_hr ? Math.round(extras.avg_hr) : null,
     device,
     ...(origin ? { origin } : {}),
+    ...(s.metadata?.dataOrigin ? { origin_package: s.metadata.dataOrigin } : {}),
   };
 }
