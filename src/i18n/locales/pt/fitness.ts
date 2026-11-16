@@ -712,7 +712,7 @@ const fitness = {
     ofTotal: ' de {{total}}',
     openSheet: 'Abrir a ficha',
     pauseA11y: 'Pausar treino',
-    prevDone: '{{name}} concluído',
+    prevDone: '{{name}} concluído · {{kg}} kg',
     previewA11y: 'Prévia de {{name}}, somente leitura',
     previewBack: 'Voltar ao treino',
     previewFinish: 'Finalizar e vir para cá',

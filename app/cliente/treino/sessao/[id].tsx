@@ -492,7 +492,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
               </View>
             ) : null}
             <View style={{ flex: 1 }}>
-              {justFinished ? <Text style={styles.prevDone}>{i18n.t('fitness:session.prevDone', { name: justFinished.name })}</Text> : null}
+              {justFinished ? <Text style={styles.prevDone}>{i18n.t('fitness:session.prevDone', { name: justFinished.name, kg: formatKg(justFinished.volume) })}</Text> : null}
               <Text style={styles.restTitle}>{i18n.t('fitness:session.badgeReady')}</Text>
               <Muted style={{ marginTop: 4, lineHeight: 19 }}>{i18n.t('fitness:session.readyHint')}</Muted>
             </View>
@@ -504,7 +504,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
               <Muted style={{ fontSize: 12 }}>{i18n.t('fitness:session.seconds')}</Muted>
             </ProgressRing>
             <View style={{ flex: 1 }}>
-              <Text style={styles.prevDone}>{i18n.t('fitness:session.prevDone', { name: justFinished?.name })}</Text>
+              <Text style={styles.prevDone}>{i18n.t('fitness:session.prevDone', { name: justFinished?.name, kg: formatKg(justFinished?.volume ?? 0) })}</Text>
               <Muted style={{ marginTop: 4, lineHeight: 19 }}>{i18n.t('fitness:session.nextEx', { name: row.name })}</Muted>
               <PressableScale onPress={() => { setExplicitGateOpen(true); skipRest(); }} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:rest.skipA11y')} style={styles.more}>
                 <Text style={styles.moreText}>{i18n.t('fitness:rest.skip')}</Text>

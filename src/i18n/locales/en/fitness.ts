@@ -714,7 +714,7 @@ const fitness: Shape<typeof pt> = {
     ofTotal: ' of {{total}}',
     openSheet: 'Open the plan',
     pauseA11y: 'Pause workout',
-    prevDone: '{{name}} complete',
+    prevDone: '{{name}} complete · {{kg}} kg',
     previewA11y: 'Preview of {{name}}, read only',
     previewBack: 'Back to workout',
     previewFinish: 'Finish and switch here',
