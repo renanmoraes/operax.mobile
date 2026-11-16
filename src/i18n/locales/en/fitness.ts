@@ -816,7 +816,7 @@ const fitness: Shape<typeof pt> = {
     easy: 'Recovery',
     hypertrophy: 'Hypertrophy',
     intervals: 'Intervals',
-    long: 'Long run',
+    long: 'Long session',
     mobility: 'Mobility',
     race: 'Race',
     strength: 'Strength',
