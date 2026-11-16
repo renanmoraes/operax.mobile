@@ -22,11 +22,23 @@ Skills: `app-launch`, `app-rejection-recovery`, `aso-audit`, `android-aso`.
 - [ ] Play Data Safety form alinhado
 - [ ] iOS usage strings (câmera/galeria/docs) — ver `app.json` infoPlist
 - [ ] Android: só permissões justificadas (notificações, mídia se pedidas em runtime)
+- [ ] **Localização durante o treino com a tela apagada** (gravação de corrida/pedal):
+  - Play Console → Conteúdo do app → *Serviços em primeiro plano*: declarar tipo **location**, uso
+    "gravar o treino que o aluno iniciou", com vídeo curto (iniciar treino, apagar a tela, aviso fixo do Operax).
+    O app **não** pede `ACCESS_BACKGROUND_LOCATION`, então não entra na declaração de localização em segundo plano.
+  - Play Data Safety e App Privacy (ASC): localização **precisa** e dados de condicionamento físico, ligados ao usuário,
+    usados só para o funcionamento do app.
+  - iOS: `UIBackgroundModes: location`; textos de localização em pt/en/es (`app.json` e `locales/ios/*.json`).
+  - No Android aparecem dois avisos fixos durante o treino com GPS (serviço de localização e resumo da tela
+    bloqueada, se ligado nos ajustes da gravação).
 
 ### Review
 
 - [ ] Conta demo estável (tenant review) sem MFA bloqueante **ou** instruções MFA
 - [ ] Review Notes com fluxo (ver `metadata-pt-BR.md`)
+- [ ] Review Notes (Apple): a localização em segundo plano só é usada enquanto o aluno grava um treino que ele
+  mesmo iniciou e para ao finalizar (ou em até 6 h). O pedido "Sempre" não é usado; as chaves existem pelo modo
+  de segundo plano do iOS. Informar login de aluno de teste com Fitness ativo para o revisor gravar uma corrida.
 - [ ] Vídeo curto opcional do fluxo Assumir (ajuda Guideline 2.1)
 - [ ] Export compliance / encryption (Expo standard answers)
 - [ ] Content rights / age rating (Business, 4+)
