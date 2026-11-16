@@ -12,6 +12,7 @@ import { Toast, useToast } from '@/src/design-system/Toast';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { colors, gradients, radii, shadows, text, typography, glass } from '@/src/design-system/tokens';
 import { flattenWorkout, nextPrescription, stepLoad } from '@/src/features/fitness/flatten';
+import { nextOpenIndex, transitionRest } from '@/src/features/fitness/sessionStatus';
 import { WorkoutGate } from '@/src/features/fitness/WorkoutGate';
 import { useLoadHistory } from '@/src/features/fitness/useFitness';
 import type { FitnessWorkoutView } from '@/src/features/fitness/types';
@@ -97,6 +98,16 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
   const [restUntil, setRestUntil] = useState<number | null>(null);
   const [restFrozen, setRestFrozen] = useState(0);
   const [restTotal, setRestTotal] = useState(60);
+  const [started, setStarted] = useState<boolean[]>(() => rows.map(() => false));
+  const [activeSeconds, setActiveSeconds] = useState<number[]>(() => rows.map(() => 0));
+  const [restSecondsArr, setRestSecondsArr] = useState<number[]>(() => rows.map(() => 0));
+  /** Qual acumulador está ligado agora — exatamente um por vez. */
+  const [bucket, setBucket] = useState<{ idx: number; kind: 'active' | 'rest' }>(() => ({ idx: 0, kind: 'rest' }));
+  const [bucketSince, setBucketSince] = useState<number | null>(wallClock());
+  /** Nome/volume do exercício que acabou de fechar + tipo de descanso — só preenchido durante a transição (estado 3/4). `null` fora dela. */
+  const [justFinished, setJustFinished] = useState<{ name: string; volume: number; restKind: 'ring' | 'stopwatch' } | null>(null);
+  /** Só importa durante uma transição com cronômetro crescente, ou quando o anel já zerou e o aluno tocou "Pular descanso" antes do fim. */
+  const [explicitGateOpen, setExplicitGateOpen] = useState(false);
   const elapsedAt = (t: number) => Math.floor(clock.base + (clock.since != null ? Math.max(0, t - clock.since) / 1000 : 0));
   const elapsed = elapsedAt(now);
   const rest = paused ? restFrozen : restUntil != null ? Math.max(0, Math.ceil((restUntil - now) / 1000)) : 0;
@@ -122,19 +133,34 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
         setIdx(d.idx);
         setLogs(d.logs);
         setClock({ base: d.elapsed, since: wallClock() });
+        setStarted(d.started);
+        setActiveSeconds(d.activeSeconds);
+        setRestSecondsArr(d.restSeconds);
         const p = nextPrescription(rows[d.idx], d.logs[d.idx]?.length ?? 0);
         setKg(p.kg);
         setReps(p.reps);
+        if (d.started[d.idx]) {
+          setBucket({ idx: d.idx, kind: 'active' });
+        } else {
+          // Reabriu sem ter tocado "Iniciar" nesse exercício: continua travado no "Pronto pra começar".
+          setBucket({ idx: d.idx, kind: 'rest' });
+          setJustFinished(null);
+          setExplicitGateOpen(false);
+        }
+        setBucketSince(wallClock());
       }
       setReady(true);
     });
   }, [workout.id, rows]);
 
   useEffect(() => {
-    if (ready) void saveDraft({ workoutId: workout.id, idx, logs, elapsed: elapsedAt(wallClock()) });
+    if (ready) {
+      const t = wallClock();
+      void saveDraft({ workoutId: workout.id, idx, logs, elapsed: elapsedAt(t), started, activeSeconds: currentActiveSeconds(t), restSeconds: currentRestSeconds(t) });
+    }
     // Salva ao mudar de exercício ou série; o cronômetro (elapsed) fica de fora para não gravar a cada segundo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, idx, logs, workout.id]);
+  }, [ready, idx, logs, started, activeSeconds, restSecondsArr, bucket, workout.id]);
 
   useEffect(() => {
     const tick = () => setNow(wallClock());
@@ -148,6 +174,34 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
       sub.remove();
     };
   }, []);
+
+  /** Soma o tempo desde que o bucket ligou no array certo, sem mudar o que está ligado agora. */
+  function flushBucket(t: number) {
+    if (bucketSince == null) return;
+    const delta = Math.max(0, t - bucketSince) / 1000;
+    if (bucket.kind === 'active') setActiveSeconds((arr) => arr.map((v, i) => (i === bucket.idx ? v + delta : v)));
+    else setRestSecondsArr((arr) => arr.map((v, i) => (i === bucket.idx ? v + delta : v)));
+  }
+
+  /** Fecha o acumulador atual e liga outro (ex.: ao trocar de exercício, ou ao tocar "Iniciar"). */
+  function switchBucket(next: { idx: number; kind: 'active' | 'rest' }) {
+    const t = wallClock();
+    flushBucket(t);
+    setBucket(next);
+    setBucketSince(paused ? null : t);
+  }
+
+  /** `kind`/`i` com o trecho do bucket atual já somado, sem esperar o próximo render. */
+  function liveSeconds(base: number[], kind: 'active' | 'rest', i: number, t: number): number {
+    const live = bucket.kind === kind && bucket.idx === i && bucketSince != null ? Math.max(0, t - bucketSince) / 1000 : 0;
+    return base[i] + live;
+  }
+  function currentActiveSeconds(t = wallClock()) {
+    return activeSeconds.map((_, i) => liveSeconds(activeSeconds, 'active', i, t));
+  }
+  function currentRestSeconds(t = wallClock()) {
+    return restSecondsArr.map((_, i) => liveSeconds(restSecondsArr, 'rest', i, t));
+  }
 
   function startRest(seconds: number) {
     if (paused) setRestFrozen(seconds);
@@ -165,14 +219,26 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
       setClock((c) => ({ base: c.base + (c.since != null ? Math.max(0, t - c.since) / 1000 : 0), since: null }));
       setRestFrozen(restUntil != null ? Math.max(0, Math.ceil((restUntil - t) / 1000)) : 0);
       setRestUntil(null);
+      flushBucket(t);
+      setBucketSince(null);
     } else {
       setClock((c) => ({ base: c.base, since: t }));
       if (restFrozen > 0) setRestUntil(t + restFrozen * 1000);
       setRestFrozen(0);
+      setBucketSince(t);
     }
     setNow(t);
     setPaused(!paused);
   }
+
+  useEffect(() => {
+    if (!resting && started[idx] && bucket.kind === 'rest' && bucket.idx === idx) {
+      // Sincroniza o bucket com o fim do descanso entre séries (relógio fora do React); não dá pra derivar no render.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      switchBucket({ idx, kind: 'active' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resting, idx, started]);
 
   useEffect(() => () => {
     void Speech.stop();
@@ -205,13 +271,66 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
       if (restAfter > 0) {
         startRest(restAfter);
         setRestTotal(restAfter);
+        switchBucket({ idx, kind: 'rest' }); // descanso entre séries conta como restSeconds[idx], não activeSeconds[idx]
       }
+      return;
     }
+    // Exercício fechado: acha o próximo não concluído (pode já não ser idx + 1 — ver nextOpenIndex).
+    const nextIdx = nextOpenIndex(rows, next, idx);
+    if (nextIdx === -1) return; // último: fica com exDone=true pro idx atual, tela de resumo cuida do resto (Task 5)
+    const volume = next[idx].reduce((n, s) => n + s.kg * s.reps, 0);
+    const tr = transitionRest(row);
+    setJustFinished({ name: row.name, volume, restKind: tr.kind });
+    setExplicitGateOpen(false);
+    setIdx(nextIdx);
+    setStarted((arr) => arr.map((v, i) => (i === nextIdx ? false : v)));
+    switchBucket({ idx: nextIdx, kind: 'rest' });
+    if (tr.kind === 'ring') {
+      startRest(tr.seconds);
+      setRestTotal(tr.seconds);
+    } else {
+      skipRest();
+    }
+    const p = nextPrescription(rows[nextIdx], next[nextIdx]?.length ?? 0);
+    setKg(p.kg);
+    setReps(p.reps);
+  }
+
+  function tapStartExercise() {
+    setStarted((arr) => arr.map((v, i) => (i === idx ? true : v)));
+    setJustFinished(null);
+    setExplicitGateOpen(false);
+    switchBucket({ idx, kind: 'active' });
+    skipRest();
+  }
+
+  function finishAndGoTo(targetIdx: number) {
+    if (targetIdx === idx) return;
+    setJustFinished(null);
+    setExplicitGateOpen(false);
+    setIdx(targetIdx);
+    setStarted((arr) => arr.map((v, i) => (i === targetIdx ? false : v)));
+    switchBucket({ idx: targetIdx, kind: 'rest' });
+    skipRest();
+    const p = nextPrescription(rows[targetIdx], logs[targetIdx]?.length ?? 0);
+    setKg(p.kg);
+    setReps(p.reps);
   }
 
   function finish() {
+    const t = wallClock();
     // O rascunho só é apagado depois que o resultado for salvo (na tela de conclusão).
-    setFinishedSession({ workoutId: workout.id, idx, logs, elapsed: elapsedAt(wallClock()), finishedAt: new Date().toISOString(), resultKey: newIdempotencyKey() });
+    setFinishedSession({
+      workoutId: workout.id,
+      idx,
+      logs,
+      elapsed: elapsedAt(t),
+      started,
+      activeSeconds: currentActiveSeconds(t),
+      restSeconds: currentRestSeconds(t),
+      finishedAt: new Date().toISOString(),
+      resultKey: newIdempotencyKey(),
+    });
     Speech.stop();
     router.replace('/cliente/treino/concluido');
   }
