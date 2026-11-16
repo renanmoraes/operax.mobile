@@ -120,6 +120,17 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
   const exDone = done.length >= row.sets.length;
   const isLast = idx === rows.length - 1;
   const resting = rest > 0;
+  /** true enquanto o exercício ativo ainda não foi "Iniciado" — mostra transição (3) ou o gate (4). */
+  const isGated = !started[idx];
+  /**
+   * Transição com anel: só sai do anel quando ele zera ou o aluno pula. Sem anel (cronômetro crescente ou
+   * primeiro exercício do treino, `justFinished` nulo), não tem o que esperar — cai direto no gate (estado 4),
+   * mostrando o cronômetro como informação dentro da própria tela "Pronto pra começar".
+   */
+  const inExTransition = isGated && justFinished?.restKind === 'ring' && !explicitGateOpen && rest > 0;
+  const inGate = isGated && !inExTransition;
+  /** Segundos de descanso/transição acumulados pro exercício atual, já somando o trecho em andamento (não reinicia numa pausa, ao contrário de `now - bucketSince` sozinho). */
+  const bucketElapsed = Math.floor(liveSeconds(restSecondsArr, 'rest', idx, now));
   // Superset/circuito: o exercício da vez é o do estágio atual, não o primeiro do bloco.
   const stage = row.sets[Math.min(done.length, row.sets.length - 1)];
   const exId = stage?.exerciseId ?? row.exerciseId;
@@ -335,13 +346,14 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
     router.replace('/cliente/treino/concluido');
   }
 
-  const primary = resting
-    ? { label: i18n.t('fitness:rest.skipA11y'), onPress: skipRest }
-    : exDone
-      ? isLast
+  const hasNext = nextOpenIndex(rows, logs, idx) !== -1;
+  const primary = isGated
+    ? { label: i18n.t('fitness:session.startEx'), onPress: tapStartExercise }
+    : resting
+      ? { label: i18n.t('fitness:rest.skipA11y'), onPress: skipRest }
+      : exDone
         ? { label: i18n.t('fitness:session.finish'), onPress: finish }
-        : { label: i18n.t('fitness:session.nextEx', { name: rows[idx + 1].name }), onPress: () => goTo(idx + 1) }
-      : { label: i18n.t('fitness:session.completeSet', { n: done.length + 1 }), onPress: completeSet };
+        : { label: i18n.t('fitness:session.completeSet', { n: done.length + 1 }), onPress: completeSet };
 
   const volume = done.reduce((n, s) => n + s.kg * s.reps, 0);
 
@@ -363,6 +375,11 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
         >
           <Ionicons name={voice ? 'volume-high-outline' : 'volume-mute-outline'} size={20} color={voice ? colors.primary : colors.textMuted} />
         </PressableScale>
+      </View>
+      <View style={[styles.stateBadge, inGate ? styles.stateBadgeReady : inExTransition || resting ? styles.stateBadgeResting : styles.stateBadgeTraining]}>
+        <Text style={styles.stateBadgeText}>
+          {inGate ? i18n.t('fitness:session.badgeReady') : inExTransition ? i18n.t('fitness:session.badgeChanging') : resting ? i18n.t('fitness:session.badgeResting') : i18n.t('fitness:session.badgeTraining')}
+        </Text>
       </View>
 
       <View style={styles.segments}>
@@ -434,17 +451,31 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
           })}
         </View>
 
-        {resting ? (
+        {inGate ? (
+          <View style={styles.restCard}>
+            {justFinished?.restKind === 'ring' || justFinished == null ? null : (
+              <View style={styles.stopwatch}>
+                <Num size="xl">{bucketElapsed}</Num>
+                <Muted style={{ fontSize: 12 }}>{i18n.t('fitness:session.seconds')}</Muted>
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              {justFinished ? <Text style={styles.prevDone}>{i18n.t('fitness:session.prevDone', { name: justFinished.name })}</Text> : null}
+              <Text style={styles.restTitle}>{i18n.t('fitness:session.badgeReady')}</Text>
+              <Muted style={{ marginTop: 4, lineHeight: 19 }}>{i18n.t('fitness:session.readyHint')}</Muted>
+            </View>
+          </View>
+        ) : inExTransition ? (
           <View style={styles.restCard}>
             <ProgressRing size={132} stroke={10} progress={rest / restTotal} accessibilityLabel={i18n.t('fitness:session.restA11y', { count: rest })}>
               <Num size="xl">{rest}</Num>
               <Muted style={{ fontSize: 12 }}>{i18n.t('fitness:session.seconds')}</Muted>
             </ProgressRing>
             <View style={{ flex: 1 }}>
-              <Text style={styles.restTitle}>{i18n.t('fitness:rest.title')}</Text>
-              <Muted style={{ marginTop: 4, lineHeight: 19 }}>{i18n.t('fitness:session.upNext', { n: done.length + 1, kg: formatKg(kg), reps })}</Muted>
-              <PressableScale onPress={() => { startRest(rest + 15); setRestTotal((t) => Math.max(t, rest + 15)); }} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:rest.plus15A11y')} style={styles.more}>
-                <Text style={styles.moreText}>+15 s</Text>
+              <Text style={styles.prevDone}>{i18n.t('fitness:session.prevDone', { name: justFinished?.name })}</Text>
+              <Muted style={{ marginTop: 4, lineHeight: 19 }}>{i18n.t('fitness:session.nextEx', { name: row.name })}</Muted>
+              <PressableScale onPress={() => { setExplicitGateOpen(true); skipRest(); }} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:rest.skipA11y')} style={styles.more}>
+                <Text style={styles.moreText}>{i18n.t('fitness:rest.skip')}</Text>
               </PressableScale>
             </View>
           </View>
@@ -458,6 +489,20 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
               <Muted style={{ marginTop: 3, color: colors.textSoft }}>{i18n.t('fitness:session.volume', { kg: volume.toLocaleString(locale()) })}</Muted>
             </View>
           </LinearGradient>
+        ) : resting ? (
+          <View style={styles.restCard}>
+            <ProgressRing size={132} stroke={10} progress={rest / restTotal} accessibilityLabel={i18n.t('fitness:session.restA11y', { count: rest })}>
+              <Num size="xl">{rest}</Num>
+              <Muted style={{ fontSize: 12 }}>{i18n.t('fitness:session.seconds')}</Muted>
+            </ProgressRing>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.restTitle}>{i18n.t('fitness:rest.title')}</Text>
+              <Muted style={{ marginTop: 4, lineHeight: 19 }}>{i18n.t('fitness:session.upNext', { n: done.length + 1, kg: formatKg(kg), reps })}</Muted>
+              <PressableScale onPress={() => { startRest(rest + 15); setRestTotal((t) => Math.max(t, rest + 15)); }} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:rest.plus15A11y')} style={styles.more}>
+                <Text style={styles.moreText}>+15 s</Text>
+              </PressableScale>
+            </View>
+          </View>
         ) : (
           <>
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
@@ -509,8 +554,8 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
               icon: 'play-skip-forward',
               label: i18n.t('fitness:rest.skip'),
               accessibilityLabel: i18n.t('fitness:session.skipA11y'),
-              disabled: isLast,
-              onPress: () => goTo(idx + 1),
+              disabled: !hasNext,
+              onPress: () => finishAndGoTo(nextOpenIndex(rows, logs, idx)),
             },
             { icon: 'flag', label: i18n.t('fitness:session.end'), accessibilityLabel: i18n.t('fitness:session.endA11y'), tone: 'danger', onPress: finish },
           ]}
@@ -553,6 +598,13 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
 }
 
 const styles = StyleSheet.create({
+  stateBadge: { marginHorizontal: 16, marginTop: 4, alignSelf: 'flex-start', paddingVertical: 5, paddingHorizontal: 12, borderRadius: 999 },
+  stateBadgeTraining: { backgroundColor: colors.primaryWash },
+  stateBadgeResting: { backgroundColor: '#fff2e3' },
+  stateBadgeReady: { backgroundColor: '#f0f1f4' },
+  stateBadgeText: { fontFamily: typography.fontFamilyBold, fontSize: 11.5, letterSpacing: 0.3, color: colors.text },
+  stopwatch: { width: 132, height: 132, borderRadius: 66, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...shadows.card },
+  prevDone: { ...text.captionStrong, color: colors.textMuted },
   top: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingBottom: 8 },
   voice: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   segments: { flexDirection: 'row', gap: 4, paddingHorizontal: 16, paddingTop: 6 },
