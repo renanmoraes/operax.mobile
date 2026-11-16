@@ -9,7 +9,7 @@ import { HealthRow } from '@/src/features/fitness/health/HealthCard';
 import { DataSourceAttribution, GarminAttribution } from '@/src/features/fitness/brands';
 import { HEALTH_PLATFORM } from '@/src/features/fitness/health/healthStore';
 import { phoneHealthCards, watchGroups } from '@/src/features/fitness/integrations';
-import { FlowStrip, GalaxyRow, IntegrationList } from '@/src/features/fitness/watchParts';
+import { BlockHeader, GalaxyRow, IntegrationList } from '@/src/features/fitness/watchParts';
 import { formatDistance, formatDuration, timeAgo } from '@/src/shared/format';
 
 /**
@@ -34,8 +34,6 @@ export default function WatchConnectionsScreen() {
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}>
         <Rise>
           <HeroCard>
-            <FlowStrip />
-            <View style={styles.heroDivider} />
             {garminConnected ? <GarminAttribution device={garminDevice} /> : null}
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: garminConnected ? 8 : 0 }}>
               <Num size="xl">{totalImported}</Num>
@@ -45,12 +43,12 @@ export default function WatchConnectionsScreen() {
           </HeroCard>
         </Rise>
 
-        <SectionHeader title={i18n.t('fitness:watch.sectionWatches')} style={styles.section} />
+        <BlockHeader title={i18n.t('fitness:watch.sectionWatches')} mode="both" />
         <Rise index={1}>
           <IntegrationList items={groups.watches} kind="watch" healthName={healthName} extra={cards.includes('galaxy') ? (first) => <GalaxyRow first={first} /> : undefined} />
         </Rise>
 
-        <SectionHeader title={i18n.t('fitness:watch.sectionApps')} style={styles.section} />
+        <BlockHeader title={i18n.t('fitness:watch.sectionApps')} mode="in" />
         <Rise index={2}>
           <IntegrationList items={groups.apps} kind="app" healthName={healthName} extra={(first) => <HealthRow first={first} />} />
         </Rise>
@@ -85,7 +83,6 @@ export default function WatchConnectionsScreen() {
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 20, paddingTop: 4 },
   section: { marginTop: 26 },
-  heroDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginVertical: 14 },
   provider: { padding: 16, gap: 14 },
   providerTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   providerName: { ...text.section, color: colors.text },

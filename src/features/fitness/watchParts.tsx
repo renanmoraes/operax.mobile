@@ -36,20 +36,37 @@ function FlowDots({ back = false }: { back?: boolean }) {
   );
 }
 
-/** O caminho do treino no topo: o plano sai do Operax para o aparelho, e o treino feito volta. */
-export function FlowStrip() {
+/**
+ * Cabeçalho de cada bloco da tela com o desenho do caminho do treino: em Dispositivos o treino vai e volta (Operax ⇄
+ * aparelho); em Apps e celular ele só chega (app → Operax). Os pontos correndo mostram o sentido.
+ */
+export function BlockHeader({ title, mode }: { title: string; mode: 'both' | 'in' }) {
+  const operax = (
+    <View style={styles.operax}>
+      <Image source={MARK} style={{ width: 20, height: 20 }} resizeMode="contain" />
+    </View>
+  );
+  const device = (
+    <View style={styles.watch}>
+      <Ionicons name={mode === 'both' ? 'watch-outline' : 'apps-outline'} size={19} color={colors.primaryDeep} />
+    </View>
+  );
+  const label = mode === 'both' ? `${i18n.t('fitness:watch.flowOut')}. ${i18n.t('fitness:watch.flowIn')}.` : i18n.t('fitness:watch.flowIn');
   return (
-    <View style={styles.flowRow} accessible accessibilityLabel={`${i18n.t('fitness:watch.flowOut')}. ${i18n.t('fitness:watch.flowIn')}.`}>
-      <View style={styles.operax}>
-        <Image source={MARK} style={{ width: 20, height: 20 }} resizeMode="contain" />
+    <View style={styles.block}>
+      <View style={styles.flowRow} accessible accessibilityLabel={label}>
+        {mode === 'both' ? operax : device}
+        {mode === 'both' ? (
+          <View style={{ gap: 6 }}>
+            <FlowDots />
+            <FlowDots back />
+          </View>
+        ) : (
+          <FlowDots />
+        )}
+        {mode === 'both' ? device : operax}
       </View>
-      <View style={{ gap: 6 }}>
-        <FlowDots />
-        <FlowDots back />
-      </View>
-      <View style={styles.watch}>
-        <Ionicons name="watch-outline" size={19} color={colors.primaryDeep} />
-      </View>
+      <Text style={styles.blockTitle} accessibilityRole="header">{title}</Text>
     </View>
   );
 }
@@ -289,6 +306,8 @@ export function GalaxyRow({ first }: { first: boolean }) {
 }
 
 const styles = StyleSheet.create({
+  block: { marginTop: 28, marginBottom: 12, gap: 10 },
+  blockTitle: { ...text.title, color: colors.text },
   flowRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   operax: { width: 34, height: 34, borderRadius: 11, backgroundColor: colors.chromeNavy, alignItems: 'center', justifyContent: 'center' },
   watch: { width: 34, height: 34, borderRadius: 11, backgroundColor: colors.primaryWash, alignItems: 'center', justifyContent: 'center' },
