@@ -151,16 +151,23 @@ function UpdateBanner() {
  * (senão a rota protegida manda para o início e o aviso se perde).
  */
 function NotificationRouter() {
-  const { ready, isAuthenticated, user, switchTenant } = useAuth();
+  const { ready, isAuthenticated, user, switchTenant, accounts, switchAccount } = useAuth();
   const canOpen = ready && isAuthenticated;
   const canOpenRef = useRef(canOpen);
   // O aviso do aluno diz de qual empresa veio: se outra estiver aberta, troca antes de abrir a tela.
-  const tenantRef = useRef({ user, switchTenant });
+  const tenantRef = useRef({ user, switchTenant, accounts, switchAccount });
   useEffect(() => {
-    tenantRef.current = { user, switchTenant };
-  }, [user, switchTenant]);
+    tenantRef.current = { user, switchTenant, accounts, switchAccount };
+  }, [user, switchTenant, accounts, switchAccount]);
   const goTo = async (url: string, slug: string | null) => {
-    const { user: u, switchTenant: change } = tenantRef.current;
+    const { user: u, switchTenant: change, accounts: saved, switchAccount: changeAccount } = tenantRef.current;
+    // Aviso do aluno com a conta da equipe aberta: troca para a conta do aluno (se está salva) e abre a tela dele.
+    if (url.startsWith('/cliente') && u?.kind === 'staff') {
+      if (!saved.client) return;
+      await changeAccount('client').catch(() => undefined);
+      router.push(url as never);
+      return;
+    }
     if (slug && u?.kind === 'client') {
       const target = u.memberships?.find((m) => m.tenant_slug === slug);
       if (target && target.tenant_id !== u.active_tenant_id) await change(target.tenant_id).catch(() => undefined);
