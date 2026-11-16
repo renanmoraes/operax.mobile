@@ -404,7 +404,7 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
 
       <View style={styles.segments}>
         {rows.map((r, i) => {
-          const frac = i < idx ? 1 : i === idx ? Math.min(1, done.length / r.sets.length) : (logs[i]?.length ?? 0) >= r.sets.length ? 1 : 0;
+          const frac = r.sets.length === 0 ? 1 : Math.min(1, (logs[i]?.length ?? 0) / r.sets.length);
           return (
             <Pressable
               key={r.key}
@@ -427,6 +427,8 @@ function WorkoutSession({ workout }: { workout: FitnessWorkoutView }) {
           {i18n.t('fitness:session.exercise') + ' '}
           <Text style={styles.navCountStrong}>{idx + 1}</Text>
           {i18n.t('fitness:session.ofTotal', { total: rows.length })}
+          {' · '}
+          {i18n.t('fitness:session.doneCount', { count: rows.filter((r, i) => (logs[i]?.length ?? 0) >= r.sets.length).length })}
         </Text>
         <PressableScale onPress={() => setListOpen(true)} accessibilityRole="button" accessibilityLabel={i18n.t('fitness:session.seeAllA11y')} style={styles.navList}>
           <Ionicons name="list" size={16} color={colors.primary} />
