@@ -225,7 +225,8 @@ const styles = StyleSheet.create({
   levelLabel: { color: colors.textSoft, fontFamily: typography.fontFamilyBold, fontSize: 10, letterSpacing: 0.6 },
   levelName: { ...text.title, color: colors.text },
   rules: { flexDirection: 'row', gap: 8, marginTop: 16 },
-  rule: { flex: 1, padding: 10, borderRadius: radii.md + 4, backgroundColor: '#ffffffd9', ...shadows.card },
+  // Sem elevation: no Android, sombra sob fundo semitransparente desenha um retângulo branco dentro do quadro.
+  rule: { flex: 1, padding: 10, borderRadius: radii.md + 4, backgroundColor: '#ffffffd9', ...shadows.card, elevation: 0 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 14 },
   action: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: radii.xl - 6, backgroundColor: '#fff', ...shadows.card },
   actionIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
