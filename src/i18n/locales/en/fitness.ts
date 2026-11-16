@@ -454,6 +454,7 @@ const fitness: Shape<typeof pt> = {
     hiit: 'HIIT',
     hiking: 'Hiking',
     pilates: 'Pilates',
+    rowing: 'Rowing',
     running: 'Running',
     strength: 'Strength training',
     swimming: 'Swimming',

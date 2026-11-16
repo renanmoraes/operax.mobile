@@ -66,12 +66,17 @@ async function sendPending(who: string, workouts: HealthWorkout[]): Promise<void
   if (!k) return;
   let sent = (await kvGet<string[]>(k)) ?? [];
   for (const batch of pendingBatches(workouts, sent)) {
+    // A leitura do Saúde demora: se a pessoa trocou de conta no meio, o envio iria com o login da outra empresa.
+    if (fitnessOwner() !== who) return;
+    let failed: string[] = [];
     try {
-      await sendHealthWorkouts(batch);
+      failed = (await sendHealthWorkouts(batch)).failed ?? [];
     } catch {
       return;
     }
-    sent = rememberSent(sent, batch);
+    if (fitnessOwner() !== who) return;
+    // O que o servidor não conseguiu gravar volta na próxima sincronização (ele não duplica o que já entrou).
+    sent = rememberSent(sent, batch.filter((w) => !failed.includes(w.external_id)));
     await kvSet(k, sent);
   }
 }

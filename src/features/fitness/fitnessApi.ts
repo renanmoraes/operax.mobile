@@ -152,9 +152,9 @@ const demoDetails = new Map<string, ActivityDetail>();
  * POST /health/workouts — treinos lidos do Saúde (iPhone) ou do Health Connect (Android). O backend não duplica
  * (chave por origem e id do registro), então reenviar é seguro. No modo demonstração não manda nada.
  */
-export async function sendHealthWorkouts(workouts: HealthWorkout[]): Promise<{ imported: number; matched: number; ignored: number }> {
-  if (!live()) return { imported: 0, matched: 0, ignored: 0 };
-  return (await api.post(`${F}/health/workouts`, { workouts })).data as { imported: number; matched: number; ignored: number };
+export async function sendHealthWorkouts(workouts: HealthWorkout[]): Promise<{ imported: number; matched: number; ignored: number; failed: string[] }> {
+  if (!live()) return { imported: 0, matched: 0, ignored: 0, failed: [] };
+  return (await api.post(`${F}/health/workouts`, { workouts })).data as { imported: number; matched: number; ignored: number; failed: string[] };
 }
 
 /** POST /activities — treino livre gravado no app (sem ficha). Idempotente por `idempotency_key`. */

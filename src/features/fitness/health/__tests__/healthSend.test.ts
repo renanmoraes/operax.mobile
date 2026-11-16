@@ -14,6 +14,9 @@ describe('envio dos treinos do Saúde ao Operax', () => {
   it('nunca manda treino gravado pelo Strava', () => {
     expect(pendingBatches([w('a', { origin_package: 'com.strava', origin: 'Strava' }), w('b')], [])).toEqual([[w('b')]]);
   });
+  it('nunca manda treino do Strava gravado no iPhone (bundle com sufixo)', () => {
+    expect(pendingBatches([w('a', { source: 'apple_health', origin_package: 'com.strava.stravaride' }), w('b')], [])).toEqual([[w('b')]]);
+  });
   it('separa em lotes de 100', () => {
     const many = Array.from({ length: 230 }, (_, i) => w(String(i)));
     expect(pendingBatches(many, []).map((b) => b.length)).toEqual([100, 100, 30]);
