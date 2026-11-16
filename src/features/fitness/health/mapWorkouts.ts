@@ -21,14 +21,20 @@ export type HealthWorkout = {
   device: string | null;
   /** App que gravou no Health Connect (ex.: Samsung Health). */
   origin?: string;
+  /** Pacote do app que gravou no Health Connect (ex.: com.strava): o backend recusa o que veio do Strava. */
+  origin_package?: string;
+  /** Esporte em chave fixa, para o backend (o `sport` acima é o nome traduzido para a tela). */
+  sport_key: SportKey | 'other';
 };
 
 // Valores de HKWorkoutActivityType (Apple).
-type SportKey = 'functional' | 'cycling' | 'dance' | 'strength' | 'hiking' | 'running' | 'swimming' | 'walking' | 'yoga' | 'hiit' | 'pilates';
-const APPLE_SPORT: Record<number, SportKey> = { 11: 'functional', 13: 'cycling', 14: 'dance', 20: 'strength', 24: 'hiking', 37: 'running', 46: 'swimming', 50: 'strength', 52: 'walking', 57: 'yoga', 63: 'hiit', 66: 'pilates' };
+export type SportKey = 'functional' | 'cycling' | 'dance' | 'strength' | 'hiking' | 'running' | 'swimming' | 'walking' | 'yoga' | 'hiit' | 'pilates' | 'rowing';
+const APPLE_SPORT: Record<number, SportKey> = { 11: 'functional', 13: 'cycling', 14: 'dance', 20: 'strength', 24: 'hiking', 35: 'rowing', 37: 'running', 46: 'swimming', 50: 'strength', 52: 'walking', 57: 'yoga', 63: 'hiit', 66: 'pilates' };
 
 // Valores de ExerciseSessionRecord.exerciseType (Health Connect).
-const HC_SPORT: Record<number, SportKey> = { 8: 'cycling', 36: 'hiit', 37: 'hiking', 48: 'pilates', 56: 'running', 70: 'strength', 74: 'swimming', 79: 'walking', 81: 'strength', 83: 'yoga' };
+// Esteira (57), bike ergométrica (9), remo e remo ergômetro (53, 54) e águas abertas (73) contam como o esporte de origem:
+// sem isso o treino chegava como "outro" e não casava com a corrida, o pedal, o remo ou a natação da ficha.
+const HC_SPORT: Record<number, SportKey> = { 8: 'cycling', 9: 'cycling', 36: 'hiit', 37: 'hiking', 48: 'pilates', 53: 'rowing', 54: 'rowing', 56: 'running', 57: 'running', 70: 'strength', 73: 'swimming', 74: 'swimming', 79: 'walking', 81: 'strength', 83: 'yoga' };
 const sportName = (k: SportKey | undefined) => i18n.t(k ? `fitness:imported.${k}` : 'fitness:imported.workout');
 
 // Apps que gravam no Health Connect e que vale nomear para o aluno.
@@ -71,6 +77,8 @@ export type AppleWorkoutLike = {
   totalDistance?: Qty;
   totalEnergyBurned?: Qty;
   device?: { name?: string; model?: string };
+  /** App que gravou o treino no Saúde (ex.: `com.strava.stravaride`): o backend recusa o que veio do Strava. */
+  sourceRevision?: { source?: { name?: string; bundleIdentifier?: string } };
 };
 
 export function fromAppleWorkout(w: AppleWorkoutLike, avgHr?: number | null): HealthWorkout {
@@ -78,12 +86,15 @@ export function fromAppleWorkout(w: AppleWorkoutLike, avgHr?: number | null): He
     source: 'apple_health',
     external_id: w.uuid,
     sport: sportFromApple(w.workoutActivityType),
+    sport_key: APPLE_SPORT[w.workoutActivityType] ?? 'other',
     started_at: w.startDate.toISOString(),
     duration_seconds: toSeconds(w.duration, w.startDate, w.endDate),
     distance_meters: toMeters(w.totalDistance),
     energy_kcal: w.totalEnergyBurned?.quantity ? Math.round(w.totalEnergyBurned.quantity) : null,
     avg_hr: avgHr ? Math.round(avgHr) : null,
     device: w.device?.name || w.device?.model || null,
+    ...(w.sourceRevision?.source?.name ? { origin: w.sourceRevision.source.name } : {}),
+    ...(w.sourceRevision?.source?.bundleIdentifier ? { origin_package: w.sourceRevision.source.bundleIdentifier } : {}),
   };
 }
 
@@ -108,6 +119,7 @@ export function fromHealthConnectSession(
     source: 'health_connect',
     external_id: s.metadata?.id ?? `${s.startTime}-${s.exerciseType}`,
     sport: sportFromHealthConnect(s.exerciseType),
+    sport_key: HC_SPORT[s.exerciseType] ?? 'other',
     started_at: start.toISOString(),
     duration_seconds: Math.max(0, Math.round((end.getTime() - start.getTime()) / 1000)),
     distance_meters: extras.distance_meters ? Math.round(extras.distance_meters) : null,
@@ -115,5 +127,6 @@ export function fromHealthConnectSession(
     avg_hr: extras.avg_hr ? Math.round(extras.avg_hr) : null,
     device,
     ...(origin ? { origin } : {}),
+    ...(s.metadata?.dataOrigin ? { origin_package: s.metadata.dataOrigin } : {}),
   };
 }

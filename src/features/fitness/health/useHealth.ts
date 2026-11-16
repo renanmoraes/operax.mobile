@@ -3,11 +3,12 @@ import { kvGet, kvSet } from '@/src/shared/db/localDb';
 import { fitnessOwner, ownedKey } from '../owner';
 import { getHealthAvailability, readRecentWorkouts, requestHealthAccess } from './healthStore';
 import type { HealthWorkout } from './mapWorkouts';
+import { pendingBatches, rememberSent } from './healthSend';
+import { sendHealthWorkouts } from '../fitnessApi';
 
 /**
- * Estado da conexão com o Saúde / Health Connect.
- * O envio ao backend ainda não existe (ver `docs/12-api-gaps.md`, "Saúde do celular"):
- * por enquanto os treinos lidos ficam no aparelho e aparecem na tela de relógios.
+ * Estado da conexão com o Saúde / Health Connect. Os treinos lidos aparecem na tela de relógios e vão para o
+ * Operax (`POST /fitness/health/workouts`), onde casam com o treino do dia e alimentam o ritmo de referência.
  */
 
 /**
@@ -49,7 +50,35 @@ async function syncNow(who: string): Promise<Owned> {
   const lastSyncAt = new Date().toISOString();
   const k = stateKey(who);
   if (k) await kvSet(k, { lastSyncAt, workouts });
+  await sendPending(who, workouts);
   return { who, state: { connected: true, lastSyncAt, workouts } };
+}
+
+/** Ids já enviados ao Operax, por conta: o mesmo treino não sobe de novo a cada sincronização. */
+const sentKey = (who: string) => ownedKey('operax_health_sent', who);
+
+/**
+ * Manda ao Operax os treinos que ainda não foram. Falha (sem internet, servidor fora) não apaga a lista da tela
+ * nem marca como enviado: a próxima sincronização tenta de novo, e o backend não duplica.
+ */
+async function sendPending(who: string, workouts: HealthWorkout[]): Promise<void> {
+  const k = sentKey(who);
+  if (!k) return;
+  let sent = (await kvGet<string[]>(k)) ?? [];
+  for (const batch of pendingBatches(workouts, sent)) {
+    // A leitura do Saúde demora: se a pessoa trocou de conta no meio, o envio iria com o login da outra empresa.
+    if (fitnessOwner() !== who) return;
+    let failed: string[] = [];
+    try {
+      failed = (await sendHealthWorkouts(batch)).failed ?? [];
+    } catch {
+      return;
+    }
+    if (fitnessOwner() !== who) return;
+    // O que o servidor não conseguiu gravar volta na próxima sincronização (ele não duplica o que já entrou).
+    sent = rememberSent(sent, batch.filter((w) => !failed.includes(w.external_id)));
+    await kvSet(k, sent);
+  }
 }
 
 /** Só atualiza a lista na tela se quem pediu ainda é a conta aberta (senão o cache dela já foi limpo). */

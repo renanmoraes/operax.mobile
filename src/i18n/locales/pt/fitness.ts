@@ -452,6 +452,7 @@ const fitness = {
     hiit: 'HIIT',
     hiking: 'Trilha',
     pilates: 'Pilates',
+    rowing: 'Remo',
     running: 'Corrida',
     strength: 'Musculação',
     swimming: 'Natação',
