@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import i18n from '@/src/i18n';
-import { StyleSheet, Text } from 'react-native';
+import i18n, { locale } from '@/src/i18n';
+import { router } from 'expo-router';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Badge, EmptyState, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { EmptyState, IconButton, Screen, ScreenHeader } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { colors, text, typography } from '@/src/design-system/tokens';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,26 +17,10 @@ import { detailsFromApi, normalizeBookingStatus, STATUS_AFTER } from '@/src/feat
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { agendaDetails, agendaEvents } from '@/src/mocks/data';
-import { longDate, isoDate } from '@/src/shared/format';
+import { longDate } from '@/src/shared/format';
 import { SkeletonList } from '@/src/design-system/Skeleton';
-import { RequirePermission } from '@/src/features/auth/useCan';
-
-/**
- * Mesmo formato do Operax web: o backend recebe o dia (`yyyy-MM-dd`) nos dois limites
- * (mandar data e hora no `to` quebra a consulta). Pede de ontem a amanhã para cobrir o fuso
- * e o app fica só com o que cai hoje no horário local.
- */
-function dayBounds() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start.getTime() + 86_400_000);
-  return {
-    from: isoDate(new Date(start.getTime() - 86_400_000)),
-    to: isoDate(end),
-    startMs: start.getTime(),
-    endMs: end.getTime(),
-  };
-}
+import { RequirePermission, useCan } from '@/src/features/auth/useCan';
+import { addDaysKey, localDateKey, wallDateKey, wallDateLabel } from '@/src/features/agenda/wallClock';
 
 const STATUS_TONE: Record<string, DayEvent['tone']> = {
   confirmed: 'success',
@@ -68,11 +53,17 @@ function AgendaScreen() {
   const { t } = useTranslation('agenda');
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();
-  const bounds = dayBounds();
+  const can = useCan();
+  const canBook = can('bookingCreate');
+  const todayKey = localDateKey();
+  const [dayKey, setDayKey] = useState(todayKey);
+  const isToday = dayKey === todayKey;
+  // O servidor recebe o dia (`yyyy-MM-dd`) nos dois limites; o app fica só com o que cai no dia escolhido,
+  // lendo o horário como relógio de parede (ver wallClock.ts).
   const query = useQuery({
-    queryKey: ['bookings', bounds.from, bounds.to],
+    queryKey: ['bookings', dayKey, addDaysKey(dayKey, 1)],
     enabled: mode === 'live',
-    queryFn: () => listAllBookings({ from: bounds.from, to: bounds.to }),
+    queryFn: () => listAllBookings({ from: dayKey, to: addDaysKey(dayKey, 1) }),
   });
   const [openId, setOpenId] = useState<string | null>(null);
   const [statusOverride, setStatusOverride] = useState<Record<string, string>>({});
@@ -80,7 +71,19 @@ function AgendaScreen() {
   const { toast, show } = useToast(2200);
 
   const header = (
-    <ScreenHeader safe title={t('agenda.title')} subtitle={t('agenda.today', { date: longDate(new Date()).toLowerCase() })} right={<Badge label={mode === 'live' ? t('agenda.live') : t('agenda.demo')} tone="primary" />} />
+    <ScreenHeader
+      safe
+      title={t('agenda.title')}
+      subtitle={isToday ? t('agenda.today', { date: longDate(new Date()).toLowerCase() }) : wallDateLabel(dayKey, locale(), { weekday: 'long', day: 'numeric', month: 'long' })}
+      right={
+        <View style={styles.controls}>
+          <IconButton icon="chevron-back" accessibilityLabel={t('agenda.prevDay')} onPress={() => setDayKey(addDaysKey(dayKey, -1))} />
+          {isToday ? null : <IconButton icon="today-outline" accessibilityLabel={t('agenda.backToToday')} onPress={() => setDayKey(todayKey)} />}
+          <IconButton icon="chevron-forward" accessibilityLabel={t('agenda.nextDay')} onPress={() => setDayKey(addDaysKey(dayKey, 1))} />
+          {canBook ? <IconButton icon="add" accessibilityLabel={t('agenda.addBooking')} onPress={() => router.push('/agendar')} /> : null}
+        </View>
+      }
+    />
   );
 
   // Mesma forma para o real e o demo: a lista de agendamentos como a API manda.
@@ -88,12 +91,9 @@ function AgendaScreen() {
     const base =
       mode === 'live'
         ? query.data && query.data.ok
-          ? query.data.items.filter((b) => {
-              const startsMs = new Date(b.starts_at).getTime();
-              return startsMs >= bounds.startMs && startsMs < bounds.endMs;
-            })
+          ? query.data.items.filter((b) => wallDateKey(b.starts_at) === dayKey)
           : []
-        : agendaEvents.map((e) => ({
+        : (isToday ? agendaEvents : []).map((e) => ({
             id: e.id,
             starts_at: todayAt(e.startsAt),
             ends_at: todayAt(e.endsAt),
@@ -104,7 +104,7 @@ function AgendaScreen() {
             ...(agendaDetails[e.id] as Partial<ApiBooking>),
           }));
     return base.map((b) => ({ ...b, status: normalizeBookingStatus(statusOverride[b.id] ?? b.status) }));
-  }, [mode, query.data, statusOverride, bounds.startMs, bounds.endMs]);
+  }, [mode, query.data, statusOverride, dayKey, isToday]);
 
   if (mode === 'live' && query.data && query.data.ok === false) {
     return (
@@ -154,12 +154,19 @@ function AgendaScreen() {
       ) : events.length === 0 ? (
         <>
           {header}
-          <EmptyState icon="calendar-outline" title={t('agenda.emptyTitle')} subtitle={t('agenda.emptySub')} />
+          <EmptyState
+            icon="calendar-outline"
+            title={isToday ? t('agenda.emptyTitle') : t('agenda.emptyDayTitle')}
+            subtitle={t('agenda.emptySub')}
+            actionLabel={canBook ? t('agenda.addBooking') : undefined}
+            onAction={canBook ? () => router.push('/agendar') : undefined}
+          />
         </>
       ) : (
         <DayTimeline
           events={events}
           bottomInset={GLASS_TAB_BAR_SPACE + insets.bottom}
+          day={isToday ? 'today' : dayKey < todayKey ? 'past' : 'future'}
           onPressEvent={setOpenId}
           header={
             <>
@@ -178,7 +185,7 @@ function AgendaScreen() {
         details={open ? detailsFromApi(open) : null}
         startMin={openEvent?.startMin ?? 0}
         endMin={openEvent?.endMin ?? 0}
-        dateLabel={open ? longDate(new Date(open.starts_at)) : ''}
+        dateLabel={open ? wallDateLabel(open.starts_at, locale(), { weekday: 'long', day: 'numeric', month: 'long' }) : ''}
         busy={busy}
         onAction={(a, o) => void onAction(a, o)}
       />
@@ -189,10 +196,8 @@ function AgendaScreen() {
 
 /** "14:30" de hoje em ISO (horários do demo). */
 function todayAt(hhmm: string): string {
-  const [h, m] = hhmm.split(':').map(Number);
-  const d = new Date();
-  d.setHours(h, m, 0, 0);
-  return d.toISOString();
+  // Relógio de parede com Z, como a agenda real entrega (ver wallClock.ts).
+  return `${localDateKey()}T${hhmm.padStart(5, '0')}:00.000Z`;
 }
 
 function toEvent(b: ApiBooking): DayEvent {
@@ -211,6 +216,7 @@ function toEvent(b: ApiBooking): DayEvent {
 }
 
 const styles = StyleSheet.create({
+  controls: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   statusVeil: { position: 'absolute', top: 0, left: 0, right: 0 },
   summary: { ...text.caption, color: colors.textMuted, marginHorizontal: 20, marginTop: -4, fontFamily: typography.fontFamilyMedium },
 });

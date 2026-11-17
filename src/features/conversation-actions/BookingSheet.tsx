@@ -13,9 +13,11 @@ import {
   SchedSlot,
   searchSlots,
 } from '@/src/shared/api/conversation-actions.api';
+import { wallClock, wallDateLabel } from '@/src/features/agenda/wallClock';
 import { dayLabel, dayRange, DEMO_PROVIDERS, DEMO_SERVICES, demoSlots, nextDays, servicesFor, upcomingSlots } from './logic';
 
-const hhmm = (iso: string) => new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+// Horário de agenda é relógio de parede: lê o texto, sem converter pelo fuso do aparelho.
+const hhmm = wallClock;
 const DAYS = 14;
 
 /** Primeiro nome, mantendo títulos como "Dr." e "Dra." junto ("Dr. Ricardo"). */
@@ -96,8 +98,7 @@ export function BookingSheet({
       });
     },
     onSuccess: (_res, v) => {
-      const d = new Date(v.slot.starts_at);
-      const when = t('booking.when', { date: d.toLocaleDateString(locale(), { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', ''), time: hhmm(v.slot.starts_at) });
+      const when = t('booking.when', { date: wallDateLabel(v.slot.starts_at, locale(), { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', ''), time: hhmm(v.slot.starts_at) });
       onBooked(t('booking.summary', { service: v.serviceName, provider: v.providerName, when }));
       setSlot(null);
       setNote('');

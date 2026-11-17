@@ -43,16 +43,22 @@ export function DayTimeline({
   bottomInset,
   header,
   onPressEvent,
+  day = 'today',
 }: {
   events: DayEvent[];
   bottomInset: number;
   header?: React.ReactNode;
+  /** Outro dia que não hoje: sem a linha da hora atual nem "daqui a pouco"; tudo é passado ou futuro. */
+  day?: 'today' | 'past' | 'future';
   /** Toque no cartão: abre a ficha do agendamento. */
   onPressEvent?: (id: string) => void;
 }) {
   const { t } = useTranslation('agenda');
   const reduced = useReducedMotion();
-  const [now, setNow] = useState(() => nowMinutes());
+  const [clock, setNow] = useState(() => nowMinutes());
+  const isToday = day === 'today';
+  // Fora de hoje não existe "agora": tudo é passado (dia anterior) ou ainda vai acontecer (dia à frente).
+  const now = isToday ? clock : day === 'past' ? 24 * 60 : 0;
   const [gridW, setGridW] = useState(0);
   const [viewH, setViewH] = useState(0);
   const [headerH, setHeaderH] = useState(0);
@@ -73,14 +79,14 @@ export function DayTimeline({
     setNeeds((prev) => (Math.abs((prev[id] ?? 0) - h) < 1 ? prev : { ...prev, [id]: h }));
   }, []);
 
-  const [startHour, endHour] = useMemo(() => hourRange(events, now), [events, now]);
+  const [startHour, endHour] = useMemo(() => hourRange(events, isToday ? now : (events[0]?.startMin ?? 8 * 60)), [events, now, isToday]);
   const axis = useMemo(
     () => buildAxis(events.map((e) => ({ ...e, need: needs[e.id] ? needs[e.id] + CARD_PAD_V * 2 + 3 : 0 })), startHour, endHour),
     [events, needs, startHour, endHour],
   );
   const placed = useMemo(() => layoutEvents(events, axis), [events, axis]);
   const gridH = yAt(axis, endHour * 60);
-  const nowY = yAt(axis, now);
+  const nowY = yAt(axis, isToday ? now : (events[0]?.startMin ?? 8 * 60));
 
   // A linha desliza até a nova posição em vez de pular a cada atualização.
   const lineY = useSharedValue(nowY);
@@ -144,7 +150,7 @@ export function DayTimeline({
               ? placed.map((ev) => {
                   const tone = TONE[ev.tone];
                   const past = ev.endMin <= now;
-                  const rel = relativeLabel(ev.startMin, ev.endMin, now);
+                  const rel = isToday ? relativeLabel(ev.startMin, ev.endMin, now) : null;
                   const isNow = rel === t('timeline.now');
                   const w = gridW / ev.lanes;
                   return (
@@ -189,6 +195,7 @@ export function DayTimeline({
           </View>
 
           {/* Linha da hora atual: pílula com a hora na coluna das horas e o traço azul até a borda. */}
+          {isToday ? (
           <Animated.View pointerEvents="none" style={[styles.nowWrap, lineStyle]} accessible accessibilityLabel={t('timeline.nowAt', { time: clockLabel(now) })}>
             <View style={styles.nowPill}>
               <Text style={styles.nowPillText}>{clockLabel(now)}</Text>
@@ -196,10 +203,11 @@ export function DayTimeline({
             <View style={styles.nowDot} />
             <View style={styles.nowLine} />
           </Animated.View>
+          ) : null}
         </View>
       </ScrollView>
 
-      {!nowVisible ? (
+      {isToday && !nowVisible ? (
         <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(140)} style={[styles.nowBtnWrap, { bottom: bottomInset + 12 }]}>
           <PressableScale onPress={() => scrollToNow(true)} accessibilityRole="button" accessibilityLabel={t('timeline.backToNow')} style={styles.nowBtn}>
             <Ionicons name="time" size={16} color="#fff" />

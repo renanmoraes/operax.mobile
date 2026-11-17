@@ -5,7 +5,8 @@ const linear = buildAxis([], 7, 20);
 describe('linha do tempo da agenda', () => {
   it('converte "HH:MM" e ISO em minutos do dia', () => {
     expect(toMinutes('14:30')).toBe(870);
-    expect(toMinutes(new Date(2026, 10, 14, 9, 5).toISOString())).toBe(545);
+    // O horário da agenda é relógio de parede com Z: 09:05Z é 09:05 na clínica, em qualquer fuso do aparelho.
+    expect(toMinutes('2026-11-14T09:05:00.000Z')).toBe(545);
   });
 
   it('abre a faixa de horas para caber compromissos e a hora atual', () => {

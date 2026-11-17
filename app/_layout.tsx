@@ -102,6 +102,7 @@ export default function RootLayout() {
             <Stack.Screen name="(client)" options={{ headerShown: false }} />
             <Stack.Screen name="cliente" options={{ headerShown: false }} />
             <Stack.Screen name="permissoes" options={{ headerShown: false }} />
+            <Stack.Screen name="agendar" options={{ headerShown: false }} />
             <Stack.Screen name="conversation/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="contact/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="quick-replies" options={{ headerShown: false, presentation: 'modal' }} />

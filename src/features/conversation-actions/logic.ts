@@ -1,4 +1,5 @@
 import i18n, { locale } from '@/src/i18n';
+import { localDateKey, localMinutes, wallDateKey, wallMinutes } from '@/src/features/agenda/wallClock';
 import type { PixKeyType, SavedPixKey, SchedProvider, SchedService, SchedSlot } from '@/src/shared/api/conversation-actions.api';
 
 const digits = (s: string) => s.replace(/\D/g, '');
@@ -62,17 +63,22 @@ export function dayLabel(d: Date, today = new Date()): { top: string; day: strin
   return { top: top.charAt(0).toUpperCase() + top.slice(1), day: String(d.getDate()) };
 }
 
-/** Janela [00:00, 24:00) do dia, em ISO, para buscar horários livres. */
+/** Janela do dia, no relógio de parede da agenda (`Z` sem converter), para buscar horários livres. */
 export function dayRange(d: Date): { from: string; to: string } {
-  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const end = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
-  return { from: start.toISOString(), to: end.toISOString() };
+  const key = localDateKey(d);
+  return { from: `${key}T00:00:00.000Z`, to: `${key}T23:59:59.999Z` };
 }
 
-/** Só horários que ainda não passaram (com 15 min de folga), em ordem. */
+/** Só horários que ainda não passaram (com 15 min de folga), em ordem. Os horários são relógio de parede. */
 export function upcomingSlots(slots: SchedSlot[], now = new Date()): SchedSlot[] {
-  const limit = now.getTime() + 15 * 60_000;
-  return slots.filter((s) => new Date(s.starts_at).getTime() >= limit).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const today = localDateKey(now);
+  const limit = localMinutes(now) + 15;
+  return slots
+    .filter((s) => {
+      const key = wallDateKey(s.starts_at);
+      return key > today || (key === today && wallMinutes(s.starts_at) >= limit);
+    })
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
 }
 
 export function servicesFor(provider: SchedProvider | undefined, services: SchedService[]): SchedService[] {
@@ -107,8 +113,8 @@ export function demoSlots(day: Date, providerId: string, durationMin: number): S
   let i = 0;
   for (let min = 8 * 60; min + durationMin <= 18 * 60; min += Math.max(30, durationMin), i++) {
     if ((i + seed) % 4 === 0 || min === 12 * 60) continue;
-    const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), Math.floor(min / 60), min % 60);
-    out.push({ provider_id: providerId, starts_at: start.toISOString(), ends_at: new Date(start.getTime() + durationMin * 60_000).toISOString() });
+    const wall = (m: number) => `${localDateKey(day)}T${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:00.000Z`;
+    out.push({ provider_id: providerId, starts_at: wall(min), ends_at: wall(min + durationMin) });
   }
   return out;
 }

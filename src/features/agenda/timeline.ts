@@ -1,5 +1,6 @@
 /** Linha do tempo do dia: posição de cada compromisso, colunas para os que se sobrepõem e faixa de horas. */
 import i18n from '@/src/i18n';
+import { wallMinutes } from './wallClock';
 
 export type TimelineEvent = { id: string; startMin: number; endMin: number };
 export type PlacedEvent<T extends TimelineEvent> = T & { top: number; height: number; lane: number; lanes: number };
@@ -7,14 +8,14 @@ export type PlacedEvent<T extends TimelineEvent> = T & { top: number; height: nu
 export const HOUR_H = 88;
 export const MIN_EVENT_H = 46;
 
-/** "14:30" ou ISO → minutos desde a meia-noite (horário local). */
+/** "14:30" ou ISO de agenda → minutos desde a meia-noite no relógio da unidade. */
 export function toMinutes(v: string): number {
   if (/^\d{1,2}:\d{2}$/.test(v)) {
     const [h, m] = v.split(':').map(Number);
     return h * 60 + m;
   }
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? 0 : d.getHours() * 60 + d.getMinutes();
+  // Horário de agenda vem como relógio de parede com `Z` (ver wallClock.ts): lê o texto, sem converter pelo fuso.
+  return wallMinutes(v);
 }
 
 export function nowMinutes(d = new Date()): number {

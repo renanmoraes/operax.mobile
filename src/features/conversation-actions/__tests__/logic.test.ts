@@ -34,7 +34,7 @@ describe('ações da conversa', () => {
 
   it('esconde horários que já passaram e ordena', () => {
     const now = new Date(2026, 10, 14, 10, 0);
-    const at = (h: number, m = 0) => new Date(2026, 10, 14, h, m).toISOString();
+    const at = (h: number, m = 0) => `2026-11-14T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00.000Z`;
     const list = upcomingSlots(
       [
         { provider_id: 'p', starts_at: at(15), ends_at: at(16) },
@@ -44,7 +44,7 @@ describe('ações da conversa', () => {
       ],
       now,
     );
-    expect(list.map((s) => new Date(s.starts_at).getHours())).toEqual([11, 15]);
+    expect(list.map((s) => Number(s.starts_at.slice(11, 13)))).toEqual([11, 15]);
   });
 
   it('mostra só os serviços do profissional', () => {
@@ -56,7 +56,7 @@ describe('ações da conversa', () => {
     const slots = demoSlots(new Date(2026, 10, 16), 'p-ana', 60);
     expect(slots.length).toBeGreaterThan(3);
     for (const s of slots) {
-      const h = new Date(s.starts_at).getHours();
+      const h = Number(s.starts_at.slice(11, 13));
       expect(h).toBeGreaterThanOrEqual(8);
       expect(h).toBeLessThan(18);
       expect(h).not.toBe(12);

@@ -1230,12 +1230,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: radii.pill,
     backgroundColor: colors.cardBg,
+    // Contorno suave: sobre um cartão branco o chip sumia.
+    borderWidth: 1.5,
+    borderColor: colors.track,
     alignItems: 'center',
     justifyContent: 'center',
   },
   chipSelected: {
     backgroundColor: colors.primarySoft,
-    borderWidth: 1.5,
     borderColor: colors.primary,
   },
   chipText: {
