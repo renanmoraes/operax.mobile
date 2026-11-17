@@ -56,6 +56,7 @@ const catalog: Shape<typeof pt> = {
   category: 'Categoría',
   noCategory: 'Sin categoría',
   price: 'Precio',
+  priceHint: 'Sin precio, la caja no puede vender el producto.',
   priceByUnit: 'Precio por {{unit}}',
   cost: 'Costo',
   unit: 'Cómo se vende',

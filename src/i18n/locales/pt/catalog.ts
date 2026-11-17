@@ -54,6 +54,7 @@ const catalog = {
   category: 'Categoria',
   noCategory: 'Sem categoria',
   price: 'Preço',
+  priceHint: 'Sem preço, o PDV não vende o produto.',
   priceByUnit: 'Preço por {{unit}}',
   cost: 'Custo',
   unit: 'Como é vendido',

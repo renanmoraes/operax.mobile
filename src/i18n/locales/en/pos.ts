@@ -23,6 +23,9 @@ const pos: Shape<typeof pt> = {
     perUnit: '/ {{unit}}',
     notFound: 'No product with code {{code}}.',
     failed: 'Couldn\'t search right now. Check your connection.',
+    noPrice: 'No price',
+    noPriceTitle: '{{name}} has no price',
+    noPriceBody: 'Set the price in the product record to be able to sell it.',
   },
   scanner: {
     title: 'Scan code',

@@ -21,6 +21,9 @@ const pos = {
     perUnit: '/ {{unit}}',
     notFound: 'Nenhum produto com o código {{code}}.',
     failed: 'Não deu para buscar agora. Confira a internet.',
+    noPrice: 'Sem preço',
+    noPriceTitle: '{{name}} está sem preço',
+    noPriceBody: 'Defina o preço no cadastro do produto para poder vender.',
   },
   scanner: {
     title: 'Ler código',

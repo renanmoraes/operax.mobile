@@ -56,6 +56,7 @@ const catalog: Shape<typeof pt> = {
   category: 'Category',
   noCategory: 'No category',
   price: 'Price',
+  priceHint: 'Without a price, the register cannot sell the product.',
   priceByUnit: 'Price per {{unit}}',
   cost: 'Cost',
   unit: 'How it is sold',

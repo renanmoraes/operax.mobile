@@ -135,6 +135,7 @@ function NewProduct() {
 
           <FormSection icon="pricetag-outline" title={t('sections.price')} open alwaysOpen>
             <MoneyField label={d.unit === 'UN' ? t('price') : t('priceByUnit', { unit: d.unit.toLowerCase() })} cents={d.priceCents} onChange={(v) => patchDraft({ priceCents: v })} />
+            {d.priceCents === 0 && !withRows ? <Muted>{t('priceHint')}</Muted> : null}
             {withRows ? null : <MoneyField label={t('cost')} cents={d.costCents} onChange={(v) => patchDraft({ costCents: v })} />}
             <View style={{ gap: 8 }}>
               <Text style={styles.label}>{t('unit')}</Text>

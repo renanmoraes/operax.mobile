@@ -8,7 +8,7 @@ import { ActivityIndicator, FlatList, Keyboard, Pressable, StyleSheet, Text, Tex
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
-import { confirmDialog } from '@/src/design-system/Dialog';
+import { confirmDialog, showDialog } from '@/src/design-system/Dialog';
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { Avatar, Button, EmptyState, IconButton, Loading, PressableScale, Screen, TopBar } from '@/src/design-system/ui';
 import { colors, radii, shadows, typography } from '@/src/design-system/tokens';
@@ -163,7 +163,15 @@ function PosSaleScreen() {
     [flash],
   );
 
+  /** Produto sem preço o PDV acha, mas o fechamento da venda recusa: avisa na hora, em vez de levar ao carrinho. */
+  const refuseNoPrice = (p: PosProduct): boolean => {
+    if (p.unit_price > 0) return false;
+    void showDialog({ title: t('search.noPriceTitle', { name: p.name }), message: t('search.noPriceBody'), tone: 'warn' });
+    return true;
+  };
+
   const addFromSearch = (p: PosProduct) => {
+    if (refuseNoPrice(p)) return;
     const line = push(p, p.is_weighed ? null : 1);
     setQ('');
     Keyboard.dismiss();
@@ -187,6 +195,14 @@ function PosSaleScreen() {
     setLookups(lookupsRef.current);
     try {
       const p = await resolve.mutateAsync(code);
+      if (p.unit_price <= 0) {
+        if (fromScanner) setScanFeedback({ text: t('search.noPriceTitle', { name: p.name }), tone: 'error' });
+        else {
+          setQ('');
+          refuseNoPrice(p);
+        }
+        return;
+      }
       const line = push(p, p.quantity ?? (p.is_weighed ? null : 1));
       if (fromScanner) {
         setScanCount((n) => n + 1);
@@ -605,7 +621,7 @@ function SearchResults({ loading, items, term, onPick }: { loading: boolean; ite
             </View>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <PriceFromTo from={p.offer && p.list_price != null && p.list_price > p.unit_price ? formatMoney(p.list_price) : null} to={formatMoney(p.unit_price)} />
+            {p.unit_price > 0 ? <PriceFromTo from={p.offer && p.list_price != null && p.list_price > p.unit_price ? formatMoney(p.list_price) : null} to={formatMoney(p.unit_price)} /> : <Text style={[styles.lineMeta, { color: colors.dangerText, fontFamily: typography.fontFamilySemiBold }]}>{t('search.noPrice')}</Text>}
             {p.is_weighed ? <Text style={styles.lineMeta}>{t('search.perUnit', { unit: p.unit_code })}</Text> : null}
           </View>
         </PressableScale>
