@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { reportError } from '@/src/shared/telemetry/errorReporter';
+import { foregroundNotificationHandler } from './presence';
 
 export type PushRegistrationResult =
   | { status: 'granted'; token: string }
@@ -53,14 +54,7 @@ export async function registerForPushNotificationsAsync(): Promise<PushRegistrat
     // Import dinâmico evita crash se o módulo nativo não estiver linkado em algum ambiente
     const Notifications = await import('expo-notifications');
 
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
-    });
+    Notifications.setNotificationHandler({ handleNotification: foregroundNotificationHandler });
 
     await ensureAndroidChannel(Notifications);
 

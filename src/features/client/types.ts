@@ -37,7 +37,7 @@ export type ChatMessage = {
   text: string;
   at: string;
   attachment: ChatAttachment | null;
-  status?: 'sending' | 'sent' | 'read';
+  status?: 'sending' | 'sent' | 'delivered' | 'read';
   reschedule?: { booking_id: string; title: string; original_at: string };
 };
 

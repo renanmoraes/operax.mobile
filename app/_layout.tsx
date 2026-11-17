@@ -10,7 +10,7 @@ import { focusManager, QueryClient, QueryClientProvider, useQueryClient } from '
 import { useFonts } from 'expo-font';
 import { router, Stack, usePathname, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, LogBox, Platform, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
@@ -31,6 +31,7 @@ import { useTranslation } from 'react-i18next';
 import { useLanguageSync } from '@/src/i18n/language';
 import { useAppUpdates } from '@/src/shared/updates/appVersion';
 import { linkToAppRoute } from '@/src/features/notifications/linkRoute';
+import { foregroundNotificationHandler, setActivePath } from '@/src/features/notifications/presence';
 import { registerClientPush } from '@/src/features/notifications/clientPush';
 import { registerDevicePushTokenIfGranted } from '@/src/shared/api/auth.api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -165,7 +166,25 @@ function NotificationRouter() {
   useEffect(() => {
     tenantRef.current = { user, switchTenant, accounts, switchAccount };
   }, [user, switchTenant, accounts, switchAccount]);
-  const goTo = async (url: string, slug: string | null) => {
+  // Com o app fechado, o toque chega antes de a tela inicial se resolver (`/` redireciona depois de restaurar o login) e esse
+  // redirecionamento desfazia a ida até a mensagem. Espera a tela assentar antes de navegar.
+  const pathname = usePathname();
+  const pathRef = useRef(pathname);
+  useEffect(() => {
+    pathRef.current = pathname;
+  }, [pathname]);
+  const settle = useCallback(async () => {
+    const start = Date.now();
+    let cold = false;
+    while ((pathRef.current === '/' || pathRef.current === '/index') && Date.now() - start < 5000) {
+      cold = true;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    // Deixa terminar os redirecionamentos do início (permissões, escolha de empresa) antes de empilhar a tela do aviso.
+    if (cold) await new Promise((resolve) => setTimeout(resolve, 400));
+  }, []);
+  const goTo = useCallback(async (url: string, slug: string | null) => {
+    await settle();
     const { user: u, switchTenant: change, accounts: saved, switchAccount: changeAccount } = tenantRef.current;
     // Aviso do aluno com a conta da equipe aberta: troca para a conta do aluno (se está salva) e abre a tela dele.
     if (url.startsWith('/cliente') && u?.kind === 'staff') {
@@ -179,7 +198,7 @@ function NotificationRouter() {
       if (target && target.tenant_id !== u.active_tenant_id) await change(target.tenant_id).catch(() => undefined);
     }
     router.push(url as never);
-  };
+  }, [settle]);
   const pending = useRef<{ url: string; slug: string | null } | null>(null);
   useEffect(() => {
     canOpenRef.current = canOpen;
@@ -187,15 +206,13 @@ function NotificationRouter() {
       void goTo(pending.current.url, pending.current.slug);
       pending.current = null;
     }
-  }, [canOpen]);
+  }, [canOpen, goTo]);
   useEffect(() => {
     if (Platform.OS === 'web') return;
     let sub: { remove: () => void } | null = null;
     let alive = true;
     void import('expo-notifications').then(async (N) => {
-      N.setNotificationHandler({
-        handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
-      });
+      N.setNotificationHandler({ handleNotification: foregroundNotificationHandler });
       const open = (raw: unknown) => {
         const data = (raw ?? {}) as Record<string, unknown>;
         // Lembrete local já traz a tela do app; push do Operax traz o link do web (convertido aqui).
@@ -214,7 +231,7 @@ function NotificationRouter() {
       alive = false;
       sub?.remove();
     };
-  }, []);
+  }, [goTo]);
   return null;
 }
 
@@ -291,7 +308,10 @@ function AccountCacheReset() {
   }, [key, qc]);
   // O log de erro diz quem estava usando e onde (o servidor confere pelo token).
   const pathname = usePathname();
-  useEffect(() => trackRoute(pathname), [pathname]);
+  useEffect(() => {
+    trackRoute(pathname);
+    setActivePath(pathname);
+  }, [pathname]);
   useEffect(() => {
     setReporterSession({ role: user?.kind, mode, tenant: tenant || null });
   }, [user?.kind, mode, tenant]);

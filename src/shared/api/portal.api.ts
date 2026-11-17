@@ -127,7 +127,8 @@ export const portalCancelBooking = async (id: string, reason?: string) =>
 /** Aula: aceitar vaga ou cancelar passam pelas regras da turma (rotas do Fitness). */
 export const portalClassAction = async (id: string, action: 'accept' | 'cancel') => (await api.post(`${BASE}/fitness/bookings/${id}/${action}`, {})).data;
 
-export type PortalChatMessage = { id: string; from: 'me' | 'team'; text: string; at: string; attachment: { kind: 'image' | 'document' | 'audio' | 'video' } | null };
+/** `status` só nas mensagens do cliente: `delivered` = a equipe recebeu, `read` = a equipe abriu a conversa depois. */
+export type PortalChatMessage = { id: string; from: 'me' | 'team'; text: string; at: string; attachment: { kind: 'image' | 'document' | 'audio' | 'video' } | null; status?: 'delivered' | 'read' };
 export type PortalChat = { messages: PortalChatMessage[]; service_hours_text: string | null; whatsapp_url: string | null };
 
 export const portalChat = async () => (await api.get(`${BASE}/me/chat`)).data as PortalChat;

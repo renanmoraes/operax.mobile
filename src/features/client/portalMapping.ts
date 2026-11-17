@@ -89,6 +89,7 @@ export function mapPortalChat(chat: PortalChat, home: Pick<PortalHome, 'tenant_s
       from: m.from,
       text: m.text,
       at: m.at,
+      ...(m.status ? { status: m.status } : {}),
       // Anexos vêm sem link: o link assinado é pedido ao abrir (me/chat/media/:id).
       attachment: m.attachment ? (m.attachment.kind === 'document' ? { kind: 'document', uri: '', name: i18n.t('client:viewer.document'), size_bytes: 0 } : m.attachment.kind === 'image' ? { kind: 'image', uri: '' } : m.attachment.kind === 'audio' ? { kind: 'audio', uri: '', duration_s: 0 } : { kind: 'video', uri: '', duration_s: 0 }) : null,
     })),
