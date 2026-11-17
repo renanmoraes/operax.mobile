@@ -20,6 +20,7 @@ export function BottomSheet({
   closeLabel = i18n.t('actions.close'),
   children,
   contentStyle,
+  footer,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -27,6 +28,8 @@ export function BottomSheet({
   closeLabel?: string;
   children: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
+  /** Ações fixas embaixo (ex.: Receber, Agendar): ficam sempre à vista, e só o conteúdo de cima rola. */
+  footer?: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
   const progress = useSharedValue(0);
@@ -51,9 +54,10 @@ export function BottomSheet({
               {title}
             </Text>
           ) : null}
-          <ScrollView style={styles.body} contentContainerStyle={[{ gap: 10 }, contentStyle]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} bounces={false}>
+          <ScrollView style={styles.body} contentContainerStyle={[{ gap: 10 }, contentStyle]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} bounces={false} nestedScrollEnabled>
             {children}
           </ScrollView>
+          {footer ? <View style={styles.footer}>{footer}</View> : null}
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
@@ -74,6 +78,7 @@ const styles = StyleSheet.create({
     ...shadows.hero,
   },
   body: { flexGrow: 0, flexShrink: 1 },
+  footer: { paddingTop: 12, gap: 10 },
   grabber: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: colors.track, marginBottom: 14 },
   title: { ...text.title, color: colors.text, marginBottom: 12 },
 });

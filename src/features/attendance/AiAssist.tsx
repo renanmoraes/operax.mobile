@@ -294,13 +294,13 @@ export function ReplySuggestions({
 
       <BottomSheet visible={batch?.kind === 'polish'} onClose={() => setBatch(null)} title={t('ai.polishTitle')}>
         <Muted style={{ fontSize: 12.5 }}>{t('ai.polishHint')}</Muted>
-        <ScrollView style={{ maxHeight: 380 }} contentContainerStyle={{ gap: 8 }}>
+        <View style={{ gap: 8 }}>
           {(batch?.kind === 'polish' ? batch.suggestions : []).map((s, i) => (
             <Pressable key={i} onPress={() => use(s, i)} accessibilityRole="button" style={({ pressed }) => [styles.version, pressed && { borderColor: AI_ACCENT }]}>
               <Text style={styles.versionText}>{s}</Text>
             </Pressable>
           ))}
-        </ScrollView>
+        </View>
       </BottomSheet>
     </>
   );

@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Avatar, Button, Field, PressableScale, Segmented } from '@/src/design-system/ui';
 import { colors, radii, typography } from '@/src/design-system/tokens';
@@ -71,7 +71,7 @@ export function CustomerSheet({
             />
             {results.isFetching ? <ActivityIndicator size="small" color={colors.primary} /> : null}
           </View>
-          <ScrollView style={{ maxHeight: 320 }} keyboardShouldPersistTaps="handled">
+          <View>
             <ContactRow icon="person-outline" title={t('customer.walkIn')} selected={!current} onPress={() => onPick(null)} />
             {current && !(results.data ?? []).some((c) => c.id === current.id) ? (
               <ContactRow contact={current} title={current.name} subtitle={current.phone ? maskPhone(current.phone) : undefined} selected onPress={() => onPick(current)} />
@@ -90,7 +90,7 @@ export function CustomerSheet({
                 />
               ))}
             {term.length >= 2 && results.isSuccess && results.data.length === 0 ? <Text style={styles.empty}>{t('customer.noResults')}</Text> : null}
-          </ScrollView>
+          </View>
           {canCreate ? <Button label={t('customer.create')} icon="person-add-outline" variant="soft" onPress={() => setMode('signup')} /> : null}
         </>
       )}
@@ -287,7 +287,7 @@ function SignupWizard({
         {t('signup.step', { n: index + 1, total: steps.length })} · {t(`signup.steps.${step}`)}
       </Text>
 
-      <ScrollView style={{ maxHeight: 360 }} contentContainerStyle={{ gap: 12 }} keyboardShouldPersistTaps="handled">
+      <View style={{ gap: 12 }}>
         {step === 'contact' ? (
           <>
             <Field label={t('signup.name')} value={f.name} onChangeText={set('name')} autoCapitalize="words" autoComplete="name" />
@@ -366,7 +366,7 @@ function SignupWizard({
             </View>
           </>
         ) : null}
-      </ScrollView>
+      </View>
 
       {error ? (
         <View style={styles.error} accessibilityRole="alert">

@@ -73,8 +73,20 @@ export function PixSheet({
       }}
       title={t('pix.title')}
       closeLabel={t('pix.close')}
+      footer={
+        <Button
+          label={t('pix.send')}
+          loading={sending}
+          onPress={() => {
+            setTouched(true);
+            if (!ok) return;
+            onSend({ key: key.trim(), key_type: type, holder_name: holder.trim(), save: isNewKey && save });
+            reset();
+          }}
+        />
+      }
     >
-      <ScrollView style={{ maxHeight: 520 }} contentContainerStyle={{ gap: 14 }} keyboardShouldPersistTaps="handled">
+      <View style={{ gap: 14 }}>
         {keys.length ? (
           <View style={{ gap: 8 }}>
             <Text style={styles.label}>{t('pix.saved')}</Text>
@@ -158,17 +170,7 @@ export function PixSheet({
             </View>
           </View>
         ) : null}
-      </ScrollView>
-      <Button
-        label={t('pix.send')}
-        loading={sending}
-        onPress={() => {
-          setTouched(true);
-          if (!ok) return;
-          onSend({ key: key.trim(), key_type: type, holder_name: holder.trim(), save: isNewKey && save });
-          reset();
-        }}
-      />
+      </View>
     </BottomSheet>
   );
 }

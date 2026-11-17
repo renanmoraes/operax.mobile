@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
@@ -83,12 +83,12 @@ export function TeamPresenceSheet({ visible, onClose }: { visible: boolean; onCl
   return (
     <BottomSheet visible={visible} onClose={onClose} title={t('presence.title')}>
       <MyAvailability />
-      <ScrollView style={{ maxHeight: 380 }} contentContainerStyle={{ gap: 4 }}>
+      <View style={{ gap: 4 }}>
         {others.length === 0 ? <Muted style={{ textAlign: 'center', paddingVertical: 16 }}>{t('presence.empty')}</Muted> : null}
         {others.map((m) => (
           <MemberRow key={m.id} m={m} />
         ))}
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -133,13 +133,13 @@ export function TransferSheet({
         ) : (
           <>
             <Muted style={styles.hint}>{withPresence ? t('transfer.agentsHint') : t('transfer.agentsHintPlain')}</Muted>
-            <ScrollView style={{ maxHeight: 340 }} contentContainerStyle={{ gap: 6 }}>
+            <View style={{ gap: 6 }}>
               {teamLoading ? <ActivityIndicator color={colors.primary} style={{ paddingVertical: 20 }} /> : null}
               {!teamLoading && agentCount === 0 ? <Muted style={styles.empty}>{t('transfer.noAgents')}</Muted> : null}
               {withPresence
                 ? agents.map((m) => <AgentRow key={m.id} m={m} onPress={() => setConfirm({ to: 'agent', id: m.id, name: m.name })} />)
                 : plain.map((m) => <PlainAgentRow key={m.id} m={m} onPress={() => setConfirm({ to: 'agent', id: m.id, name: m.name })} />)}
-            </ScrollView>
+            </View>
           </>
         )
       ) : null}
@@ -147,7 +147,7 @@ export function TransferSheet({
       {!confirm && tab === 'queue' && canQueue ? (
         <>
           <Muted style={styles.hint}>{t('transfer.queuesHint')}</Muted>
-          <ScrollView style={{ maxHeight: 340 }} contentContainerStyle={{ gap: 6 }}>
+          <View style={{ gap: 6 }}>
             {live && queuesQ.isLoading ? <ActivityIndicator color={colors.primary} style={{ paddingVertical: 20 }} /> : null}
             {!(live && queuesQ.isLoading) && queues.length === 0 ? <Muted style={styles.empty}>{t('transfer.noQueues')}</Muted> : null}
             {queues.map((q) => (
@@ -168,7 +168,7 @@ export function TransferSheet({
                 <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               </Pressable>
             ))}
-          </ScrollView>
+          </View>
         </>
       ) : null}
 

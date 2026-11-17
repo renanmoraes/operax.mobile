@@ -119,8 +119,17 @@ export function BookingSheet({
   const loadingBase = live && (providersQ.isLoading || servicesQ.isLoading);
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title={t('booking.title', { name: shortName(contactName) })} closeLabel={t('booking.close')}>
-      <ScrollView style={{ maxHeight: 540 }} contentContainerStyle={{ gap: 16 }} keyboardShouldPersistTaps="handled">
+    <BottomSheet visible={visible} onClose={onClose} title={t('booking.title', { name: shortName(contactName) })} closeLabel={t('booking.close')}
+      footer={
+        <Button
+          label={slot ? t('booking.submit', { day: dayLabel(day).top.toLowerCase(), time: hhmm(slot.starts_at) }) : t('booking.pickSlot')}
+          disabled={!slot}
+          loading={create.isPending}
+          onPress={submit}
+        />
+      }
+    >
+      <View style={{ gap: 16 }}>
         {loadingBase ? (
           <ActivityIndicator color={colors.primary} style={{ paddingVertical: 30 }} />
         ) : providers.length === 0 ? (
@@ -188,13 +197,7 @@ export function BookingSheet({
             {slot ? <Field label={t('booking.noteLabel')} value={note} onChangeText={setNote} placeholder={t('booking.notePlaceholder')} /> : null}
           </>
         )}
-      </ScrollView>
-      <Button
-        label={slot ? t('booking.submit', { day: dayLabel(day).top.toLowerCase(), time: hhmm(slot.starts_at) }) : t('booking.pickSlot')}
-        disabled={!slot}
-        loading={create.isPending}
-        onPress={submit}
-      />
+      </View>
     </BottomSheet>
   );
 }

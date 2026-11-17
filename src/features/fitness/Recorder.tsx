@@ -1097,12 +1097,15 @@ export function Recorder({
         <View style={[styles.settings, { paddingBottom: insets.bottom + 20 }]}>
           <View style={styles.handle} />
           <Text style={styles.settingsTitle}>{t('rec.settings')}</Text>
+          {/* Em telas baixas as opções rolam e o OK fica sempre à vista. */}
+          <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
           <PrefRow title={t('rec.pref.awake')} subtitle={t('rec.pref.awakeSub')} value={prefs.keepAwake} onChange={(v) => changePref('keepAwake', v)} />
           <PrefRow title={t('rec.pref.voice')} subtitle={gps ? t('rec.pref.voiceSubGps') : t('rec.pref.voiceSub')} value={prefs.voice} onChange={(v) => changePref('voice', v)} />
           {gps ? <PrefRow title={t('rec.autoPausedLabel')} subtitle={t('rec.pref.autoPauseSub')} value={prefs.autoPause} onChange={(v) => changePref('autoPause', v)} /> : null}
           {gps ? <PrefRow title={t('rec.pref.startMap')} subtitle={t('rec.pref.startMapSub')} value={prefs.showMap} onChange={(v) => { changePref('showMap', v); setView(v ? 'map' : 'numbers'); }} /> : null}
           {gps && sport.rate === 'pace' ? <PrefRow title={t('rec.pref.speed')} subtitle={t('rec.pref.speedSub')} value={prefs.speed} onChange={(v) => changePref('speed', v)} /> : null}
           {Platform.OS !== 'web' ? <PrefRow title={t('rec.pref.lockSummary')} subtitle={t('rec.pref.lockSummarySub')} value={prefs.lockSummary} onChange={(v) => changePref('lockSummary', v)} /> : null}
+          </ScrollView>
           <Button label={t('rec.ok')} onPress={() => setSettingsOpen(false)} style={{ marginTop: 14 }} />
         </View>
       </Modal>
@@ -1113,6 +1116,7 @@ export function Recorder({
           <View style={[styles.settings, { paddingBottom: insets.bottom + 20 }]}>
             <View style={styles.handle} />
             <Text style={styles.settingsTitle}>{t('rec.whichWorkout')}</Text>
+            <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
             <View style={styles.pickGrid}>
               {SPORTS.map((s2) => {
                 const on = s2.id === sport.id;
@@ -1124,6 +1128,7 @@ export function Recorder({
                 );
               })}
             </View>
+            </ScrollView>
           </View>
         </Modal>
       ) : null}
@@ -1311,7 +1316,7 @@ const styles = StyleSheet.create({
   sideLabel: { fontFamily: typography.fontFamilySemiBold, fontSize: 12, color: colors.textSoft },
   lockSlider: { position: 'absolute', left: 24, right: 24 },
   backdrop: { flex: 1, backgroundColor: colors.overlay },
-  settings: { backgroundColor: '#fff', borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet, paddingHorizontal: 22, paddingTop: 10 },
+  settings: { maxHeight: '88%', backgroundColor: '#fff', borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet, paddingHorizontal: 22, paddingTop: 10 },
   settingsTitle: { ...text.title, color: colors.text, marginBottom: 6 },
   pref: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 1, borderColor: colors.borderSoft },
   prefTitle: { ...text.bodyStrong, color: colors.text },

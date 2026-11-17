@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { SkeletonList } from '@/src/design-system/Skeleton';
@@ -153,7 +153,7 @@ function SaleDetail({ client, sale, onClose, onMessage }: { client: PosClient; s
   return (
     <BottomSheet visible onClose={onClose} title={t('sales.detail', { number })}>
       {panel === 'main' ? (
-        <ScrollView style={{ maxHeight: 560 }} contentContainerStyle={{ gap: 14 }}>
+        <View style={{ gap: 14 }}>
           {receipt.isPending ? (
             <Loading />
           ) : r ? (
@@ -193,7 +193,7 @@ function SaleDetail({ client, sale, onClose, onMessage }: { client: PosClient; s
               <Button label={t('sales.void')} icon="close-circle-outline" variant="danger" compact style={{ flex: 1 }} onPress={() => setPanel('void')} />
             ) : null}
           </View>
-        </ScrollView>
+        </View>
       ) : panel === 'fix' ? (
         // O formulário só monta com a forma atual em mãos: os campos nascem dela e não se sincronizam depois.
         payment.isPending ? (

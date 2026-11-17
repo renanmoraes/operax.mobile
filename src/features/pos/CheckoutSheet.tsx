@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Button, IconButton, PressableScale } from '@/src/design-system/ui';
 import { colors, radii, typography } from '@/src/design-system/tokens';
@@ -79,14 +79,34 @@ export function CheckoutSheet({
   const today = todayYmd();
 
   return (
-    <BottomSheet visible onClose={pending ? () => {} : onClose} title={t('checkout.title')}>
+    <BottomSheet
+      visible
+      onClose={pending ? () => {} : onClose}
+      title={t('checkout.title')}
+      footer={
+        <>
+          {error ? (
+            <View style={styles.error} accessibilityRole="alert">
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+          <Button
+            label={pending ? t('checkout.confirming') : t('checkout.confirm')}
+            icon="checkmark-done"
+            loading={pending}
+            disabled={!state.canConfirm}
+            onPress={() => onConfirm({ payments: effective, installments, firstDueDate: firstDue })}
+          />
+        </>
+      }
+    >
       <View style={styles.totalBox}>
         <Text style={styles.totalLabel}>{t('checkout.total')}</Text>
         <Text style={styles.totalValue}>{formatMoney(total)}</Text>
         {subtotal > total ? <Text style={styles.totalSub}>{t('checkout.subtotal')} {formatMoney(subtotal)} · {t('checkout.discount')} {formatMoney(round2(subtotal - total))}</Text> : null}
       </View>
 
-      <ScrollView style={{ maxHeight: 400 }} contentContainerStyle={{ gap: 12 }} keyboardShouldPersistTaps="handled">
+      <View style={{ gap: 12 }}>
         {effective.map((row, i) => {
           const change = changeDue(row);
           return (
@@ -181,20 +201,7 @@ export function CheckoutSheet({
 
         {!state.closes ? <Text style={styles.warn}>{t('checkout.mismatch', { sum: formatMoney(state.sum), total: formatMoney(total) })}</Text> : null}
         {effective.length > 1 ? <SumRow label={t('checkout.total')} value={formatMoney(state.sum)} tone={state.closes ? 'success' : 'danger'} strong /> : null}
-      </ScrollView>
-
-      {error ? (
-        <View style={styles.error} accessibilityRole="alert">
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
-      <Button
-        label={pending ? t('checkout.confirming') : t('checkout.confirm')}
-        icon="checkmark-done"
-        loading={pending}
-        disabled={!state.canConfirm}
-        onPress={() => onConfirm({ payments: effective, installments, firstDueDate: firstDue })}
-      />
+      </View>
     </BottomSheet>
   );
 }

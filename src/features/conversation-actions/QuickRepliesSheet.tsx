@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
 import { filterQuickReplies, QuickReplyLike } from '@/src/features/chat/quickReplyMatch';
@@ -59,7 +59,7 @@ export function QuickRepliesSheet({
           style={styles.searchInput}
         />
       </View>
-      <ScrollView style={{ maxHeight: 340 }} keyboardShouldPersistTaps="handled">
+      <View>
         {items.length === 0 ? (
           <Text style={styles.empty}>{query.isLoading && live ? t('quickSheet.loading') : search ? t('quickSheet.noShortcut') : t('quickSheet.noneRegistered')}</Text>
         ) : (
@@ -82,7 +82,7 @@ export function QuickRepliesSheet({
             </Pressable>
           ))
         )}
-      </ScrollView>
+      </View>
       {showTemplates ? (
       <Pressable onPress={onTemplates} accessibilityRole="button" style={({ pressed }) => [styles.templates, pressed && { opacity: 0.8 }]}>
         <View style={styles.templatesIcon}>

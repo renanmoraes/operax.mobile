@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Button, IconName, PressableScale } from '@/src/design-system/ui';
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
@@ -77,7 +77,7 @@ export function BookingDetailSheet({
 
   return (
     <BottomSheet visible={visible} onClose={close} closeLabel={t('sheet.close')}>
-      <ScrollView style={{ maxHeight: 600 }} contentContainerStyle={{ gap: 16, paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
+      <View style={{ gap: 16, paddingBottom: 4 }}>
         {/* Quem e situação */}
         <View style={styles.head}>
           <View style={styles.avatar}>
@@ -172,7 +172,7 @@ export function BookingDetailSheet({
             {actions.includes('check_in') && !details.paymentKnown ? <Text style={styles.hint}>{t('sheet.insuranceHint')}</Text> : null}
           </View>
         ) : null}
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 }
