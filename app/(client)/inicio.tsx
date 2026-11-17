@@ -82,7 +82,10 @@ export default function ClientHomeScreen() {
             <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
           </PressableScale>
           <PressableScale onPress={() => router.navigate('/(client)/perfil')} accessibilityRole="button" accessibilityLabel={t('home.myProfile')} scaleTo={0.92}>
-            <Avatar initials={(client?.name ?? 'C').split(' ').map((w) => w[0]).slice(0, 2).join('')} size={44} />
+            {/* Bolinha azul com aro branco: o tom suave sumia no fundo claro e sobrava só a letra. */}
+            <View style={styles.me}>
+              <Avatar initials={(client?.name ?? 'C').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()} size={40} tone="brand" />
+            </View>
           </PressableScale>
         </View>
 
@@ -228,6 +231,7 @@ export default function ClientHomeScreen() {
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 20 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  me: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', ...shadows.card },
   tenant: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 44, paddingLeft: 6, paddingRight: 14, borderRadius: 999, backgroundColor: glass(0.75), ...shadows.card },
   tenantName: { fontFamily: typography.fontFamilySemiBold, fontSize: 14, color: colors.text },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
