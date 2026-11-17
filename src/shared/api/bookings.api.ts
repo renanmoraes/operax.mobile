@@ -112,6 +112,8 @@ export async function listAllBookings(params: { from: string; to: string }): Pro
 export async function listBookings(params?: {
   from?: string;
   to?: string;
+  /** Só os agendamentos deste contato (ficha do contato). */
+  contact_id?: string;
   limit?: number;
   offset?: number;
 }): Promise<BookingsResult> {

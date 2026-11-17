@@ -104,7 +104,8 @@ export default function RootLayout() {
             <Stack.Screen name="permissoes" options={{ headerShown: false }} />
             <Stack.Screen name="agendar" options={{ headerShown: false }} />
             <Stack.Screen name="conversation/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="contact/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="contact/[id]/index" options={{ headerShown: false }} />
+            <Stack.Screen name="contact/[id]/[section]" options={{ headerShown: false }} />
             <Stack.Screen name="quick-replies" options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="templates" options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="notification-prefs" options={{ headerShown: false }} />
