@@ -36,6 +36,7 @@ import { LineDiscountSheet, OrderDiscountSheet } from '@/src/features/pos/Discou
 import { Keypad, OfferTag, PriceFromTo } from '@/src/features/pos/parts';
 import { usePosClient, type PosClient } from '@/src/features/pos/posClient';
 import { ReceiptActions } from '@/src/features/pos/ReceiptActions';
+import { resolveWithVariants } from '@/src/features/pos/barcodeVariants';
 import { ScannerModal, type ScanFeedback } from '@/src/features/pos/ScannerModal';
 import { WeighSheet } from '@/src/features/pos/WeighSheet';
 import { getActiveApps } from '@/src/shared/api/attendance.api';
@@ -186,7 +187,9 @@ function PosSaleScreen() {
         if (!p) throw Object.assign(new Error('not found'), { response: { status: 404 } });
         return { ...p, quantity: p.is_weighed ? null : 1 };
       }
-      return client.resolveBarcode(code);
+      // A câmera pode entregar o mesmo código em outra forma (UPC-A de 12 dígitos × EAN-13 com zero na frente):
+      // se a primeira não achar, tenta as outras antes de dizer que não existe.
+      return resolveWithVariants(code, client.resolveBarcode, apiStatus);
     },
   });
 
