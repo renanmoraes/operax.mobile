@@ -25,7 +25,7 @@ export type ClientUser = {
   /** Empresas do cliente. No portal real, `tenant_id` é o `access_id` daquela empresa. */
   memberships: { tenant_id: string; tenant_name: string; tenant_slug?: string; logo_url?: string | null }[];
   /** Conta da pessoa no Operax (portal real): tem identidade e já criou senha? Ausente no demo. */
-  account?: { hasIdentity: boolean; hasPassword: boolean };
+  account?: { hasIdentity: boolean; hasPassword: boolean; /** E-mail da conta, mascarado ('r***@x.com'); nulo se a conta não tem; ausente em servidor antigo (a linha de e-mail não aparece). */ email?: string | null };
 };
 
 export type AuthUser = StaffUser | ClientUser;

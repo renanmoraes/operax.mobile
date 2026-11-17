@@ -134,6 +134,8 @@ const AUTH_ROUTE_PATTERNS = [
   // Trocar a senha logado: 401 é "a senha atual não confere", não sessão encerrada. Sem isto, errar a
   // senha atual apagava a sessão do cliente.
   '/api/public/portal/me/password',
+  // Confirmar o e-mail da conta: 401 é "código inválido ou vencido", não sessão encerrada.
+  '/api/public/portal/me/email/',
 ];
 
 export function isAuthRoute(url: string): boolean {

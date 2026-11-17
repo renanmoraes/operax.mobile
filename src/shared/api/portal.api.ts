@@ -96,13 +96,19 @@ export type PortalHome = {
   bookings: PortalBooking[];
   badges: { chat: number; training: number } & Record<string, number>;
   /** A conta da pessoa: sem identidade (entrou por link da empresa) não dá para criar senha. */
-  account?: { has_identity: boolean; has_password: boolean };
+  account?: { has_identity: boolean; has_password: boolean; email?: string | null };
 };
 
 export const portalHome = async () => (await api.get(`${BASE}/me/home`)).data as PortalHome;
 export const portalMyCompanies = async () => (await api.get(`${BASE}/me/companies`)).data as PortalCompany[];
 export const portalSwitch = async (access_id: string) => (await api.post(`${BASE}/me/switch`, { access_id })).data as PortalLoginResult;
 export const portalLogout = async () => void (await api.post(`${BASE}/me/logout`, {}));
+/**
+ * Liga um e-mail à conta da pessoa: pede o código (vai para o e-mail novo) e confirma. Depois disso o e-mail
+ * entra em todas as empresas da conta. O servidor só aceita em conta que ainda não tem e-mail.
+ */
+export const portalEmailLinkRequest = async (email: string) => (await api.post(`${BASE}/me/email/request`, { email })).data as { challenge_id: string; sent_to: string };
+export const portalEmailLinkVerify = async (challenge_id: string, code: string) => (await api.post(`${BASE}/me/email/verify`, { challenge_id, code })).data as { ok: true; email: string };
 /**
  * Cria (sem senha atual) ou troca a senha da pessoa. A senha é da pessoa no Operax e vale em todas
  * as empresas dela. Os outros aparelhos saem; este recebe uma sessão nova, que precisa ser guardada.

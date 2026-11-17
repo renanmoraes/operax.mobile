@@ -110,6 +110,14 @@ export default function ClientPerfilScreen() {
                 onPress={() => router.push('/cliente/relogios')}
               />
             ) : null}
+            {client?.account?.hasIdentity && client.account.email !== undefined ? (
+              <SettingsRow
+                icon="mail-outline"
+                title={tAuth(client.account.email ? 'email.accountTitle' : 'email.addTitle')}
+                subtitle={client.account.email ?? tAuth('email.rowSub')}
+                onPress={client.account.email ? undefined : () => router.push('/cliente/email')}
+              />
+            ) : null}
             {client?.account?.hasIdentity ? (
               <SettingsRow
                 icon="key-outline"

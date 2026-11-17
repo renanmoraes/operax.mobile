@@ -76,6 +76,8 @@ type AuthState = {
    * texto = o motivo para mostrar na tela.
    */
   changeClientPassword: (next: string, current?: string) => Promise<string | null>;
+  /** Recarrega a conta do cliente (e-mail e senha da conta, empresas) depois de uma mudança feita no próprio app. */
+  refreshClientUser: () => Promise<void>;
   switchTenant: (tenantId: string) => Promise<void>;
   enterClientDemo: () => void;
   logout: () => Promise<void>;
@@ -741,6 +743,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const res = (err as { response?: { status?: number; data?: { message?: unknown } } })?.response;
           if (res?.status === 401 && typeof res.data?.message === 'string' && res.data.message.trim()) return res.data.message;
           return messageFromError(err, i18n.t('auth:errors.createPassword'));
+        }
+      },
+
+      refreshClientUser: async () => {
+        if (mode !== 'live' || role !== 'client') return;
+        try {
+          const next = await loadPortalUser();
+          setUser(next);
+          remember('client', next, false);
+        } catch {
+          /* sem rede agora: segue com o que já tinha na tela */
         }
       },
 

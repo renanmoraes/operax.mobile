@@ -44,7 +44,7 @@ export function portalUser(home: PortalHome, companies: PortalCompany[]): Client
     email: home.contact.email ?? undefined,
     active_tenant_id: active?.access_id ?? null,
     memberships: companies.map((c) => ({ tenant_id: c.access_id, tenant_name: c.brand_name || c.tenant_slug, tenant_slug: c.tenant_slug, logo_url: c.logo_url })),
-    ...(home.account ? { account: { hasIdentity: home.account.has_identity, hasPassword: home.account.has_password } } : {}),
+    ...(home.account ? { account: { hasIdentity: home.account.has_identity, hasPassword: home.account.has_password, email: home.account.email } } : {}),
   };
 }
 

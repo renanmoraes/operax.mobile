@@ -21,6 +21,8 @@ describe('isAuthRoute', () => {
 
   it('trocar a senha logado: 401 é senha atual errada e não derruba a sessão do cliente', () => {
     expect(isAuthRoute('/api/public/portal/me/password')).toBe(true);
+    expect(isAuthRoute('/api/public/portal/me/email/verify')).toBe(true);
+    expect(isAuthRoute('/api/public/portal/me/email/request')).toBe(true);
     expect(isAuthRoute('/api/public/portal/me/home')).toBe(false);
   });
 
