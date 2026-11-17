@@ -2,8 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import { type GestureResponderEvent, Modal, StyleSheet, Text, View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, IconButton, PressableScale } from '@/src/design-system/ui';
 import { colors, radii, typography } from '@/src/design-system/tokens';
@@ -15,14 +15,25 @@ const TYPES = ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'itf14', 
 /** O mesmo código visto de novo antes de sumir por este tempo é a câmera vendo a mesma embalagem, não outra unidade. */
 const SAME_CODE_MS = 1800;
 
-/** Sem leitura por este tempo, a câmera foca sozinha de novo (e depois de `STUCK_MS` a tela dá a dica). */
-const REFOCUS_MS = 3000;
+/** Sem leitura por este tempo, a tela dá a dica de afastar o celular e usar o zoom. */
 const STUCK_MS = 7000;
-/** Níveis de zoom do botão: 1x e ~2x. O zoom do aparelho vai de 0 a 1; 0,25 dobra a imagem na maioria dos celulares. */
+/**
+ * Zoom do aparelho vai de 0 (sem zoom) a 1 (o máximo da câmera), e o máximo muda de celular para celular
+ * (uns 4x, outros 8x ou mais). Por isso os botões são degraus que se notam em qualquer um: 0,25 não
+ * mudava nada num celular de zoom máximo 4x. O zoom exato o operador ajusta com o gesto de pinça.
+ */
 const ZOOMS = [
-  { label: '1x', value: 0 },
-  { label: '2x', value: 0.25 },
+  { key: 'zoomNormal', value: 0 },
+  { key: 'zoomIn', value: 0.4 },
+  { key: 'zoomMore', value: 0.7 },
 ] as const;
+/** Quanto o zoom anda por cada "uma vez a distância inicial" entre os dedos na pinça. */
+const PINCH_GAIN = 0.55;
+
+const fingerDistance = (e: GestureResponderEvent) => {
+  const [a, b] = e.nativeEvent.touches;
+  return Math.hypot(a.pageX - b.pageX, a.pageY - b.pageY);
+};
 
 export type ScanFeedback = { text: string; tone: 'ok' | 'warn' | 'error' } | null;
 
@@ -55,25 +66,17 @@ export function ScannerModal({
   const [perm, requestPerm] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
   const [zoom, setZoom] = useState<number>(0);
-  const [focusing, setFocusing] = useState(false);
   const [stuck, setStuck] = useState(false);
   const last = useRef<{ code: string; at: number } | null>(null);
   const lastRead = useRef(0);
-  const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const zoomNow = useRef(0);
+  const pinch = useRef<{ d0: number; z0: number } | null>(null);
   const sweep = useSharedValue(0);
-  const ringX = useSharedValue(0);
-  const ringY = useSharedValue(0);
-  const ringScale = useSharedValue(1.5);
-  const ringOpacity = useSharedValue(0);
 
-  /**
-   * Pede o foco de novo: ligar o foco automático faz a câmera medir a distância outra vez e desligar
-   * devolve o foco contínuo. É o "toque para focar" que a câmera do sistema tem.
-   */
-  const refocus = () => {
-    setFocusing(true);
-    if (focusTimer.current) clearTimeout(focusTimer.current);
-    focusTimer.current = setTimeout(() => setFocusing(false), 900);
+  const applyZoom = (v: number) => {
+    const next = Math.round(Math.min(1, Math.max(0, v)) * 100) / 100;
+    zoomNow.current = next;
+    setZoom(next);
   };
 
   useEffect(() => {
@@ -83,31 +86,23 @@ export function ScannerModal({
     lastRead.current = Date.now();
     sweep.value = 0;
     sweep.value = withRepeat(withTiming(1, { duration: 1600, easing: Easing.inOut(Easing.quad) }), -1, true);
-    // Imagem borrada é o motivo mais comum de não ler: sem leitura, foca sozinho a cada poucos segundos.
-    const watch = setInterval(() => {
-      const idle = Date.now() - lastRead.current;
-      if (idle >= REFOCUS_MS) refocus();
-      setStuck(idle >= STUCK_MS);
-    }, REFOCUS_MS);
+    const watch = setInterval(() => setStuck(Date.now() - lastRead.current >= STUCK_MS), 1000);
     return () => {
       clearInterval(watch);
-      if (focusTimer.current) clearTimeout(focusTimer.current);
       setStuck(false);
     };
   }, [visible, sweep]);
   const line = useAnimatedStyle(() => ({ transform: [{ translateY: sweep.value * 150 }] }));
-  const ring = useAnimatedStyle(() => ({
-    opacity: ringOpacity.value,
-    transform: [{ translateX: ringX.value - 36 }, { translateY: ringY.value - 36 }, { scale: ringScale.value }],
-  }));
 
-  const onTapFocus = (x: number, y: number) => {
-    ringX.set(x);
-    ringY.set(y);
-    ringScale.set(1.5);
-    ringScale.set(withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) }));
-    ringOpacity.set(withSequence(withTiming(1, { duration: 90 }), withTiming(1, { duration: 650 }), withTiming(0, { duration: 260 })));
-    refocus();
+  const onTouchStart = (e: GestureResponderEvent) => {
+    if (e.nativeEvent.touches.length === 2) pinch.current = { d0: Math.max(1, fingerDistance(e)), z0: zoomNow.current };
+  };
+  const onTouchMove = (e: GestureResponderEvent) => {
+    if (!pinch.current || e.nativeEvent.touches.length !== 2) return;
+    applyZoom(pinch.current.z0 + (fingerDistance(e) / pinch.current.d0 - 1) * PINCH_GAIN);
+  };
+  const onTouchEnd = (e: GestureResponderEvent) => {
+    if (e.nativeEvent.touches.length < 2) pinch.current = null;
   };
 
   const handle = (r: BarcodeScanningResult) => {
@@ -128,28 +123,17 @@ export function ScannerModal({
   const granted = perm?.granted;
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent presentationStyle="fullScreen">
-      <View style={styles.root}>
+      <View style={styles.root} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onTouchCancel={onTouchEnd}>
         {granted ? (
           <CameraView
             style={StyleSheet.absoluteFill}
             facing="back"
             enableTorch={torch}
             zoom={zoom}
-            autofocus={focusing ? 'on' : 'off'}
             barcodeScannerSettings={{ barcodeTypes: qrOnly ? ['qr'] : [...TYPES] }}
             onBarcodeScanned={visible ? handle : undefined}
           />
         ) : null}
-
-        {granted ? (
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={(e) => onTapFocus(e.nativeEvent.locationX, e.nativeEvent.locationY)}
-            accessibilityRole="button"
-            accessibilityLabel={t('scanner.tapToFocus')}
-          />
-        ) : null}
-        {granted ? <Animated.View pointerEvents="none" style={[styles.ring, ring]} /> : null}
 
         <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
           <IconButton icon="close" onPress={onClose} accessibilityLabel={t('scanner.done')} tone="glass" />
@@ -174,7 +158,7 @@ export function ScannerModal({
             {stuck ? (
               <Text style={styles.stuck} accessibilityLiveRegion="polite">{t('scanner.stuck')}</Text>
             ) : (
-              <Text style={styles.tap}>{t('scanner.tapToFocus')}</Text>
+              <Text style={styles.tap}>{t('scanner.pinch')}</Text>
             )}
           </View>
         ) : (
@@ -196,10 +180,11 @@ export function ScannerModal({
           {granted ? (
             <View style={styles.zoomRow} accessibilityLabel={t('scanner.zoom')}>
               {ZOOMS.map((z) => {
-                const on = zoom === z.value;
+                // O degrau aceso é o mais perto do zoom de agora (a pinça pode parar entre dois).
+                const on = ZOOMS.every((o) => Math.abs(zoom - z.value) <= Math.abs(zoom - o.value));
                 return (
-                  <PressableScale key={z.label} onPress={() => { setZoom(z.value); refocus(); }} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={`${t('scanner.zoom')} ${z.label}`} style={[styles.zoomChip, on && styles.zoomChipOn]}>
-                    <Text style={[styles.zoomText, on && { color: colors.chromeNavy }]}>{z.label}</Text>
+                  <PressableScale key={z.key} onPress={() => applyZoom(z.value)} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={t(`scanner.${z.key}`)} style={[styles.zoomChip, on && styles.zoomChipOn]}>
+                    <Text style={[styles.zoomText, on && { color: colors.chromeNavy }]}>{t(`scanner.${z.key}`)}</Text>
                   </PressableScale>
                 );
               })}
@@ -234,9 +219,8 @@ const styles = StyleSheet.create({
   hint: { fontFamily: typography.fontFamilyMedium, fontSize: 14, color: 'rgba(255,255,255,0.85)', textAlign: 'center', paddingHorizontal: 40 },
   tap: { fontFamily: typography.fontFamily, fontSize: 12.5, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginTop: -12 },
   stuck: { fontFamily: typography.fontFamilyMedium, fontSize: 13.5, lineHeight: 19, color: '#fff', textAlign: 'center', marginHorizontal: 32, paddingHorizontal: 14, paddingVertical: 10, borderRadius: radii.md, backgroundColor: 'rgba(124,45,18,0.85)', overflow: 'hidden' },
-  ring: { position: 'absolute', top: 0, left: 0, width: 72, height: 72, borderRadius: 36, borderWidth: 2, borderColor: colors.cyan },
   zoomRow: { flexDirection: 'row', alignSelf: 'center', gap: 6, padding: 4, borderRadius: radii.pill, backgroundColor: 'rgba(3,6,13,0.55)' },
-  zoomChip: { minWidth: 52, height: 34, paddingHorizontal: 14, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center' },
+  zoomChip: { minWidth: 64, height: 34, paddingHorizontal: 14, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center' },
   zoomChipOn: { backgroundColor: colors.cyan },
   zoomText: { fontFamily: typography.fontFamilySemiBold, fontSize: 14, color: '#fff', fontVariant: ['tabular-nums'] },
   permBox: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 36, gap: 14 },
