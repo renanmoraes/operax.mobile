@@ -1,7 +1,7 @@
 import { api } from './client';
 import { clearTokens, setTokens } from './token-store';
 import { Platform } from 'react-native';
-import { registerForPushNotificationsAsync } from '@/src/features/notifications/push';
+import { grantedPushToken, registerForPushNotificationsAsync } from '@/src/features/notifications/push';
 import { appVersionInfo } from '@/src/shared/updates/appVersion';
 
 export type StaffUser = {
@@ -103,13 +103,24 @@ export async function logoutApi(): Promise<void> {
   }
 }
 
-export async function registerDevicePushToken(): Promise<void> {
-  const result = await registerForPushNotificationsAsync();
-  if (result.status !== 'granted') return;
+async function postDevicePushToken(token: string): Promise<void> {
   await api.post('/api/auth/device-tokens', {
-    token: result.token,
+    token,
     platform: Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'unknown',
     app_version: appVersionInfo().version,
   });
+}
+
+/** Ao entrar na conta da equipe: pede a permissão (se faltar) e liga este aparelho ao usuário para receber push. */
+export async function registerDevicePushToken(): Promise<void> {
+  const result = await registerForPushNotificationsAsync();
+  if (result.status !== 'granted') return;
+  await postDevicePushToken(result.token);
+}
+
+/** Ao voltar para o app: renova o registro do aparelho, só se a permissão já foi dada (nunca abre o pedido). */
+export async function registerDevicePushTokenIfGranted(): Promise<void> {
+  const token = await grantedPushToken();
+  if (token) await postDevicePushToken(token);
 }
 

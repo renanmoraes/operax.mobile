@@ -31,6 +31,8 @@ import { useTranslation } from 'react-i18next';
 import { useLanguageSync } from '@/src/i18n/language';
 import { useAppUpdates } from '@/src/shared/updates/appVersion';
 import { linkToAppRoute } from '@/src/features/notifications/linkRoute';
+import { registerClientPush } from '@/src/features/notifications/clientPush';
+import { registerDevicePushTokenIfGranted } from '@/src/shared/api/auth.api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 SplashScreen.preventAutoHideAsync();
@@ -117,6 +119,7 @@ export default function RootLayout() {
           <DialogHost />
           <NotificationRouter />
           <ResumeRecording />
+          <PushResync />
           <UpdateBanner />
           </TeamChatProvider>
         </AuthProvider>
@@ -212,6 +215,37 @@ function NotificationRouter() {
       sub?.remove();
     };
   }, []);
+  return null;
+}
+
+/** Intervalo mínimo entre duas renovações do registro do aparelho para push. */
+const PUSH_RESYNC_MS = 6 * 3_600_000;
+
+/**
+ * Com a permissão dada, o aparelho renova o registro de push ao abrir e ao voltar para o app (no máximo a cada 6 h), para
+ * a equipe e para o aluno. Cobre o token que mudou, o registro que falhou sem internet e quem deu a permissão depois do login.
+ */
+function PushResync() {
+  const { ready, isAuthenticated, user, mode } = useAuth();
+  const last = useRef(0);
+  const who = user ? `${user.kind}:${user.id}` : null;
+  useEffect(() => {
+    if (Platform.OS === 'web' || !ready || !isAuthenticated || mode !== 'live' || !user) return;
+    last.current = 0;
+    const kind = user.kind;
+    const run = () => {
+      if (Date.now() - last.current < PUSH_RESYNC_MS) return;
+      last.current = Date.now();
+      if (kind === 'staff') void registerDevicePushTokenIfGranted().catch(() => undefined);
+      else void registerClientPush({ prompt: false }).catch(() => undefined);
+    };
+    run();
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') run();
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, isAuthenticated, mode, who]);
   return null;
 }
 

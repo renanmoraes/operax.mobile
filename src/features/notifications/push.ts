@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { reportError } from '@/src/shared/telemetry/errorReporter';
 
 export type PushRegistrationResult =
   | { status: 'granted'; token: string }
@@ -36,7 +37,9 @@ export async function grantedPushToken(): Promise<string | null> {
     await ensureAndroidChannel(Notifications);
     const projectId = easProjectId();
     return (await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined)).data;
-  } catch {
+  } catch (err) {
+    // Permissão dada mas o token não veio (credencial do FCM, rede): antes sumia sem rastro e o aviso nunca chegava.
+    void reportError(err, { context: 'push.token', level: 'warn' });
     return null;
   }
 }
@@ -68,6 +71,7 @@ export async function registerForPushNotificationsAsync(): Promise<PushRegistrat
       finalStatus = status;
     }
     if (finalStatus !== 'granted') {
+      void reportError(new Error('Notificações negadas neste aparelho: não vai receber avisos com o app fechado'), { context: 'push.denied', level: 'warn' });
       return { status: 'denied' };
     }
 
@@ -79,6 +83,7 @@ export async function registerForPushNotificationsAsync(): Promise<PushRegistrat
     return { status: 'granted', token: tokenResponse.data };
   } catch (err) {
     const reason = err instanceof Error ? err.message : 'Push indisponível neste ambiente';
+    void reportError(err, { context: 'push.register', level: 'warn' });
     return { status: 'unavailable', reason };
   }
 }
