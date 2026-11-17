@@ -1,10 +1,10 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { showDialog } from '@/src/design-system/Dialog';
+import { confirmDialog, showDialog } from '@/src/design-system/Dialog';
 import { KEYBOARD_BEHAVIOR } from '@/src/design-system/keyboard';
 import { Button, Chip, Field, Loading, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
 import { colors, typography } from '@/src/design-system/tokens';
@@ -42,6 +42,7 @@ function NewProduct() {
   const can = useCan();
   const live = mode === 'live';
   const d = useDraft();
+  const qc = useQueryClient();
   const appsQ = useQuery({ queryKey: ['active-apps'], enabled: live, staleTime: 10 * 60_000, queryFn: getActiveApps });
   const catQ = useQuery({ queryKey: ['catalog', 'categories'], enabled: live, staleTime: 5 * 60_000, queryFn: listProductCategories });
   const apps = live ? appsQ.data ?? [] : ['inventory-catalog', 'associados'];
@@ -65,6 +66,9 @@ function NewProduct() {
   const save = useMutation({
     mutationFn: () => registerProduct(d, { associates, canSeeCost: true }),
     onSuccess: async ({ product, warnings }) => {
+      // O produto novo já vale na busca do PDV, na lista de produtos e no estoque: nada de resposta antiga guardada.
+      void qc.invalidateQueries({ queryKey: ['pos', 'products'] });
+      void qc.invalidateQueries({ queryKey: ['catalog'] });
       const msg = [t('savedBody', { name: product.name }), ...warnings.map(warningText)].join('\n');
       const v = await showDialog({
         title: t('saved'),
@@ -85,10 +89,16 @@ function NewProduct() {
     else router.replace('/');
   };
 
-  const submit = () => {
+  const submit = async () => {
     const p = problemOf(d);
     if (p) return setError(problemText(p));
     setError(null);
+    // O PDV acha o produto sem preço, mas não consegue vender: melhor avisar antes de cadastrar.
+    const noPrice = d.priceCents === 0 && (d.rows.length === 0 || d.rows.some((r) => r.priceCents === 0));
+    if (noPrice) {
+      const ok = await confirmDialog({ title: t('noPrice.title'), message: t('noPrice.body'), confirmLabel: t('noPrice.confirm'), cancelLabel: t('noPrice.back'), tone: 'warn' });
+      if (!ok) return;
+    }
     save.mutate();
   };
 
@@ -240,7 +250,7 @@ function NewProduct() {
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
           {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
-          <Button label={t('save')} loading={save.isPending} onPress={submit} />
+          <Button label={t('save')} loading={save.isPending} onPress={() => void submit()} />
         </View>
       </KeyboardAvoidingView>
     </Screen>

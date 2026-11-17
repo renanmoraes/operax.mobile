@@ -20,6 +20,12 @@ const catalog: Shape<typeof pt> = {
     flags: 'Dónde aparece el producto',
     stock: 'Inventario',
   },
+  noPrice: {
+    title: 'Producto sin precio',
+    body: 'Sin precio, la caja encuentra el producto pero no puede venderlo. ¿Registrarlo de todos modos?',
+    confirm: 'Registrar de todos modos',
+    back: 'Indicar el precio',
+  },
   optional: 'Opcional',
   photo: {
     add: 'Agregar foto',

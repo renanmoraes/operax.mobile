@@ -20,6 +20,12 @@ const catalog: Shape<typeof pt> = {
     flags: 'Where the product shows up',
     stock: 'Stock',
   },
+  noPrice: {
+    title: 'Product without a price',
+    body: 'Without a price, the register finds the product but cannot sell it. Register it anyway?',
+    confirm: 'Register anyway',
+    back: 'Enter the price',
+  },
   optional: 'Optional',
   photo: {
     add: 'Add photo',

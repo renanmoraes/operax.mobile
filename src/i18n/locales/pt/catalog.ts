@@ -18,6 +18,12 @@ const catalog = {
     flags: 'Onde o produto aparece',
     stock: 'Estoque',
   },
+  noPrice: {
+    title: 'Produto sem preço',
+    body: 'Sem preço, o PDV acha o produto, mas não consegue vender. Quer cadastrar assim mesmo?',
+    confirm: 'Cadastrar assim mesmo',
+    back: 'Informar o preço',
+  },
   optional: 'Opcional',
   photo: {
     add: 'Adicionar foto',
