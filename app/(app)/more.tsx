@@ -15,9 +15,10 @@ import { getActiveApps } from '@/src/shared/api/attendance.api';
 import { useThirdTab } from '@/src/features/navigation/useThirdTab';
 import { useUnreadNotifications } from '@/src/features/notifications/useUnread';
 
-const WORK: { id: 'notifications' | 'pos' | 'eventCheckin' | 'patients' | 'kanban' | 'history' | 'quickReplies' | 'templates'; href: string; icon: IconName; perm: PermKey | null; app?: string }[] = [
+const WORK: { id: 'notifications' | 'pos' | 'newProduct' | 'eventCheckin' | 'patients' | 'kanban' | 'history' | 'quickReplies' | 'templates'; href: string; icon: IconName; perm: PermKey | null; app?: string }[] = [
   { id: 'notifications', href: '/notifications', icon: 'notifications-outline', perm: null },
   { id: 'pos', href: '/pdv', icon: 'storefront-outline', perm: 'posSell', app: 'pos' },
+  { id: 'newProduct', href: '/produtos/novo', icon: 'cube-outline', perm: 'productsManage', app: 'inventory-catalog' },
   { id: 'eventCheckin', href: '/eventos/checkin', icon: 'qr-code-outline', perm: 'eventsCheckin', app: 'events' },
   { id: 'patients', href: '/pacientes', icon: 'people-outline', perm: 'contacts' },
   { id: 'kanban', href: '/kanban', icon: 'grid-outline', perm: 'kanban' },

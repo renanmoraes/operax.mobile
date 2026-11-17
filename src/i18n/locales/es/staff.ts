@@ -28,6 +28,7 @@ const staff: Shape<typeof pt> = {
     account: 'Cuenta',
     items: {
       notifications: { title: 'Avisos', hint: 'Avisos de Operax y de las conversaciones' },
+      newProduct: { title: 'Nuevo producto', hint: 'Registra con foto, código e inventario' },
       eventCheckin: { title: 'Check-in de evento', hint: 'Lee la entrada del alumno en la puerta' },
       pos: { title: 'Venta (PDV)', hint: 'Escanea, pesa y cobra' },
       patients: { title: '$t(vocab:Contacts)', hint: '$t(vocab:Contacts) de la empresa' },

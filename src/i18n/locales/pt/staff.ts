@@ -26,6 +26,7 @@ const staff = {
     account: 'Conta',
     items: {
       notifications: { title: 'Avisos', hint: 'Avisos do Operax e das conversas' },
+      newProduct: { title: 'Novo produto', hint: 'Cadastre com foto, código e estoque' },
       eventCheckin: { title: 'Check-in de evento', hint: 'Leia o ingresso do aluno na entrada' },
       pos: { title: 'Venda (PDV)', hint: 'Leia o código, pese e receba' },
       patients: { title: '$t(vocab:Contacts)', hint: '$t(vocab:Contacts) da empresa' },

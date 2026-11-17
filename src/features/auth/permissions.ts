@@ -53,6 +53,9 @@ export const PERMS = {
   posShiftsOpen: 'pos:shifts_open',
   posShiftsClose: 'pos:shifts_close',
   posCashMovement: 'pos:cash_movement',
+  /** Cadastrar produto (catálogo) e, com o Estoque, lançar o saldo inicial. */
+  productsManage: 'products:manage',
+  inventoryManage: 'inventory:manage',
   contactsCreate: 'contacts:create',
   contactsUpdate: 'contacts:update',
   complianceWrite: 'compliance:write',
