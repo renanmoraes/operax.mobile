@@ -1,6 +1,7 @@
 import { api } from './client';
 import i18n from '@/src/i18n';
 import { isAxiosError } from 'axios';
+import { isNetworkError } from '@/src/shared/network/network';
 
 export type ApiBooking = {
   id: string;
@@ -90,7 +91,7 @@ export async function getBooking(id: string) {
 
 export type BookingsResult =
   | { ok: true; items: ApiBooking[]; total: number }
-  | { ok: false; code: 'plan_locked' | 'error'; message: string };
+  | { ok: false; code: 'plan_locked' | 'offline' | 'error'; message: string };
 
 /**
  * Todos os agendamentos do período, página por página (o backend devolve no máximo 200 por vez).
@@ -130,6 +131,7 @@ export async function listBookings(params?: {
         message: i18n.t('errors.agendaLocked'),
       };
     }
+    if (isNetworkError(err)) return { ok: false, code: 'offline', message: i18n.t('offline.title') };
     return {
       ok: false,
       code: 'error',

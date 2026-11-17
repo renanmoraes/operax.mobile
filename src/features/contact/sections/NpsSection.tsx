@@ -15,7 +15,7 @@ export function NpsSection({ contactId }: { contactId: string }) {
   const q = useQuery({ queryKey: ['customer-success', 'contact-scores', contactId], queryFn: () => listCsScores(contactId) });
   const items = q.data ?? [];
   return (
-    <QueryState loading={q.isLoading} error={q.isError} empty={items.length === 0} emptyIcon="star-outline" emptyTitle={t('nps.empty')} onRetry={() => void q.refetch()}>
+    <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={items.length === 0} emptyIcon="star-outline" emptyTitle={t('nps.empty')} onRetry={() => void q.refetch()}>
       <View style={{ gap: 10 }}>
         {items.map((s) => {
           const band = (BANDS as readonly string[]).includes(s.band) ? (s.band as (typeof BANDS)[number]) : 'none';

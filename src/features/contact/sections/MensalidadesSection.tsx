@@ -23,7 +23,7 @@ export function MensalidadesSection({ contactId }: { contactId: string }) {
   const contratos = q.data?.contratos ?? [];
   const meses = q.data?.meses ?? [];
   return (
-    <QueryState loading={q.isLoading} error={q.isError} empty={contratos.length === 0 && meses.length === 0} emptyIcon="calendar-number-outline" emptyTitle={t('mensalidades.empty')} onRetry={() => void q.refetch()}>
+    <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={contratos.length === 0 && meses.length === 0} emptyIcon="calendar-number-outline" emptyTitle={t('mensalidades.empty')} onRetry={() => void q.refetch()}>
       <View style={{ gap: 10 }}>
         <GroupLabel>{t('mensalidades.contracts')}</GroupLabel>
         {contratos.map((c) => {

@@ -23,7 +23,7 @@ export function FitnessSection({ contactId }: { contactId: string }) {
   const revoke = useMutation({ mutationFn: () => revokeFitnessLink(contactId), onSuccess: () => done(t('fitness.linkDisabled')), onError: fail });
 
   return (
-    <QueryState loading={q.isLoading} error={q.isError} empty={false} emptyTitle="" onRetry={() => void q.refetch()}>
+    <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={false} emptyTitle="" onRetry={() => void q.refetch()}>
       {!student ? (
         <EmptyState icon="barbell-outline" title={t('fitness.notStudent')} subtitle={t('fitness.notStudentHint')} />
       ) : (

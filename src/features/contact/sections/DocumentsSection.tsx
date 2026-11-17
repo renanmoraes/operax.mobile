@@ -61,7 +61,7 @@ export function DocumentsSection({ contactId }: { contactId: string }) {
 
   return (
     <View style={{ gap: 12 }}>
-      <QueryState loading={q.isLoading} error={q.isError} empty={items.length === 0} emptyIcon="folder-open-outline" emptyTitle={t('documents.empty')} onRetry={() => void q.refetch()}>
+      <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={items.length === 0} emptyIcon="folder-open-outline" emptyTitle={t('documents.empty')} onRetry={() => void q.refetch()}>
         <View style={{ gap: 10 }}>
           {items.map((d) => (
             <RowCard

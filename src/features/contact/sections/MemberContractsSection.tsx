@@ -27,7 +27,7 @@ export function MemberContractsSection({ contactId }: { contactId: string }) {
   });
 
   return (
-    <QueryState loading={q.isLoading} error={q.isError} empty={items.length === 0} emptyIcon="document-text-outline" emptyTitle={t('memberContracts.empty')} onRetry={() => void q.refetch()}>
+    <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={items.length === 0} emptyIcon="document-text-outline" emptyTitle={t('memberContracts.empty')} onRetry={() => void q.refetch()}>
       <View style={{ gap: 10 }}>
         {items.map((c) => {
           const cancelled = c.status === 'cancelled';

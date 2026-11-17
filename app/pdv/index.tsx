@@ -1,3 +1,4 @@
+import { LoadError } from '@/src/design-system/OfflineState';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
@@ -330,7 +331,7 @@ function PosSaleScreen() {
     return (
       <Screen>
         <TopBar safe title={t('title')} onBack={() => router.back()} />
-        <EmptyState icon="cloud-offline-outline" title={t('search.failed')} actionLabel={tc('actions.retry')} onAction={() => void boot.refetch()} />
+        <LoadError error={boot.error} title={t('search.failed')} onRetry={() => void boot.refetch()} />
       </Screen>
     );
   }

@@ -42,6 +42,16 @@ const common = {
     agendaLocked: 'A agenda não está incluída no plano desta empresa.',
     agendaLoad: 'Não foi possível carregar a agenda.',
   },
+  offline: {
+    title: 'Você está sem internet',
+    body: 'Esta tela precisa de conexão. Confira o Wi-Fi ou os dados móveis: ela carrega sozinha quando a internet voltar.',
+    retry: 'Tentar de novo',
+    banner: 'Sem internet',
+    bannerHint: 'Você vê o que já carregou. O resto volta com a conexão.',
+    back: 'Conexão de volta',
+    serverTitle: 'Não deu para carregar',
+    serverBody: 'Algo falhou do nosso lado. Tente de novo em instantes.',
+  },
   greeting: {
     morning: 'Bom dia',
     afternoon: 'Boa tarde',

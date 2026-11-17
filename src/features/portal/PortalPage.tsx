@@ -1,9 +1,10 @@
+import { LoadError } from '@/src/design-system/OfflineState';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EmptyState, Loading, Muted, Screen, TopBar } from '@/src/design-system/ui';
+import { Loading, Muted, Screen, TopBar } from '@/src/design-system/ui';
 import { text } from '@/src/design-system/tokens';
 
 /**
@@ -35,7 +36,7 @@ export function PortalPage({
       {loading ? (
         <Loading label={t('common.loading')} />
       ) : error ? (
-        <EmptyState icon="cloud-offline-outline" title={error} actionLabel={onRetry ? t('common.retry') : undefined} onAction={onRetry} />
+        <LoadError title={error} onRetry={onRetry} />
       ) : (
         <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false}>
           {lead ? <Muted style={styles.lead}>{lead}</Muted> : null}

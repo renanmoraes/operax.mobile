@@ -12,7 +12,7 @@ export function VehiclesSection({ contactId }: { contactId: string }) {
   const q = useQuery({ queryKey: ['contact', contactId, 'vehicles'], queryFn: () => listContactVehicles(contactId) });
   const items = q.data ?? [];
   return (
-    <QueryState loading={q.isLoading} error={q.isError} empty={items.length === 0} emptyIcon="car-outline" emptyTitle={t('vehicles.empty')} onRetry={() => void q.refetch()}>
+    <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={items.length === 0} emptyIcon="car-outline" emptyTitle={t('vehicles.empty')} onRetry={() => void q.refetch()}>
       <View style={{ gap: 10 }}>
         {items.map((v) => (
           <RowCard

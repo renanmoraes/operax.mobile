@@ -13,7 +13,7 @@ export function InterestsSection({ contactId }: { contactId: string }) {
   const items = [...(q.data ?? [])].sort((a, b) => b.score - a.score);
   const top = Math.max(1, ...items.map((i) => Number(i.score) || 0));
   return (
-    <QueryState loading={q.isLoading} error={q.isError} empty={items.length === 0} emptyIcon="locate-outline" emptyTitle={t('interests.empty')} emptySub={t('interests.hint')} onRetry={() => void q.refetch()}>
+    <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={items.length === 0} emptyIcon="locate-outline" emptyTitle={t('interests.empty')} emptySub={t('interests.hint')} onRetry={() => void q.refetch()}>
       <View style={{ gap: 10 }}>
         {items.map((i) => (
           <Card key={i.id} style={{ gap: 8, padding: 14 }}>

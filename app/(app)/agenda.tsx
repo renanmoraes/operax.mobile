@@ -19,6 +19,8 @@ import { useAuth } from '@/src/features/auth/AuthContext';
 import { agendaDetails, agendaEvents } from '@/src/mocks/data';
 import { longDate } from '@/src/shared/format';
 import { SkeletonList } from '@/src/design-system/Skeleton';
+import { LoadError, OfflineState } from '@/src/design-system/OfflineState';
+import { useOnline } from '@/src/shared/network/network';
 import { RequirePermission, useCan } from '@/src/features/auth/useCan';
 import { addDaysKey, localDateKey, wallDateKey, wallDateLabel } from '@/src/features/agenda/wallClock';
 
@@ -60,6 +62,7 @@ function AgendaScreen() {
   const isToday = dayKey === todayKey;
   // O servidor recebe o dia (`yyyy-MM-dd`) nos dois limites; o app fica só com o que cai no dia escolhido,
   // lendo o horário como relógio de parede (ver wallClock.ts).
+  const online = useOnline();
   const query = useQuery({
     queryKey: ['bookings', dayKey, addDaysKey(dayKey, 1)],
     enabled: mode === 'live',
@@ -108,11 +111,26 @@ function AgendaScreen() {
     return base.map((b) => ({ ...b, raw_status: statusOverride[b.id] ?? b.raw_status ?? b.status, status: normalizeBookingStatus(statusOverride[b.id] ?? b.status) }));
   }, [mode, query.data, statusOverride, dayKey, isToday]);
 
-  if (mode === 'live' && query.data && query.data.ok === false) {
+  if (mode === 'live' && !online && !(query.data && query.data.ok)) {
     return (
       <Screen>
         {header}
-        <EmptyState icon="calendar-outline" title={t('agenda.unavailable')} subtitle={query.data.message} />
+        <OfflineState onRetry={() => void query.refetch()} />
+      </Screen>
+    );
+  }
+  if (mode === 'live' && query.data && query.data.ok === false) {
+    // "Indisponível nesta empresa" é só do plano sem agenda; falha de rede ou do servidor tem texto próprio.
+    return (
+      <Screen>
+        {header}
+        {query.data.code === 'plan_locked' ? (
+          <EmptyState icon="calendar-outline" title={t('agenda.unavailable')} subtitle={query.data.message} />
+        ) : query.data.code === 'offline' ? (
+          <OfflineState onRetry={() => void query.refetch()} />
+        ) : (
+          <LoadError title={query.data.message} onRetry={() => void query.refetch()} />
+        )}
       </Screen>
     );
   }

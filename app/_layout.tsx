@@ -1,5 +1,7 @@
 // Idiomas: carrega as traduções antes de qualquer tela.
 import i18n from '@/src/i18n';
+import { NetworkWatcher } from '@/src/shared/network/NetworkWatcher';
+import { OfflineBanner } from '@/src/design-system/OfflineState';
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -121,6 +123,8 @@ export default function RootLayout() {
           <IncomingBanner />
           <SplashGate />
           <AccountCacheReset />
+          <NetworkWatcher />
+          <OfflineBanner />
           <DialogHost />
           <NotificationRouter />
           <ResumeRecording />

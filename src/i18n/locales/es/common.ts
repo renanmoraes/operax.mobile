@@ -44,6 +44,16 @@ const common: Shape<typeof pt> = {
     agendaLocked: 'La agenda no está incluida en el plan de esta empresa.',
     agendaLoad: 'No se pudo cargar la agenda.',
   },
+  offline: {
+    title: 'Estás sin internet',
+    body: 'Esta pantalla necesita conexión. Revisa el Wi-Fi o los datos móviles: carga sola cuando vuelva internet.',
+    retry: 'Intentar de nuevo',
+    banner: 'Sin internet',
+    bannerHint: 'Ves lo que ya cargó. Lo demás vuelve con la conexión.',
+    back: 'Conexión de vuelta',
+    serverTitle: 'No se pudo cargar',
+    serverBody: 'Algo falló de nuestro lado. Inténtalo de nuevo en unos instantes.',
+  },
   greeting: {
     morning: 'Buenos días',
     afternoon: 'Buenas tardes',

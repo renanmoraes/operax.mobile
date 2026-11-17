@@ -13,7 +13,7 @@ export function TagHistorySection({ contactId }: { contactId: string }) {
   const q = useQuery({ queryKey: ['contact', contactId, 'tag-events'], queryFn: () => listTagEvents(contactId) });
   const items = q.data?.items ?? [];
   return (
-    <QueryState loading={q.isLoading} error={q.isError} empty={items.length === 0} emptyIcon="pricetags-outline" emptyTitle={t('tagHistory.empty')} onRetry={() => void q.refetch()}>
+    <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={items.length === 0} emptyIcon="pricetags-outline" emptyTitle={t('tagHistory.empty')} onRetry={() => void q.refetch()}>
       <View style={{ gap: 8 }}>
         {items.map((e) => {
           const source = (SOURCES as readonly string[]).includes(e.source) ? t(`tagHistory.sources.${e.source as (typeof SOURCES)[number]}`) : e.source;

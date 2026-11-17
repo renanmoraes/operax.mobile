@@ -16,7 +16,7 @@ export function ConversationsSection({ contactId }: { contactId: string }) {
   });
   const items = q.data?.data ?? [];
   return (
-    <QueryState loading={q.isLoading} error={q.isError} empty={items.length === 0} emptyIcon="chatbubbles-outline" emptyTitle={t('conversations.empty')} onRetry={() => void q.refetch()}>
+    <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={items.length === 0} emptyIcon="chatbubbles-outline" emptyTitle={t('conversations.empty')} onRetry={() => void q.refetch()}>
       <View style={{ gap: 10 }}>
         {items.map((c) => {
           const closed = c.status === 'closed';

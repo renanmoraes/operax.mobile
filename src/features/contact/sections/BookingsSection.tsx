@@ -44,7 +44,7 @@ export function BookingsSection({ contactId }: { contactId: string }) {
   };
 
   return (
-    <QueryState loading={q.isLoading} error={q.isError} empty={items.length === 0} emptyIcon="calendar-outline" emptyTitle={t('contact:bookings.empty')} onRetry={() => void q.refetch()}>
+    <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={items.length === 0} emptyIcon="calendar-outline" emptyTitle={t('contact:bookings.empty')} onRetry={() => void q.refetch()}>
       <View style={{ gap: 10 }}>
         {upcoming.length ? <GroupLabel>{t('contact:bookings.upcoming')}</GroupLabel> : null}
         {upcoming.map(card)}

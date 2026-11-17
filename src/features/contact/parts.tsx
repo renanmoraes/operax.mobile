@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
+import { LoadError } from '@/src/design-system/OfflineState';
 import { Button, Card, EmptyState, Loading } from '@/src/design-system/ui';
 import { colors, text, typography } from '@/src/design-system/tokens';
 
@@ -13,6 +14,7 @@ export function QueryState({
   emptyTitle,
   emptySub,
   onRetry,
+  failure,
   children,
 }: {
   loading: boolean;
@@ -22,11 +24,13 @@ export function QueryState({
   emptyTitle: string;
   emptySub?: string;
   onRetry: () => void;
+  /** O erro da consulta: com ele a tela distingue "sem internet" de uma falha do servidor. */
+  failure?: unknown;
   children: ReactNode;
 }) {
   const { t } = useTranslation('contact');
   if (loading) return <Loading />;
-  if (error) return <EmptyState icon="cloud-offline-outline" title={t('loadFailed')} actionLabel={t('retry')} onAction={onRetry} />;
+  if (error) return <LoadError error={failure} title={t('loadFailed')} onRetry={onRetry} />;
   if (empty) return <EmptyState icon={emptyIcon} title={emptyTitle} subtitle={emptySub} />;
   return <>{children}</>;
 }

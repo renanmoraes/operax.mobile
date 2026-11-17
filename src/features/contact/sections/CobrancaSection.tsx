@@ -23,7 +23,7 @@ export function CobrancaSection({ contactId }: { contactId: string }) {
   const q = useQuery({ queryKey: ['contact', contactId, 'cobranca'], queryFn: () => listCobrancaCards(contactId) });
   const items = q.data ?? [];
   return (
-    <QueryState loading={q.isLoading} error={q.isError} empty={items.length === 0} emptyIcon="cash-outline" emptyTitle={t('cobranca.empty')} onRetry={() => void q.refetch()}>
+    <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={items.length === 0} emptyIcon="cash-outline" emptyTitle={t('cobranca.empty')} onRetry={() => void q.refetch()}>
       <View style={{ gap: 10 }}>
         {items.map((c) => {
           const late = daysLate(c.cobranca_json?.due_dates);

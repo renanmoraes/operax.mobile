@@ -1,3 +1,4 @@
+import { LoadError } from '@/src/design-system/OfflineState';
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Linking from 'expo-linking';
@@ -61,7 +62,7 @@ function ContactScreen() {
     return (
       <Screen>
         {header}
-        {query.isLoading ? <Loading /> : <EmptyState icon="person-outline" title={t('notFound')} subtitle={t('notFoundHint')} actionLabel={query.isError ? t('retry') : undefined} onAction={query.isError ? () => void query.refetch() : undefined} />}
+        {query.isLoading ? <Loading /> : query.isError ? <LoadError error={query.error} title={t('loadFailed')} onRetry={() => void query.refetch()} /> : <EmptyState icon="person-outline" title={t('notFound')} subtitle={t('notFoundHint')} />}
       </Screen>
     );
   }

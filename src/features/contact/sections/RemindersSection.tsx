@@ -13,7 +13,7 @@ export function RemindersSection({ contactId }: { contactId: string }) {
   const q = useQuery({ queryKey: ['reminders', 'contact', contactId], queryFn: () => listContactReminders(contactId) });
   const items = q.data ?? [];
   return (
-    <QueryState loading={q.isLoading} error={q.isError} empty={items.length === 0} emptyIcon="alarm-outline" emptyTitle={t('reminders.empty')} onRetry={() => void q.refetch()}>
+    <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={items.length === 0} emptyIcon="alarm-outline" emptyTitle={t('reminders.empty')} onRetry={() => void q.refetch()}>
       <View style={{ gap: 10 }}>
         {items.map((r) => (
           <RowCard

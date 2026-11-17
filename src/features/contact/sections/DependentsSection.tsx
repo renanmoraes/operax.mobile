@@ -36,7 +36,7 @@ export function DependentsSection({ contactId }: { contactId: string }) {
 
   return (
     <View style={{ gap: 12 }}>
-      <QueryState loading={q.isLoading} error={q.isError} empty={items.length === 0} emptyIcon="people-outline" emptyTitle={t('dependents.empty')} onRetry={() => void q.refetch()}>
+      <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={items.length === 0} emptyIcon="people-outline" emptyTitle={t('dependents.empty')} onRetry={() => void q.refetch()}>
         <View style={{ gap: 10 }}>
           {items.map((d) => {
             const age = ageOf(d.birth_date);

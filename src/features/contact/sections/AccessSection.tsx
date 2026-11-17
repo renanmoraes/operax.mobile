@@ -19,7 +19,7 @@ export function AccessSection({ contactId }: { contactId: string }) {
     from && to ? t('access.between', { from: dayLabel(from), to: dayLabel(to) }) : from ? t('access.from', { from: dayLabel(from) }) : to ? t('access.until', { to: dayLabel(to) }) : t('access.noLimit');
 
   return (
-    <QueryState loading={q.isLoading} error={q.isError} empty={!!data && !data.perfil} emptyIcon="enter-outline" emptyTitle={t('access.empty')} emptySub={t('access.emptyHint')} onRetry={() => void q.refetch()}>
+    <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={!!data && !data.perfil} emptyIcon="enter-outline" emptyTitle={t('access.empty')} emptySub={t('access.emptyHint')} onRetry={() => void q.refetch()}>
       {data?.perfil ? (
         <View style={{ gap: 10 }}>
           <Card style={{ gap: 8 }}>

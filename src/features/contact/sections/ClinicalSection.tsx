@@ -27,7 +27,7 @@ export function ClinicalSection({ contactId }: { contactId: string }) {
   const p = q.data;
   const none = '—';
   return (
-    <QueryState loading={q.isLoading} error={q.isError} empty={false} emptyTitle="" onRetry={() => void q.refetch()}>
+    <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={false} emptyTitle="" onRetry={() => void q.refetch()}>
       {!p ? (
         <EmptyState icon="medkit-outline" title={t('clinical.notPatient')} subtitle={t('clinical.notPatientHint')} />
       ) : (

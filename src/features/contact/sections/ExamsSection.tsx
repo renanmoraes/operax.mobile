@@ -45,7 +45,7 @@ export function ExamsSection({ contactId }: { contactId: string }) {
   if (!pid) return <EmptyState icon="flask-outline" title={t('exams.noPatient')} subtitle={t('clinical.notPatientHint')} />;
 
   return (
-    <QueryState loading={reqQ.isLoading || (canResults && resQ.isLoading)} error={reqQ.isError} empty={lines.length === 0} emptyIcon="flask-outline" emptyTitle={t('exams.empty')} emptySub={t('exams.emptyHint')} onRetry={() => void reqQ.refetch()}>
+    <QueryState loading={reqQ.isLoading || (canResults && resQ.isLoading)} error={reqQ.isError} failure={reqQ.error} empty={lines.length === 0} emptyIcon="flask-outline" emptyTitle={t('exams.empty')} emptySub={t('exams.emptyHint')} onRetry={() => void reqQ.refetch()}>
       <View style={{ gap: 10 }}>
         {lines.map(({ key, request, result }) => {
           const title = request ? request.items.map((i) => i.name).join(' · ') || t('exams.noItems') : result?.exam_name ?? t('exams.exam');

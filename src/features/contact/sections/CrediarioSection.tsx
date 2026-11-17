@@ -78,7 +78,7 @@ export function CrediarioSection({ contactId }: { contactId: string }) {
 
   return (
     <View style={{ gap: 14 }}>
-      <QueryState loading={q.isLoading} error={q.isError} empty={false} emptyTitle="" onRetry={() => void q.refetch()}>
+      <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={false} emptyTitle="" onRetry={() => void q.refetch()}>
         <Card style={{ gap: 14 }}>
           <StatStrip items={[{ value: brl(totals.open), label: t('crediario.open'), accent: true }, { value: brl(totals.late), label: t('crediario.overdue') }]} />
           <StatStrip items={[{ value: brl(totals.charges), label: t('crediario.charges') }, { value: brl(creditQ.data?.balance_cents ?? 0), label: t('crediario.credit') }]} />

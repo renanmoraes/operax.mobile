@@ -44,6 +44,16 @@ const common: Shape<typeof pt> = {
     agendaLocked: 'The schedule isn\'t included in this company\'s plan.',
     agendaLoad: "Couldn't load the schedule.",
   },
+  offline: {
+    title: "You're offline",
+    body: 'This screen needs a connection. Check your Wi-Fi or mobile data: it loads by itself when the internet is back.',
+    retry: 'Try again',
+    banner: 'No internet',
+    bannerHint: "You're seeing what already loaded. The rest returns with the connection.",
+    back: 'Back online',
+    serverTitle: "Couldn't load",
+    serverBody: 'Something failed on our side. Try again in a moment.',
+  },
   greeting: {
     morning: 'Good morning',
     afternoon: 'Good afternoon',

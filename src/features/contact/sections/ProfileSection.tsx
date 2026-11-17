@@ -42,7 +42,7 @@ export function ProfileSection({ contactId }: { contactId: string }) {
   const refresh = () => void qc.invalidateQueries({ queryKey: ['contact', contactId] });
 
   if (!c) {
-    return q.isError ? <QueryState loading={false} error empty={false} emptyTitle="" onRetry={() => void q.refetch()}><View /></QueryState> : <Loading />;
+    return q.isError ? <QueryState loading={false} error failure={q.error} empty={false} emptyTitle="" onRetry={() => void q.refetch()}><View /></QueryState> : <Loading />;
   }
 
   const none = t('empty');

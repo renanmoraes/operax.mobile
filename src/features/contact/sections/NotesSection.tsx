@@ -12,7 +12,7 @@ export function NotesSection({ contactId }: { contactId: string }) {
   const q = useQuery({ queryKey: ['contact', contactId, 'preview'], queryFn: () => getContactChatPreview(contactId) });
   const notes = q.data?.operator_notes ?? [];
   return (
-    <QueryState loading={q.isLoading} error={q.isError} empty={notes.length === 0} emptyIcon="document-text-outline" emptyTitle={t('notes.empty')} emptySub={t('notes.hint')} onRetry={() => void q.refetch()}>
+    <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={notes.length === 0} emptyIcon="document-text-outline" emptyTitle={t('notes.empty')} emptySub={t('notes.hint')} onRetry={() => void q.refetch()}>
       <View style={{ gap: 10 }}>
         {notes.map((n) => (
           <RowCard

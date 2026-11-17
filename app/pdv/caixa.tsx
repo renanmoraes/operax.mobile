@@ -1,3 +1,4 @@
+import { LoadError } from '@/src/design-system/OfflineState';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
@@ -32,7 +33,6 @@ export default function CashierScreenGuarded() {
 /** O caixa pelo celular: abrir com o dinheiro da gaveta, acompanhar, fazer sangria e suprimento e fechar com a conferência. */
 function CashierScreen() {
   const { t } = useTranslation('pos');
-  const { t: tc } = useTranslation('common');
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const client = usePosClient();
@@ -59,7 +59,7 @@ function CashierScreen() {
       {boot.isLoading || (usesShift && current.isLoading) ? (
         <Loading />
       ) : boot.isError || current.isError ? (
-        <EmptyState icon="cloud-offline-outline" title={t('cashier.loadFail')} actionLabel={tc('actions.retry')} onAction={() => void refresh()} />
+        <LoadError error={boot.error ?? current.error} title={t('cashier.loadFail')} onRetry={() => void refresh()} />
       ) : !usesShift ? (
         <EmptyState icon="information-circle-outline" title={t('cashier.notUsed')} />
       ) : !registerId ? (

@@ -1,3 +1,4 @@
+import { LoadError } from '@/src/design-system/OfflineState';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
@@ -77,7 +78,7 @@ function PosSalesScreen() {
       {sales.isPending ? (
         <SkeletonList variant="contact" />
       ) : sales.isError ? (
-        <EmptyState icon="cloud-offline-outline" title={t('sales.failed')} />
+        <LoadError error={sales.error} title={t('sales.failed')} onRetry={() => void sales.refetch()} />
       ) : rows.length === 0 ? (
         <EmptyState icon="receipt-outline" title={t('sales.empty')} subtitle={t('sales.emptyHint')} />
       ) : (

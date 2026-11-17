@@ -16,7 +16,7 @@ export function ContractsSection({ contactId }: { contactId: string }) {
   const term = (a: string | null, b: string | null) =>
     a && b ? t('contracts.between', { from: dayLabel(a), to: dayLabel(b) }) : a ? t('contracts.from', { from: dayLabel(a) }) : b ? t('contracts.until', { to: dayLabel(b) }) : t('contracts.noTerm');
   return (
-    <QueryState loading={q.isLoading} error={q.isError} empty={items.length === 0} emptyIcon="document-attach-outline" emptyTitle={t('contracts.empty')} onRetry={() => void q.refetch()}>
+    <QueryState loading={q.isLoading} error={q.isError} failure={q.error} empty={items.length === 0} emptyIcon="document-attach-outline" emptyTitle={t('contracts.empty')} onRetry={() => void q.refetch()}>
       <View style={{ gap: 10 }}>
         {items.map((c) => (
           <RowCard
