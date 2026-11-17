@@ -485,6 +485,8 @@ export function Field({
   icon,
   autoCapitalize,
   autoComplete,
+  maxLength,
+  mono,
 }: {
   label: string;
   value: string;
@@ -494,8 +496,11 @@ export function Field({
   keyboardType?: 'default' | 'email-address' | 'number-pad' | 'decimal-pad' | 'phone-pad';
   multiline?: boolean;
   icon?: IconName;
-  autoCapitalize?: 'none' | 'sentences' | 'words';
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   autoComplete?: ComponentProps<typeof TextInput>['autoComplete'];
+  maxLength?: number;
+  /** Código curto (empresa): fonte monoespaçada, centralizado e com as letras espaçadas. */
+  mono?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   // Campo de senha: o olhinho mostra o que está sendo digitado.
@@ -515,11 +520,13 @@ export function Field({
           multiline={multiline}
           autoCapitalize={autoCapitalize}
           autoComplete={autoComplete}
+          maxLength={maxLength}
+          autoCorrect={mono ? false : undefined}
           accessibilityLabel={label}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           // Multilinha: o campo ocupa a caixa inteira, para o toque em qualquer ponto abrir o teclado.
-          style={[styles.input, multiline && { textAlignVertical: 'top', minHeight: 68, alignSelf: 'stretch' }]}
+          style={[styles.input, mono && styles.inputMono, multiline && { textAlignVertical: 'top', minHeight: 68, alignSelf: 'stretch' }]}
         />
         {secureTextEntry ? (
           <Pressable
@@ -1187,6 +1194,12 @@ const styles = StyleSheet.create({
   inputFocused: {
     backgroundColor: '#fff',
     borderColor: '#c9d3e6',
+  },
+  inputMono: {
+    textAlign: 'center',
+    letterSpacing: 6,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    fontSize: 18,
   },
   input: {
     flex: 1,

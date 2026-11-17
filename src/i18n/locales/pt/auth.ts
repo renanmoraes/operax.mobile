@@ -15,7 +15,7 @@ const auth = {
     workEmail: 'E-mail de trabalho',
     workEmailPlaceholder: 'seu@empresa.com',
     companyCode: 'Código da empresa',
-    companyCodePlaceholder: 'Ex.: OPRX',
+    companyCodePlaceholder: 'ACME',
   },
   mfa: {
     title: 'Só mais um passo',
@@ -84,6 +84,11 @@ const auth = {
     mismatch: 'As senhas não são iguais.',
   },
   login: {
+    company: 'Empresa',
+    lastAccess: 'Último acesso',
+    changeCompany: 'Trocar',
+    rememberedHint: 'Informe e-mail e senha para continuar.',
+    companyCodeA11y: 'Código da empresa {{code}}',
     newAccountTag: 'Nova conta · Equipe',
     title: 'Bom trabalho hoje',
     subtitle: 'Entre com o acesso que a sua empresa liberou para você.',

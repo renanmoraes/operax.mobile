@@ -1,11 +1,13 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { Body, Button, Field, Muted } from '@/src/design-system/ui';
 import { colors } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { AuthShell } from '@/src/features/auth/AuthShell';
+import { CompanyCodeField } from '@/src/features/auth/CompanyCodeField';
+import { clearSavedCompanyCode, getSavedCompanyCode, saveCompanyCode } from '@/src/features/auth/companyCode';
 import { ALLOW_MOCK, API_URL } from '@/src/shared/config';
 
 export default function LoginScreen() {
@@ -13,7 +15,20 @@ export default function LoginScreen() {
   const { login, enterDemo, error, clearError, clearRole, returnRole, cancelAddAccount } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [companyCode, setCompanyCode] = useState('OPRX');
+  // Sem código fixo: vazio na primeira vez; depois, o último usado neste aparelho (cartão Último acesso, como na web).
+  const [companyCode, setCompanyCode] = useState('');
+  const [savedCode, setSavedCode] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void getSavedCompanyCode().then((code) => {
+      if (!alive || !code) return;
+      setSavedCode(code);
+      setCompanyCode(code);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [loading, setLoading] = useState(false);
 
   // Adicionando uma segunda conta: voltar desiste e reabre a conta que já estava aberta.
@@ -38,6 +53,7 @@ export default function LoginScreen() {
               setLoading(true);
               try {
                 const next = await login(email.trim(), password, companyCode.trim());
+                void saveCompanyCode(companyCode);
                 router.replace(next === 'mfa' ? '/(auth)/mfa' : '/');
               } catch {
                 /* error state */
@@ -65,13 +81,18 @@ export default function LoginScreen() {
         </>
       }
     >
-      <Field
-        label={t('fields.companyCode')}
-        icon="business-outline"
+      <CompanyCodeField
         value={companyCode}
-        autoCapitalize="none"
-        onChangeText={(v) => setCompanyCode(v.toUpperCase())}
-        placeholder={t('fields.companyCodePlaceholder')}
+        saved={savedCode}
+        onChange={(v) => {
+          clearError();
+          setCompanyCode(v);
+        }}
+        onClearSaved={() => {
+          void clearSavedCompanyCode();
+          setSavedCode(null);
+          setCompanyCode('');
+        }}
       />
       <Field
         label={t('fields.workEmail')}

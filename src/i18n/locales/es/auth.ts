@@ -17,7 +17,7 @@ const auth: Shape<typeof pt> = {
     workEmail: 'Correo de trabajo',
     workEmailPlaceholder: 'tu@empresa.com',
     companyCode: 'Código de la empresa',
-    companyCodePlaceholder: 'Ej.: OPRX',
+    companyCodePlaceholder: 'ACME',
   },
   mfa: {
     title: 'Un paso más',
@@ -86,6 +86,11 @@ const auth: Shape<typeof pt> = {
     mismatch: 'Las contraseñas no coinciden.',
   },
   login: {
+    company: 'Empresa',
+    lastAccess: 'Último acceso',
+    changeCompany: 'Cambiar',
+    rememberedHint: 'Ingresa tu e-mail y contraseña para continuar.',
+    companyCodeA11y: 'Código de la empresa {{code}}',
     newAccountTag: 'Nueva cuenta · Equipo',
     title: 'Buen trabajo hoy',
     subtitle: 'Entra con el acceso que tu empresa te habilitó.',

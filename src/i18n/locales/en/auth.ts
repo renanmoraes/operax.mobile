@@ -17,7 +17,7 @@ const auth: Shape<typeof pt> = {
     workEmail: 'Work email',
     workEmailPlaceholder: 'you@company.com',
     companyCode: 'Company code',
-    companyCodePlaceholder: 'E.g. OPRX',
+    companyCodePlaceholder: 'ACME',
   },
   mfa: {
     title: 'Just one more step',
@@ -86,6 +86,11 @@ const auth: Shape<typeof pt> = {
     mismatch: 'The passwords don\'t match.',
   },
   login: {
+    company: 'Company',
+    lastAccess: 'Last access',
+    changeCompany: 'Change',
+    rememberedHint: 'Enter your email and password to continue.',
+    companyCodeA11y: 'Company code {{code}}',
     newAccountTag: 'New account · Team',
     title: 'Have a great day at work',
     subtitle: 'Sign in with the access your company gave you.',
