@@ -4,6 +4,8 @@ import type pt from '../pt/common';
 const common: Shape<typeof pt> = {
   actions: {
     back: 'Back',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
     close: 'Close',
     cancel: 'Cancel',
     save: 'Save',

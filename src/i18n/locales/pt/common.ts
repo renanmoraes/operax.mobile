@@ -2,6 +2,8 @@
 const common = {
   actions: {
     back: 'Voltar',
+    showPassword: 'Mostrar senha',
+    hidePassword: 'Ocultar senha',
     close: 'Fechar',
     cancel: 'Cancelar',
     save: 'Salvar',

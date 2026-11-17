@@ -498,6 +498,8 @@ export function Field({
   autoComplete?: ComponentProps<typeof TextInput>['autoComplete'];
 }) {
   const [focused, setFocused] = useState(false);
+  // Campo de senha: o olhinho mostra o que está sendo digitado.
+  const [revealed, setRevealed] = useState(false);
   return (
     <View style={{ gap: spacing.sm }}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -508,7 +510,7 @@ export function Field({
           onChangeText={onChangeText}
           placeholder={placeholder}
           placeholderTextColor="#6b7486"
-          secureTextEntry={secureTextEntry}
+          secureTextEntry={secureTextEntry && !revealed}
           keyboardType={keyboardType}
           multiline={multiline}
           autoCapitalize={autoCapitalize}
@@ -519,6 +521,16 @@ export function Field({
           // Multilinha: o campo ocupa a caixa inteira, para o toque em qualquer ponto abrir o teclado.
           style={[styles.input, multiline && { textAlignVertical: 'top', minHeight: 68, alignSelf: 'stretch' }]}
         />
+        {secureTextEntry ? (
+          <Pressable
+            onPress={() => setRevealed((v) => !v)}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel={i18n.t(revealed ? 'actions.hidePassword' : 'actions.showPassword')}
+          >
+            <Ionicons name={revealed ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textMuted} />
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
