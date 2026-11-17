@@ -100,6 +100,9 @@ export type PortalHome = {
 };
 
 export const portalHome = async () => (await api.get(`${BASE}/me/home`)).data as PortalHome;
+/** Endereço do calendário pessoal do cliente (Google Agenda, assinatura webcal ou https). */
+export type PortalCalendarLink = { https_url: string; webcal_url: string; google_url: string };
+export const portalCalendarLink = async () => (await api.get(`${BASE}/me/calendar-link`)).data as PortalCalendarLink;
 export const portalMyCompanies = async () => (await api.get(`${BASE}/me/companies`)).data as PortalCompany[];
 export const portalSwitch = async (access_id: string) => (await api.post(`${BASE}/me/switch`, { access_id })).data as PortalLoginResult;
 export const portalLogout = async () => void (await api.post(`${BASE}/me/logout`, {}));

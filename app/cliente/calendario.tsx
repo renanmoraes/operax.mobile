@@ -1,20 +1,51 @@
+import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { Linking, Platform, ScrollView, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Body, Button, Card, HeroCard, IconTile, Muted, Rise, Screen, TopBar } from '@/src/design-system/ui';
+import { showDialog } from '@/src/design-system/Dialog';
 import { colors, text } from '@/src/design-system/tokens';
+import { portalCalendarLink } from '@/src/shared/api/portal.api';
 
-/** Assinatura da agenda no calendário do celular (GET me/calendar-link no portal). */
+/** Assinatura da agenda no calendário do celular: o endereço pessoal vem de GET me/calendar-link no portal. */
 export default function CalendarSubscribeScreen() {
   const { t } = useTranslation('client');
   const insets = useSafeAreaInsets();
-  const [note, setNote] = useState<string | null>(null);
+  // Sem guardar entre telas: o endereço é um segredo da sessão e some junto com ela.
+  const { data: link, isError: failed, refetch } = useQuery({ queryKey: ['client', 'calendar-link'], queryFn: portalCalendarLink, gcTime: 0, staleTime: 0 });
+  const [busy, setBusy] = useState(false);
+  const load = () => void refetch();
 
-  // Os links pessoais (google_url / webcal_url) vêm de GET me/calendar-link, que depende do login mobile de cliente.
-  const open = (_kind: 'google' | 'webcal') => {
-    setNote(t('calendarSubscribe.note'));
+  const fail = () => showDialog({ title: t('calendarSubscribe.failTitle'), message: t('calendarSubscribe.failBody'), tone: 'warn' });
+
+  const openGoogle = async () => {
+    if (!link) return;
+    setBusy(true);
+    try {
+      await Linking.openURL(link.google_url);
+    } catch {
+      await fail();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // iPhone/Mac reconhecem webcal://; no Android não há app que abra, então o caminho é copiar o endereço para o app de calendário.
+  const second = async () => {
+    if (!link) return;
+    if (Platform.OS === 'ios') {
+      try {
+        await Linking.openURL(link.webcal_url);
+      } catch {
+        await fail();
+      }
+      return;
+    }
+    await Clipboard.setStringAsync(link.https_url);
+    await showDialog({ title: t('calendarSubscribe.copiedTitle'), message: t('calendarSubscribe.copiedBody'), tone: 'success' });
   };
 
   return (
@@ -32,13 +63,21 @@ export default function CalendarSubscribeScreen() {
         </Rise>
         <Rise index={1}>
           <Card style={{ gap: 12 }}>
-            <Button label={t('calendarSubscribe.google')} icon="logo-google" onPress={() => open('google')} />
-            <Button label={t('calendarSubscribe.webcal')} icon="calendar-outline" variant="soft" onPress={() => open('webcal')} />
-            {note ? <Body style={{ fontSize: 13, color: colors.textMuted, lineHeight: 19 }}>{note}</Body> : null}
+            <Button label={t('calendarSubscribe.google')} icon="logo-google" loading={busy || (!link && !failed)} disabled={!link} onPress={() => void openGoogle()} />
+            <Button
+              label={Platform.OS === 'ios' ? t('calendarSubscribe.apple') : t('calendarSubscribe.copy')}
+              icon={Platform.OS === 'ios' ? 'calendar-outline' : 'copy-outline'}
+              variant="soft"
+              disabled={!link}
+              onPress={() => void second()}
+            />
+            {failed ? (
+              <>
+                <Body style={{ fontSize: 13, color: colors.dangerText, lineHeight: 19 }}>{t('calendarSubscribe.loadFail')}</Body>
+                <Button label={t('calendarSubscribe.retry')} variant="ghost" onPress={load} />
+              </>
+            ) : null}
           </Card>
-        </Rise>
-        <Rise index={2}>
-          <Muted style={{ textAlign: 'center', lineHeight: 19 }}>{t('calendarSubscribe.personal')}</Muted>
         </Rise>
       </ScrollView>
     </Screen>
