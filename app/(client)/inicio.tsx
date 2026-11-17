@@ -23,6 +23,7 @@ import {
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { colors, gradients, radii, shadows, text, typography, glass } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
+import { usePasswordPrompt } from '@/src/features/auth/usePasswordPrompt';
 import { canUndoBookingAnswer, useBookings, useChats, useClientCapabilities, useCompanies, useConfirmBooking, useUnconfirmBooking } from '@/src/features/client/useClientData';
 import { useFitnessSummary, useWeek } from '@/src/features/fitness/useFitness';
 import { formatDuration, formatHour, greeting, longDate, minutesUntilLabel } from '@/src/shared/format';
@@ -43,7 +44,9 @@ export default function ClientHomeScreen() {
   const { t } = useTranslation('client');
   const insets = useSafeAreaInsets();
   const now = useNow(60_000);
-  const { user } = useAuth();
+  const { user, mode } = useAuth();
+  // Primeiro login pelo código: convida a criar a senha (vale em todas as empresas da pessoa).
+  usePasswordPrompt(user, mode === 'live');
   const { data: bookings } = useBookings();
   const { data: chats } = useChats();
   // Só mostra o que a empresa liberou no portal (sem treino liberado, nada de treino aqui).

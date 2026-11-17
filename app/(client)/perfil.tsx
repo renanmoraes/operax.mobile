@@ -18,6 +18,7 @@ import { appVersionLabel } from '@/src/shared/updates/appVersion';
 
 export default function ClientPerfilScreen() {
   const { t } = useTranslation('client');
+  const { t: tAuth } = useTranslation('auth');
   const insets = useSafeAreaInsets();
   const { user, logout, switchTenant, mode } = useAuth();
   const { data: companies } = useCompanies();
@@ -107,6 +108,14 @@ export default function ClientPerfilScreen() {
                 subtitle={connected.length ? connected.join(', ') : t('profile.watchesSub')}
                 subtitleTone={connected.length ? 'success' : undefined}
                 onPress={() => router.push('/cliente/relogios')}
+              />
+            ) : null}
+            {client?.account?.hasIdentity ? (
+              <SettingsRow
+                icon="key-outline"
+                title={tAuth(client.account.hasPassword ? 'password.changeTitle' : 'password.createTitle')}
+                subtitle={tAuth('password.rowSub')}
+                onPress={() => router.push('/cliente/senha')}
               />
             ) : null}
             <SettingsRow icon="shield-checkmark-outline" title={t('profile.privacy')} subtitle={t('profile.privacySub')} onPress={() => router.push('/cliente/permissoes')} />

@@ -13,6 +13,7 @@ import {
   portalRequestCode,
   portalSelectCompany,
   portalSetPassword,
+  portalChangePassword,
   portalSwitch,
   portalVerifyCode,
 } from '@/src/shared/api/portal.api';
@@ -69,6 +70,12 @@ type AuthState = {
   verifyClientOtp: (identifier: string, code: string) => Promise<'blocked' | 'ok' | 'set_password'>;
   /** Primeiro acesso pelo código: cria a senha e entra. */
   setClientPassword: (password: string) => Promise<'blocked' | 'ok'>;
+  /**
+   * Logado: cria (sem `current`) ou troca a senha da pessoa, que vale em todas as empresas dela.
+   * Guarda a sessão nova que o servidor devolve (os outros aparelhos saem). `null` = deu certo;
+   * texto = o motivo para mostrar na tela.
+   */
+  changeClientPassword: (next: string, current?: string) => Promise<string | null>;
   switchTenant: (tenantId: string) => Promise<void>;
   enterClientDemo: () => void;
   logout: () => Promise<void>;
@@ -722,6 +729,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (err) {
           setError(messageFromError(err, i18n.t('auth:errors.createPassword')));
           throw err;
+        }
+      },
+
+      changeClientPassword: async (next, current) => {
+        try {
+          await enterPortal(await portalChangePassword(next, current));
+          return null;
+        } catch (err) {
+          // Aqui o 401 é "A senha atual não confere": vale a frase do servidor, não a de login errado.
+          const res = (err as { response?: { status?: number; data?: { message?: unknown } } })?.response;
+          if (res?.status === 401 && typeof res.data?.message === 'string' && res.data.message.trim()) return res.data.message;
+          return messageFromError(err, i18n.t('auth:errors.createPassword'));
         }
       },
 

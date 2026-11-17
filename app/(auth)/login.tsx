@@ -81,7 +81,8 @@ export default function LoginScreen() {
         autoComplete="email"
         onChangeText={(v) => {
           clearError();
-          setEmail(v);
+          // E-mail não tem maiúscula nem espaço: o teclado do celular costuma pôr a primeira letra em maiúscula.
+          setEmail(v.toLowerCase().replace(/\s/g, ''));
         }}
         keyboardType="email-address"
         placeholder={t('fields.workEmailPlaceholder')}

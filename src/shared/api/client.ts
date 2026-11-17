@@ -131,6 +131,9 @@ const AUTH_ROUTE_PATTERNS = [
   '/api/auth/mfa/',
   '/api/auth/client/login',
   '/api/auth/client/otp/',
+  // Trocar a senha logado: 401 é "a senha atual não confere", não sessão encerrada. Sem isto, errar a
+  // senha atual apagava a sessão do cliente.
+  '/api/public/portal/me/password',
 ];
 
 export function isAuthRoute(url: string): boolean {

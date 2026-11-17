@@ -49,7 +49,7 @@ export default function ClientOtpScreen() {
   return (
     <AuthShell
       onBack={() => router.replace('/(auth)/client-login')}
-      title={creating ? t('clientOtp.createTitle') : t('clientOtp.checkTitle')}
+      title={creating ? t('clientOtp.createTitle') : identifier?.includes('@') ? t('clientOtp.checkEmailTitle') : t('clientOtp.checkTitle')}
       subtitle={
         creating
           ? t('clientOtp.createSubtitle')

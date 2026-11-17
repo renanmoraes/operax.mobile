@@ -24,6 +24,11 @@ describe('maskIdentifier', () => {
     expect(maskIdentifier('')).toBe('');
   });
 
+  it('e-mail vai sempre em minúsculas e sem espaço', () => {
+    expect(maskIdentifier('Rafael@Email.COM')).toBe('rafael@email.com');
+    expect(maskIdentifier('rafael @email.com ')).toBe('rafael@email.com');
+  });
+
   it('e-mail fica como foi digitado, mesmo começando com número', () => {
     expect(maskIdentifier('rafael@email.com')).toBe('rafael@email.com');
     expect(maskIdentifier('31rafa')).toBe('31rafa');

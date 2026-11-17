@@ -95,12 +95,20 @@ export type PortalHome = {
   capabilities: { scheduling: boolean; chat: boolean; training: boolean } & Record<string, boolean>;
   bookings: PortalBooking[];
   badges: { chat: number; training: number } & Record<string, number>;
+  /** A conta da pessoa: sem identidade (entrou por link da empresa) não dá para criar senha. */
+  account?: { has_identity: boolean; has_password: boolean };
 };
 
 export const portalHome = async () => (await api.get(`${BASE}/me/home`)).data as PortalHome;
 export const portalMyCompanies = async () => (await api.get(`${BASE}/me/companies`)).data as PortalCompany[];
 export const portalSwitch = async (access_id: string) => (await api.post(`${BASE}/me/switch`, { access_id })).data as PortalLoginResult;
 export const portalLogout = async () => void (await api.post(`${BASE}/me/logout`, {}));
+/**
+ * Cria (sem senha atual) ou troca a senha da pessoa. A senha é da pessoa no Operax e vale em todas
+ * as empresas dela. Os outros aparelhos saem; este recebe uma sessão nova, que precisa ser guardada.
+ */
+export const portalChangePassword = async (new_password: string, current_password?: string) =>
+  (await api.post(`${BASE}/me/password`, { new_password, ...(current_password ? { current_password } : {}) })).data as PortalLoginResult;
 
 /** Aparelho do aluno nesta empresa: o servidor manda por push as conquistas (e os próximos avisos do portal). */
 export type PortalPushTokenInput = { token: string; platform: 'ios' | 'android' | 'unknown'; app_version?: string; lang: 'pt' | 'en' | 'es' };
