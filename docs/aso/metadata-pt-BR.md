@@ -90,7 +90,31 @@ Atendimento com IA, PDV, agenda e treino da sua empresa Operax, no celular.
 ```
 (75 chars)
 
-### Full description (indexada) — usada no Play Console em 16/11/2026
+### Full description — versão enxuta (proposta de 17/11/2026, ainda não colocada no Play Console)
+
+Só o que mais pesa: atendimento e PDV para a equipe, treino para o cliente.
+
+```
+O Operax Mobile leva o Operax da sua empresa para o celular: atendimento e vendas no balcão para a equipe, aulas e treino para os clientes.
+
+PARA A EQUIPE
+• Fila de atendimento: assuma conversas e responda de onde estiver
+• Resumo da conversa e sugestões de resposta com IA
+• PDV: venda por unidade ou por peso, receba e calcule o troco
+
+PARA OS CLIENTES
+• Aulas em grupo: confirme presença e aceite vagas que abrirem
+• Ficha de treino com cronômetro da sessão
+
+COMO ENTRAR
+Equipe: código da empresa, e-mail e senha do Operax.
+Clientes: encontre sua empresa e use o acesso liberado por ela.
+
+O app é para empresas que usam o Operax. Não há cadastro aberto: o acesso é liberado pela própria empresa.
+```
+
+Texto anterior (em uso no Play Console desde 16/11/2026), com agenda, avisos, chat interno, GPS e conquistas:
+
 
 ```
 O Operax Mobile leva o Operax da sua empresa para o celular: atendimento ao cliente, vendas no balcão e agenda para a equipe, e aulas e treinos para os clientes.

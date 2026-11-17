@@ -4,6 +4,29 @@ Tudo aqui foi gerado com o editor em `store-assets/screenshots-editor/` (skill `
 capturas reais do app em modo demonstração (`store-assets/raw/`). Só a interface real do app aparece nas telas.
 Os selos flutuantes repetem números que estão na própria tela.
 
+## Para enviar às lojas: só o essencial (17/11/2026)
+
+Use a pasta `envio/`. São 6 imagens por tamanho, só o que mais pesa: **atendimento e PDV para a equipe, treino para o cliente**.
+Ficaram de fora agenda, avisos, transferência, o mosaico "E muito mais" e os slides de cadastro de produto (continuam nas outras pastas, sem uso).
+
+| # | Título | Público |
+|---|--------|---------|
+| 01 | Atendimento no bolso | Equipe |
+| 02 | Resumo e resposta prontos | Equipe |
+| 03 | Pese por valor. Venda no kg | Equipe (PDV) |
+| 04 | Receba e dê o troco | Equipe (PDV) |
+| 05 | Aceite a vaga na hora | Cliente (fitness) |
+| 06 | Treino com cronômetro | Cliente (fitness) |
+
+| Pasta | Onde sobe |
+|-------|-----------|
+| `envio/ios/iphone-6.9/01..06.png` | App Store, iPhone 6,9" |
+| `envio/ios/iphone-6.5/01..06.png` | App Store, iPhone 6,5" |
+| `envio/android/phone/01..06.png` | Google Play, celular |
+| `envio/feature-graphic-1024x500.png` | Google Play, imagem de destaque |
+
+Cada loja aceita menos imagens do que o editor gera, então sobe a ordem de 01 a 06 e apaga o resto do que já estiver lá.
+
 ## Arquivos
 
 | Pasta | Conteúdo | Tamanho |
