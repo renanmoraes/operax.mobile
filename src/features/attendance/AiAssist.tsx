@@ -8,6 +8,7 @@ import { Button, Muted } from '@/src/design-system/ui';
 import { colors, radii, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { useCan } from '@/src/features/auth/useCan';
+import { interestLabel } from './interestLabel';
 import { timeAgo } from '@/src/shared/format';
 import type { ApiConversation } from '@/src/shared/api/conversations.api';
 import { copilotFeedback, getActiveApps, polishDraft, rateSummary, regenerateSummary, suggestReplies, type CopilotBatch } from '@/src/shared/api/attendance.api';
@@ -137,7 +138,7 @@ export function AiSummarySheet({
           {data?.ai_primary_intent ? (
             <View style={[styles.fact, { flex: 1.4 }]}>
               <Text style={styles.factLabel}>{t('ai.intent')}</Text>
-              <Text style={styles.factValue} numberOfLines={2}>{data.ai_primary_intent}</Text>
+              <Text style={styles.factValue} numberOfLines={2}>{interestLabel(data.ai_primary_intent)}</Text>
             </View>
           ) : null}
         </View>

@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { locale } from '@/src/i18n';
 import { useMemo, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInputInstance, View, AppState } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInputInstance, View, AppState, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar, Backdrop, Button, IconButton, IconTile, Muted } from '@/src/design-system/ui';
@@ -139,6 +139,10 @@ function ConversationScreen() {
     },
     mode === 'live' && !!id,
   );
+
+  // Telas estreitas: avatar menor e menos folga, para o nome e o status do contato terem espaço ao lado dos botões.
+  const { width: screenW } = useWindowDimensions();
+  const narrow = screenW < 400;
 
   const conversation = mode === 'live' ? liveQuery.data?.conversation : mockConv;
   const thread = mode === 'live' ? liveQuery.data?.messages ?? [] : [...mockThread, ...localMsgs];
@@ -388,18 +392,19 @@ function ConversationScreen() {
     // O campo de mensagem sobe junto com o teclado do iPhone (sem esconder o texto e o enviar).
     <KeyboardAvoidingView style={styles.root} behavior={KEYBOARD_BEHAVIOR}>
       <Backdrop variant="chat" />
-      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }, narrow && { paddingHorizontal: 8, gap: 4 }]}>
         <IconButton icon="chevron-back" accessibilityLabel={t('common:actions.back')} onPress={() => router.back()} />
         <Pressable
-          style={styles.contactBlock}
+          style={[styles.contactBlock, narrow && { gap: 8 }]}
           onPress={() => conversation.contactId && router.push(`/contact/${conversation.contactId}`)}
           accessibilityRole="button"
           accessibilityLabel={t('conversation.viewContact')}
         >
-          <Avatar initials={initialsOf(conversation.contactName)} size={42} />
+          <Avatar initials={initialsOf(conversation.contactName)} size={narrow ? 36 : 42} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.contactName} numberOfLines={1}>{conversation.contactName}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            {/* Em tela estreita o canal, o ponto e o status quebram para a linha de baixo em vez de se atropelar. */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 6, rowGap: 3, marginTop: 2 }}>
               {/* Vários números: por qual deles o cliente está falando (a resposta sai por ele). */}
               {isHub ? (
                 <ChannelChip channel={conversation.channel} size="xs" />
@@ -407,7 +412,7 @@ function ConversationScreen() {
                 <ChannelChip connection={connection} size="xs" />
               ) : null}
               <View style={[styles.statusDot, ownership === 'mine' ? { backgroundColor: colors.success } : ownership === 'queue' ? { backgroundColor: colors.warn } : null]} />
-              <Muted numberOfLines={1} style={{ fontSize: 12.5 }}>
+              <Muted numberOfLines={1} style={{ fontSize: 12.5, flexShrink: 1 }}>
                 {conversation.queue} · {statusLabel}
               </Muted>
             </View>
