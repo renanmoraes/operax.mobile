@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Display, Glow, IconTile, Muted, PressableScale, Rise, Screen } from '@/src/design-system/ui';
 import { colors, radii, shadows, spacing, text } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
+import { appVersionLabel } from '@/src/shared/updates/appVersion';
 
 function RoleCard({
   title,
@@ -92,6 +93,7 @@ export default function RoleSelectScreen() {
           </View>
           <Rise index={5}>
             <Muted style={styles.legal}>{t('roleSelect.legal')}</Muted>
+            <Muted style={styles.version}>{appVersionLabel()}</Muted>
           </Rise>
         </View>
       </View>
@@ -116,4 +118,5 @@ const styles = StyleSheet.create({
   cardTitle: { ...text.section, color: colors.text },
   arrow: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   legal: { marginTop: 22, textAlign: 'center', fontSize: 12, lineHeight: 18 },
+  version: { marginTop: 8, textAlign: 'center', fontSize: 11 },
 });

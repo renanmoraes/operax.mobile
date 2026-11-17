@@ -3,6 +3,7 @@ import { API_URL, MOBILE_CLIENT_HEADER } from '@/src/shared/config';
 import { clearTokens, getAccessToken, getRefreshToken, getSavedRole, SavedRole, setTokens } from './token-store';
 import { refreshSocketAuth } from '@/src/shared/realtime/socket';
 import { reportError, trackAction } from '@/src/shared/telemetry/errorReporter';
+import { appVersionHeader } from '@/src/shared/updates/versionInfo';
 
 // `axios.create` é o uso documentado da biblioteca; o aviso de import nomeado não se aplica.
 // eslint-disable-next-line import/no-named-as-default-member
@@ -11,6 +12,7 @@ export const api = axios.create({
   timeout: 30_000,
   headers: {
     'X-Client': MOBILE_CLIENT_HEADER,
+    'X-App-Version': appVersionHeader(),
     Accept: 'application/json',
   },
 });
@@ -34,6 +36,7 @@ async function refreshAccessToken(role: SavedRole): Promise<string | null> {
         {
           headers: {
             'X-Client': MOBILE_CLIENT_HEADER,
+            'X-App-Version': appVersionHeader(),
             Authorization: `Bearer ${refresh}`,
             Accept: 'application/json',
           },
@@ -72,7 +75,7 @@ export async function renewSession(role: SavedRole): Promise<'ok' | 'gone' | 'sk
     const { data } = await axios.post(
       `${API_URL}/api/public/portal/me/renew`,
       {},
-      { headers: { 'X-Client': MOBILE_CLIENT_HEADER, Authorization: `Bearer ${access}`, Accept: 'application/json' }, timeout: 30_000 },
+      { headers: { 'X-Client': MOBILE_CLIENT_HEADER, 'X-App-Version': appVersionHeader(), Authorization: `Bearer ${access}`, Accept: 'application/json' }, timeout: 30_000 },
     );
     const next = data?.access_token as string | undefined;
     if (!next) return 'skip';
@@ -107,6 +110,7 @@ api.interceptors.request.use(async (config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
   config.headers['X-Client'] = MOBILE_CLIENT_HEADER;
+  config.headers['X-App-Version'] = appVersionHeader();
   (config as RetriableConfig & { _t0?: number })._t0 = Date.now();
   return config;
 });

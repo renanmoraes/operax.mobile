@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { Badge, Display, IconButton, Muted, Rise, Screen } from '@/src/design-system/ui';
 import { spacing } from '@/src/design-system/tokens';
+import { appVersionLabel } from '@/src/shared/updates/appVersion';
 
 /** Moldura comum das telas de entrada: fundo tonal, voltar, título grande e rodapé fixo. */
 export function AuthShell({
@@ -60,6 +61,8 @@ export function AuthShell({
           </Rise>
           <View style={{ flex: 1, minHeight: 24 }} />
           {footer ? <View style={{ gap: 16 }}>{footer}</View> : null}
+          {/* Versão sempre à vista, inclusive antes de entrar: é o que o suporte pergunta primeiro. */}
+          <Muted style={styles.version}>{appVersionLabel()}</Muted>
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
@@ -71,4 +74,5 @@ const styles = StyleSheet.create({
   top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 44 },
   logo: { width: 126, height: 25, marginTop: 36 },
   subtitle: { marginTop: 10, fontSize: 15, lineHeight: 22 },
+  version: { textAlign: 'center', fontSize: 12, marginTop: 14 },
 });

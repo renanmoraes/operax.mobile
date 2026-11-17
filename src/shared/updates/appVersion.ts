@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import i18n from '@/src/i18n';
 import { AppState, Platform } from 'react-native';
-import * as Application from 'expo-application';
-import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
 import { trackAction } from '@/src/shared/telemetry/errorReporter';
+import { appVersionInfo } from './versionInfo';
+
+export { appVersionHeader, appVersionInfo, type AppVersionInfo } from './versionInfo';
 
 /**
  * Versão do app e atualização automática (EAS Update).
@@ -14,26 +15,6 @@ import { trackAction } from '@/src/shared/telemetry/errorReporter';
  * a versão nova entra sozinha na próxima vez que o app abrir. Em desenvolvimento e no Expo Go
  * o EAS Update fica desligado (Updates.isEnabled = false).
  */
-
-export type AppVersionInfo = {
-  version: string;
-  build: string | null;
-  /** Atualização em uso (8 primeiros caracteres) ou "embutida" (a que veio no instalador). */
-  update: string;
-  channel: string | null;
-  updatedAt: Date | null;
-};
-
-export function appVersionInfo(): AppVersionInfo {
-  const embedded = !Updates.isEnabled || Updates.isEmbeddedLaunch || !Updates.updateId;
-  return {
-    version: Constants.expoConfig?.version ?? Application.nativeApplicationVersion ?? '0.0.0',
-    build: Application.nativeBuildVersion ?? null,
-    update: embedded ? 'embutida' : Updates.updateId!.slice(0, 8),
-    channel: Updates.isEnabled ? Updates.channel : null,
-    updatedAt: Updates.isEnabled && !embedded ? Updates.createdAt : null,
-  };
-}
 
 /** "Versão 1.0.0 (12) · atualização 3f2a1c9d" */
 export function appVersionLabel(info = appVersionInfo()): string {

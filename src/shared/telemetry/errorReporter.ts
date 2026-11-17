@@ -10,6 +10,7 @@ import { API_URL, MOBILE_CLIENT_HEADER } from '@/src/shared/config';
 import { getAccessToken, getSavedRole } from '@/src/shared/api/token-store';
 import { addBreadcrumb, bumpErrorAttempts, insertError, markErrorsSent, pendingErrors, recentBreadcrumbs, type Breadcrumb } from '@/src/shared/db/localDb';
 import * as Updates from 'expo-updates';
+import { appVersionHeader } from '@/src/shared/updates/versionInfo';
 
 /**
  * Erros do app → servidor (`POST /api/mobile/logs`, gravado em `system_logs` com origem `mobile`).
@@ -189,7 +190,7 @@ export async function flushErrors(): Promise<void> {
         meta: { ...(r.meta ? (JSON.parse(r.meta) as Record<string, unknown>) : {}), send_attempts: r.attempts + 1 },
       }));
       try {
-        await axios.post(`${API_URL}/api/mobile/logs`, { entries }, { timeout: 15_000, headers: { 'X-Client': MOBILE_CLIENT_HEADER, ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+        await axios.post(`${API_URL}/api/mobile/logs`, { entries }, { timeout: 15_000, headers: { 'X-Client': MOBILE_CLIENT_HEADER, 'X-App-Version': appVersionHeader(), ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
       } catch {
         await bumpErrorAttempts(rows.map((r) => r.id));
         break; // sem internet ou servidor fora: fica para o próximo ciclo

@@ -1,4 +1,15 @@
-import { maskIdentifier } from '../identifier';
+import { isPhoneLike, maskIdentifier } from '../identifier';
+
+describe('isPhoneLike', () => {
+  it('só número é celular; vazio, letra ou @ é e-mail', () => {
+    expect(isPhoneLike('(31) 99563-7020')).toBe(true);
+    expect(isPhoneLike('3')).toBe(true);
+    expect(isPhoneLike('')).toBe(false);
+    expect(isPhoneLike('(')).toBe(false);
+    expect(isPhoneLike('31rafa')).toBe(false);
+    expect(isPhoneLike('a@b.com')).toBe(false);
+  });
+});
 
 describe('maskIdentifier', () => {
   it('celular ganha a máscara enquanto a pessoa digita', () => {

@@ -7,7 +7,7 @@ import { Body, Button, Field, Muted, Segmented } from '@/src/design-system/ui';
 import { colors, radii } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { AuthShell } from '@/src/features/auth/AuthShell';
-import { maskIdentifier } from '@/src/features/auth/identifier';
+import { isPhoneLike, maskIdentifier } from '@/src/features/auth/identifier';
 import { ALLOW_MOCK } from '@/src/shared/config';
 
 type Method = 'password' | 'otp';
@@ -91,7 +91,7 @@ export default function ClientLoginScreen() {
       />
       <Field
         label={t('fields.emailOrPhone')}
-        icon="mail-outline"
+        icon={isPhoneLike(identifier) ? 'call-outline' : 'mail-outline'}
         value={identifier}
         autoCapitalize="none"
         autoComplete="email"

@@ -1,5 +1,6 @@
 import { create } from 'axios';
 import { API_URL, MOBILE_CLIENT_HEADER } from '@/src/shared/config';
+import { appVersionHeader } from '@/src/shared/updates/versionInfo';
 import { api } from './client';
 import { deviceId } from './deviceId';
 
@@ -12,7 +13,7 @@ import { deviceId } from './deviceId';
 const BASE = '/api/public/portal';
 
 /** Chamadas sem sessão (login, código, escolher empresa): cliente HTTP sem os interceptores do app. */
-const publicApi = create({ baseURL: API_URL, timeout: 30_000, headers: { 'X-Client': MOBILE_CLIENT_HEADER, Accept: 'application/json' } });
+const publicApi = create({ baseURL: API_URL, timeout: 30_000, headers: { 'X-Client': MOBILE_CLIENT_HEADER, 'X-App-Version': appVersionHeader(), Accept: 'application/json' } });
 // O login leva o identificador do aparelho: entrar de novo neste celular mantém a vaga dele (ver `deviceId.ts`).
 publicApi.interceptors.request.use(async (config) => {
   config.headers['X-Device-Id'] = await deviceId();
