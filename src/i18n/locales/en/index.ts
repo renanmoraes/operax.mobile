@@ -12,6 +12,7 @@ import attendance from './attendance';
 import pos from './pos';
 import portal from './portal';
 import contact from './contact';
+import contactMore from './contactMore';
 import { varsFor } from '../../vocabulary';
 
-export default { common, nav, settings, auth, client, inbox, agenda, team, staff, fitness, attendance, pos, portal, contact, vocab: varsFor('en') };
+export default { common, nav, settings, auth, client, inbox, agenda, team, staff, fitness, attendance, pos, portal, contact, contactMore, vocab: varsFor('en') };

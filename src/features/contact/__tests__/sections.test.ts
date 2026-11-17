@@ -21,7 +21,11 @@ describe('seções do contato', () => {
   });
 
   it('curinga vê tudo o que os apps instalados liberam', () => {
-    expect(ids({ permissions: ['*'], apps: ['pos', 'agenda'], crediario: true })).toHaveLength(9);
+    const all = ids({ permissions: ['*'], apps: ['pos', 'agenda'], crediario: true });
+    expect(all).toEqual(expect.arrayContaining(['profile', 'crediario', 'cobranca', 'compliance', 'campaigns', 'agendamentos']));
+    // apps que a empresa não instalou ficam de fora, mesmo para quem pode tudo
+    expect(all).not.toContain('reminders');
+    expect(all).not.toContain('nps');
   });
 
   it('conhece os ids para rota', () => {

@@ -7,6 +7,21 @@ import { KEYBOARD_BEHAVIOR } from '@/src/design-system/keyboard';
 import { RequirePermission } from '@/src/features/auth/useCan';
 import { isSectionId, type SectionId } from '@/src/features/contact/sections';
 import { useContactAccess } from '@/src/features/contact/useContactAccess';
+import { CampaignsSection } from '@/src/features/contact/sections/CampaignsSection';
+import { CobrancaSection } from '@/src/features/contact/sections/CobrancaSection';
+import { ComplianceSection } from '@/src/features/contact/sections/ComplianceSection';
+import { NpsSection } from '@/src/features/contact/sections/NpsSection';
+import { RemindersSection } from '@/src/features/contact/sections/RemindersSection';
+import { AccessSection } from '@/src/features/contact/sections/AccessSection';
+import { ContractsSection } from '@/src/features/contact/sections/ContractsSection';
+import { MemberCardsSection } from '@/src/features/contact/sections/MemberCardsSection';
+import { MemberContractsSection } from '@/src/features/contact/sections/MemberContractsSection';
+import { ServiceOrdersSection } from '@/src/features/contact/sections/ServiceOrdersSection';
+import { VehiclesSection } from '@/src/features/contact/sections/VehiclesSection';
+import { ClinicalSection } from '@/src/features/contact/sections/ClinicalSection';
+import { ExamsSection } from '@/src/features/contact/sections/ExamsSection';
+import { FitnessSection } from '@/src/features/contact/sections/FitnessSection';
+import { MensalidadesSection } from '@/src/features/contact/sections/MensalidadesSection';
 import { BookingsSection } from '@/src/features/contact/sections/BookingsSection';
 import { ConversationsSection } from '@/src/features/contact/sections/ConversationsSection';
 import { CrediarioSection } from '@/src/features/contact/sections/CrediarioSection';
@@ -37,6 +52,21 @@ function Body({ id, section }: { id: string; section: SectionId }) {
     case 'documents': return <DocumentsSection contactId={id} />;
     case 'interests': return <InterestsSection contactId={id} />;
     case 'tag_history': return <TagHistorySection contactId={id} />;
+    case 'compliance': return <ComplianceSection contactId={id} />;
+    case 'cobranca': return <CobrancaSection contactId={id} />;
+    case 'reminders': return <RemindersSection contactId={id} />;
+    case 'campaigns': return <CampaignsSection contactId={id} />;
+    case 'nps': return <NpsSection contactId={id} />;
+    case 'service_orders': return <ServiceOrdersSection contactId={id} />;
+    case 'workshop': return <VehiclesSection contactId={id} />;
+    case 'access': return <AccessSection contactId={id} />;
+    case 'fitness': return <FitnessSection contactId={id} />;
+    case 'mensalidades': return <MensalidadesSection contactId={id} />;
+    case 'clinical': return <ClinicalSection contactId={id} />;
+    case 'exams': return <ExamsSection contactId={id} />;
+    case 'contracts': return <ContractsSection contactId={id} />;
+    case 'member_cards': return <MemberCardsSection contactId={id} />;
+    case 'member_contracts': return <MemberContractsSection contactId={id} />;
   }
 }
 
