@@ -135,7 +135,6 @@ export default function ActivityScreen() {
           </Rise>
         ) : null}
 
-        {entry.kind === 'free' ? <Muted style={{ textAlign: 'center', lineHeight: 18, paddingHorizontal: 12 }}>{t('detail.coachSees')}</Muted> : null}
       </ScrollView>
     </Screen>
   );

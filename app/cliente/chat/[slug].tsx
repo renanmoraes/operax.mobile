@@ -217,7 +217,6 @@ export default function ClientChatScreen() {
             <AttachOption icon="images-outline" label={t('chat.photosVideos')} tone="soft" onPress={() => void pickGallery()} />
             <AttachOption icon="document-text-outline" label={t('chat.document')} tone="neutral" onPress={() => void pickDocument()} />
           </View>
-          <Muted style={{ textAlign: 'center', marginTop: 16 }}>{t('chat.attachHint')}</Muted>
         </BottomSheet>
 
         {draft ? (

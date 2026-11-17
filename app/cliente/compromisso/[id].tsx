@@ -71,7 +71,6 @@ export default function BookingDetailScreen() {
                   <View style={styles.warnDot} />
                   <Text style={styles.statusTitle}>{t('booking.pill.pending')}</Text>
                 </View>
-                <Muted style={{ marginTop: 6, lineHeight: 19 }}>{t('appointment.confirmHint', { name: b.provider_name?.split(' ')[0] ?? '' })}</Muted>
                 <Button label={t('home.confirmPresence')} loading={confirm.isPending} onPress={() => confirm.mutate(b.id)} style={{ marginTop: 14 }} />
               </Card>
             </Rise>

@@ -1040,7 +1040,6 @@ export function Recorder({
               <Muted style={{ fontSize: 12.5, lineHeight: 18 }}>{poolOther !== null && !pool ? t('rec.pool.range') : t('rec.pool.hint')}</Muted>
             </View>
           ) : null}
-          {phase === 'ready' && !gps && !draft ? <Muted style={styles.readyHint}>{t('rec.timerHint')}</Muted> : null}
         </ScrollView>
 
         {startNote ? (
@@ -1104,7 +1103,6 @@ export function Recorder({
           {gps ? <PrefRow title={t('rec.pref.startMap')} subtitle={t('rec.pref.startMapSub')} value={prefs.showMap} onChange={(v) => { changePref('showMap', v); setView(v ? 'map' : 'numbers'); }} /> : null}
           {gps && sport.rate === 'pace' ? <PrefRow title={t('rec.pref.speed')} subtitle={t('rec.pref.speedSub')} value={prefs.speed} onChange={(v) => changePref('speed', v)} /> : null}
           {Platform.OS !== 'web' ? <PrefRow title={t('rec.pref.lockSummary')} subtitle={t('rec.pref.lockSummarySub')} value={prefs.lockSummary} onChange={(v) => changePref('lockSummary', v)} /> : null}
-          <Muted style={{ marginTop: 6, lineHeight: 18 }}>{t('rec.lockNote')}</Muted>
           <Button label={t('rec.ok')} onPress={() => setSettingsOpen(false)} style={{ marginTop: 14 }} />
         </View>
       </Modal>
@@ -1295,7 +1293,6 @@ const styles = StyleSheet.create({
   draftTitle: { ...text.bodyStrong, color: colors.text },
   timerInfo: { flexDirection: 'row', gap: 12, marginTop: 18, paddingVertical: 14, paddingHorizontal: 16, borderRadius: radii.lg, backgroundColor: '#f6f8fc' },
   round: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...shadows.card },
-  readyHint: { marginTop: 18, textAlign: 'center', lineHeight: 20, paddingHorizontal: 10 },
   controls: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-evenly', paddingTop: 12 },
   big: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center' },
   bigPrimary: { backgroundColor: colors.primary, ...shadows.button },
