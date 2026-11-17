@@ -85,6 +85,7 @@ function TeamChatListScreen() {
             ) : null}
           </View>
           <Segmented
+            style={styles.filters}
             value={filter}
             onChange={(k) => setFilter(k as Filter)}
             options={[
@@ -98,7 +99,7 @@ function TeamChatListScreen() {
 
         <View style={{ paddingHorizontal: 20 }}>
           {loading ? (
-            <SkeletonList variant="channel" count={6} style={{ marginTop: 6 }} />
+            <SkeletonList variant="channel" count={6} style={{ marginTop: 12 }} />
           ) : shown.length === 0 ? (
             <EmptyState
               icon={filter === 'unread' ? 'checkmark-done-outline' : 'chatbubbles-outline'}
@@ -120,7 +121,7 @@ function TeamChatListScreen() {
               {rest.length ? (
                 <Rise index={1}>
                   {pinned.length ? <Text style={styles.label}>{t('list.chats')}</Text> : null}
-                  <View style={[styles.card, !pinned.length && { marginTop: 6 }]}>
+                  <View style={[styles.card, !pinned.length && { marginTop: 12 }]}>
                     {rest.map((c, i) => (
                       <ChannelRow key={c.id} channel={c} last={i === rest.length - 1} onPress={() => router.push(`/equipe/${c.id}`)} />
                     ))}
@@ -136,9 +137,10 @@ function TeamChatListScreen() {
 }
 
 const styles = StyleSheet.create({
-  tools: { paddingHorizontal: 20, paddingBottom: 12, paddingTop: 4, gap: 18, backgroundColor: colors.pageBg },
+  tools: { paddingHorizontal: 20, paddingBottom: 18, paddingTop: 10, backgroundColor: colors.pageBg },
+  filters: { marginTop: 20 },
   search: {
-    height: 44,
+    height: 48,
     borderRadius: radii.pill,
     backgroundColor: colors.cardBg,
     flexDirection: 'row',
@@ -148,6 +150,6 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   searchInput: { flex: 1, minWidth: 0, fontFamily: typography.fontFamily, fontSize: 15, color: colors.text, padding: 0 },
-  label: { ...text.label, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 14, marginBottom: 8, marginLeft: 4 },
+  label: { ...text.label, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 18, marginBottom: 10, marginLeft: 4 },
   card: { backgroundColor: colors.cardBg, borderRadius: radii.lg, overflow: 'hidden', ...shadows.card },
 });
