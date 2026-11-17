@@ -1,9 +1,10 @@
 import { ReactNode, useEffect } from 'react';
 import i18n from '@/src/i18n';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, motion, radii, shadows, text, zIndex } from './tokens';
+import { KEYBOARD_BEHAVIOR } from './keyboard';
 
 const easeOut = Easing.bezier(...motion.easeOut);
 
@@ -42,7 +43,7 @@ export function BottomSheet({
       <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, scrim]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={closeLabel} />
       </Animated.View>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.dock} pointerEvents="box-none">
+      <KeyboardAvoidingView behavior={KEYBOARD_BEHAVIOR} style={styles.dock} pointerEvents="box-none">
         <Animated.View style={[styles.sheet, { paddingBottom: insets.bottom + 20 }, panel]} accessibilityViewIsModal>
           <View style={styles.grabber} />
           {title ? (

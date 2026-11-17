@@ -20,6 +20,7 @@ import { UserFacingError } from '@/src/features/client/userFacingError';
 import type { OutgoingAttachment } from '@/src/features/client/types';
 import { openSystemSettings } from '@/src/features/permissions/permissions';
 import { formatHour, weekdayShort } from '@/src/shared/format';
+import { KEYBOARD_BEHAVIOR } from '@/src/design-system/keyboard';
 
 function AttachOption({ icon, label, tone, onPress }: { icon: IconName; label: string; tone: 'primary' | 'soft' | 'neutral'; onPress: () => void }) {
   return (
@@ -129,7 +130,7 @@ export default function ClientChatScreen() {
 
   return (
     <Screen backdrop="chat">
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={KEYBOARD_BEHAVIOR}>
         <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <IconButton icon="chevron-back" tone="soft" accessibilityLabel={t('common:actions.back')} onPress={() => router.back()} />
           <IconTile initials={company?.initials ?? (chat?.tenant_name ?? '').slice(0, 2).toUpperCase()} size={44} tone="brand" />

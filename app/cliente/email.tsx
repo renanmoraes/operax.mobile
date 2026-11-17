@@ -1,13 +1,14 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Body, Button, Card, Field, HeroCard, IconTile, Muted, Rise, Screen, TopBar } from '@/src/design-system/ui';
 import { showDialog } from '@/src/design-system/Dialog';
 import { colors, text } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { portalEmailLinkRequest, portalEmailLinkVerify } from '@/src/shared/api/portal.api';
+import { KEYBOARD_BEHAVIOR } from '@/src/design-system/keyboard';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -70,7 +71,7 @@ export default function ClientEmailScreen() {
   return (
     <Screen>
       <TopBar safe title={t('email.addTitle')} onBack={() => router.back()} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={KEYBOARD_BEHAVIOR}>
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32, gap: 12 }} keyboardShouldPersistTaps="handled">
           <Rise>
             <HeroCard>

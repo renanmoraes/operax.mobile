@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KEYBOARD_BEHAVIOR } from '@/src/design-system/keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Body, Button, Display, Field, IconTile, Muted, Rise, Screen, TopBar } from '@/src/design-system/ui';
@@ -54,6 +55,7 @@ export default function CancelBookingScreen() {
   return (
     <Screen backdrop="mirror">
       <TopBar safe onBack={() => router.back()} />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={KEYBOARD_BEHAVIOR}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24 }} keyboardShouldPersistTaps="handled">
         <Display>{t('cancel.title', { service: b.service_name?.toLowerCase() ?? '' })}</Display>
         <Muted style={{ marginTop: 6, fontSize: 14 }}>{t('cancel.meta', { day: `${weekdayShort(start)} ${start.getDate()}`, time: formatHour(b.starts_at), name: b.provider_name ?? '' })}</Muted>
@@ -104,6 +106,7 @@ export default function CancelBookingScreen() {
           <Button label={t('cancel.keep')} variant="secondary" onPress={() => router.back()} />
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </Screen>
   );
 }

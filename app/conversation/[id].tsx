@@ -47,6 +47,7 @@ import { ChannelChip, channelName, isMarketplaceChannel, useInboxConnections } f
 import { DEMO_HUB_CONTEXT, getHubConversationContext, type HubConversationContext } from '@/src/shared/api/hub.api';
 import { TransferSheet } from '@/src/features/attendance/TransferSheet';
 import { AiSummaryButton, AiSummarySheet, ReplySuggestions, useAiEnabled } from '@/src/features/attendance/AiAssist';
+import { KEYBOARD_BEHAVIOR } from '@/src/design-system/keyboard';
 
 // Marketplace só recebe texto: anexo, Pix e mensagem ativa não saem pelo canal (agendar não envia nada, fica).
 const HUB_ACTIONS = new Set(['booking']);
@@ -385,7 +386,7 @@ function ConversationScreen() {
 
   return (
     // O campo de mensagem sobe junto com o teclado do iPhone (sem esconder o texto e o enviar).
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.root} behavior={KEYBOARD_BEHAVIOR}>
       <Backdrop variant="chat" />
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <IconButton icon="chevron-back" accessibilityLabel={t('common:actions.back')} onPress={() => router.back()} />

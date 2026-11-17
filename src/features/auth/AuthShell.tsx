@@ -1,11 +1,12 @@
 import { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { Badge, Display, IconButton, Muted, Rise, Screen } from '@/src/design-system/ui';
 import { spacing } from '@/src/design-system/tokens';
 import { appVersionLabel } from '@/src/shared/updates/appVersion';
+import { KEYBOARD_BEHAVIOR } from '@/src/design-system/keyboard';
 
 /** Moldura comum das telas de entrada: fundo tonal, voltar, título grande e rodapé fixo. */
 export function AuthShell({
@@ -29,7 +30,7 @@ export function AuthShell({
   const insets = useSafeAreaInsets();
   return (
     <Screen backdrop="mirror">
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={KEYBOARD_BEHAVIOR}>
         <ScrollView
           contentContainerStyle={[styles.scroll, { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.xl }]}
           keyboardShouldPersistTaps="handled"

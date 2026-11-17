@@ -4,7 +4,8 @@ import i18n, { locale } from '@/src/i18n';
 import { useTranslation } from 'react-i18next';
 import { showDialog } from '@/src/design-system/Dialog';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KEYBOARD_BEHAVIOR } from '@/src/design-system/keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -134,7 +135,8 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
 
   return (
     <Screen backdrop="none">
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={KEYBOARD_BEHAVIOR}>
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 120 }} keyboardShouldPersistTaps="handled">
         <View style={[styles.hero, { paddingTop: insets.top + 8 }]}>
           <LinearGradient colors={['#ffffff', '#eaf1ff', '#dff3ff']} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={StyleSheet.absoluteFill} />
           <Glow size={320} opacity={0.4} style={{ alignSelf: 'center', top: -120 }} />
@@ -244,6 +246,7 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
           {queued ? <Body style={styles.queued}>{t('done.queued')}</Body> : null}
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Nada passa por baixo da barra de status ao rolar. */}
       <View style={[styles.statusScrim, { height: insets.top }]} pointerEvents="none" />

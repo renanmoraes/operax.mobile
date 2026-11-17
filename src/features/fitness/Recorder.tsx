@@ -2,7 +2,7 @@ import { router, Stack } from 'expo-router';
 import { isRejected } from './resultsQueue';
 import { confirmDialog, showDialog } from '@/src/design-system/Dialog';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, BackHandler, Platform, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, Vibration, View } from 'react-native';
+import { AppState, BackHandler, Platform, KeyboardAvoidingView, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, Vibration, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -17,6 +17,7 @@ import { formatClock } from '@/src/shared/format';
 import { kvGet, kvSet } from '@/src/shared/db/localDb';
 import { reportError, trackAction } from '@/src/shared/telemetry/errorReporter';
 import { RouteMap } from './RouteMap';
+import { KEYBOARD_BEHAVIOR } from '@/src/design-system/keyboard';
 import { addPoint, averagePace, currentPace, decimateTrack, defaultTitle, emptyRun, formatKm, formatPace, haversine, kmSplits, MAX_ACCURACY_M, resumeAt, type GpsPoint, type RunState, type Track } from './runTracker';
 import { gpsGate, isPoolChoice, liveSummary, NO_GPS_OFFER_MS, parsePoolLength, POOL_PRESETS, restoredBanked, swimDistance, type PoolChoice } from './background/liveLogic';
 import { bufferedSince, clearBuffer, liveMeta, onLiveFixes, startLiveTracking, stopLiveTracking, toGpsPoint, trimBuffer } from './background/liveTracking';
@@ -733,6 +734,7 @@ export function Recorder({
       <Screen>
         <NoSwipeBack phase={phase} />
         <TopBar safe title={t('rec.saveWorkout')} onBack={phase === 'saving' ? undefined : () => go('paused')} />
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={KEYBOARD_BEHAVIOR}>
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 28, gap: 18 }} keyboardShouldPersistTaps="handled">
           <View style={styles.summary}>
             {gps && route.length > 1 ? <RouteMap route={route} style={styles.summaryMap} /> : null}
@@ -819,6 +821,7 @@ export function Recorder({
             </Pressable>
           </View>
         </ScrollView>
+        </KeyboardAvoidingView>
       </Screen>
     );
   }

@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import i18n from '@/src/i18n';
 import { useTranslation } from 'react-i18next';
 import { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, Body, Button, Card, Field, Muted, Rise, Screen, Segmented, TopBar } from '@/src/design-system/ui';
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
@@ -14,6 +14,7 @@ import { useRecordResult } from '@/src/features/fitness/useFitness';
 import type { FitnessWodLevel, FitnessWorkoutView } from '@/src/features/fitness/types';
 import { isoDate } from '@/src/shared/format';
 import { buildResult, maskClock } from '@/src/features/fitness/results';
+import { KEYBOARD_BEHAVIOR } from '@/src/design-system/keyboard';
 
 export default function RegisterResultScreen() {
   const { id, parte } = useLocalSearchParams<{ id: string; parte?: string }>();
@@ -129,7 +130,7 @@ function RegisterResult({ workout, partIndex }: { workout: FitnessWorkoutView; p
   return (
     <Screen>
       <TopBar safe title={t('sheet.logResult')} onBack={() => router.back()} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={KEYBOARD_BEHAVIOR}>
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 120, gap: 14 }} keyboardShouldPersistTaps="handled">
           <Rise>
             <Card style={{ padding: 18, gap: 8 }}>

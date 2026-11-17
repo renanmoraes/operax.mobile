@@ -31,6 +31,7 @@ import { phoneLabel } from '@/src/features/agenda/bookingDetails';
 import { contacts as mockContacts, teamUsers } from '@/src/mocks/data';
 import { SkeletonList } from '@/src/design-system/Skeleton';
 import { RequirePermission, useCan } from '@/src/features/auth/useCan';
+import { KEYBOARD_BEHAVIOR } from '@/src/design-system/keyboard';
 
 const PAGE = 60;
 
@@ -308,7 +309,7 @@ function TeamChatConversationScreen() {
 
   return (
     // O campo de mensagem sobe junto com o teclado do iPhone (sem esconder o texto e o enviar).
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.root} behavior={KEYBOARD_BEHAVIOR}>
       <Backdrop variant="chat" />
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <IconButton icon="chevron-back" accessibilityLabel={t('common:actions.back')} onPress={() => router.back()} />
