@@ -122,6 +122,9 @@ const inbox = {
     emptySub: 'Cadastre atalhos no Operax web para usar aqui.',
   },
   conversation: {
+    showOthers_one: 'Mostrar {{count}} mensagem de outro canal deste $t(vocab:contact)',
+    showOthers_other: 'Mostrar {{count}} mensagens de outros canais deste $t(vocab:contact)',
+    hideOthers: 'Esconder mensagens de outros canais',
     notFound: 'Conversa não encontrada.',
     status: {
       mine: 'Com você',
