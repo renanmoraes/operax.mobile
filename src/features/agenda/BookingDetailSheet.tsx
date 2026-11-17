@@ -2,12 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Switch, Text, View } from 'react-native';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
-import { Button, IconName, PressableScale } from '@/src/design-system/ui';
+import { Button, IconName, Muted, PressableScale } from '@/src/design-system/ui';
 import { colors, radii, text, typography } from '@/src/design-system/tokens';
 import type { BookingAction } from '@/src/shared/api/bookings.api';
-import { actionLabel, ACTION_PERM, actionsFor, BookingDetails, phoneLabel } from './bookingDetails';
+import { actionLabel, actionsFor, BookingDetails, canEditOpen, phoneLabel } from './bookingDetails';
+import { paymentComplete, paymentPayload, type PaymentChoice } from './newBooking';
+import { PaymentPicker } from './PaymentPicker';
 import { useCan } from '@/src/features/auth/useCan';
 import { clockLabel } from './timeline';
 
@@ -37,6 +39,8 @@ export function BookingDetailSheet({
   dateLabel,
   busy,
   onAction,
+  onSavePayment,
+  onReschedule,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -45,24 +49,40 @@ export function BookingDetailSheet({
   endMin: number;
   dateLabel: string;
   busy: BookingAction | null;
-  onAction: (action: BookingAction, opts?: { payment_type?: 'private' }) => void;
+  onAction: (action: BookingAction, opts?: { payment_type?: 'private' | 'insurance'; plan_type_id?: string; notify_client?: boolean }) => void;
+  /** Corrige particular/convênio de um agendamento aberto; resolve quando o servidor aceitou. */
+  onSavePayment: (payment: { payment_type: 'private' | 'insurance'; plan_type_id?: string }) => Promise<void>;
+  onReschedule: () => void;
 }) {
   const { t } = useTranslation('agenda');
   const [confirming, setConfirming] = useState<BookingAction | null>(null);
+  // Painel de pagamento: ao dar entrada (agendamento sem particular/convênio resolvido) ou ao corrigir.
+  const [panel, setPanel] = useState<null | 'checkin' | 'payment'>(null);
+  const [choice, setChoice] = useState<PaymentChoice>({ type: 'private', planId: '' });
+  const [saving, setSaving] = useState(false);
+  const [notifyReject, setNotifyReject] = useState(true);
   const can = useCan();
   if (!details) return null;
   const known = details.status in STATUS ? STATUS[details.status as keyof typeof STATUS] : null;
   const st = known
     ? { ...known, label: t(`agenda.status.${details.status as keyof typeof STATUS}`) }
     : { label: t(OTHER_STATUS.includes(details.status) ? (`agenda.status.${details.status}` as 'agenda.status.checked_in') : 'agenda.statusOther'), bg: colors.primaryWash, fg: colors.primaryDeep };
-  const actions = actionsFor(details.status).filter((a) => can(ACTION_PERM[a]));
+  const canCreate = can('bookingCreate');
+  const actions = actionsFor(details.rawStatus, { create: canCreate, approve: can('bookingApprove'), cancel: can('bookingCancel') });
+  const editable = canEditOpen(details.rawStatus, canCreate);
   const minutes = endMin - startMin;
   const phone = phoneLabel(details.phone);
   const digits = details.phone?.replace(/\D/g, '') ?? '';
 
   const close = () => {
     setConfirming(null);
+    setPanel(null);
     onClose();
+  };
+
+  const openPanel = (which: 'checkin' | 'payment') => {
+    setChoice(details.paymentType ? { type: details.paymentType, planId: details.planId ?? '' } : { type: 'private', planId: '' });
+    setPanel(which);
   };
 
   const run = (a: BookingAction) => {
@@ -70,9 +90,32 @@ export function BookingDetailSheet({
       setConfirming(a);
       return;
     }
+    // Dar entrada sem particular/convênio resolvido pergunta antes (no convênio, qual plano): nunca grava Particular sozinho.
+    if (a === 'check_in' && !details.paymentKnown) {
+      openPanel('checkin');
+      return;
+    }
     setConfirming(null);
-    // Sem particular/convênio registrado, a entrada vai como particular (convênio se informa no web).
-    onAction(a, a === 'check_in' && !details.paymentKnown ? { payment_type: 'private' } : undefined);
+    onAction(a, a === 'reject' ? { notify_client: notifyReject } : undefined);
+  };
+
+  const confirmPanel = async () => {
+    if (!paymentComplete(choice) || choice.type === 'none') return;
+    const body = paymentPayload(choice) as { payment_type: 'private' | 'insurance'; plan_type_id?: string };
+    if (panel === 'checkin') {
+      setPanel(null);
+      onAction('check_in', body);
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSavePayment(body);
+      setPanel(null);
+    } catch {
+      // A agenda já mostrou o motivo; o painel fica aberto para tentar de novo.
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -109,7 +152,13 @@ export function BookingDetailSheet({
         {/* Detalhes */}
         <View style={styles.list}>
           <Row icon="person-outline" label={t('sheet.provider')} value={[details.provider, details.service].filter(Boolean).join(' · ') || '—'} />
-          <Row icon="card-outline" label={t('sheet.coverage')} value={details.payment ?? t('sheet.coverageUnknown')} muted={!details.payment} />
+          <Row
+            icon="card-outline"
+            label={t('sheet.coverage')}
+            value={details.payment ?? t('sheet.coverageUnknown')}
+            muted={!details.payment}
+            right={editable ? <MiniText label={t('sheet.payEdit')} onPress={() => openPanel('payment')} /> : undefined}
+          />
           {details.location ? <Row icon="location-outline" label={t('sheet.location')} value={details.location} /> : null}
           {phone ? (
             <Row
@@ -148,30 +197,51 @@ export function BookingDetailSheet({
           />
         ) : null}
 
-        {actions.length ? (
+        {panel ? (
+          <View style={styles.panel}>
+            <Text style={styles.panelTitle}>{panel === 'checkin' ? t('sheet.checkInTitle') : t('sheet.payTitle')}</Text>
+            {panel === 'checkin' ? <Muted>{t('sheet.checkInBody', { name: details.client })}</Muted> : null}
+            <PaymentPicker value={choice} onChange={setChoice} />
+            <View style={{ gap: 8 }}>
+              <Button
+                label={panel === 'checkin' ? t('sheet.checkInConfirm') : t('sheet.paySave')}
+                icon="checkmark"
+                loading={saving || (panel === 'checkin' && busy === 'check_in')}
+                disabled={!paymentComplete(choice) || choice.type === 'none'}
+                onPress={() => void confirmPanel()}
+              />
+              <Button label={t('sheet.back')} variant="ghost" onPress={() => setPanel(null)} />
+            </View>
+          </View>
+        ) : null}
+
+        {!panel && actions.length ? (
           <View style={{ gap: 10 }}>
             {actions.map((a, i) => {
               const destructive = DESTRUCTIVE.includes(a);
-              const label =
-                confirming === a
-                  ? t('sheet.tapAgain', { action: actionLabel(a).toLowerCase() })
-                  : a === 'check_in' && !details.paymentKnown
-                    ? t('sheet.checkInPrivate')
-                    : actionLabel(a);
+              const label = confirming === a ? t('sheet.tapAgain', { action: actionLabel(a).toLowerCase() }) : actionLabel(a);
               return (
-                <Button
-                  key={a}
-                  label={label}
-                  variant={i === 0 && !destructive ? 'primary' : destructive ? (confirming === a ? 'danger' : 'ghost') : 'secondary'}
-                  loading={busy === a}
-                  disabled={!!busy && busy !== a}
-                  onPress={() => run(a)}
-                />
+                <View key={a} style={{ gap: 8 }}>
+                  {a === 'reject' && confirming === 'reject' ? (
+                    <View style={styles.notifyRow}>
+                      <Text style={styles.notifyText}>{t('sheet.notifyReject')}</Text>
+                      <Switch value={notifyReject} onValueChange={setNotifyReject} trackColor={{ true: colors.primary, false: colors.track }} thumbColor="#fff" accessibilityLabel={t('sheet.notifyReject')} />
+                    </View>
+                  ) : null}
+                  <Button
+                    label={label}
+                    variant={i === 0 && !destructive ? 'primary' : destructive ? (confirming === a ? 'danger' : 'ghost') : 'secondary'}
+                    loading={busy === a}
+                    disabled={!!busy && busy !== a}
+                    onPress={() => run(a)}
+                  />
+                </View>
               );
             })}
-            {actions.includes('check_in') && !details.paymentKnown ? <Text style={styles.hint}>{t('sheet.insuranceHint')}</Text> : null}
           </View>
         ) : null}
+
+        {!panel && editable ? <Button label={t('sheet.reschedule')} icon="calendar-outline" variant="secondary" onPress={() => { close(); onReschedule(); }} /> : null}
       </View>
     </BottomSheet>
   );
@@ -206,6 +276,14 @@ function Row({ icon, label, value, muted, right, last }: { icon: IconName; label
       </View>
       {right}
     </View>
+  );
+}
+
+function MiniText({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={styles.miniText}>
+      <Text style={styles.miniTextLabel}>{label}</Text>
+    </PressableScale>
   );
 }
 
@@ -246,6 +324,12 @@ function Alert({ tone, title, body }: { tone: keyof typeof ALERT; title: string;
 }
 
 const styles = StyleSheet.create({
+  panel: { gap: 12, padding: 14, borderRadius: radii.lg, backgroundColor: colors.primaryWash },
+  panelTitle: { fontFamily: typography.fontFamilyBold, fontSize: 16, color: colors.text },
+  notifyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4 },
+  notifyText: { flex: 1, fontFamily: typography.fontFamilyMedium, fontSize: 13.5, color: colors.textSoft },
+  miniText: { paddingHorizontal: 12, height: 32, borderRadius: 16, backgroundColor: colors.primaryWash, justifyContent: 'center' },
+  miniTextLabel: { fontFamily: typography.fontFamilySemiBold, fontSize: 12.5, color: colors.primary },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.primaryTint, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontFamily: typography.fontFamilyBold, fontSize: 17, color: colors.primary },

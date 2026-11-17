@@ -12,7 +12,14 @@ export type BookingDetails = {
   phone: string | null;
   contactId: string | null;
   payment: string | null;
+  /** Particular, ou convênio já com o plano: o que dá para dar entrada sem perguntar nada (como no web). */
   paymentKnown: boolean;
+  paymentType: 'private' | 'insurance' | null;
+  planId: string | null;
+  /** Situação como o servidor grava (pending_approval, approved, reschedule_pending_manual…). */
+  rawStatus: string;
+  providerId: string | null;
+  serviceId: string | null;
   visit: string | null;
   encaixe: string | null;
   semLembrete: string | null;
@@ -58,7 +65,12 @@ export function detailsFromApi(b: ApiBooking): BookingDetails {
     phone: b.client_phone_e164 ?? null,
     contactId: b.client_contact_id ?? null,
     payment: paymentSummary(b.payment_type, b.plan_type_name),
-    paymentKnown: b.payment_type === 'private' || b.payment_type === 'insurance',
+    paymentKnown: hasKnownPayment(b.payment_type, b.plan_type_id),
+    paymentType: b.payment_type ?? null,
+    planId: b.plan_type_id ?? null,
+    rawStatus: rawStatusOf(b.raw_status ?? b.status),
+    providerId: b.provider_id ?? null,
+    serviceId: b.service_id ?? null,
     visit: b.visit_kind === 'retorno' ? i18n.t('agenda:booking.visitReturn') : b.visit_kind === 'primeira_consulta' ? i18n.t('agenda:booking.visitNew') : null,
     encaixe: b.is_encaixe || b.encaixe_justification ? b.encaixe_justification?.trim() || i18n.t('agenda:booking.encaixeDefault') : null,
     semLembrete: b.sem_lembrete ? (b.sem_lembrete_motivo?.trim() ? i18n.t('agenda:booking.noReminderReason', { reason: b.sem_lembrete_motivo.trim() }) : i18n.t('agenda:booking.noReminder')) : null,
@@ -88,12 +100,44 @@ export function normalizeBookingStatus(status: string): string {
   return s;
 }
 
-export function actionsFor(status: string): BookingAction[] {
-  const s = status.toLowerCase();
-  if (s === 'pending' || s === 'pendente' || s === 'requested') return ['approve', 'reject'];
-  if (s === 'confirmed' || s === 'confirmado' || s === 'scheduled') return ['check_in', 'no_show', 'cancel'];
-  return [];
+/** Particular, ou convênio com o plano escolhido. Convênio sem plano (ex.: "outro convênio" do WhatsApp) ainda não está resolvido. */
+export function hasKnownPayment(type?: string | null, planId?: string | null): boolean {
+  if (type === 'private') return true;
+  return type === 'insurance' && !!planId;
 }
+
+/** Os nomes que a agenda usa (confirmed, pending…) de volta para o que o servidor grava. */
+export function rawStatusOf(status: string): string {
+  const s = status.toLowerCase();
+  if (s === 'confirmed' || s === 'confirmado' || s === 'scheduled') return 'approved';
+  if (s === 'pending' || s === 'pendente' || s === 'requested') return 'pending_approval';
+  if (s === 'canceled' || s === 'cancelado') return 'canceled';
+  return s;
+}
+
+/** Enquanto o agendamento está aberto dá para corrigir o pagamento, remarcar e cancelar. */
+export const OPEN_STATUSES = ['pending_approval', 'approved', 'confirmed', 'reschedule_pending_manual'];
+
+export type ActionPerms = { create: boolean; approve: boolean; cancel: boolean };
+
+/**
+ * Ações que valem em cada situação, como no web (BookingActionButtons): pedido aguardando (pending_approval) →
+ * aprovar e recusar, e dar entrada só com permissão de aprovar; aprovado ou confirmado → dar entrada, falta e cancelar;
+ * remarcação pendente → só cancelar. Encerrados não têm ação. Sem `perms` não filtra por permissão.
+ */
+export function actionsFor(status: string, perms: ActionPerms = { create: true, approve: true, cancel: true }): BookingAction[] {
+  const s = rawStatusOf(status);
+  const out: BookingAction[] = [];
+  const settled = s === 'approved' || s === 'confirmed';
+  if ((settled && perms.create) || (s === 'pending_approval' && perms.create && perms.approve)) out.push('check_in');
+  if (s === 'pending_approval' && perms.approve) out.push('approve', 'reject');
+  if (settled && perms.cancel) out.push('no_show');
+  if (OPEN_STATUSES.includes(s) && perms.cancel) out.push('cancel');
+  return out;
+}
+
+/** Corrigir pagamento e remarcar: agendamento aberto e permissão de marcar (`create` ou `create_own`). */
+export const canEditOpen = (status: string, canCreate: boolean) => canCreate && OPEN_STATUSES.includes(rawStatusOf(status));
 
 /** Permissão de cada ação (mesmas regras das rotas de agendamento no backend). */
 export const ACTION_PERM = {

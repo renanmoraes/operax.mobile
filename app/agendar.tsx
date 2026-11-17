@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, KeyboardAvoidingView, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
@@ -9,7 +9,7 @@ import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { confirmDialog, showDialog } from '@/src/design-system/Dialog';
 import { KEYBOARD_BEHAVIOR } from '@/src/design-system/keyboard';
 import { colors, radii, shadows, typography } from '@/src/design-system/tokens';
-import { Avatar, Button, Card, Chip, Field, Muted, PressableScale, Screen, TopBar } from '@/src/design-system/ui';
+import { Avatar, Button, Card, Chip, EmptyState, Field, Loading, Muted, PressableScale, Screen, TopBar } from '@/src/design-system/ui';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { RequirePermission, useCan } from '@/src/features/auth/useCan';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
@@ -29,6 +29,7 @@ import {
   upcoming,
   type PaymentChoice,
 } from '@/src/features/agenda/newBooking';
+import { getBooking, rescheduleBooking } from '@/src/shared/api/bookings.api';
 import { addDaysKey, localDateKey, wallClock, wallDateLabel } from '@/src/features/agenda/wallClock';
 import { locale } from '@/src/i18n';
 import {
@@ -82,7 +83,16 @@ function NewBookingScreen() {
   const canOverrideNoShow = canForce || can('scheduling:override_no_show_penalty');
 
   // ---- escolhas
-  const [person, setPerson] = useState<SchedulingPerson | null>(null);
+  // Modo remarcação (`?reschedule=<id>`): o mesmo agendamento troca de horário (e, se quiser, de profissional ou serviço).
+  const { reschedule } = useLocalSearchParams<{ reschedule?: string }>();
+  const rescheduling = !!reschedule;
+  const bookingQ = useQuery({ queryKey: ['bookings', 'one', reschedule], queryFn: () => getBooking(reschedule!), enabled: rescheduling, retry: false });
+  const current = bookingQ.data ?? null;
+  const [reason, setReason] = useState('');
+  const [pickedPerson, setPerson] = useState<SchedulingPerson | null>(null);
+  const person: SchedulingPerson | null = rescheduling
+    ? current ? { client_id: current.client_id ?? null, contact_id: current.client_contact_id ?? null, name: current.client_name ?? '—', phone_e164: current.client_phone_e164 ?? null } : null
+    : pickedPerson;
   const [search, setSearch] = useState('');
   const [pickedProvider, setProviderId] = useState<string | null>(null);
   const [pickedService, setServiceId] = useState<string | null>(null);
@@ -104,10 +114,10 @@ function NewBookingScreen() {
   const statusQ = useQuery({ queryKey: ['sched', 'status'], queryFn: getSchedulingStatus, staleTime: 60_000 });
   const providers = useMemo(() => (providersQ.data ?? []).filter((p) => p.is_active !== false), [providersQ.data]);
   const own = ownProvider(providers, userId, canCreateAny);
-  const providerId = own?.id ?? pickedProvider ?? (providers.length === 1 ? providers[0].id : null);
+  const providerId = own?.id ?? pickedProvider ?? current?.provider_id ?? (providers.length === 1 ? providers[0].id : null);
   const linksQ = useQuery({ queryKey: ['sched', 'links', providerId], queryFn: () => listProviderServiceIds(providerId!), enabled: !!providerId, staleTime: 5 * 60_000 });
   const services = servicesOf(linksQ.data, servicesQ.data ?? []);
-  const serviceId = pickedService && services.some((s) => s.id === pickedService) ? pickedService : services.length === 1 ? services[0].id : null;
+  const serviceId = pickedService && services.some((s) => s.id === pickedService) ? pickedService : rescheduling && current?.service_id && services.some((s) => s.id === current.service_id) ? current.service_id : services.length === 1 ? services[0].id : null;
   const service = services.find((s) => s.id === serviceId);
 
   const debounced = useDebounced(search.trim());
@@ -128,7 +138,8 @@ function NewBookingScreen() {
 
   const range = manual && service ? manualRange(dateKey, manualTime, service.default_duration_min) : slot ? { starts_at: slot.starts_at, ends_at: slot.ends_at } : null;
   const justOk = !manual || encaixeJustificationOk(why);
-  const ready = !!person && !!providerId && !!serviceId && !!range && justOk && paymentComplete(payment);
+  const reasonOk = reason.trim().length >= 3;
+  const ready = !!person && !!providerId && !!serviceId && !!range && justOk && (rescheduling ? reasonOk : paymentComplete(payment));
   const whenLabel = range ? t('newBooking.whenFormat', { day: wallDateLabel(range.starts_at, locale(), { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', ''), time: wallClock(range.starts_at) }) : '';
 
   const create = useMutation({
@@ -176,6 +187,38 @@ function NewBookingScreen() {
     },
   });
 
+  const remarcar = useMutation({
+    mutationFn: (extra: { allow_blocked_overlap?: boolean } | undefined) =>
+      rescheduleBooking(reschedule!, {
+        starts_at: range!.starts_at,
+        ends_at: range!.ends_at,
+        reason: reason.trim(),
+        ...(current && providerId && providerId !== current.provider_id ? { provider_id: providerId } : {}),
+        ...(current && serviceId && serviceId !== current.service_id ? { service_id: serviceId } : {}),
+        ...(manual ? { allow_booking_overlap: true, encaixe_justification: why.trim() } : {}),
+        ...extra,
+      }),
+    onSuccess: async (b) => {
+      await qc.invalidateQueries({ queryKey: ['bookings'] });
+      await qc.invalidateQueries({ queryKey: ['sched', 'slots'] });
+      const n = b.whatsapp_notice;
+      await showDialog({
+        title: t('agenda.done.rescheduled'),
+        message: n ? (n.sent ? t('newBooking.noticeSent') : n.skip_reason ? t('newBooking.noticeSkipped', { reason: n.skip_reason }) : t('newBooking.noticeNone')) : undefined,
+        tone: n && !n.sent ? 'warn' : 'success',
+      });
+      router.back();
+    },
+    onError: async (e, extra) => {
+      const f = classifyFailure(e);
+      if (f.kind === 'soft_block') {
+        if (await confirmDialog({ title: t('newBooking.softTitle'), message: t('newBooking.softBody'), confirmLabel: t('newBooking.force'), cancelLabel: t('newBooking.cancel'), tone: 'warn' })) remarcar.mutate({ ...extra, allow_blocked_overlap: true });
+      } else {
+        await showDialog({ title: f.kind === 'other' ? (f.message ?? t('newBooking.rescheduleFailed')) : f.message, tone: 'warn' });
+      }
+    },
+  });
+
   const pickDay = (k: string) => {
     setDateKey(k);
     setSlot(null);
@@ -183,7 +226,10 @@ function NewBookingScreen() {
 
   return (
     <Screen>
-      <TopBar safe title={t('newBooking.title')} onBack={() => router.back()} />
+      <TopBar safe title={rescheduling ? t('newBooking.rescheduleTitle') : t('newBooking.title')} onBack={() => router.back()} />
+      {rescheduling && (bookingQ.isLoading || bookingQ.isError) ? (
+        bookingQ.isLoading ? <Loading /> : <EmptyState icon="cloud-offline-outline" title={t('newBooking.rescheduleLoadFail')} />
+      ) : (
       <KeyboardAvoidingView behavior={KEYBOARD_BEHAVIOR} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {/* 1. Cliente */}
@@ -193,9 +239,11 @@ function NewBookingScreen() {
                 <Avatar initials={initialsOf(person.name)} size={40} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.pickedName} numberOfLines={1}>{person.name}</Text>
-                  {person.phone_e164 ? <Muted style={{ fontSize: 12.5 }}>{person.phone_e164}</Muted> : null}
+                  {rescheduling && current ? (
+                    <Muted style={{ fontSize: 12.5 }}>{t('newBooking.rescheduleCurrent', { when: `${wallDateLabel(current.starts_at, locale(), { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', '')} ${wallClock(current.starts_at)}` })}</Muted>
+                  ) : person.phone_e164 ? <Muted style={{ fontSize: 12.5 }}>{person.phone_e164}</Muted> : null}
                 </View>
-                <Button label={t('newBooking.change')} variant="ghost" compact onPress={() => { setPerson(null); setSearch(''); }} />
+                {rescheduling ? null : <Button label={t('newBooking.change')} variant="ghost" compact onPress={() => { setPerson(null); setSearch(''); }} />}
               </Card>
             ) : (
               <>
@@ -303,8 +351,15 @@ function NewBookingScreen() {
             </Step>
           ) : null}
 
+          {/* Remarcação: o motivo vai para o cliente. */}
+          {rescheduling && range ? (
+            <Step n={4} label={t('newBooking.rescheduleReason')}>
+              <Field label={t('newBooking.rescheduleReason')} value={reason} onChangeText={setReason} placeholder={t('newBooking.rescheduleReasonHint')} multiline maxLength={300} />
+            </Step>
+          ) : null}
+
           {/* 4. Pagamento e mais opções */}
-          {range ? (
+          {!rescheduling && range ? (
             <>
               <Step n={4} label={t('newBooking.payment')}>
                 <View style={styles.wrap}>
@@ -371,9 +426,10 @@ function NewBookingScreen() {
         </ScrollView>
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
-          <Button label={ready ? t('newBooking.submit', { when: whenLabel }) : !person ? t('newBooking.submitPerson') : !payment || !paymentComplete(payment) ? t('newBooking.plan') : manual && !justOk ? t('newBooking.encaixeWhy') : t('newBooking.submitPick')} icon="checkmark" disabled={!ready} loading={create.isPending} onPress={() => create.mutate(undefined)} />
+          <Button label={rescheduling ? (ready ? t('newBooking.rescheduleSubmit', { when: whenLabel }) : !range ? t('newBooking.submitPick') : t('newBooking.rescheduleReason')) : ready ? t('newBooking.submit', { when: whenLabel }) : !person ? t('newBooking.submitPerson') : !payment || !paymentComplete(payment) ? t('newBooking.plan') : manual && !justOk ? t('newBooking.encaixeWhy') : t('newBooking.submitPick')} icon="checkmark" disabled={!ready} loading={create.isPending || remarcar.isPending} onPress={() => (rescheduling ? remarcar.mutate(undefined) : create.mutate(undefined))} />
         </View>
       </KeyboardAvoidingView>
+      )}
 
       <NewClientSheet
         visible={creating}
