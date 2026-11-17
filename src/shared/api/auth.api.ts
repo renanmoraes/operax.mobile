@@ -90,6 +90,23 @@ export async function verifyMfaApi(input: {
   return { ...data, user: asStaffUser(data.user) } as TokenBundle;
 }
 
+export type MfaMethod = 'totp' | 'email' | 'whatsapp';
+
+/** Pede o código por e-mail ou WhatsApp (métodos que o login oferece além do autenticador). Devolve o desafio a responder. */
+export async function sendMfaChallengeApi(input: { mfa_token: string; method: 'email' | 'whatsapp' }): Promise<{ challenge_id: string; message: string }> {
+  const { data } = await api.post('/api/auth/mfa/challenge', { setup_token: input.mfa_token, method: input.method });
+  return data as { challenge_id: string; message: string };
+}
+
+/** Confere o código de e-mail ou WhatsApp; o do autenticador segue por `verifyMfaApi`. */
+export async function verifyMfaMethodApi(input: { mfa_token: string; code: string; method: 'email' | 'whatsapp'; challenge_id: string }): Promise<TokenBundle> {
+  const { data } = await api.post('/api/auth/mfa/verify-method', { setup_token: input.mfa_token, code: input.code, method: input.method, challenge_id: input.challenge_id });
+  if (data?.access_token && data?.refresh_token) {
+    await setTokens(data.access_token, data.refresh_token, 'staff');
+  }
+  return { ...data, user: asStaffUser(data.user) } as TokenBundle;
+}
+
 export async function getMeApi(): Promise<StaffUser> {
   const { data } = await api.get('/api/auth/me');
   return asStaffUser(data);

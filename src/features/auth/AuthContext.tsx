@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import { isAxiosError } from 'axios';
 import { onlineManager, useQueryClient } from '@tanstack/react-query';
 import { suspendFitnessOwner } from '@/src/features/fitness/owner';
-import { AuthUser, ClientUser, StaffUser, getMeApi, loginApi, logoutApi, registerDevicePushToken, verifyMfaApi } from '@/src/shared/api/auth.api';
+import { AuthUser, ClientUser, StaffUser, getMeApi, loginApi, logoutApi, registerDevicePushToken, sendMfaChallengeApi, verifyMfaApi, verifyMfaMethodApi, type MfaMethod } from '@/src/shared/api/auth.api';
 import {
   PortalLoginResult,
   portalHome,
@@ -56,6 +56,8 @@ type AuthState = {
   isAuthenticated: boolean;
   needsMfa: boolean;
   mfaToken: string | null;
+  /** Métodos do segundo fator que o login ofereceu e o preferido. Sem informação, só o autenticador. */
+  mfaMethods: { primary: MfaMethod; enabled: MfaMethod[] };
   user: AuthUser | null;
   error: string | null;
   clearError: () => void;
@@ -63,7 +65,9 @@ type AuthState = {
   clearRole: () => Promise<void>;
   login: (email: string, password: string, companyCode: string) => Promise<'mfa' | 'ok'>;
   enterDemo: () => void;
-  verifyMfa: (code: string) => Promise<void>;
+  verifyMfa: (code: string, via?: { method: 'email' | 'whatsapp'; challengeId: string }) => Promise<void>;
+  /** Manda o código por e-mail ou WhatsApp. Devolve o desafio a responder e o texto para mostrar. */
+  sendMfaCode: (method: 'email' | 'whatsapp') => Promise<{ challengeId: string; message: string }>;
   clientLogin: (identifier: string, password?: string) => Promise<'blocked' | 'ok'>;
   requestClientOtp: (identifier: string) => Promise<void>;
   /** Código certo: entra (ok), ou no primeiro acesso pede para criar a senha (set_password). */
@@ -161,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setAuthenticated] = useState(false);
   const [needsMfa, setNeedsMfa] = useState(false);
   const [mfaToken, setMfaToken] = useState<string | null>(null);
+  const [mfaMethods, setMfaMethods] = useState<{ primary: MfaMethod; enabled: MfaMethod[] }>({ primary: 'totp', enabled: ['totp'] });
   const [user, setUser] = useState<AuthUser | null>(null);
   const qc = useQueryClient();
   // Troca de conta/empresa: o que ficou pausado (consultas, fila de treino) só volta depois que a conta
@@ -582,6 +587,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated,
       needsMfa,
       mfaToken,
+      mfaMethods,
       user,
       error,
       clearError: () => setError(null),
@@ -616,6 +622,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if ('status' in result && result.status === 'mfa_required') {
             setNeedsMfa(true);
             setMfaToken(result.mfa_token);
+            const known = (result.enabled_methods ?? []).filter((m): m is MfaMethod => m === 'totp' || m === 'email' || m === 'whatsapp');
+            const primary = result.method === 'email' || result.method === 'whatsapp' ? result.method : 'totp';
+            setMfaMethods({ primary, enabled: known.length ? known : ['totp'] });
             setAuthenticated(false);
             return 'mfa';
           }
@@ -659,7 +668,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void registerForPushNotificationsAsync();
       },
 
-      verifyMfa: async (code) => {
+      verifyMfa: async (code, via) => {
         if (mode === 'mock' || !mfaToken) {
           setNeedsMfa(false);
           setAuthenticated(true);
@@ -667,7 +676,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setError(null);
         try {
-          const result = await verifyMfaApi({ mfa_token: mfaToken, totp_code: code });
+          const result = via
+            ? await verifyMfaMethodApi({ mfa_token: mfaToken, code, method: via.method, challenge_id: via.challengeId })
+            : await verifyMfaApi({ mfa_token: mfaToken, totp_code: code });
           setUser(result.user);
           setNeedsMfa(false);
           setMfaToken(null);
@@ -679,7 +690,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await connectSocket();
           void registerDevicePushToken();
         } catch (err) {
-          setError(i18n.t('auth:errors.mfaInvalid'));
+          const status = (err as { response?: { status?: number } })?.response?.status;
+          setError(status === 401 || status === 400 ? i18n.t('auth:errors.mfaInvalid') : messageFromError(err, i18n.t('auth:errors.mfaInvalid')));
+          throw err;
+        }
+      },
+
+      sendMfaCode: async (method) => {
+        if (!mfaToken) throw new Error('no_mfa_token');
+        setError(null);
+        try {
+          const r = await sendMfaChallengeApi({ mfa_token: mfaToken, method });
+          return { challengeId: r.challenge_id, message: r.message };
+        } catch (err) {
+          setError(messageFromError(err, i18n.t('auth:errors.mfaSendFailed')));
           throw err;
         }
       },
@@ -857,7 +881,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       cancelAddAccount: async () => (returnRole ? switchTo(returnRole, accounts) : false),
     };
-  }, [ready, mode, role, isAuthenticated, needsMfa, mfaToken, user, error, accounts, returnRole, qc]);
+  }, [ready, mode, role, isAuthenticated, needsMfa, mfaToken, mfaMethods, user, error, accounts, returnRole, qc]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
