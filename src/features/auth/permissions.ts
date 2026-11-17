@@ -51,6 +51,8 @@ export const PERMS = {
   posVoid: 'pos:void',
   posPaymentEdit: 'pos:payment_edit',
   posShiftsOpen: 'pos:shifts_open',
+  posShiftsClose: 'pos:shifts_close',
+  posCashMovement: 'pos:cash_movement',
   contactsCreate: 'contacts:create',
   contactsUpdate: 'contacts:update',
   complianceWrite: 'compliance:write',

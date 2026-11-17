@@ -347,6 +347,7 @@ function PosSaleScreen() {
             </Text>
           ) : null}
         </View>
+        {can('posRead') && usesShift ? <IconButton icon="cash-outline" onPress={() => router.push('/pdv/caixa' as never)} accessibilityLabel={t('shift.manage')} /> : null}
         {can('posRead') ? <IconButton icon="receipt-outline" onPress={() => router.push('/pdv/vendas' as never)} accessibilityLabel={t('salesOfDay')} /> : null}
       </View>
     </View>

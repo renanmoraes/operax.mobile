@@ -11,6 +11,7 @@ import type {
   PosSaleCreated,
   PosSaleRow,
   PosShift,
+  PosShiftSummary,
   ReceiptChannel,
   ReceiptSendResult,
 } from '@/src/shared/api/pos.api';
@@ -29,6 +30,9 @@ export type PosClient = {
   searchContacts(q: string): Promise<PosContact[]>;
   contactCredit(id: string): Promise<{ balance_cents: number }>;
   openShift(registerId: string, openingCash: number): Promise<PosShift>;
+  currentShift(registerId: string): Promise<PosShiftSummary | null>;
+  closeShift(shiftId: string, countedCash: number): Promise<PosShiftSummary>;
+  cashMovement(shiftId: string, input: { type: 'cash_in' | 'cash_out'; amount: number; reason: string }): Promise<unknown>;
   createSale(p: CreatePosSalePayload): Promise<PosSaleCreated>;
   receipt(saleId: string): Promise<PosReceipt>;
   sales(params: { from: string; to: string; page?: number; page_size?: number }): Promise<{ rows: PosSaleRow[]; total: number }>;
@@ -49,6 +53,9 @@ const liveClient: PosClient = {
   searchContacts: live.searchPosContacts,
   contactCredit: live.fetchContactCredit,
   openShift: live.openPosShift,
+  currentShift: live.fetchCurrentPosShift,
+  closeShift: live.closePosShift,
+  cashMovement: live.addPosCashMovement,
   createSale: live.createPosSale,
   receipt: live.fetchPosReceipt,
   sales: live.fetchPosSales,
@@ -102,7 +109,7 @@ const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
 const wait = (ms = 250) => new Promise((r) => setTimeout(r, ms));
 
 type DemoSale = PosSaleRow & { receipt: PosReceipt; method: PosPaymentSnapshot['method'] };
-const demo = { sales: [] as DemoSale[], seq: 1040, shiftOpen: true, contacts: [...DEMO_CONTACTS], openedAt: new Date(Date.now() - 3 * 3600_000).toISOString() };
+const demo = { sales: [] as DemoSale[], seq: 1040, shiftOpen: true, cashIn: 0, cashOut: 0, closed: null as PosShiftSummary | null, contacts: [...DEMO_CONTACTS], openedAt: new Date(Date.now() - 3 * 3600_000).toISOString() };
 
 const demoShift = (): PosShift => ({
   id: 'demo-shift',
@@ -117,7 +124,35 @@ const demoShift = (): PosShift => ({
   sales_total_cents: demo.sales.reduce((s, x) => s + Math.round(x.amount * 100), 0),
 });
 
+const demoSummary = (): PosShiftSummary => {
+  const live = demo.sales.filter((s) => s.status !== 'voided');
+  const cash = live.filter((s) => s.method === 'cash').reduce((n, x) => n + Math.round(x.amount * 100), 0);
+  return {
+    id: 'demo-shift', register_id: 'demo-reg', register_name: 'Caixa da rua', status: 'open', opened_at: demo.openedAt, opened_by_name: 'Você', closed_at: null, closed_by_name: null,
+    opening_cash_cents: 10000, cash_sales_cents: cash, receivable_cash_cents: 0, cash_in_cents: demo.cashIn, cash_out_cents: demo.cashOut,
+    expected_cash_cents: 10000 + cash + demo.cashIn - demo.cashOut, counted_cash_cents: null, difference_cents: null,
+    sales_count: live.length, sales_total_cents: live.reduce((n, x) => n + Math.round(x.amount * 100), 0),
+    totals_by_method: [{ method: 'cash', total_cents: cash }, { method: 'pix', total_cents: live.filter((s) => s.method === 'pix').reduce((n, x) => n + Math.round(x.amount * 100), 0) }].filter((m) => m.total_cents > 0),
+  };
+};
+
 const demoClient: PosClient = {
+  async currentShift() {
+    await wait(200);
+    return demo.shiftOpen ? demoSummary() : null;
+  },
+  async closeShift(_id, counted) {
+    await wait(500);
+    const sum = demoSummary();
+    demo.shiftOpen = false;
+    return { ...sum, status: 'closed', closed_at: new Date().toISOString(), closed_by_name: 'Você', counted_cash_cents: Math.round(counted * 100), difference_cents: Math.round(counted * 100) - sum.expected_cash_cents };
+  },
+  async cashMovement(_id, input) {
+    await wait(300);
+    if (input.type === 'cash_in') demo.cashIn += Math.round(input.amount * 100);
+    else demo.cashOut += Math.round(input.amount * 100);
+    return {};
+  },
   async bootstrap() {
     await wait(150);
     return {

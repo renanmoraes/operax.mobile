@@ -8,6 +8,8 @@ export type ApiTemplate = {
   status?: string;
   body?: string;
   components?: unknown;
+  /** Modelo que a Operax criou para a empresa (os da empresa não vêm marcados). */
+  operax_system?: boolean;
 };
 
 export async function listTemplates(params?: { status?: string }): Promise<ApiTemplate[]> {

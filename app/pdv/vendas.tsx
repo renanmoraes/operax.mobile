@@ -56,7 +56,7 @@ function PosSalesScreen() {
 
   return (
     <Screen>
-      <TopBar safe title={t('salesOfDay')} onBack={() => (router.canGoBack() ? router.back() : router.replace('/pdv' as never))} />
+      <TopBar safe title={t('salesOfDay')} onBack={() => (router.canGoBack() ? router.back() : router.replace('/pdv' as never))} right={<IconButton icon="cash-outline" onPress={() => router.push('/pdv/caixa' as never)} accessibilityLabel={t('shift.manage')} />} />
       <View style={styles.dayBar}>
         <IconButton icon="chevron-back" onPress={() => setDay((d) => addDays(d, -1))} accessibilityLabel={t('sales.prev')} />
         <View style={{ flex: 1, alignItems: 'center' }}>
@@ -185,14 +185,12 @@ function SaleDetail({ client, sale, onClose, onMessage }: { client: PosClient; s
             </>
           ) : null}
 
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            {can('posPaymentEdit') && sale.status === 'completed' ? (
-              <Button label={t('sales.fixPayment')} icon="swap-horizontal-outline" variant="secondary" compact style={{ flex: 1 }} onPress={() => setPanel('fix')} />
-            ) : null}
-            {can('posVoid') && sale.status === 'completed' ? (
-              <Button label={t('sales.void')} icon="close-circle-outline" variant="danger" compact style={{ flex: 1 }} onPress={() => setPanel('void')} />
-            ) : null}
-          </View>
+          {(can('posPaymentEdit') || can('posVoid')) && sale.status === 'completed' ? (
+            <View style={{ gap: 10 }}>
+              {can('posPaymentEdit') ? <Button label={t('sales.fixPayment')} icon="swap-horizontal-outline" variant="secondary" onPress={() => setPanel('fix')} /> : null}
+              {can('posVoid') ? <Button label={t('sales.void')} icon="close-circle-outline" variant="danger" onPress={() => setPanel('void')} /> : null}
+            </View>
+          ) : null}
         </View>
       ) : panel === 'fix' ? (
         // O formulário só monta com a forma atual em mãos: os campos nascem dela e não se sincronizam depois.

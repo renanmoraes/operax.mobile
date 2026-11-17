@@ -2,11 +2,12 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/src/i18n';
-import { useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { FlatList, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Badge, Card, EmptyState, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
-import { colors, radii, typography } from '@/src/design-system/tokens';
+import { Badge, Card, Chip, EmptyState, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { colors, radii, shadows, typography } from '@/src/design-system/tokens';
 import { listTemplates, sendTemplateMessage } from '@/src/shared/api/templates.api';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { templates as mockTemplates } from '@/src/mocks/data';
@@ -49,7 +50,11 @@ function TemplatesScreen() {
     onError: () => setToast({ text: t('templates.sendFailed'), tone: 'danger' }),
   });
 
-  const data =
+  const [search, setSearch] = useState('');
+  const [origin, setOrigin] = useState<'all' | 'company' | 'operax'>('all');
+  const [status, setStatus] = useState<'all' | 'approved' | 'pending'>('all');
+
+  const all =
     mode === 'live'
       ? (query.data ?? []).map((tpl) => ({
           id: tpl.id,
@@ -58,12 +63,44 @@ function TemplatesScreen() {
           language: tpl.language || 'pt_BR',
           preview: tpl.body || tpl.name,
           status: (tpl.status === 'approved' ? 'approved' : 'pending') as 'approved' | 'pending',
+          operax: tpl.operax_system === true,
         }))
-      : mockTemplates;
+      : mockTemplates.map((m) => ({ ...m, operax: false }));
+
+  // Só leitura: o filtro esconde o que não interessa, nunca muda um template.
+  const term = search.trim().toLowerCase();
+  const data = useMemo(
+    () =>
+      all.filter((tpl) => {
+        if (origin === 'company' && tpl.operax) return false;
+        if (origin === 'operax' && !tpl.operax) return false;
+        if (status !== 'all' && tpl.status !== status) return false;
+        if (!term) return true;
+        return `${tpl.name} ${tpl.preview}`.toLowerCase().includes(term);
+      }),
+    [all, origin, status, term],
+  );
+  const filtered = origin !== 'all' || status !== 'all' || !!term;
 
   return (
     <Screen>
       <ScreenHeader safe title={t('templates.title')} subtitle={t('templates.subtitle')} onBack={() => router.back()} />
+      <View style={styles.searchWrap}>
+        <View style={styles.search}>
+          <Ionicons name="search" size={17} color={colors.textMuted} />
+          <TextInput value={search} onChangeText={setSearch} placeholder={t('templates.filters.search')} placeholderTextColor="#6b7486" autoCorrect={false} autoCapitalize="none" accessibilityLabel={t('templates.filters.search')} style={styles.searchInput} />
+          {search ? <Ionicons name="close-circle" size={17} color={colors.textMuted} onPress={() => setSearch('')} accessibilityLabel={t('templates.filters.clear')} /> : null}
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+          <Chip label={t('templates.filters.all')} selected={origin === 'all'} onPress={() => setOrigin('all')} />
+          <Chip label={t('templates.filters.company')} selected={origin === 'company'} onPress={() => setOrigin('company')} />
+          <Chip label={t('templates.filters.operax')} selected={origin === 'operax'} onPress={() => setOrigin('operax')} />
+          <View style={styles.sep} />
+          <Chip label={t('templates.filters.approvedOnly')} selected={status === 'approved'} onPress={() => setStatus(status === 'approved' ? 'all' : 'approved')} />
+          <Chip label={t('templates.filters.reviewOnly')} selected={status === 'pending'} onPress={() => setStatus(status === 'pending' ? 'all' : 'pending')} />
+        </ScrollView>
+        {mode === 'live' && !query.isLoading ? <Muted style={{ fontSize: 12.5 }}>{t('templates.filters.count', { count: data.length })}</Muted> : null}
+      </View>
       {toast ? (
         <View style={{ alignSelf: 'center', marginBottom: 8 }}>
           <Badge label={toast.text} tone={toast.tone} />
@@ -76,7 +113,7 @@ function TemplatesScreen() {
           data={data}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: insets.bottom + 32, gap: 10 }}
-          ListEmptyComponent={<EmptyState icon="document-text-outline" title={t('templates.emptyTitle')} subtitle={t('templates.emptySub')} />}
+          ListEmptyComponent={filtered ? <EmptyState icon="funnel-outline" title={t('templates.filters.noneFound')} subtitle={t('templates.filters.noneFoundHint')} /> : <EmptyState icon="document-text-outline" title={t('templates.emptyTitle')} subtitle={t('templates.emptySub')} />}
           renderItem={({ item }) => {
             const approved = item.status === 'approved';
             return (
@@ -97,6 +134,7 @@ function TemplatesScreen() {
               >
                 <View style={styles.rowTop}>
                   <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
+                  {item.operax ? <Badge label={t('templates.filters.operaxBadge')} tone="primary" /> : null}
                   <Badge label={approved ? t('templates.approved') : t('templates.inReview')} tone={approved ? 'success' : 'warn'} />
                 </View>
                 <Muted style={{ fontSize: 12.5 }}>
@@ -115,6 +153,11 @@ function TemplatesScreen() {
 }
 
 const styles = StyleSheet.create({
+  searchWrap: { paddingHorizontal: 20, paddingBottom: 8, gap: 10 },
+  search: { height: 44, borderRadius: radii.pill, backgroundColor: colors.cardBg, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, ...shadows.card },
+  searchInput: { flex: 1, minWidth: 0, fontFamily: typography.fontFamily, fontSize: 15, color: colors.text, padding: 0 },
+  chips: { gap: 8, alignItems: 'center', paddingRight: 8 },
+  sep: { width: 1, height: 22, backgroundColor: colors.track, marginHorizontal: 2 },
   rowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
   title: { flex: 1, fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text },
   preview: { backgroundColor: colors.primaryWash, borderRadius: radii.md, borderBottomLeftRadius: 6, padding: 12 },

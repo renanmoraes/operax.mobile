@@ -28,6 +28,30 @@ export type PosShift = {
   sales_total_cents: number;
 };
 
+/** O caixa (turno) com os números de agora, como o servidor calcula. Valores em centavos. */
+export type PosShiftSummary = {
+  id: string;
+  register_id: string;
+  register_name: string | null;
+  status: 'open' | 'closed';
+  opened_at: string;
+  opened_by_name: string | null;
+  closed_at: string | null;
+  closed_by_name: string | null;
+  opening_cash_cents: number;
+  cash_sales_cents: number;
+  receivable_cash_cents: number;
+  cash_in_cents: number;
+  cash_out_cents: number;
+  /** Quanto tem que estar na gaveta agora. */
+  expected_cash_cents: number;
+  counted_cash_cents: number | null;
+  difference_cents: number | null;
+  sales_count: number;
+  sales_total_cents: number;
+  totals_by_method: { method: string; total_cents: number; count?: number }[];
+};
+
 export type PosBootstrap = {
   settings: {
     on_account_enabled: boolean;
@@ -94,6 +118,23 @@ export async function fetchContactCredit(contactId: string): Promise<{ balance_c
 
 export async function openPosShift(registerId: string, openingCash: number): Promise<PosShift> {
   const { data } = await api.post(`/api/apps/pos/registers/${registerId}/shifts/open`, { opening_cash: openingCash });
+  return data;
+}
+
+/** O caixa aberto deste terminal ou operador; `null` com o caixa fechado. */
+export async function fetchCurrentPosShift(registerId: string): Promise<PosShiftSummary | null> {
+  const { data } = await api.get(`/api/apps/pos/registers/${registerId}/shifts/current`);
+  return data && typeof data === 'object' && 'id' in data ? (data as PosShiftSummary) : null;
+}
+
+export async function closePosShift(shiftId: string, countedCash: number): Promise<PosShiftSummary> {
+  const { data } = await api.post(`/api/apps/pos/shifts/${shiftId}/close`, { counted_cash: countedCash });
+  return data as PosShiftSummary;
+}
+
+/** Sangria (tirar dinheiro da gaveta) ou suprimento (pôr). O motivo é obrigatório. */
+export async function addPosCashMovement(shiftId: string, input: { type: 'cash_in' | 'cash_out'; amount: number; reason: string }): Promise<unknown> {
+  const { data } = await api.post(`/api/apps/pos/shifts/${shiftId}/cash-movements`, input);
   return data;
 }
 
