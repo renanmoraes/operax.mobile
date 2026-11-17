@@ -52,6 +52,7 @@ const fitness = {
     },
     share: 'Compartilhar',
     shareMessage: 'Ganhei "{{name}}" no {{company}}.',
+    shareKicker: 'CONQUISTA DESBLOQUEADA',
     ticketA11y: 'QR do ingresso de {{event}}',
     ticketAchievement: 'Dá conquista no check-in',
     ticketChecked: 'Check-in feito às {{time}}',

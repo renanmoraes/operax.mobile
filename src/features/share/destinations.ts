@@ -102,6 +102,21 @@ async function save(ref: CanvasRef) {
   await showDialog({ title: i18n.t('fitness:share.savedTitle'), message: i18n.t('fitness:share.savedBody'), tone: 'success' });
 }
 
+/**
+ * Imagem + legenda pelo menu do sistema (conquistas). Com o react-native-share a legenda acompanha a imagem
+ * nos apps que aceitam os dois; sem ele (ou se falhar) vai só a imagem.
+ */
+export async function shareImageWithMessage(ref: CanvasRef, message: string): Promise<void> {
+  const file = await captureFile(ref);
+  try {
+    const { default: Share } = native();
+    await Share.open({ url: file, type: 'image/png', message, title: i18n.t('fitness:share.title'), failOnCancel: false, useInternalStorage: true });
+  } catch (e) {
+    if (isCancel(e)) return;
+    await more(file);
+  }
+}
+
 export async function sendTo(dest: Destination, ref: CanvasRef, transparent: boolean): Promise<void> {
   switch (dest) {
     case 'story':

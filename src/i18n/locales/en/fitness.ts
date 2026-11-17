@@ -54,6 +54,7 @@ const fitness: Shape<typeof pt> = {
     },
     share: 'Share',
     shareMessage: 'I earned "{{name}}" at {{company}}.',
+    shareKicker: 'ACHIEVEMENT UNLOCKED',
     ticketA11y: 'Ticket QR for {{event}}',
     ticketAchievement: 'Gives an achievement at check-in',
     ticketChecked: 'Checked in at {{time}}',
