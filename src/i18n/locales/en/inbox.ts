@@ -59,6 +59,7 @@ const inbox: Shape<typeof pt> = {
     title: 'Queue',
     none: 'No one waiting',
     waiting: '{{count}} waiting · take one to respond',
+    open: 'Open the conversation with {{name}}',
     emptyTitle: 'Queue is clear',
     emptySub: 'No one is waiting for service right now.',
     claim: 'Take',

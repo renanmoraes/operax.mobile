@@ -59,6 +59,7 @@ const inbox: Shape<typeof pt> = {
     title: 'Cola',
     none: 'Nadie esperando',
     waiting: '{{count}} esperando · toma uno para atender',
+    open: 'Abrir la conversación con {{name}}',
     emptyTitle: 'Cola vacía',
     emptySub: 'Nadie espera atención ahora.',
     claim: 'Tomar',

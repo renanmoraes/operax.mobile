@@ -57,6 +57,7 @@ const inbox = {
     title: 'Fila',
     none: 'Ninguém aguardando',
     waiting: '{{count}} aguardando · assuma para atender',
+    open: 'Abrir a conversa com {{name}}',
     emptyTitle: 'Fila zerada',
     emptySub: 'Ninguém esperando atendimento agora.',
     claim: 'Assumir',

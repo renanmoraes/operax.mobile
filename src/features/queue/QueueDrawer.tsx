@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -89,7 +90,15 @@ export function QueueDrawer({ items, claimingId, onClaim }: Props) {
               </View>
             }
             renderItem={({ item }) => (
-              <Card style={styles.item}>
+              // Tocar no cartão abre a conversa para ler antes de assumir (lá dentro também tem o botão de assumir).
+              <Card
+                style={styles.item}
+                onPress={() => {
+                  close();
+                  router.push(`/conversation/${item.id}`);
+                }}
+                accessibilityLabel={t('queue.open', { name: item.contactName })}
+              >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   <Avatar initials={initialsOf(item.contactName)} size={42} />
                   <View style={{ flex: 1, minWidth: 0 }}>
