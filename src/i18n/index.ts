@@ -1,5 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { varsFor, type VocabMap } from './vocabulary';
 import { resources, type Lang } from './resources';
 
 /**
@@ -55,6 +56,18 @@ void i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
   returnNull: false,
 });
+
+/**
+ * Aplica o vocabulário da empresa (o que um app de terminologia trocou). Os textos do app usam `$t(vocab:contacts)` e
+ * afins; aqui o grupo `vocab` de cada idioma é refeito com as palavras da empresa por cima do padrão. Vazio volta ao
+ * padrão do app. Avisa as telas abertas para se redesenharem.
+ */
+export function setVocabulary(map: VocabMap) {
+  for (const lang of Object.keys(resources) as Lang[]) {
+    i18n.addResourceBundle(lang, 'vocab', varsFor(lang, map), true, true);
+  }
+  i18n.emit('languageChanged', i18n.language);
+}
 
 export const currentLang = (): Lang => (isLang(i18n.language) ? i18n.language : 'pt');
 

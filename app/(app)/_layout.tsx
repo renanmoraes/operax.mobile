@@ -1,4 +1,4 @@
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, router, Tabs } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/design-system/tokens';
@@ -12,6 +12,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSocketEvents } from '@/src/shared/realtime/socket';
 import { useEffect, useState } from 'react';
 import { hasSeenStaffOnboarding } from '@/src/features/permissions/permissions';
+import { useThirdTab } from '@/src/features/navigation/useThirdTab';
+import { useVocabularySync } from '@/src/features/vocabulary/useVocabularySync';
 
 // Mesmas permissões do menu do Operax web: sem elas a aba nem aparece.
 const TAB_PERMISSIONS: Record<string, PermissionNeed | undefined> = {
@@ -29,6 +31,9 @@ export default function AppLayout() {
   const qc = useQueryClient();
   // Aviso novo chega ao vivo na aba Avisos.
   const { t } = useTranslation('nav');
+  const third = useThirdTab();
+  // Palavras da empresa (Pacientes, Clientes…): um app de terminologia instalado no Operax chega aqui.
+  useVocabularySync();
   useSocketEvents({ 'notification.new': () => void qc.invalidateQueries({ queryKey: ['notifications'] }) }, user?.kind === 'staff');
   // Primeira entrada da equipe: pede as permissões do aparelho (depois ficam em Perfil).
   const [permsSeen, setPermsSeen] = useState<boolean | null>(null);
@@ -78,11 +83,30 @@ export default function AppLayout() {
             ),
           }}
         />
+        {/* Terceira aba: PDV, pessoas ou avisos (ver useThirdTab). As outras duas ficam fora da barra. */}
+        <Tabs.Screen
+          name="pdv-tab"
+          options={{
+            title: t('staff.pos'),
+            tabBarItemStyle: third === 'pdv' ? undefined : HIDDEN_ITEM,
+            tabBarIcon: ({ color, size }) => <Ionicons name="storefront" size={size} color={color as string} />,
+          }}
+          listeners={{ tabPress: (e) => { e.preventDefault(); router.push('/pdv'); } }}
+        />
+        <Tabs.Screen
+          name="people-tab"
+          options={{
+            title: t('staff.people'),
+            tabBarItemStyle: third === 'people' ? undefined : HIDDEN_ITEM,
+            tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color as string} />,
+          }}
+          listeners={{ tabPress: (e) => { e.preventDefault(); router.push('/pacientes'); } }}
+        />
         <Tabs.Screen
           name="notifications"
           options={{
             title: t('staff.notifications'),
-            href: visible('notifications') ? undefined : null,
+            tabBarItemStyle: third === 'notifications' ? undefined : HIDDEN_ITEM,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="notifications" size={size} color={color as string} />
             ),

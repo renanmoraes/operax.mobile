@@ -11,5 +11,6 @@ import fitness from './fitness';
 import attendance from './attendance';
 import pos from './pos';
 import portal from './portal';
+import { varsFor } from '../../vocabulary';
 
-export default { common, nav, settings, auth, client, inbox, agenda, team, staff, fitness, attendance, pos, portal };
+export default { common, nav, settings, auth, client, inbox, agenda, team, staff, fitness, attendance, pos, portal, vocab: varsFor('en') };

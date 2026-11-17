@@ -27,10 +27,11 @@ const staff: Shape<typeof pt> = {
     work: 'Trabajo',
     account: 'Cuenta',
     items: {
+      notifications: { title: 'Avisos', hint: 'Avisos de Operax y de las conversaciones' },
       eventCheckin: { title: 'Check-in de evento', hint: 'Lee la entrada del alumno en la puerta' },
       pos: { title: 'Venta (PDV)', hint: 'Escanea, pesa y cobra' },
-      patients: { title: 'Pacientes', hint: 'Pacientes y clientes de la empresa' },
-      kanban: { title: 'Kanban', hint: 'Pipeline comercial' },
+      patients: { title: '$t(vocab:Contacts)', hint: '$t(vocab:Contacts) de la empresa' },
+      kanban: { title: '$t(vocab:kanban)', hint: 'Pipeline comercial' },
       history: { title: 'Historial', hint: 'Atenciones cerradas' },
       quickReplies: { title: 'Respuestas rápidas', hint: 'Atajos de mensaje' },
       templates: { title: 'Plantillas Meta', hint: 'Fuera de la ventana de 24 h' },

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Badge, EmptyState, Screen, ScreenHeader, StatTile } from '@/src/design-system/ui';
+import { Badge, EmptyState, IconButton, Screen, ScreenHeader, StatTile } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { ConversationCard } from '@/src/features/inbox/ConversationCard';
 import { conversations as mockConversations, type Conversation } from '@/src/mocks/data';
@@ -20,6 +20,8 @@ import { SkeletonList } from '@/src/design-system/Skeleton';
 import { RequirePermission, useCan } from '@/src/features/auth/useCan';
 import { NumberFilter, useInboxConnections } from '@/src/features/attendance/channels';
 import { PresenceButton } from '@/src/features/attendance/TeamPresence';
+import { useThirdTab } from '@/src/features/navigation/useThirdTab';
+import { useUnreadNotifications } from '@/src/features/notifications/useUnread';
 
 export default function InboxScreenGuarded() {
   const { t } = useTranslation('inbox');
@@ -37,6 +39,8 @@ function InboxScreen() {
   const { open, close, setQueueCount } = useQueueDrawer();
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const can = useCan();
+  const thirdTab = useThirdTab();
+  const unread = useUnreadNotifications();
   // Empresa com vários números: filtra as conversas de um número só (o servidor filtra; no demo, aqui).
   const [numberId, setNumberId] = useState<string | null>(null);
   const { idOf, multi } = useInboxConnections();
@@ -116,7 +120,14 @@ function InboxScreen() {
         title={t('inbox.title')}
         onMenuPress={open}
         menuBadge={queue.length}
-        right={can('teamPresence') ? <PresenceButton /> : <Badge label={mode === 'live' ? (query.isFetching ? t('inbox.updating') : t('inbox.online')) : t('inbox.demo')} tone={mode === 'live' ? 'success' : 'primary'} />}
+        right={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {thirdTab !== 'notifications' ? (
+              <IconButton icon="notifications-outline" badge={unread > 0} accessibilityLabel={unread > 0 ? t('inbox.bellUnread', { count: unread }) : t('inbox.bell')} onPress={() => router.push('/(app)/notifications')} />
+            ) : null}
+            {can('teamPresence') ? <PresenceButton /> : <Badge label={mode === 'live' ? (query.isFetching ? t('inbox.updating') : t('inbox.online')) : t('inbox.demo')} tone={mode === 'live' ? 'success' : 'primary'} />}
+          </View>
+        }
       />
       <NumberFilter value={numberId} onChange={setNumberId} />
       <View style={styles.stats}>

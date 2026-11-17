@@ -12,8 +12,11 @@ import { TeamChatCard } from '@/src/features/team-chat/TeamChatCard';
 import { useCan } from '@/src/features/auth/useCan';
 import type { PermKey } from '@/src/features/auth/permissions';
 import { getActiveApps } from '@/src/shared/api/attendance.api';
+import { useThirdTab } from '@/src/features/navigation/useThirdTab';
+import { useUnreadNotifications } from '@/src/features/notifications/useUnread';
 
-const WORK: { id: 'pos' | 'eventCheckin' | 'patients' | 'kanban' | 'history' | 'quickReplies' | 'templates'; href: string; icon: IconName; perm: PermKey; app?: string }[] = [
+const WORK: { id: 'notifications' | 'pos' | 'eventCheckin' | 'patients' | 'kanban' | 'history' | 'quickReplies' | 'templates'; href: string; icon: IconName; perm: PermKey | null; app?: string }[] = [
+  { id: 'notifications', href: '/notifications', icon: 'notifications-outline', perm: null },
   { id: 'pos', href: '/pdv', icon: 'storefront-outline', perm: 'posSell', app: 'pos' },
   { id: 'eventCheckin', href: '/eventos/checkin', icon: 'qr-code-outline', perm: 'eventsCheckin', app: 'events' },
   { id: 'patients', href: '/pacientes', icon: 'people-outline', perm: 'contacts' },
@@ -35,7 +38,10 @@ export default function MoreScreen() {
   const can = useCan();
   // Item de app (o PDV) só aparece com o app instalado na empresa; na demonstração aparece sempre.
   const apps = useQuery({ queryKey: ['active-apps'], enabled: mode === 'live', staleTime: 10 * 60_000, queryFn: getActiveApps });
-  const work = WORK.filter((item) => can(item.perm) && (!item.app || mode !== 'live' || (apps.data ?? []).includes(item.app)));
+  const third = useThirdTab();
+  const unread = useUnreadNotifications();
+  // PDV e pessoas ganham a terceira aba quando existem; sem eles o sino fica na barra e não precisa repetir aqui.
+  const work = WORK.filter((item) => (item.perm ? can(item.perm) : item.id !== 'notifications' || third !== 'notifications') && !(item.id === 'pos' && third === 'pdv') && !(item.id === 'patients' && third === 'people') && (!item.app || mode !== 'live' || (apps.data ?? []).includes(item.app)));
 
   return (
     <Screen>
@@ -68,7 +74,7 @@ export default function MoreScreen() {
               <Rise index={2}>
                 <SettingsGroup>
                   {work.map((item, i) => (
-                    <SettingsRow key={item.href} icon={item.icon} title={t(`more.items.${item.id}.title`)} subtitle={t(`more.items.${item.id}.hint`)} onPress={() => router.push(item.href as never)} last={i === work.length - 1} />
+                    <SettingsRow key={item.href} icon={item.icon} title={t(`more.items.${item.id}.title`)} subtitle={t(`more.items.${item.id}.hint`)} right={item.id === 'notifications' && unread > 0 ? <Badge label={String(unread)} tone="warn" /> : undefined} onPress={() => router.push(item.href as never)} last={i === work.length - 1} />
                   ))}
                 </SettingsGroup>
               </Rise>

@@ -25,10 +25,11 @@ const staff = {
     work: 'Trabalho',
     account: 'Conta',
     items: {
+      notifications: { title: 'Avisos', hint: 'Avisos do Operax e das conversas' },
       eventCheckin: { title: 'Check-in de evento', hint: 'Leia o ingresso do aluno na entrada' },
       pos: { title: 'Venda (PDV)', hint: 'Leia o código, pese e receba' },
-      patients: { title: 'Pacientes', hint: 'Pacientes e clientes da empresa' },
-      kanban: { title: 'Kanban', hint: 'Pipeline comercial' },
+      patients: { title: '$t(vocab:Contacts)', hint: '$t(vocab:Contacts) da empresa' },
+      kanban: { title: '$t(vocab:kanban)', hint: 'Pipeline comercial' },
       history: { title: 'Histórico', hint: 'Atendimentos encerrados' },
       quickReplies: { title: 'Respostas rápidas', hint: 'Atalhos de mensagem' },
       templates: { title: 'Templates Meta', hint: 'Fora da janela de 24 h' },
