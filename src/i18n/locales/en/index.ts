@@ -14,6 +14,7 @@ import portal from './portal';
 import contact from './contact';
 import contactMore from './contactMore';
 import catalog from './catalog';
+import catalogVariations from './catalogVariations';
 import { varsFor } from '../../vocabulary';
 
-export default { common, nav, settings, auth, client, inbox, agenda, team, staff, fitness, attendance, pos, portal, contact, contactMore, catalog, vocab: varsFor('en') };
+export default { common, nav, settings, auth, client, inbox, agenda, team, staff, fitness, attendance, pos, portal, contact, contactMore, catalog, catalogVariations, vocab: varsFor('en') };

@@ -1,31 +1,30 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import * as ImagePicker from 'expo-image-picker';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { showDialog } from '@/src/design-system/Dialog';
 import { KEYBOARD_BEHAVIOR } from '@/src/design-system/keyboard';
-import { Button, Card, Chip, Field, Loading, Muted, PressableScale, Screen, ScreenHeader, SectionHeader } from '@/src/design-system/ui';
-import { colors, radii, typography } from '@/src/design-system/tokens';
+import { Button, Chip, Field, Loading, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { colors, typography } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { RequirePermission, useCan } from '@/src/features/auth/useCan';
 import { MoneyField } from '@/src/features/contact/MoneyField';
-import { acceptsInitialBalance, byMeasure, EMPTY_DRAFT, problemOf, UNITS, type Draft } from '@/src/features/catalog/newProduct';
-import { registerProduct } from '@/src/features/catalog/registerProduct';
+import { patchDraft, resetDraft, useDraft } from '@/src/features/catalog/draftStore';
+import { digitsOnly, hasFiscal, ORIGINS } from '@/src/features/catalog/fiscal';
+import { acceptsInitialBalance, byMeasure, CONDITIONS, hasVariations, problemOf, UNITS } from '@/src/features/catalog/newProduct';
+import { registerProduct, type Warning } from '@/src/features/catalog/registerProduct';
+import { BarcodeField } from '@/src/features/catalog/ui/BarcodeField';
+import { FormSection } from '@/src/features/catalog/ui/FormSection';
+import { PhotoStrip } from '@/src/features/catalog/ui/PhotoStrip';
+import { MAX_PRODUCT_PHOTOS } from '@/src/features/catalog/variations';
 import { maskDate } from '@/src/features/pos/signup';
-import { ScannerModal } from '@/src/features/pos/ScannerModal';
 import { getActiveApps } from '@/src/shared/api/attendance.api';
-import { generateProductCode, listProductCategories, type StockControl } from '@/src/shared/api/catalog.api';
-import type { UploadFile } from '@/src/shared/api/upload';
+import { listProductCategories, type StockControl } from '@/src/shared/api/catalog.api';
 
-const MAX_PHOTO = 5 * 1024 * 1024;
-const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const CONTROLS: StockControl[] = ['tracked', 'lot_tracked', 'serial_tracked', 'not_tracked'];
+const CONTROLS: StockControl[] = ['tracked', 'lot_tracked', 'serial_tracked'];
+type Open = 'listing' | 'fiscal' | 'flags' | null;
 
 export default function NewProductGuarded() {
   const { t } = useTranslation('catalog');
@@ -42,47 +41,31 @@ function NewProduct() {
   const { mode } = useAuth();
   const can = useCan();
   const live = mode === 'live';
+  const d = useDraft();
   const appsQ = useQuery({ queryKey: ['active-apps'], enabled: live, staleTime: 10 * 60_000, queryFn: getActiveApps });
   const catQ = useQuery({ queryKey: ['catalog', 'categories'], enabled: live, staleTime: 5 * 60_000, queryFn: listProductCategories });
+  const apps = live ? appsQ.data ?? [] : ['inventory-catalog', 'associados'];
   // O Estoque é o que deixa lançar saldo: sem ele (ou sem a permissão), é só o cadastro do produto.
-  const stockOn = (live ? (appsQ.data ?? []).includes('inventory-catalog') : true) && can('inventoryManage');
-
-  const [d, setD] = useState<Draft>(EMPTY_DRAFT);
-  const [photo, setPhoto] = useState<UploadFile | null>(null);
-  const [photoSheet, setPhotoSheet] = useState(false);
-  const [scanning, setScanning] = useState(false);
+  const stockOn = apps.includes('inventory-catalog') && can('inventoryManage');
+  const associates = apps.includes('associados');
+  const [open, setOpen] = useState<Open>(null);
   const [error, setError] = useState<string | null>(null);
-  const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((s) => ({ ...s, [k]: v }));
+  const toggle = (k: Exclude<Open, null>) => setOpen((o) => (o === k ? null : k));
+  const withRows = hasVariations(d);
+  const stockActive = stockOn && d.withStock;
 
-  const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
-
-  const pick = async (camera: boolean) => {
-    setPhotoSheet(false);
-    const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.7 };
-    if (camera) {
-      const p = await ImagePicker.requestCameraPermissionsAsync();
-      if (!p.granted) return;
-    }
-    const r = camera ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
-    const a = r.canceled ? null : r.assets[0];
-    if (!a) return;
-    const type = a.mimeType ?? 'image/jpeg';
-    if (!PHOTO_TYPES.includes(type)) return setError(t('photoType'));
-    if ((a.fileSize ?? 0) > MAX_PHOTO) return setError(t('photoTooBig'));
-    setError(null);
-    setPhoto({ uri: a.uri, name: a.fileName ?? 'produto.jpg', type });
+  const problemText = (p: { key: string; params?: Record<string, string | number> }) => {
+    const params = { ...p.params };
+    if (typeof params.field === 'string') params.field = t(`problems.fields.${params.field as 'weight'}`);
+    return t(`problems.${p.key as 'name'}`, params);
   };
 
-  const gen = useMutation({
-    mutationFn: (type: 'sku' | 'barcode') => generateProductCode(type, d.name.trim() || undefined).then((code) => ({ type, code })),
-    onSuccess: ({ type, code }) => set(type === 'sku' ? 'sku' : 'barcode', code),
-    onError: () => void showDialog({ title: t('generateFailed'), tone: 'warn' }),
-  });
+  const warningText = (w: Warning) => t(`warnings.${w.code}`, { name: w.name ?? '', detail: w.detail ?? '' }).replace(/\s+$/, '');
 
   const save = useMutation({
-    mutationFn: () => registerProduct(d, photo),
+    mutationFn: () => registerProduct(d, { associates, canSeeCost: true }),
     onSuccess: async ({ product, warnings }) => {
-      const msg = [t('savedBody', { name: product.name }), ...warnings.map((w) => t(`warnings.${w}`))].join('\n');
+      const msg = [t('savedBody', { name: product.name }), ...warnings.map(warningText)].join('\n');
       const v = await showDialog({
         title: t('saved'),
         message: msg,
@@ -90,114 +73,169 @@ function NewProduct() {
         actions: [{ label: t('another'), value: 'again' }, { label: t('done'), value: 'done', variant: 'ghost' }],
         dismissValue: 'done',
       });
-      if (v === 'again') {
-        setD({ ...EMPTY_DRAFT, categoryId: d.categoryId, unit: d.unit, withStock: d.withStock, control: d.control });
-        setPhoto(null);
-      } else back();
+      resetDraft({ categoryId: d.categoryId, unit: d.unit, withStock: d.withStock, control: d.control });
+      if (v === 'again') setError(null);
+      else back();
     },
     onError: () => setError(t('failed')),
   });
 
+  const back = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  };
+
   const submit = () => {
     const p = problemOf(d);
-    if (p) return setError(t(`problems.${p}`));
+    if (p) return setError(problemText(p));
     setError(null);
     save.mutate();
   };
 
-  const stockActive = stockOn && d.withStock;
-
   if (live && appsQ.isLoading) return <Screen><ScreenHeader safe title={t('title')} onBack={back} /><Loading /></Screen>;
+
+  const photos = [...(d.cover ? [d.cover] : []), ...d.gallery];
+  const optionSummary = d.options.filter((o) => o.values.length).map((o) => `${o.name}: ${o.values.join(', ')}`).join(' · ');
 
   return (
     <Screen>
       <ScreenHeader safe title={t('title')} onBack={back} />
       <KeyboardAvoidingView behavior={KEYBOARD_BEHAVIOR} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24, gap: 14 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={styles.top}>
-            <PressableScale onPress={() => setPhotoSheet(true)} accessibilityRole="button" accessibilityLabel={photo ? t('photoChange') : t('photoAdd')} style={styles.photo}>
-              {photo ? <Image source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} contentFit="cover" /> : (
-                <View style={{ alignItems: 'center', gap: 4 }}>
-                  <Ionicons name="camera-outline" size={26} color={colors.primary} />
-                  <Text style={styles.photoText}>{t('photoAdd')}</Text>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24, gap: 12 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <FormSection icon="images-outline" title={t('sections.photos')} open alwaysOpen>
+            <PhotoStrip photos={photos} max={MAX_PRODUCT_PHOTOS} hint onChange={(next) => patchDraft({ cover: next[0] ?? null, gallery: next.slice(1) })} />
+          </FormSection>
+
+          <FormSection icon="cube-outline" title={t('sections.data')} open alwaysOpen>
+            <Field label={t('name')} value={d.name} onChangeText={(v) => patchDraft({ name: v })} placeholder={t('namePlaceholder')} autoCapitalize="sentences" />
+            <Field label={t('brand')} value={d.brand} onChangeText={(v) => patchDraft({ brand: v })} autoCapitalize="words" />
+            <Field label={t('description')} value={d.description} onChangeText={(v) => patchDraft({ description: v })} multiline />
+            {(catQ.data ?? []).length > 0 ? (
+              <View style={{ gap: 8 }}>
+                <Text style={styles.label}>{t('category')}</Text>
+                <View style={styles.wrap}>
+                  <Chip label={t('noCategory')} selected={!d.categoryId} onPress={() => patchDraft({ categoryId: '' })} />
+                  {(catQ.data ?? []).map((c) => <Chip key={c.id} label={c.name} selected={d.categoryId === c.id} onPress={() => patchDraft({ categoryId: c.id })} />)}
                 </View>
-              )}
-            </PressableScale>
-            <View style={{ flex: 1, gap: 10 }}>
-              <Field label={t('name')} value={d.name} onChangeText={(v) => set('name', v)} placeholder={t('namePlaceholder')} autoCapitalize="sentences" />
-            </View>
-          </View>
-          <Field label={t('description')} value={d.description} onChangeText={(v) => set('description', v)} multiline />
-
-          <SectionHeader title={t('codes')} />
-          <Card style={{ gap: 14 }}>
-            <Field label={t('sku')} value={d.sku} onChangeText={(v) => set('sku', v)} autoCapitalize="characters" />
-            <Button label={t('generate')} variant="ghost" compact icon="sparkles-outline" loading={gen.isPending && gen.variables === 'sku'} onPress={() => gen.mutate('sku')} />
-            <Field label={t('barcode')} value={d.barcode} onChangeText={(v) => set('barcode', v)} keyboardType="number-pad" />
-            <View style={styles.row}>
-              <View style={{ flex: 1 }}><Button label={t('scan')} variant="soft" compact icon="barcode-outline" onPress={() => setScanning(true)} /></View>
-              <View style={{ flex: 1 }}><Button label={t('generate')} variant="ghost" compact icon="sparkles-outline" loading={gen.isPending && gen.variables === 'barcode'} onPress={() => gen.mutate('barcode')} /></View>
-            </View>
-          </Card>
-
-          {(catQ.data ?? []).length > 0 ? (
-            <>
-              <SectionHeader title={t('category')} />
-              <View style={styles.wrap}>
-                <Chip label={t('noCategory')} selected={!d.categoryId} onPress={() => set('categoryId', '')} />
-                {(catQ.data ?? []).map((c) => <Chip key={c.id} label={c.name} selected={d.categoryId === c.id} onPress={() => set('categoryId', c.id)} />)}
               </View>
-            </>
-          ) : null}
+            ) : null}
+            <BarcodeField label={t('sku')} kind="sku" scan={false} value={d.sku} onChange={(v) => patchDraft({ sku: v })} productName={d.name} />
+            {withRows ? <Muted>{t('barcodeByVariation')}</Muted> : <BarcodeField label={t('barcode')} value={d.barcode} onChange={(v) => patchDraft({ barcode: v })} productName={d.name} />}
+          </FormSection>
 
-          <SectionHeader title={t('price')} />
-          <Card style={{ gap: 14 }}>
-            <MoneyField label={d.unit === 'UN' ? t('price') : t('priceByUnit', { unit: d.unit.toLowerCase() })} cents={d.priceCents} onChange={(v) => set('priceCents', v)} />
-            <MoneyField label={t('cost')} cents={d.costCents} onChange={(v) => set('costCents', v)} />
+          <FormSection icon="pricetag-outline" title={t('sections.price')} open alwaysOpen>
+            <MoneyField label={d.unit === 'UN' ? t('price') : t('priceByUnit', { unit: d.unit.toLowerCase() })} cents={d.priceCents} onChange={(v) => patchDraft({ priceCents: v })} />
+            {withRows ? null : <MoneyField label={t('cost')} cents={d.costCents} onChange={(v) => patchDraft({ costCents: v })} />}
             <View style={{ gap: 8 }}>
               <Text style={styles.label}>{t('unit')}</Text>
               <View style={styles.wrap}>
-                {UNITS.map((u) => <Chip key={u} label={t(`units.${u}`)} selected={d.unit === u} onPress={() => set('unit', u)} />)}
+                {UNITS.map((u) => <Chip key={u} label={t(`units.${u}`)} selected={d.unit === u} onPress={() => patchDraft({ unit: u })} />)}
               </View>
               {d.unit !== 'UN' ? <Muted>{t('unitHint')}</Muted> : null}
             </View>
-          </Card>
+          </FormSection>
+
+          <FormSection icon="color-palette-outline" title={t('sections.variations')} open alwaysOpen>
+            {withRows ? (
+              <>
+                <Text style={styles.strong}>{t('variations.count', { count: d.rows.length })}</Text>
+                <Muted>{optionSummary}</Muted>
+                <Muted>{t('variations.priceHint')}</Muted>
+                <Button label={t('variations.edit')} variant="soft" icon="create-outline" onPress={() => router.push('/produtos/variacoes')} />
+                <Button label={t('variations.clear')} variant="ghost" compact onPress={() => patchDraft({ options: [], rows: [] })} />
+              </>
+            ) : (
+              <>
+                <Text style={styles.strong}>{t('variations.none')}</Text>
+                <Muted>{t('variations.noneHint')}</Muted>
+                <Button label={t('variations.add')} variant="soft" icon="add" onPress={() => router.push('/produtos/variacoes')} />
+              </>
+            )}
+          </FormSection>
 
           {stockOn ? (
-            <>
-              <SectionHeader title={t('stock')} />
-              <Card style={{ gap: 14 }}>
-                <View style={styles.toggle}>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={styles.toggleTitle}>{t('stockToggle')}</Text>
-                    <Muted>{t('stockHint')}</Muted>
-                  </View>
-                  <Switch value={d.withStock} onValueChange={(v) => set('withStock', v)} trackColor={{ true: colors.primary }} accessibilityLabel={t('stockToggle')} />
+            <FormSection icon="layers-outline" title={t('sections.stock')} open alwaysOpen>
+              <View style={styles.toggle}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={styles.strong}>{t('stock.toggle')}</Text>
+                  <Muted>{t('stock.hint')}</Muted>
                 </View>
-                {stockActive ? (
-                  <>
-                    <View style={{ gap: 8 }}>
-                      <Text style={styles.label}>{t('control')}</Text>
-                      <View style={styles.wrap}>
-                        {CONTROLS.filter((c) => c !== 'not_tracked').map((c) => <Chip key={c} label={t(`controls.${c}`)} selected={d.control === c} onPress={() => set('control', c)} />)}
-                      </View>
-                      <Muted>{t(`controlHints.${d.control}`)}</Muted>
+                <Switch value={d.withStock} onValueChange={(v) => patchDraft({ withStock: v })} trackColor={{ true: colors.primary }} accessibilityLabel={t('stock.toggle')} />
+              </View>
+              {stockActive ? (
+                <>
+                  <View style={{ gap: 8 }}>
+                    <Text style={styles.label}>{t('stock.control')}</Text>
+                    <View style={styles.wrap}>
+                      {CONTROLS.map((c) => <Chip key={c} label={t(`stock.controls.${c}`)} selected={d.control === c} onPress={() => patchDraft({ control: c })} />)}
                     </View>
-                    {acceptsInitialBalance(d.control) ? (
+                    <Muted>{t(`stock.controlHints.${d.control}`)}</Muted>
+                  </View>
+                  {acceptsInitialBalance(d.control) ? (
+                    withRows ? <Muted>{t('stock.byVariation')}</Muted> : (
                       <>
-                        <Field label={t('initialQty')} value={d.initialQty} onChangeText={(v) => set('initialQty', v)} keyboardType={byMeasure(d.unit) ? 'decimal-pad' : 'number-pad'} />
-                        <Muted>{t('initialQtyHint')}</Muted>
-                        <Field label={t('expires')} value={d.expires} onChangeText={(v) => set('expires', maskDate(v))} keyboardType="number-pad" placeholder="dd/mm/aaaa" maxLength={10} />
-                        <Muted>{t('expiresHint')}</Muted>
+                        <Field label={t('stock.initialQty')} value={d.initialQty} onChangeText={(v) => patchDraft({ initialQty: v })} keyboardType={byMeasure(d.unit) ? 'decimal-pad' : 'number-pad'} />
+                        <Muted>{t('stock.initialQtyHint')}</Muted>
+                        <Field label={`${t('stock.expires')} · ${t('optional')}`} value={d.expires} onChangeText={(v) => patchDraft({ expires: maskDate(v) })} keyboardType="number-pad" placeholder="dd/mm/aaaa" maxLength={10} />
+                        <Muted>{t('stock.expiresHint')}</Muted>
                       </>
-                    ) : null}
-                    <Field label={t('reorder')} value={d.reorder} onChangeText={(v) => set('reorder', v)} keyboardType={byMeasure(d.unit) ? 'decimal-pad' : 'number-pad'} />
-                    <Muted>{t('reorderHint')}</Muted>
-                  </>
-                ) : null}
-              </Card>
-            </>
+                    )
+                  ) : null}
+                  <Field label={t('stock.reorder')} value={d.reorder} onChangeText={(v) => patchDraft({ reorder: v })} keyboardType={byMeasure(d.unit) ? 'decimal-pad' : 'number-pad'} />
+                  <Muted>{t('stock.reorderHint')}</Muted>
+                </>
+              ) : null}
+            </FormSection>
           ) : null}
+
+          <FormSection icon="megaphone-outline" title={t('sections.listing')} summary={[d.condition !== 'new' ? t(`listing.conditions.${d.condition}`) : '', d.weight ? `${d.weight} g` : ''].filter(Boolean).join(' · ') || t('optional')} open={open === 'listing'} onToggle={() => toggle('listing')}>
+            <Muted>{t('listing.hint')}</Muted>
+            <View style={{ gap: 8 }}>
+              <Text style={styles.label}>{t('listing.condition')}</Text>
+              <View style={styles.wrap}>
+                {CONDITIONS.map((c) => <Chip key={c} label={t(`listing.conditions.${c}`)} selected={d.condition === c} onPress={() => patchDraft({ condition: c })} />)}
+              </View>
+            </View>
+            <Field label={t('listing.weight')} value={d.weight} onChangeText={(v) => patchDraft({ weight: v })} keyboardType="number-pad" />
+            <View style={styles.three}>
+              <View style={{ flex: 1 }}><Field label={t('listing.height')} value={d.height} onChangeText={(v) => patchDraft({ height: v })} keyboardType="decimal-pad" /></View>
+              <View style={{ flex: 1 }}><Field label={t('listing.width')} value={d.width} onChangeText={(v) => patchDraft({ width: v })} keyboardType="decimal-pad" /></View>
+              <View style={{ flex: 1 }}><Field label={t('listing.length')} value={d.length} onChangeText={(v) => patchDraft({ length: v })} keyboardType="decimal-pad" /></View>
+            </View>
+          </FormSection>
+
+          <FormSection icon="document-text-outline" title={t('sections.fiscal')} summary={hasFiscal(d.fiscal) ? [d.fiscal.ncm && `NCM ${d.fiscal.ncm}`, d.fiscal.cfop && `CFOP ${d.fiscal.cfop}`].filter(Boolean).join(' · ') : t('optional')} open={open === 'fiscal'} onToggle={() => toggle('fiscal')}>
+            <Muted>{t('fiscal.hint')}</Muted>
+            <Field label={t('fiscal.ncm')} value={d.fiscal.ncm} onChangeText={(v) => patchDraft({ fiscal: { ...d.fiscal, ncm: digitsOnly(v, 8) } })} keyboardType="number-pad" maxLength={8} />
+            <Field label={t('fiscal.cest')} value={d.fiscal.cest} onChangeText={(v) => patchDraft({ fiscal: { ...d.fiscal, cest: digitsOnly(v, 7) } })} keyboardType="number-pad" maxLength={7} />
+            <View style={{ gap: 8 }}>
+              <Text style={styles.label}>{t('fiscal.origin')}</Text>
+              <View style={styles.wrap}>
+                {ORIGINS.map((o) => <Chip key={o} label={t(`fiscal.origins.${o}`)} selected={d.fiscal.origin === o} onPress={() => patchDraft({ fiscal: { ...d.fiscal, origin: d.fiscal.origin === o ? '' : o } })} />)}
+              </View>
+            </View>
+            <Field label={t('fiscal.cfop')} value={d.fiscal.cfop} onChangeText={(v) => patchDraft({ fiscal: { ...d.fiscal, cfop: digitsOnly(v, 4) } })} keyboardType="number-pad" maxLength={4} />
+            <Field label={t('fiscal.cst')} value={d.fiscal.cst} onChangeText={(v) => patchDraft({ fiscal: { ...d.fiscal, cst: digitsOnly(v, 3) } })} keyboardType="number-pad" maxLength={3} />
+          </FormSection>
+
+          <FormSection icon="apps-outline" title={t('sections.flags')} summary={[d.inWorkflow && t('flags.workflow'), d.memberPlan && t('flags.memberPlan')].filter(Boolean).join(' · ') || t('optional')} open={open === 'flags'} onToggle={() => toggle('flags')}>
+            <View style={styles.toggle}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={styles.strong}>{t('flags.workflow')}</Text>
+                <Muted>{t('flags.workflowHint')}</Muted>
+              </View>
+              <Switch value={d.inWorkflow} onValueChange={(v) => patchDraft({ inWorkflow: v })} trackColor={{ true: colors.primary }} accessibilityLabel={t('flags.workflow')} />
+            </View>
+            {associates ? (
+              <View style={styles.toggle}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={styles.strong}>{t('flags.memberPlan')}</Text>
+                  <Muted>{t('flags.memberPlanHint')}</Muted>
+                </View>
+                <Switch value={d.memberPlan} onValueChange={(v) => patchDraft({ memberPlan: v })} trackColor={{ true: colors.primary }} accessibilityLabel={t('flags.memberPlan')} />
+              </View>
+            ) : null}
+          </FormSection>
         </ScrollView>
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
@@ -205,37 +243,16 @@ function NewProduct() {
           <Button label={t('save')} loading={save.isPending} onPress={submit} />
         </View>
       </KeyboardAvoidingView>
-
-      <BottomSheet visible={photoSheet} onClose={() => setPhotoSheet(false)} title={t('photo')}>
-        <View style={{ gap: 10 }}>
-          <Button label={t('photoCamera')} icon="camera-outline" onPress={() => void pick(true)} />
-          <Button label={t('photoGallery')} variant="soft" icon="images-outline" onPress={() => void pick(false)} />
-          {photo ? <Button label={t('photoRemove')} variant="ghost" onPress={() => { setPhoto(null); setPhotoSheet(false); }} /> : null}
-        </View>
-      </BottomSheet>
-
-      <ScannerModal
-        visible={scanning}
-        onClose={() => setScanning(false)}
-        onCode={(code) => { set('barcode', code); setScanning(false); }}
-        feedback={null}
-        count={0}
-        title={t('scanTitle')}
-        hint={t('scanHint')}
-      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  top: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
-  photo: { width: 96, height: 96, borderRadius: radii.lg, backgroundColor: colors.primaryWash, borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginTop: 22 },
-  photoText: { fontFamily: typography.fontFamilySemiBold, fontSize: 11.5, color: colors.primary, textAlign: 'center' },
-  row: { flexDirection: 'row', gap: 10 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  three: { flexDirection: 'row', gap: 10 },
   label: { fontFamily: typography.fontFamilySemiBold, fontSize: 13, color: colors.textMuted },
+  strong: { fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text },
   toggle: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  toggleTitle: { fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text },
   footer: { paddingHorizontal: 20, paddingTop: 10, gap: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, backgroundColor: colors.pageBg },
   error: { fontFamily: typography.fontFamily, fontSize: 13, color: colors.dangerText },
 });

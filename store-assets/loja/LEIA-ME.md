@@ -60,3 +60,21 @@ Os selos (`public/chips/`) e o mosaico são imagens geradas de HTML; as capturas
 - O treino livre com GPS foi gravado no web com posições simuladas pelo navegador (o app de verdade, mapa em grade do web). No celular o mapa aparece com ruas.
 - A tela da agenda mostra a hora atual da captura; o horário "Em N min" muda conforme o relógio.
 - O GIF de treino mostra um pequeno ícone de narração no topo (o aviso de voz foi escondido).
+
+## Novidade: cadastro de produto pelo celular (17/11/2026)
+
+Slides novos para a atualização, em `novidades-cadastro-produto/`. Gerados no mesmo editor (`screenshots-editor/`, slides 11 a 13 do deck iPhone e 09 a 11 do deck Android) a partir de capturas reais do app em modo demonstração (`raw/ios/staff-10a..10c-*.png`, `raw/android/staff-10a..10c-*.png`).
+
+| Pasta | Conteúdo | Tamanho |
+|-------|----------|---------|
+| `novidades-cadastro-produto/ios/iphone-6.9/11..13.png` | App Store, iPhone 6,9" | 1320×2868 |
+| `novidades-cadastro-produto/ios/iphone-6.5/11..13.png` | App Store, iPhone 6,5" | 1284×2778 |
+| `novidades-cadastro-produto/android/phone/09..11.png` | Google Play, celular | 1080×1920 |
+
+| # | Título | Tela |
+|---|--------|------|
+| 11 (Android 09) | Cadastre produto *pelo celular.* | Novo produto: foto de capa, nome, marca, descrição e SKU |
+| 12 (Android 10) | Leia o código *com a câmera.* | Código de barras com "Ler com a câmera", preço e unidade de venda |
+| 13 (Android 11) | Tamanho e cor *em segundos.* | Variações geradas com preço e saldo de cada uma |
+
+Limites das lojas: a App Store aceita 10 imagens por tamanho e o Google Play 8 no celular, e os decks atuais já estão cheios. Para subir esta atualização é preciso trocar slides existentes (sugestão: tirar "Avisos que chegam a tempo" e o mosaico "E muito mais" no iPhone, e dois dos mais antigos no Android). A foto do produto (pacote de café) e os dados da tela são de exemplo.
