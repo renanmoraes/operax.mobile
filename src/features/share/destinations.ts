@@ -25,8 +25,8 @@ const META_APP_ID = process.env.EXPO_PUBLIC_META_APP_ID ?? '';
 
 const opts = { format: 'png' as const, quality: 1, width: CANVAS.w, height: CANVAS.h };
 
-export function captureFile(ref: CanvasRef): Promise<string> {
-  return captureRef(ref, { ...opts, result: 'tmpfile' });
+export function captureFile(ref: CanvasRef, size: { w: number; h: number } = CANVAS): Promise<string> {
+  return captureRef(ref, { ...opts, width: size.w, height: size.h, result: 'tmpfile' });
 }
 
 export function captureDataUri(ref: CanvasRef): Promise<string> {
@@ -106,8 +106,8 @@ async function save(ref: CanvasRef) {
  * Imagem + legenda pelo menu do sistema (conquistas). Com o react-native-share a legenda acompanha a imagem
  * nos apps que aceitam os dois; sem ele (ou se falhar) vai só a imagem.
  */
-export async function shareImageWithMessage(ref: CanvasRef, message: string): Promise<void> {
-  const file = await captureFile(ref);
+export async function shareImageWithMessage(ref: CanvasRef, message: string, size?: { w: number; h: number }): Promise<void> {
+  const file = await captureFile(ref, size);
   try {
     const { default: Share } = native();
     await Share.open({ url: file, type: 'image/png', message, title: i18n.t('fitness:share.title'), failOnCancel: false, useInternalStorage: true });

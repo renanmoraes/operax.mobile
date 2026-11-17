@@ -11,7 +11,7 @@ import { colors, radii, shadows, text, typography } from '@/src/design-system/to
 import { locale } from '@/src/i18n';
 import { useActiveCompanyName } from '@/src/features/client/useClientData';
 import { AchievementPin } from '@/src/features/fitness/AchievementPin';
-import { ACHIEVEMENT_CARD, AchievementShareCard } from '@/src/features/fitness/AchievementShareCard';
+import { AchievementShareCard, CARD_SIZE, type CardFormat } from '@/src/features/fitness/AchievementShareCard';
 import { isCancel, shareImageWithMessage, type CanvasRef } from '@/src/features/share/destinations';
 import { levelView, useAchievements, useMarkAchievementsSeen, type AchievementView } from '@/src/features/fitness/achievements';
 
@@ -33,6 +33,9 @@ export default function AchievementsScreen() {
   const [open, setOpen] = useState<AchievementView | null>(null);
   const cardRef = useRef<View>(null) as CanvasRef;
   const [sharing, setSharing] = useState(false);
+  // Escolha do formato: quadrado (WhatsApp, feed) ou story (vertical).
+  const [choosing, setChoosing] = useState(false);
+  const [format, setFormat] = useState<CardFormat>('square');
   const fresh = useMemo(() => (data?.items ?? []).filter((i) => i.new), [data]);
   // Comemora as ganhas e ainda não vistas uma vez; ao fechar, o backend marca como vistas.
   const [dismissed, setDismissed] = useState(false);
@@ -52,19 +55,22 @@ export default function AchievementsScreen() {
     return i.period.kind === 'annual' ? t('ach.backEveryYear', { date: fmtDate(i.period.next_starts_on) }) : t('ach.backOn', { date: fmtDate(i.period.next_starts_on) });
   };
   // Imagem do cartão + a frase de sempre como legenda. Na web (sem cartão capturável) segue só o texto.
-  const shareAchievement = async (item: AchievementView) => {
+  const shareAchievement = async (item: AchievementView, as: CardFormat) => {
     const message = t('ach.shareMessage', { name: item.name, company });
     if (Platform.OS === 'web') { await Share.share({ message }).catch(() => undefined); return; }
+    setFormat(as);
     setSharing(true);
     try {
       // O ícone enviado pela academia vem de rede: espera baixar para não sair um círculo vazio.
       if (item.icon.url) await Image.prefetch(item.icon.url).catch(() => false);
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      await shareImageWithMessage(cardRef, message);
+      // Duas voltas de quadro: o cartão precisa redesenhar no tamanho do formato escolhido antes de virar imagem.
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 80))));
+      await shareImageWithMessage(cardRef, message, CARD_SIZE[as]);
     } catch (e) {
       if (!isCancel(e)) await Share.share({ message }).catch(() => undefined);
     } finally {
       setSharing(false);
+      setChoosing(false);
     }
   };
   const closeCelebration = () => { setDismissed(true); seen.mutate(fresh.map((f) => f.ref)); };
@@ -217,13 +223,29 @@ export default function AchievementsScreen() {
             {open.earned_at ? <Text style={styles.sheetSub}>{t('ach.wonOn', { date: fmtDate(open.earned_at) })}</Text> : periodLine(open) ? <Text style={styles.sheetSub}>{periodLine(open)}</Text> : null}
             {open.earned_editions.length ? <Muted style={{ marginTop: 4, fontSize: 12.5 }}>{t('ach.editions', { years: open.earned_editions.join(', ') })}</Muted> : null}
             {/* Respiro em volta: a sombra do botão branco é desenhada fora da caixa e o rolar da folha a cortava. */}
-            <View style={styles.sheetActions}>
-              <Button label={t('common:actions.close')} variant="secondary" onPress={() => setOpen(null)} style={{ flex: 1 }} />
-              {open.earned_at ? <Button label={t('ach.share')} icon="share-outline" loading={sharing} style={{ flex: 1 }} onPress={() => void shareAchievement(open)} /> : null}
-            </View>
+            {choosing && open.earned_at ? (
+              <View style={styles.chooser}>
+                <Text style={styles.chooserTitle}>{t('ach.shareAs')}</Text>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  {(['square', 'story'] as const).map((f) => (
+                    <PressableScale key={f} disabled={sharing} onPress={() => void shareAchievement(open, f)} accessibilityRole="button" accessibilityLabel={t(`ach.format.${f}`)} style={styles.formatCard}>
+                      <View style={[styles.formatShape, f === 'story' ? { width: 28, height: 50 } : { width: 40, height: 40 }]} />
+                      <Text style={styles.formatName}>{t(`ach.format.${f}`)}</Text>
+                      <Muted style={{ fontSize: 12, textAlign: 'center' }}>{t(`ach.format.${f}Hint`)}</Muted>
+                    </PressableScale>
+                  ))}
+                </View>
+                <Button label={sharing ? t('ach.preparing') : t('common:actions.back')} variant="secondary" loading={sharing} disabled={sharing} onPress={() => setChoosing(false)} style={{ alignSelf: 'stretch' }} />
+              </View>
+            ) : (
+              <View style={styles.sheetActions}>
+                <Button label={t('common:actions.close')} variant="secondary" onPress={() => setOpen(null)} style={{ flex: 1 }} />
+                {open.earned_at ? <Button label={t('ach.share')} icon="share-outline" style={{ flex: 1 }} onPress={() => (Platform.OS === 'web' ? void shareAchievement(open, 'square') : setChoosing(true))} /> : null}
+              </View>
+            )}
             {open.earned_at && Platform.OS !== 'web' ? (
-              <View style={styles.cardLayer} pointerEvents="none">
-                <AchievementShareCard canvasRef={cardRef} item={open} company={company} dateLabel={t('ach.wonOn', { date: fmtDate(open.earned_at) })} />
+              <View style={[styles.cardLayer, { height: CARD_SIZE[format].h, width: CARD_SIZE[format].w }]} pointerEvents="none">
+                <AchievementShareCard canvasRef={cardRef} item={open} company={company} format={format} dateLabel={t('ach.wonOn', { date: fmtDate(open.earned_at) })} />
               </View>
             ) : null}
           </>
@@ -267,7 +289,12 @@ const styles = StyleSheet.create({
   cellName: { fontFamily: typography.fontFamilyBold, fontSize: 12.5, lineHeight: 16, textAlign: 'center', color: colors.text },
   sheetActions: { flexDirection: 'row', gap: 12, alignSelf: 'stretch', marginTop: 12, paddingTop: 8, paddingBottom: 14, paddingHorizontal: 4 },
   // Fora da tela (à esquerda): o cartão é desenhado em tamanho real só para virar imagem.
-  cardLayer: { position: 'absolute', top: 0, left: -(ACHIEVEMENT_CARD.w + 200), width: ACHIEVEMENT_CARD.w, height: ACHIEVEMENT_CARD.h },
+  cardLayer: { position: 'absolute', top: 0, left: -1400 },
+  chooser: { alignSelf: 'stretch', gap: 12, marginTop: 14, paddingTop: 6, paddingBottom: 14, paddingHorizontal: 4 },
+  chooserTitle: { fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text, textAlign: 'center' },
+  formatCard: { flex: 1, alignItems: 'center', gap: 6, paddingVertical: 16, paddingHorizontal: 8, borderRadius: radii.lg, backgroundColor: colors.pageBg, borderWidth: 1.5, borderColor: colors.track },
+  formatShape: { borderRadius: 7, borderWidth: 2.5, borderColor: colors.primary, backgroundColor: colors.primaryTint },
+  formatName: { fontFamily: typography.fontFamilyBold, fontSize: 14.5, color: colors.text },
   sheetTitle: { marginTop: 14, ...text.title, color: colors.text, textAlign: 'center' },
   sheetTier: { marginTop: 4, fontFamily: typography.fontFamilySemiBold, fontSize: 13 },
   sheetDesc: { marginTop: 8, fontSize: 14.5, lineHeight: 21, textAlign: 'center' },
