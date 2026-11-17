@@ -14,8 +14,14 @@ export type ApiBooking = {
   /** Detalhes que a ficha do agendamento mostra (mesmos campos do Operax web). */
   client_contact_id?: string | null;
   client_phone_e164?: string | null;
+  provider_id?: string;
+  service_id?: string;
+  client_id?: string | null;
   payment_type?: 'private' | 'insurance' | null;
+  plan_type_id?: string | null;
   plan_type_name?: string | null;
+  /** Situação como o servidor grava (a agenda normaliza `status` para as cores e os rótulos). */
+  raw_status?: string;
   visit_kind?: 'primeira_consulta' | 'retorno' | null;
   is_encaixe?: boolean;
   encaixe_justification?: string | null;
@@ -34,21 +40,51 @@ export type ApiBooking = {
 export type BookingAction = 'approve' | 'reject' | 'check_in' | 'no_show' | 'cancel';
 
 /** Ações da ficha do agendamento. Dar entrada sem forma de pagamento registrada pede `payment_type`. */
-export async function runBookingAction(id: string, action: BookingAction, opts?: { reason?: string; payment_type?: 'private' | 'insurance' }) {
+export type BookingPayment = { payment_type: 'private' | 'insurance'; plan_type_id?: string | null };
+
+export async function runBookingAction(id: string, action: BookingAction, opts?: { reason?: string; payment_type?: 'private' | 'insurance'; plan_type_id?: string | null; notify_client?: boolean }) {
   const reason = opts?.reason?.trim() || undefined;
   const path =
     action === 'approve' ? 'approve' : action === 'reject' ? 'reject' : action === 'check_in' ? 'check-in' : action === 'no_show' ? 'no-show' : 'cancel';
   const body =
     action === 'check_in'
       ? opts?.payment_type
-        ? { payment_type: opts.payment_type }
+        ? { payment_type: opts.payment_type, ...(opts.payment_type === 'insurance' && opts.plan_type_id ? { plan_type_id: opts.plan_type_id } : {}) }
         : {}
       : action === 'reject'
-        ? { reason, notify_client: true }
+        ? { reason, notify_client: opts?.notify_client ?? true }
         : reason
           ? { reason }
           : undefined;
   const { data } = await api.post(`/api/scheduling/bookings/${id}/${path}`, body);
+  return data as ApiBooking;
+}
+
+/** Corrige particular/convênio de um agendamento ainda aberto. */
+export async function updateBookingPayment(id: string, payment: BookingPayment) {
+  const { data } = await api.patch(`/api/scheduling/bookings/${id}/payment`, payment);
+  return data as ApiBooking;
+}
+
+export type RescheduleInput = {
+  starts_at: string;
+  ends_at: string;
+  reason: string;
+  provider_id?: string;
+  service_id?: string;
+  allow_blocked_overlap?: boolean;
+  allow_booking_overlap?: boolean;
+  encaixe_justification?: string;
+};
+
+/** Remarca no mesmo registro. `whatsapp_notice` diz se o cliente foi avisado. */
+export async function rescheduleBooking(id: string, input: RescheduleInput) {
+  const { data } = await api.post(`/api/scheduling/bookings/${id}/reschedule`, input);
+  return data as ApiBooking & { whatsapp_notice?: { sent: boolean; channel: 'template' | 'text' | null; skip_reason: string | null } };
+}
+
+export async function getBooking(id: string) {
+  const { data } = await api.get(`/api/scheduling/bookings/${id}`);
   return data as ApiBooking;
 }
 
