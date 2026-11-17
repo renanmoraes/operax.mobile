@@ -11,7 +11,7 @@ import { colors, text, typography } from '@/src/design-system/tokens';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DayEvent, DayTimeline } from '@/src/features/agenda/DayTimeline';
 import { toMinutes } from '@/src/features/agenda/timeline';
-import { ApiBooking, BookingAction, listAllBookings, runBookingAction } from '@/src/shared/api/bookings.api';
+import { ApiBooking, BookingAction, listAllBookings, runBookingAction, updateBookingPayment } from '@/src/shared/api/bookings.api';
 import { BookingDetailSheet } from '@/src/features/agenda/BookingDetailSheet';
 import { detailsFromApi, normalizeBookingStatus, STATUS_AFTER } from '@/src/features/agenda/bookingDetails';
 import { Toast, useToast } from '@/src/design-system/Toast';
@@ -103,7 +103,9 @@ function AgendaScreen() {
             location_name: e.location,
             ...(agendaDetails[e.id] as Partial<ApiBooking>),
           }));
-    return base.map((b) => ({ ...b, status: normalizeBookingStatus(statusOverride[b.id] ?? b.status) }));
+    // `raw_status` guarda a situação como o servidor grava: a agenda normaliza `status` para cores e rótulos, mas as
+    // ações (aprovar, dar entrada, cancelar, reagendar) dependem da situação real (ex.: remarcação pendente).
+    return base.map((b) => ({ ...b, raw_status: statusOverride[b.id] ?? b.raw_status ?? b.status, status: normalizeBookingStatus(statusOverride[b.id] ?? b.status) }));
   }, [mode, query.data, statusOverride, dayKey, isToday]);
 
   if (mode === 'live' && query.data && query.data.ok === false) {
@@ -121,7 +123,7 @@ function AgendaScreen() {
   const open = bookings.find((b) => b.id === openId) ?? null;
   const openEvent = events.find((e) => e.id === openId);
 
-  const onAction = async (action: BookingAction, opts?: { payment_type?: 'private' }) => {
+  const onAction = async (action: BookingAction, opts?: { payment_type?: 'private' | 'insurance'; plan_type_id?: string; notify_client?: boolean }) => {
     if (!open) return;
     setBusy(action);
     try {
@@ -141,6 +143,22 @@ function AgendaScreen() {
       show(typeof raw === 'string' && raw.trim() && (res?.status ?? 500) < 500 ? raw : t('agenda.actionFailed'), 'error');
     } finally {
       setBusy(null);
+    }
+  };
+
+  const onSavePayment = async (payment: { payment_type: 'private' | 'insurance'; plan_type_id?: string }) => {
+    if (!open) return;
+    try {
+      if (mode === 'live') {
+        await updateBookingPayment(open.id, payment);
+        await query.refetch();
+      }
+      show(t('agenda.done.paymentSaved'));
+    } catch (e: unknown) {
+      const res = (e as { response?: { status?: number; data?: { message?: string | string[] } } })?.response;
+      const raw = Array.isArray(res?.data?.message) ? res?.data?.message[0] : res?.data?.message;
+      show(typeof raw === 'string' && raw.trim() && (res?.status ?? 500) < 500 ? raw : t('agenda.actionFailed'), 'error');
+      throw e;
     }
   };
 
@@ -188,6 +206,8 @@ function AgendaScreen() {
         dateLabel={open ? wallDateLabel(open.starts_at, locale(), { weekday: 'long', day: 'numeric', month: 'long' }) : ''}
         busy={busy}
         onAction={(a, o) => void onAction(a, o)}
+        onSavePayment={onSavePayment}
+        onReschedule={() => open && router.push(`/agendar?reschedule=${encodeURIComponent(open.id)}`)}
       />
       <Toast toast={toast} />
     </Screen>
