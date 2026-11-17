@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { BottomSheet } from '@/src/design-system/BottomSheet';
@@ -47,28 +48,42 @@ export function useTeamPresence(enabled = true) {
   return { team, allowed, loading: mode === 'live' && q.isLoading, refetch: q.refetch };
 }
 
-/** Pílula do topo do atendimento: "3 online"; abre o painel. */
+/**
+ * Pílula do topo do atendimento. Só mostra gente de verdade online: até dois rostos com o ponto verde e a contagem.
+ * Sem ninguém online vira um selo quieto (ícone + 0), sem rostos cinzentos que parecem gente disponível.
+ * Sem a palavra "online" para caber ao lado do título; o leitor de tela fala a frase inteira.
+ */
 export function PresenceButton() {
   const { t } = useTranslation('attendance');
   const { user } = useAuth();
   const { team, allowed } = useTeamPresence();
   const [open, setOpen] = useState(false);
   if (!allowed) return null;
-  const online = team.filter((m) => m.id !== user?.id && presenceOf(m) === 'online').length;
+  const onlineList = sortByPresence(team.filter((m) => m.id !== user?.id && presenceOf(m) === 'online'));
+  const online = onlineList.length;
+  const idle = online === 0;
   return (
     <>
-      <PressableScale onPress={() => setOpen(true)} accessibilityRole="button" accessibilityLabel={t('presence.openA11y', { count: online })} hitSlop={6} style={styles.pill}>
-        <View style={styles.faces}>
-          {sortByPresence(team.filter((m) => m.id !== user?.id))
-            .slice(0, 3)
-            .map((m, i) => (
-              <View key={m.id} style={[styles.face, { marginLeft: i ? -8 : 0, zIndex: 3 - i }]}>
+      <PressableScale
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={t('presence.openA11y', { count: online })}
+        hitSlop={6}
+        style={[styles.pill, idle ? styles.pillIdle : styles.pillLive]}
+      >
+        {idle ? (
+          <Ionicons name="people-outline" size={17} color={colors.textMuted} />
+        ) : (
+          <View style={styles.faces}>
+            {onlineList.slice(0, 2).map((m, i) => (
+              <View key={m.id} style={[styles.face, { marginLeft: i ? -9 : 0, zIndex: 2 - i }]}>
                 <Text style={styles.faceText}>{initialsOf(m.name)}</Text>
-                <View style={[styles.faceDot, { backgroundColor: PRESENCE_COLOR[presenceOf(m)] }]} />
               </View>
             ))}
-        </View>
-        <Text style={styles.pillText}>{t('presence.onlineCount', { count: online })}</Text>
+            <View style={styles.liveDot} />
+          </View>
+        )}
+        <Text style={[styles.pillText, idle && { color: colors.textMuted }]}>{online > 9 ? '9+' : online}</Text>
       </PressableScale>
       <TeamPresenceSheet visible={open} onClose={() => setOpen(false)} />
     </>
@@ -183,12 +198,14 @@ export function MyAvailability() {
 }
 
 const styles = StyleSheet.create({
-  pill: { flexDirection: 'row', alignItems: 'center', gap: 7, height: 34, paddingLeft: 4, paddingRight: 11, borderRadius: 999, backgroundColor: '#fff', borderWidth: 1, borderColor: colors.border },
-  faces: { flexDirection: 'row' },
-  face: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.primaryTint, borderWidth: 2, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, borderRadius: 999, borderWidth: 1 },
+  pillLive: { paddingLeft: 4, paddingRight: 11, backgroundColor: colors.successSoft, borderColor: '#bfe6cc' },
+  pillIdle: { paddingHorizontal: 11, backgroundColor: '#fff', borderColor: colors.border },
+  faces: { flexDirection: 'row', alignItems: 'center' },
+  face: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff', borderWidth: 2, borderColor: colors.successSoft, alignItems: 'center', justifyContent: 'center' },
   faceText: { fontFamily: typography.fontFamilyBold, fontSize: 9, color: colors.primary },
-  faceDot: { position: 'absolute', right: -2, bottom: -2, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5, borderColor: '#fff' },
-  pillText: { fontFamily: typography.fontFamilySemiBold, fontSize: 12.5, color: colors.text },
+  liveDot: { position: 'absolute', right: -3, bottom: -1, width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success, borderWidth: 2, borderColor: colors.successSoft, zIndex: 3 },
+  pillText: { fontFamily: typography.fontFamilyBold, fontSize: 14, color: colors.success, fontVariant: ['tabular-nums'], minWidth: 9, textAlign: 'center' },
   mine: { gap: 10, padding: 14, borderRadius: 18, backgroundColor: '#f6f8fc', marginBottom: 6 },
   mineHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   mineDot: { width: 9, height: 9, borderRadius: 5 },

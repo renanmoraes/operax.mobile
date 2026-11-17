@@ -233,9 +233,14 @@ export function HeroCard({
   return body;
 }
 
-export function Display({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) {
+export function Display({ children, style, oneLine }: { children: ReactNode; style?: StyleProp<TextStyle>; oneLine?: boolean }) {
   return (
-    <Text style={[styles.display, style]} accessibilityRole="header">
+    <Text
+      style={[styles.display, style]}
+      accessibilityRole="header"
+      // Título de cabeçalho nunca parte a palavra no meio: numa tela estreita ele encolhe um pouco e fica em uma linha.
+      {...(oneLine ? { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.78 } : null)}
+    >
       {children}
     </Text>
   );
@@ -877,7 +882,7 @@ export function ScreenHeader({
           </PressableScale>
         ) : null}
         <View style={{ flexShrink: 1 }}>
-          <Display style={styles.headerTitle}>{title}</Display>
+          <Display style={styles.headerTitle} oneLine>{title}</Display>
           {subtitle ? <T role="callout" tone="muted" style={{ marginTop: 2 }}>{subtitle}</T> : null}
         </View>
       </View>
