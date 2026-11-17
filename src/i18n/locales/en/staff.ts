@@ -44,7 +44,8 @@ const staff: Shape<typeof pt> = {
     empty: 'No alerts.',
   },
   prefs: {
-    title: 'Notifications',
+    title: 'Notifications and privacy',
+    privacy: 'Privacy',
     subtitle: 'Everything on by default, even with the screen locked',
     saved: 'Preferences saved',
     saveFailed: 'Could not save',
@@ -66,7 +67,7 @@ const staff: Shape<typeof pt> = {
   permissions: {
     title: 'Device permissions',
     onboardingTitle: 'Get the app ready for customer service',
-    onboardingSub: 'Allow what you will use. You can change it later in Profile › Device permissions.',
+    onboardingSub: 'Allow what you will use. You can change it later in Profile › Notifications and privacy.',
     sub: 'If you denied a permission, allow it here or in your phone settings.',
     enable: 'Enable',
     allow: 'Allow',

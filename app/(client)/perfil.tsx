@@ -94,7 +94,7 @@ export default function ClientPerfilScreen() {
           <SettingsGroup>
             <SettingsRow
               icon="notifications-outline"
-              title={t('profile.notifications')}
+              title={t('profile.notifPrivacy')}
               subtitle={notif === 'granted' ? t('profile.notifOn') : notif === 'unavailable' ? t('profile.notifPhoneOnly') : t('profile.notifOff')}
               subtitleTone={notif === 'granted' ? 'success' : undefined}
               right={notif === 'undetermined' || notif === 'denied' ? <Button label={t('onboarding.enable')} compact onPress={() => void request('notifications')} /> : undefined}
@@ -126,7 +126,6 @@ export default function ClientPerfilScreen() {
                 onPress={() => router.push('/cliente/senha')}
               />
             ) : null}
-            <SettingsRow icon="shield-checkmark-outline" title={t('profile.privacy')} subtitle={t('profile.privacySub')} onPress={() => router.push('/cliente/permissoes')} />
             <LanguageRow syncProfile={false} last />
           </SettingsGroup>
         </Rise>

@@ -1,8 +1,8 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Display, Muted, Rise, Screen } from '@/src/design-system/ui';
+import { Button, Display, Muted, Rise, Screen, TopBar } from '@/src/design-system/ui';
 import { PermissionCard, StatusAction } from '@/src/features/permissions/PermissionCard';
 import { spacing } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
@@ -16,6 +16,9 @@ export default function ClientPermissionsScreen() {
   const { t } = useTranslation(['client', 'common']);
   const insets = useSafeAreaInsets();
   const { mode } = useAuth();
+  const { inicio } = useLocalSearchParams<{ inicio?: string }>();
+  // Primeira entrada: apresentação com Continuar. Vindo do Perfil: só os ajustes, com voltar.
+  const onboarding = inicio === '1';
   const keys: PermissionKey[] = ['notifications', 'location', 'camera', 'photos'];
   const { states, request } = usePermissions(keys, pushTargetFor(mode, 'client')); // aluno com login real: o aparelho recebe push do portal
   const caps = useClientCapabilities();
@@ -41,15 +44,20 @@ export default function ClientPermissionsScreen() {
 
   return (
     <Screen backdrop="mirror">
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + spacing.xl }]}>
-        <Rise>
-          <Display style={{ fontSize: 28, lineHeight: 33 }}>{t('onboarding.title')}</Display>
-        </Rise>
-        <Rise index={1}>
-          <Muted style={styles.sub}>{t('onboarding.subtitle')}</Muted>
-        </Rise>
+      {onboarding ? null : <TopBar safe title={t('profile.notifPrivacy')} onBack={() => router.back()} />}
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: onboarding ? insets.top + 40 : 8, paddingBottom: insets.bottom + spacing.xl }]}>
+        {onboarding ? (
+          <>
+            <Rise>
+              <Display style={{ fontSize: 28, lineHeight: 33 }}>{t('onboarding.title')}</Display>
+            </Rise>
+            <Rise index={1}>
+              <Muted style={styles.sub}>{t('onboarding.subtitle')}</Muted>
+            </Rise>
+          </>
+        ) : null}
 
-        <View style={{ marginTop: 26, gap: 12 }}>
+        <View style={{ marginTop: onboarding ? 26 : 12, gap: 12 }}>
           <PermissionCard
             index={2}
             icon="notifications-outline"
@@ -102,11 +110,15 @@ export default function ClientPermissionsScreen() {
           ) : null}
         </View>
 
-        <View style={{ flex: 1, minHeight: 24 }} />
-        <Rise index={5} style={{ gap: 10 }}>
-          <Button label={t('common:actions.continue')} icon="arrow-forward" onPress={finish} />
-          <Button label={t('onboarding.notNow')} variant="ghost" onPress={finish} />
-        </Rise>
+        {onboarding ? (
+          <>
+            <View style={{ flex: 1, minHeight: 24 }} />
+            <Rise index={5} style={{ gap: 10 }}>
+              <Button label={t('common:actions.continue')} icon="arrow-forward" onPress={finish} />
+              <Button label={t('onboarding.notNow')} variant="ghost" onPress={finish} />
+            </Rise>
+          </>
+        ) : null}
       </ScrollView>
     </Screen>
   );

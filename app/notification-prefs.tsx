@@ -14,6 +14,7 @@ import {
 } from '@/src/features/notifications/catalog';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { openSystemSettings, pushTargetFor, usePermissions } from '@/src/features/permissions/permissions';
+import { StatusAction } from '@/src/features/permissions/PermissionCard';
 import { updateNotificationPrefs } from '@/src/shared/api/profile.api';
 
 const CATEGORY_ICONS: Record<PushCategoryId, IconName> = {
@@ -35,8 +36,10 @@ export default function NotificationPrefsScreen() {
   const { t } = useTranslation('staff');
   const insets = useSafeAreaInsets();
   const { mode, user } = useAuth();
-  const { states, request } = usePermissions(['notifications'], pushTargetFor(mode, user?.kind));
+  const { states, request } = usePermissions(['notifications', 'camera', 'photos', 'microphone'], pushTargetFor(mode, user?.kind));
   const permission = states.notifications;
+  const media =
+    states.camera === 'granted' && states.photos === 'granted' ? 'granted' : states.camera === 'blocked' || states.photos === 'blocked' ? 'blocked' : states.camera === 'unavailable' ? 'unavailable' : states.camera;
   // Começa com o que já veio do servidor junto com o usuário (sem efeito para copiar depois).
   const [prefs, setPrefs] = useState<NotificationPrefsState>(() => {
     const remote = (user?.kind === 'staff' ? user.notification_prefs : undefined) as Partial<NotificationPrefsState> | undefined;
@@ -123,6 +126,25 @@ export default function NotificationPrefsScreen() {
                 title={t('prefs.sound.title')}
                 subtitle={t('prefs.sound.subtitle')}
                 right={toggle(prefs.sound, (v) => setPrefs((p) => ({ ...p, sound: v })), t('prefs.sound.title'))}
+                last
+              />
+            </SettingsGroup>
+          </Rise>
+
+          <Muted style={styles.groupLabel}>{t('prefs.privacy')}</Muted>
+          <Rise index={1}>
+            <SettingsGroup>
+              <SettingsRow
+                icon="camera-outline"
+                title={t('permissions.camera.title')}
+                subtitle={t('permissions.camera.body')}
+                right={<StatusAction state={media} grantLabel={t('permissions.allow')} onRequest={() => void request('camera').then(() => request('photos'))} />}
+              />
+              <SettingsRow
+                icon="mic-outline"
+                title={t('permissions.microphone.title')}
+                subtitle={t('permissions.microphone.body')}
+                right={<StatusAction state={states.microphone} grantLabel={t('permissions.allow')} onRequest={() => void request('microphone')} />}
                 last
               />
             </SettingsGroup>

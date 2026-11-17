@@ -66,8 +66,7 @@ export default function ProfileScreen() {
 
           <Rise index={2}>
             <SettingsGroup>
-              <SettingsRow icon="shield-checkmark-outline" title={t('profile.permissions')} subtitle={t('profile.permissionsSub')} onPress={() => router.push('/permissoes')} />
-              <SettingsRow icon="options-outline" title={t('profile.notifPrefs')} onPress={() => router.push('/notification-prefs')} />
+              <SettingsRow icon="notifications-outline" title={t('profile.notifPrivacy')} subtitle={t('profile.notifPrivacySub')} onPress={() => router.push('/notification-prefs')} />
               <SettingsRow icon="flash-outline" title={t('profile.quickReplies')} onPress={() => router.push('/quick-replies')} />
               <SettingsRow icon="document-text-outline" title={t('profile.templates')} onPress={() => router.push('/templates')} />
               <LanguageRow syncProfile={mode === 'live'} last />

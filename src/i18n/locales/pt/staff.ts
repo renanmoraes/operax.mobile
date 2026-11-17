@@ -42,7 +42,8 @@ const staff = {
     empty: 'Nenhum aviso.',
   },
   prefs: {
-    title: 'Notificações',
+    title: 'Notificações e privacidade',
+    privacy: 'Privacidade',
     subtitle: 'Tudo ligado por padrão, inclusive com a tela bloqueada',
     saved: 'Preferências salvas',
     saveFailed: 'Falha ao salvar',
@@ -64,7 +65,7 @@ const staff = {
   permissions: {
     title: 'Permissões do aparelho',
     onboardingTitle: 'Deixe o app pronto para o atendimento',
-    onboardingSub: 'Libere o que for usar. Dá para mudar depois em Perfil › Permissões do aparelho.',
+    onboardingSub: 'Libere o que for usar. Dá para mudar depois em Perfil › Notificações e privacidade.',
     sub: 'Se você negou alguma permissão, libere aqui ou nos ajustes do celular.',
     enable: 'Ativar',
     allow: 'Permitir',

@@ -28,7 +28,7 @@ export default function ClientLayout() {
   if (!isAuthenticated || user?.kind !== 'client') return <Redirect href="/" />;
   if (user.active_tenant_id == null) return <Redirect href="/(auth)/client-tenant-select" />;
   if (onboarded === null) return null;
-  if (!onboarded) return <Redirect href="/cliente/permissoes" />;
+  if (!onboarded) return <Redirect href="/cliente/permissoes?inicio=1" />;
 
   return (
     <Tabs

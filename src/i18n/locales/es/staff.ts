@@ -44,7 +44,8 @@ const staff: Shape<typeof pt> = {
     empty: 'Ningún aviso.',
   },
   prefs: {
-    title: 'Notificaciones',
+    title: 'Notificaciones y privacidad',
+    privacy: 'Privacidad',
     subtitle: 'Todo activado por defecto, incluso con la pantalla bloqueada',
     saved: 'Preferencias guardadas',
     saveFailed: 'No se pudo guardar',
@@ -66,7 +67,7 @@ const staff: Shape<typeof pt> = {
   permissions: {
     title: 'Permisos del dispositivo',
     onboardingTitle: 'Deja la app lista para la atención',
-    onboardingSub: 'Permite lo que vayas a usar. Puedes cambiarlo después en Perfil › Permisos del dispositivo.',
+    onboardingSub: 'Permite lo que vayas a usar. Puedes cambiarlo después en Perfil › Notificaciones y privacidad.',
     sub: 'Si negaste algún permiso, permítelo aquí o en los ajustes del celular.',
     enable: 'Activar',
     allow: 'Permitir',
