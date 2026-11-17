@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, typography } from '@/src/design-system/tokens';
 import { Badge, Card, Muted, SectionHeader, SettingsGroup, SettingsRow, type IconName } from '@/src/design-system/ui';
 import { orderStatus } from './format';
-import { usePortalHome, usePortalShortcuts, type PortalShortcut } from './usePortal';
+import { usePortalAnamnesisPending, usePortalHome, usePortalShortcuts, type PortalShortcut } from './usePortal';
 
 const ICON: Record<PortalShortcut['key'], IconName> = {
   services: 'construct-outline',
@@ -14,16 +14,28 @@ const ICON: Record<PortalShortcut['key'], IconName> = {
   reminders: 'notifications-outline',
   card: 'id-card-outline',
   documents: 'document-text-outline',
+  assessments: 'body-outline',
 };
 
 /** O que pede resposta do cliente agora: orçamento ou serviço esperando aprovação. Some quando não há nada. */
 export function PortalAttention() {
   const { t } = useTranslation('portal');
   const home = usePortalHome();
+  const anamnesis = usePortalAnamnesisPending(!!home.data?.capabilities.training).data ?? [];
   const waiting = (home.data?.service_orders ?? []).filter((o) => o.can_respond || o.can_approve).slice(0, 2);
-  if (!waiting.length) return null;
+  if (!waiting.length && !anamnesis.length) return null;
   return (
     <View style={{ gap: 10, marginTop: 14 }}>
+      {anamnesis.length ? (
+        <Card onPress={() => router.push(anamnesis.length === 1 ? `/cliente/anamnese/${encodeURIComponent(anamnesis[0].id)}` : '/cliente/anamnese')} accessibilityLabel={t('anam.pendingOne')} style={styles.attention}>
+          <View style={styles.dot}><Ionicons name="clipboard-outline" size={18} color={colors.warnText} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.attTitle} numberOfLines={1}>{t('anam.pendingOne')}</Text>
+            <Muted style={{ fontSize: 12.5 }}>{anamnesis.length === 1 ? anamnesis[0].name : t('anam.pendingMany', { count: anamnesis.length })}</Muted>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Card>
+      ) : null}
       {waiting.map((o) => (
         <Card key={o.id} onPress={() => router.push(`/cliente/servico/${encodeURIComponent(o.id)}`)} accessibilityLabel={`${o.title}, ${orderStatus(o).label}`} style={styles.attention}>
           <View style={styles.dot}><Ionicons name="construct-outline" size={18} color={colors.warnText} /></View>

@@ -2,6 +2,9 @@ import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import {
+  portalAnamnesisForm,
+  portalAnamnesisPending,
+  portalAssessments,
   portalCards,
   portalExam,
   portalExams,
@@ -47,10 +50,12 @@ export const usePortalExams = () => usePortalQuery('exams', portalExams);
 export const usePortalExam = (id: string) => usePortalQuery('exam', () => portalExam(id), id);
 export const usePortalReminders = () => usePortalQuery('reminders', portalReminders);
 export const usePortalCards = () => usePortalQuery('cards', portalCards);
+export const usePortalAnamnesisForm = (id: string) => usePortalQuery('anamnesis-form', () => portalAnamnesisForm(id), id);
+export const usePortalAssessments = () => usePortalQuery('assessments', portalAssessments);
 export const usePortalProfile = () => usePortalQuery('profile', portalProfile);
 
 /** O que a tela inicial e o perfil mostram do portal: atalhos com selo, só do que a empresa usa. */
-export type PortalShortcut = { key: 'services' | 'payments' | 'exams' | 'reminders' | 'card' | 'documents'; href: string; badge: number; sub: string };
+export type PortalShortcut = { key: 'services' | 'payments' | 'exams' | 'reminders' | 'card' | 'documents' | 'assessments'; href: string; badge: number; sub: string };
 
 export function summarize(home: PortalHome | undefined, t: (key: string, o?: Record<string, unknown>) => string): PortalShortcut[] {
   if (!home) return [];
@@ -67,10 +72,17 @@ export function summarize(home: PortalHome | undefined, t: (key: string, o?: Rec
     const n = (home.documents ?? []).filter((d) => d.kind !== 'fiscal' || c.fiscal).length;
     out.push({ key: 'documents', href: '/cliente/documentos', badge: 0, sub: n ? t('portal:hub.documentsCount', { count: n }) : t('portal:hub.documentsNone') });
   }
+  if (c.training) out.push({ key: 'assessments', href: '/cliente/avaliacoes', badge: 0, sub: t('portal:hub.assessmentsSub') });
   return out;
 }
 
 export function usePortalShortcuts(t: (key: string, o?: Record<string, unknown>) => string) {
   const { data } = usePortalHome();
   return useMemo(() => summarize(data, t), [data, t]);
+}
+
+/** Anamneses que a equipe pediu e o aluno ainda não respondeu. Só com treino liberado na empresa. */
+export function usePortalAnamnesisPending(enabledByCaps = true) {
+  const { tenant, enabled } = usePortalScope();
+  return useQuery({ queryKey: ['portal', tenant, 'anamnesis-pending'], queryFn: portalAnamnesisPending, enabled: enabled && enabledByCaps, retry: false, staleTime: 30_000 });
 }

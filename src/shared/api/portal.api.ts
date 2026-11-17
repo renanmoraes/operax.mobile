@@ -213,3 +213,23 @@ export const portalProfile = async () => (await api.get(`${BASE}/me/profile`)).d
 export const portalUpdateProfile = async (body: Partial<Record<keyof PortalProfile, string | null>>) => (await api.patch(`${BASE}/me/profile`, body)).data as PortalProfile;
 /** Sai de todos os aparelhos da pessoa nesta empresa (a sessão deste também deixa de valer). */
 export const portalLogoutAll = async () => void (await api.post(`${BASE}/me/logout-all`, {}));
+
+// ---- Anamnese e avaliações (Fitness)
+export type AnamneseQuestion = {
+  id: string;
+  type: 'yes_no_na' | 'yes_no' | 'text' | 'long_text' | 'number' | 'single' | 'multi' | 'date' | 'scale';
+  label: string;
+  required: boolean;
+  section?: string;
+  options?: string[];
+  unit?: string;
+  detail_when?: 'yes' | 'no' | 'any';
+  detail_label?: string;
+};
+export type AnamneseForm = { id: string; name: string; questions: AnamneseQuestion[] };
+export type AnamneseAnswers = Record<string, { value: string | number | string[]; detail?: string }>;
+export const portalAnamnesisPending = async () => (await api.get(`${BASE}/fitness/anamnesis`)).data as { id: string; name: string; requested_at: string }[];
+export const portalAnamnesisForm = async (id: string) => (await api.get(`${BASE}/fitness/anamnesis/${encodeURIComponent(id)}`)).data as AnamneseForm;
+export const portalAnamnesisAnswer = async (id: string, answers: AnamneseAnswers) =>
+  (await api.post(`${BASE}/fitness/anamnesis/${encodeURIComponent(id)}/answer`, { answers })).data as { ok: true };
+export const portalAssessments = async () => (await api.get(`${BASE}/fitness/assessments`)).data as import('@/src/features/portal/assessments').AssessmentView[];
