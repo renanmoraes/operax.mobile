@@ -14,11 +14,14 @@ import { providerDisplayName } from '@/src/features/fitness/brands';
 import { useFitnessSummary } from '@/src/features/fitness/useFitness';
 import { useAchievementLevel } from '@/src/features/fitness/achievements';
 import { pushTargetFor, usePermissions } from '@/src/features/permissions/permissions';
+import { confirmDialog } from '@/src/design-system/Dialog';
+import { portalLogoutAll } from '@/src/shared/api/portal.api';
 import { appVersionLabel } from '@/src/shared/updates/appVersion';
 
 export default function ClientPerfilScreen() {
   const { t } = useTranslation('client');
   const { t: tAuth } = useTranslation('auth');
+  const { t: tp } = useTranslation('portal');
   const insets = useSafeAreaInsets();
   const { user, logout, switchTenant, mode } = useAuth();
   const { data: companies } = useCompanies();
@@ -126,6 +129,25 @@ export default function ClientPerfilScreen() {
                 onPress={() => router.push('/cliente/senha')}
               />
             ) : null}
+            {mode === 'live' ? (
+              <SettingsRow icon="person-circle-outline" title={tp('account.title')} subtitle={tp('hub.accountSub')} onPress={() => router.push('/cliente/dados')} />
+            ) : null}
+            {mode === 'live' && client?.account?.hasIdentity ? (
+              <SettingsRow
+                icon="phone-portrait-outline"
+                title={tp('account.logoutAll')}
+                subtitle={tp('account.logoutAllSub')}
+                onPress={() =>
+                  void confirmDialog({ title: tp('account.logoutAllConfirmTitle'), message: tp('account.logoutAllConfirmBody'), confirmLabel: tp('account.logoutAllYes'), tone: 'warn' }).then(async (ok) => {
+                    if (!ok) return;
+                    await portalLogoutAll().catch(() => undefined);
+                    await logout();
+                    router.replace('/');
+                  })
+                }
+              />
+            ) : null}
+            <SettingsRow icon="help-circle-outline" title={tp('help.title')} subtitle={tp('hub.helpSub')} onPress={() => router.push('/cliente/ajuda')} />
             <LanguageRow syncProfile={false} last />
           </SettingsGroup>
         </Rise>

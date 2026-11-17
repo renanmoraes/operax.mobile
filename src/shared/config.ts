@@ -9,3 +9,6 @@ export const MOBILE_CLIENT_HEADER = 'operax-mobile';
 
 /** Demo mock só se EXPO_PUBLIC_ALLOW_MOCK=1 */
 export const ALLOW_MOCK = process.env.EXPO_PUBLIC_ALLOW_MOCK === '1';
+
+/** Endereço do app web do Operax: a carteirinha leva o QR para a página pública de conferência dele. */
+export const WEB_APP_URL = (process.env.EXPO_PUBLIC_WEB_URL || 'https://app.operax.digital').replace(/\/$/, '');

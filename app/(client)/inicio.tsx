@@ -20,6 +20,7 @@ import {
   Rise,
   Screen,
 } from '@/src/design-system/ui';
+import { PortalAttention, PortalShortcutList } from '@/src/features/portal/PortalHome';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
 import { colors, gradients, radii, shadows, text, typography, glass } from '@/src/design-system/tokens';
 import { useAuth } from '@/src/features/auth/AuthContext';
@@ -95,6 +96,8 @@ export default function ClientHomeScreen() {
         <Rise index={1}>
           <Display style={{ marginTop: 4 }}>{`${greeting()}, ${firstName}`}</Display>
         </Rise>
+
+        <PortalAttention />
 
         {caps.scheduling && next ? (
           <Rise index={2} style={{ marginTop: 18 }}>
@@ -223,6 +226,7 @@ export default function ClientHomeScreen() {
             </>
           ) : null}
         </Rise>
+        <PortalShortcutList />
       </ScrollView>
     </Screen>
   );

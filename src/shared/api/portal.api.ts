@@ -86,14 +86,67 @@ export type PortalBooking = {
   cancel_counts?: boolean;
 };
 
+export type PortalOrder = {
+  id: string;
+  display_code: string;
+  title: string;
+  status: string;
+  estimated_amount: string | null;
+  final_amount: string | null;
+  currency: string | null;
+  updated_at: string;
+  quote_state: 'none' | 'awaiting' | 'accepted' | 'declined' | 'revising';
+  can_respond: boolean;
+  can_approve: boolean;
+};
+export type PortalQuote = {
+  company: { name: string };
+  order: { code: string; kind: 'quote' | 'work'; title: string; vehicle: string | null; customer_first_name: string };
+  state: 'awaiting' | 'accepted' | 'declined' | 'revising' | 'closed';
+  can_respond: boolean;
+  version: {
+    id: string;
+    version_no: number;
+    total_cents: number;
+    items: { category: string; description: string; quantity: number; unit: string | null; unit_price_cents: number; total_cents: number }[];
+    responded_at: string | null;
+  } | null;
+};
+export type PortalDocument = { id: string; title: string; kind: string; released_at: string | null; has_file: boolean };
+export type PortalReminder = { id: string; title: string; next_at: string | null; last_sent_at: string | null; dismissed: boolean };
+export type PortalExamItem = { id: string; exam_name: string; status: 'final' | 'rectified'; collected_at: string | null; released_at: string; outside_range: number; has_pdf: boolean };
+export type PortalExamDetail = PortalExamItem & { analytes: { name: string; value: string; unit: string | null; reference: string | null; abnormal: boolean }[] };
+export type PortalPayment = { id: string; description: string | null; amount_cents: number; method: 'pix' | 'card'; status: 'pending' | 'paid' | 'refunded'; created_at: string; paid_at: string | null; pix_copy_paste: string | null; payment_link: string | null };
+export type PortalMemberCard = { id: string; kind: 'titular' | 'dependente'; name: string; relationship: string | null; code: string; plan: string | null; situation: 'active' | 'pending_payment' | 'cancelled'; issued_at: string };
+export type PortalMemberCardList = { cards: PortalMemberCard[]; without_card: { id: string; name: string; relationship: string | null }[] };
+export type PortalProfile = {
+  name: string | null;
+  name_locked: boolean;
+  email: string | null;
+  phone: string | null;
+  birth_date: string | null;
+  address_zip: string | null;
+  address_street: string | null;
+  address_number: string | null;
+  address_complement: string | null;
+  address_district: string | null;
+  address_city: string | null;
+  address_state: string | null;
+};
+
 export type PortalHome = {
   tenant_slug: string;
   brand_name: string | null;
   logo_url: string | null;
+  primary_color?: string | null;
   service_hours_text?: string | null;
   contact: { id: string; name: string | null; email: string | null };
   capabilities: { scheduling: boolean; chat: boolean; training: boolean } & Record<string, boolean>;
   bookings: PortalBooking[];
+  /** Serviços (ordens de serviço) no nome do cliente. Só vem quando a empresa usa o módulo. */
+  service_orders?: PortalOrder[];
+  documents?: PortalDocument[];
+  member_card?: { numero: string; plano: string | null; situacao: string; emitida_em: string; dependentes: number } | null;
   badges: { chat: number; training: number } & Record<string, number>;
   /** A conta da pessoa: sem identidade (entrou por link da empresa) não dá para criar senha. */
   account?: { has_identity: boolean; has_password: boolean; email?: string | null };
@@ -139,3 +192,24 @@ export const portalChat = async () => (await api.get(`${BASE}/me/chat`)).data as
 export const PORTAL_CHAT_MAX = 1000;
 export const portalSendChat = async (text: string) => void (await api.post(`${BASE}/me/chat`, { text }));
 export const portalChatMedia = async (messageId: string) => (await api.get(`${BASE}/me/chat/media/${messageId}`)).data as { url: string };
+
+// ---- Serviços e o resto do portal (mesmas rotas do portal web)
+export const portalServiceOrder = async (id: string) => (await api.get(`${BASE}/me/service-orders/${id}`)).data as { order: PortalOrder; quote: PortalQuote | null };
+export const portalRespondQuote = async (id: string, body: { version_id: string; decision: 'accepted' | 'declined' }) =>
+  (await api.post(`${BASE}/me/service-orders/${id}/quote`, body)).data as { state: 'accepted' | 'declined'; already: boolean };
+export const portalApproveOrder = async (id: string) => (await api.post(`${BASE}/me/service-orders/${id}/approve`, {})).data as { id: string; display_code: string; status: string };
+/** O PDF do orçamento exige a sessão no cabeçalho: o endereço fica aqui para quem baixa montar a requisição. */
+export const portalServiceOrderPdfUrl = (id: string) => `${API_URL}${BASE}/me/service-orders/${id}/pdf`;
+
+export const portalReminders = async () => (await api.get(`${BASE}/me/reminders`)).data as PortalReminder[];
+export const portalDismissReminder = async (id: string) => void (await api.post(`${BASE}/me/reminders/${id}/dismiss`, {}));
+export const portalExams = async () => (await api.get(`${BASE}/me/exams`)).data as PortalExamItem[];
+export const portalExam = async (id: string) => (await api.get(`${BASE}/me/exams/${id}`)).data as PortalExamDetail;
+export const portalExamPdf = async (id: string) => (await api.get(`${BASE}/me/exams/${id}/pdf`)).data as { url: string };
+export const portalPayments = async () => (await api.get(`${BASE}/me/payments`)).data as { open: PortalPayment[]; paid: PortalPayment[] };
+export const portalOpenDocument = async (id: string) => (await api.get(`${BASE}/me/documents/${id}/open`)).data as { url: string };
+export const portalCards = async () => (await api.get(`${BASE}/me/cards`)).data as PortalMemberCardList;
+export const portalProfile = async () => (await api.get(`${BASE}/me/profile`)).data as PortalProfile;
+export const portalUpdateProfile = async (body: Partial<Record<keyof PortalProfile, string | null>>) => (await api.patch(`${BASE}/me/profile`, body)).data as PortalProfile;
+/** Sai de todos os aparelhos da pessoa nesta empresa (a sessão deste também deixa de valer). */
+export const portalLogoutAll = async () => void (await api.post(`${BASE}/me/logout-all`, {}));

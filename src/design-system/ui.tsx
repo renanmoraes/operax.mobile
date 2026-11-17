@@ -487,6 +487,7 @@ export function Field({
   autoComplete,
   maxLength,
   mono,
+  editable = true,
 }: {
   label: string;
   value: string;
@@ -501,6 +502,8 @@ export function Field({
   maxLength?: number;
   /** Código curto (empresa): fonte monoespaçada, centralizado e com as letras espaçadas. */
   mono?: boolean;
+  /** Falso: o campo só mostra o valor (ex.: nome já confirmado pela empresa). */
+  editable?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   // Campo de senha: o olhinho mostra o que está sendo digitado.
@@ -521,12 +524,13 @@ export function Field({
           autoCapitalize={autoCapitalize}
           autoComplete={autoComplete}
           maxLength={maxLength}
+          editable={editable}
           autoCorrect={mono ? false : undefined}
           accessibilityLabel={label}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           // Multilinha: o campo ocupa a caixa inteira, para o toque em qualquer ponto abrir o teclado.
-          style={[styles.input, mono && styles.inputMono, multiline && { textAlignVertical: 'top', minHeight: 68, alignSelf: 'stretch' }]}
+          style={[styles.input, mono && styles.inputMono, !editable && { opacity: 0.6 }, multiline && { textAlignVertical: 'top', minHeight: 68, alignSelf: 'stretch' }]}
         />
         {secureTextEntry ? (
           <Pressable

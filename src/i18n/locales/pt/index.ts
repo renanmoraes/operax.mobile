@@ -10,5 +10,6 @@ import staff from './staff';
 import fitness from './fitness';
 import attendance from './attendance';
 import pos from './pos';
+import portal from './portal';
 
-export default { common, nav, settings, auth, client, inbox, agenda, team, staff, fitness, attendance, pos };
+export default { common, nav, settings, auth, client, inbox, agenda, team, staff, fitness, attendance, pos, portal };
