@@ -1,3 +1,5 @@
+import type { ComponentProps } from 'react';
+import type { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { ProviderView, WatchKind } from './types';
 
 /**
@@ -100,13 +102,13 @@ export const BRAND_WALL: { id: BrandId; label: string }[] = [
 ];
 
 /** Ordem e ícone de cada tipo de treino nas preferências de envio. */
-export const WATCH_KINDS: { id: WatchKind; icon: 'footsteps-outline' | 'bicycle-outline' | 'water-outline' | 'boat-outline' | 'barbell-outline' | 'flash-outline' }[] = [
-  { id: 'run', icon: 'footsteps-outline' },
-  { id: 'bike', icon: 'bicycle-outline' },
-  { id: 'swim', icon: 'water-outline' },
-  { id: 'row', icon: 'boat-outline' },
-  { id: 'strength', icon: 'barbell-outline' },
-  { id: 'functional', icon: 'flash-outline' },
+export const WATCH_KINDS: { id: WatchKind; icon: ComponentProps<typeof MaterialCommunityIcons>['name'] }[] = [
+  { id: 'run', icon: 'run-fast' },
+  { id: 'bike', icon: 'bike' },
+  { id: 'swim', icon: 'swim' },
+  { id: 'row', icon: 'rowing' },
+  { id: 'strength', icon: 'weight-lifter' },
+  { id: 'functional', icon: 'lightning-bolt' },
 ];
 
 /** Liga ou desliga um tipo, sem deixar a lista vazia (sem nenhum tipo, nada iria para o relógio). Mantém a ordem da tela. */

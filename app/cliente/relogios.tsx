@@ -2,9 +2,11 @@ import { router } from 'expo-router';
 import i18n from '@/src/i18n';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Badge, Card, HeroCard, IconTile, Muted, Num, Rise, Screen, SectionHeader, T, TopBar } from '@/src/design-system/ui';
+import { Badge, Card, HeroCard, Muted, Num, Rise, Screen, SectionHeader, T, TopBar } from '@/src/design-system/ui';
 import { colors, text } from '@/src/design-system/tokens';
 import { useImportedSessions, useProviders } from '@/src/features/fitness/connections';
+import { SportTile } from '@/src/features/fitness/SportTile';
+import { sportLabelFor } from '@/src/features/fitness/sports';
 import { HealthRow } from '@/src/features/fitness/health/HealthCard';
 import { DataSourceAttribution, GarminAttribution } from '@/src/features/fitness/brands';
 import { HEALTH_PLATFORM } from '@/src/features/fitness/health/healthStore';
@@ -59,9 +61,9 @@ export default function WatchConnectionsScreen() {
             <Card style={{ padding: 0, overflow: 'hidden' }}>
               {sessions.map((s, i) => (
                 <View key={s.id} style={[styles.session, i < sessions.length - 1 && styles.sessionBorder]}>
-                  <IconTile icon={s.distance_meters ? 'walk-outline' : 'barbell-outline'} size={40} />
+                  <SportTile sport={s.sport} size={40} />
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.sessionTitle}>{s.sport ?? i18n.t('fitness:watch.activity')}</Text>
+                    <Text style={styles.sessionTitle}>{sportLabelFor(s.sport)}</Text>
                     <DataSourceAttribution provider={s.provider} sources={s.sources} style={{ marginTop: 3 }} />
                     <Muted style={{ marginTop: 3 }}>
                       {[timeAgo(s.started_at), formatDuration(s.duration_seconds), s.distance_meters ? formatDistance(s.distance_meters) : null, s.avg_hr ? `${s.avg_hr} bpm` : null]

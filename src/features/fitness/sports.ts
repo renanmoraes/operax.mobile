@@ -42,6 +42,29 @@ export function historySportLabel(modality: string | null | undefined): string |
   return modality === 'row' ? i18n.t('fitness:free.row') : null;
 }
 
+/**
+ * Esporte de qualquer origem (servidor, relógio, Strava): a chave em português do app e o ícone certo. O servidor manda
+ * `run`, `bike`, `swim`, `row` ou `other`, e o celular grava também `walk` e `strength`. Chave que não conhecemos vira
+ * "Atividade" com o ícone genérico, nunca o nome em inglês cru.
+ */
+const SPORT_ICON: Record<string, McIcon> = {
+  run: 'run-fast',
+  walk: 'walk',
+  bike: 'bike',
+  swim: 'swim',
+  row: 'rowing',
+  strength: 'weight-lifter',
+  other: 'heart-pulse',
+};
+
+export function sportIconFor(sport: string | null | undefined): McIcon {
+  return SPORT_ICON[sport ?? ''] ?? 'heart-pulse';
+}
+
+export function sportLabelFor(sport: string | null | undefined): string {
+  return historySportLabel(sport) ?? i18n.t('fitness:watch.activity');
+}
+
 const feeling = (id: FitnessFeeling, icon: McIcon) => ({ id, icon, get label() { return i18n.t(`fitness:feeling.${id}`); } });
 export const FEELINGS: { id: FitnessFeeling; label: string; icon: McIcon }[] = [
   feeling('great', 'emoticon-excited-outline'),

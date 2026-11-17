@@ -26,9 +26,9 @@ let providers: ProviderView[] = [
 ];
 
 const imported: ImportedSessionView[] = [
-  { id: 'i1', provider: 'garmin', started_at: hoursAgo(26), sport: 'Corrida', duration_seconds: 1860, distance_meters: 5120, avg_hr: 152, status: 'imported', sources: [{ provider: 'garmin', device: 'Forerunner 265', duration_seconds: 1860, distance_meters: 5120, avg_hr: 152 }] },
-  { id: 'i2', provider: 'garmin', started_at: hoursAgo(74), sport: 'Musculação', duration_seconds: 3120, distance_meters: null, avg_hr: 118, status: 'imported', sources: [{ provider: 'garmin', device: 'Forerunner 265', duration_seconds: 3120, distance_meters: null, avg_hr: 118 }] },
-  { id: 'i3', provider: 'garmin', started_at: hoursAgo(120), sport: 'Caminhada', duration_seconds: 2400, distance_meters: 3300, avg_hr: 104, status: 'unmatched', sources: [{ provider: 'garmin', device: 'Forerunner 265', duration_seconds: 2400, distance_meters: 3300, avg_hr: 104 }] },
+  { id: 'i1', provider: 'garmin', started_at: hoursAgo(26), sport: 'run', duration_seconds: 1860, distance_meters: 5120, avg_hr: 152, status: 'imported', sources: [{ provider: 'garmin', device: 'Forerunner 265', duration_seconds: 1860, distance_meters: 5120, avg_hr: 152 }] },
+  { id: 'i2', provider: 'garmin', started_at: hoursAgo(74), sport: 'strength', duration_seconds: 3120, distance_meters: null, avg_hr: 118, status: 'imported', sources: [{ provider: 'garmin', device: 'Forerunner 265', duration_seconds: 3120, distance_meters: null, avg_hr: 118 }] },
+  { id: 'i3', provider: 'garmin', started_at: hoursAgo(120), sport: 'walk', duration_seconds: 2400, distance_meters: 3300, avg_hr: 104, status: 'unmatched', sources: [{ provider: 'garmin', device: 'Forerunner 265', duration_seconds: 2400, distance_meters: 3300, avg_hr: 104 }] },
 ];
 
 const tick = () => new Promise((r) => setTimeout(r, 160));

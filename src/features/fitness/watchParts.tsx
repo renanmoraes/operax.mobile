@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Animated, Easing, Image, Linking, StyleSheet, Switch, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import i18n from '@/src/i18n';
 import { Badge, Button, Card, IconButton, Muted, PressableScale, T } from '@/src/design-system/ui';
 import { colors, text } from '@/src/design-system/tokens';
@@ -171,7 +171,11 @@ function PushPrefs({ provider }: { provider: ProviderView }) {
                 accessibilityState={{ checked: on, disabled: !prefs.auto }}
                 style={[styles.kind, on && styles.kindOn]}
               >
-                <Ionicons name={on ? 'checkmark' : k.icon} size={15} color={on ? colors.primary : colors.textMuted} />
+                {on ? (
+                  <Ionicons name="checkmark" size={15} color={colors.primary} />
+                ) : (
+                  <MaterialCommunityIcons name={k.icon} size={16} color={colors.textMuted} />
+                )}
                 <Text style={[styles.kindText, on && { color: colors.primaryDeep }]} numberOfLines={1}>
                   {i18n.t(`fitness:watch.kind.${k.id}`)}
                 </Text>
