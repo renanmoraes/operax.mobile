@@ -1,40 +1,51 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { locale } from '@/src/i18n';
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Badge, Body, IconButton, Muted, Screen, ScreenHeader } from '@/src/design-system/ui';
+import { Badge, Body, Button, EmptyState, IconButton, Muted, Screen, ScreenHeader, Segmented } from '@/src/design-system/ui';
 import { GLASS_TAB_BAR_SPACE } from '@/src/design-system/GlassTabBar';
-import { colors, radii, shadows, spacing, typography } from '@/src/design-system/tokens';
+import { Toast, useToast } from '@/src/design-system/Toast';
+import { colors, radii, shadows, typography } from '@/src/design-system/tokens';
 import { notifications as mockNotifications } from '@/src/mocks/data';
 import { categoryForType, PUSH_CATEGORIES } from '@/src/features/notifications/catalog';
 import { useAuth } from '@/src/features/auth/AuthContext';
-import { listNotifications, markNotificationRead } from '@/src/shared/api/notifications.api';
+import { type ApiNotification, listNotifications, markAllNotificationsRead, markNotificationRead } from '@/src/shared/api/notifications.api';
 import { SkeletonList } from '@/src/design-system/Skeleton';
 
-function formatTime(iso?: string) {
+/** Hoje só a hora; de outro dia, a data com a hora (o histórico mistura dias). */
+function formatWhen(iso?: string) {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+  const time = d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === new Date().toDateString()) return time;
+  return `${d.toLocaleDateString(locale(), { day: '2-digit', month: '2-digit' })} ${time}`;
 }
+
+type Row = { id: string; type: string; title: string; body: string; at: string; read: boolean; conversationId?: string; href?: string };
 
 export default function NotificationsScreen() {
   const { t } = useTranslation('staff');
   const insets = useSafeAreaInsets();
+  const qc = useQueryClient();
   const { mode } = useAuth();
+  const { toast, show } = useToast(2600);
+  const [tab, setTab] = useState<'new' | 'history'>('new');
+  // Demonstração: não há servidor, então o que foi visto fica só aqui.
+  const [seenInDemo, setSeenInDemo] = useState<Set<string>>(new Set());
+  const key = ['notifications', mode] as const;
+
   const query = useQuery({
-    queryKey: ['notifications', mode],
+    queryKey: key,
     enabled: mode === 'live',
     refetchInterval: 60_000,
-    queryFn: async () => {
-      const page = await listNotifications(1, 40);
-      return page.data ?? [];
-    },
+    queryFn: async () => (await listNotifications(1, 40)).data ?? [],
   });
 
-  const data =
+  const all: Row[] =
     mode === 'mock'
       ? mockNotifications.map((n) => ({
           id: n.id,
@@ -42,7 +53,7 @@ export default function NotificationsScreen() {
           title: n.title,
           body: n.body,
           at: n.at,
-          read: n.read,
+          read: n.read || seenInDemo.has(n.id),
           conversationId: n.conversationId,
           href: n.href,
         }))
@@ -58,12 +69,57 @@ export default function NotificationsScreen() {
             type: n.type,
             title: n.title,
             body: n.body ?? '',
-            at: formatTime(n.created_at),
+            at: formatWhen(n.created_at),
             read: !!n.is_read,
             conversationId,
             href: n.link?.startsWith('/agenda') ? '/(app)/agenda' : undefined,
           };
         });
+
+  const fresh = all.filter((n) => !n.read);
+  const seen = all.filter((n) => n.read);
+  const shown = tab === 'new' ? fresh : seen;
+
+  /** O aviso visto sai da lista de novos na hora, sem esperar o servidor. */
+  const markSeenLocally = (ids: string[] | 'all') => {
+    if (mode === 'mock') {
+      setSeenInDemo((prev) => new Set([...prev, ...(ids === 'all' ? all.map((n) => n.id) : ids)]));
+      return;
+    }
+    qc.setQueryData<ApiNotification[]>(key, (old) => old?.map((n) => (ids === 'all' || ids.includes(n.id) ? { ...n, is_read: true } : n)));
+  };
+
+  const markAll = useMutation({
+    mutationFn: async () => {
+      if (mode === 'live') await markAllNotificationsRead();
+    },
+    onMutate: () => {
+      const before = qc.getQueryData<ApiNotification[]>(key);
+      markSeenLocally('all');
+      return { before };
+    },
+    onError: (_e, _v, ctx) => {
+      if (mode === 'live') qc.setQueryData(key, ctx?.before);
+      else setSeenInDemo(new Set());
+      show(t('notifications.markFailed'), 'error');
+    },
+    onSettled: () => void qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+
+  const openRow = async (item: Row) => {
+    if (!item.read) {
+      markSeenLocally([item.id]);
+      if (mode === 'live') {
+        try {
+          await markNotificationRead(item.id);
+        } catch {
+          /* o próximo refresh devolve o aviso como novo, sem perder nada */
+        }
+      }
+    }
+    if (item.conversationId) router.push(`/conversation/${item.conversationId}`);
+    else if (item.href) router.push(item.href as never);
+  };
 
   return (
     <Screen>
@@ -72,8 +128,21 @@ export default function NotificationsScreen() {
         title={t('notifications.title')}
         right={<IconButton icon="options-outline" accessibilityLabel={t('notifications.prefs')} onPress={() => router.push('/notification-prefs')} />}
       />
+      <View style={styles.tools}>
+        <Segmented
+          value={tab}
+          onChange={(k) => setTab(k as 'new' | 'history')}
+          options={[
+            { key: 'new', label: fresh.length ? `${t('notifications.tabNew')} ${fresh.length}` : t('notifications.tabNew') },
+            { key: 'history', label: t('notifications.tabHistory') },
+          ]}
+        />
+        {tab === 'new' && fresh.length > 0 ? (
+          <Button label={t('notifications.markAll')} icon="checkmark-done-outline" variant="soft" compact loading={markAll.isPending} onPress={() => markAll.mutate()} style={styles.markAll} />
+        ) : null}
+      </View>
       <FlatList
-        data={data}
+        data={shown}
         keyExtractor={(item) => item.id}
         refreshControl={
           mode === 'live' ? (
@@ -82,26 +151,22 @@ export default function NotificationsScreen() {
         }
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: GLASS_TAB_BAR_SPACE + insets.bottom, gap: 10 }}
         ListEmptyComponent={
-          query.isLoading ? <SkeletonList variant="conversation" count={5} /> : <Muted style={{ textAlign: 'center', marginTop: 40 }}>{t('notifications.empty')}</Muted>
+          query.isLoading ? (
+            <SkeletonList variant="conversation" count={5} />
+          ) : tab === 'new' ? (
+            <View style={{ gap: 12 }}>
+              <EmptyState icon="checkmark-done-outline" title={t('notifications.caughtUp')} subtitle={t('notifications.caughtUpHint')} />
+              {seen.length > 0 ? <Button label={t('notifications.seeHistory')} variant="soft" onPress={() => setTab('history')} /> : null}
+            </View>
+          ) : (
+            <Muted style={{ textAlign: 'center', marginTop: 40 }}>{t('notifications.historyEmpty')}</Muted>
+          )
         }
         renderItem={({ item }) => {
           const catId = categoryForType(item.type);
           const cat = PUSH_CATEGORIES.find((c) => c.id === catId);
           return (
-            <Pressable
-              style={[styles.row, !item.read && styles.unread]}
-              onPress={async () => {
-                if (mode === 'live') {
-                  try {
-                    await markNotificationRead(item.id);
-                  } catch {
-                    /* ignore */
-                  }
-                }
-                if (item.conversationId) router.push(`/conversation/${item.conversationId}`);
-                else if (item.href) router.push(item.href as never);
-              }}
-            >
+            <Pressable style={[styles.row, !item.read && styles.unread]} onPress={() => void openRow(item)}>
               <View style={styles.rowTop}>
                 {!item.read ? <View style={styles.dot} /> : null}
                 <Body style={styles.title} numberOfLines={2}>{item.title}</Body>
@@ -113,18 +178,14 @@ export default function NotificationsScreen() {
           );
         }}
       />
+      <Toast toast={toast} top={insets.top + 64} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    padding: spacing.lg,
-    gap: spacing.xs,
-    backgroundColor: colors.cardBg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
+  tools: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14 },
+  markAll: { alignSelf: 'flex-end', marginTop: 12 },
   row: {
     backgroundColor: colors.cardBg,
     borderRadius: radii.lg + 2,

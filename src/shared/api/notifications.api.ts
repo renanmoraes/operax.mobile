@@ -22,3 +22,7 @@ export async function listNotifications(page = 1, limit = 30) {
 export async function markNotificationRead(id: string) {
   await api.patch(`/api/notifications/${id}/read`);
 }
+
+export async function markAllNotificationsRead() {
+  await api.post('/api/notifications/mark-all-read');
+}
