@@ -124,6 +124,9 @@ const inbox: Shape<typeof pt> = {
     emptySub: 'Crea atajos en Operax web para usarlos aquí.',
   },
   conversation: {
+    showOthers_one: 'Mostrar {{count}} mensaje de otro canal de este $t(vocab:contact)',
+    showOthers_other: 'Mostrar {{count}} mensajes de otros canales de este $t(vocab:contact)',
+    hideOthers: 'Ocultar mensajes de otros canales',
     notFound: 'Conversación no encontrada.',
     status: {
       mine: 'Contigo',

@@ -51,6 +51,11 @@ export function mediaIdFrom(m: Pick<ApiMessage, 'media_id' | 'media_url'>): stri
 const STATUS: Record<string, Message['status']> = { accepted: 'sent', sent: 'sent', delivered: 'delivered', read: 'read' };
 
 export function mapApiMessage(m: ApiMessage, conversationId: string): Message {
+  const base = mapApiMessageBase(m, conversationId);
+  return m.conversation_id && m.conversation_id !== conversationId ? { ...base, otherConversation: { channel: m.source_channel ?? null, connectionId: m.source_connection_id ?? null } } : base;
+}
+
+function mapApiMessageBase(m: ApiMessage, conversationId: string): Message {
   const inbound = m.direction === 'inbound' || m.direction === 'in';
   const rawType = (m.message_type || m.type || 'text').toLowerCase();
   const type = (rawType === 'sticker' ? 'image' : rawType) as Message['type'];

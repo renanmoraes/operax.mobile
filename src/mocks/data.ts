@@ -35,6 +35,8 @@ export type Message = {
   /** Arquivo local do áudio (gravado agora, antes de a API devolver o link). */
   audioUri?: string;
   durationS?: number;
+  /** Veio de outra conversa do mesmo contato (outro número ou canal): a linha do tempo do contato mostra tudo junto. */
+  otherConversation?: { channel: string | null; connectionId: string | null };
   /** Chave Pix enviada pela conversa. */
   pix?: { key: string; key_type: 'cpf' | 'cnpj' | 'phone' | 'email' | 'random' | 'copy_paste'; holder_name: string };
 };

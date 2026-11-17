@@ -36,6 +36,10 @@ export type ApiConversation = {
 
 export type ApiMessage = {
   id: string;
+  /** A linha do tempo do contato junta as conversas dele: de qual conversa e canal esta mensagem é. */
+  conversation_id?: string;
+  source_channel?: string | null;
+  source_connection_id?: string | null;
   direction?: 'inbound' | 'outbound' | string;
   type?: string;
   body?: string | null;

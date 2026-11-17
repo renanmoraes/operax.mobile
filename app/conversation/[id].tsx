@@ -145,7 +145,12 @@ function ConversationScreen() {
   const narrow = screenW < 400;
 
   const conversation = mode === 'live' ? liveQuery.data?.conversation : mockConv;
-  const thread = mode === 'live' ? liveQuery.data?.messages ?? [] : [...mockThread, ...localMsgs];
+  const allMessages = mode === 'live' ? liveQuery.data?.messages ?? [] : [...mockThread, ...localMsgs];
+  // A linha do tempo do contato junta as conversas dele (outros números e canais). Aqui vale a conversa aberta; as outras
+  // aparecem só se pedir, com o selo de onde vieram, para o mesmo aviso de um canal não parecer mensagem repetida.
+  const [showOthers, setShowOthers] = useState(false);
+  const otherCount = allMessages.filter((m) => m.otherConversation).length;
+  const thread = showOthers ? allMessages : allMessages.filter((m) => !m.otherConversation);
   // No modo demo as ações mudam a posse só aqui; no real, a posse vem sempre do servidor.
   const [ownershipOverride, setOwnership] = useState<NonNullable<typeof conversation>['ownership'] | null>(null);
   const ownership = ownershipOverride ?? conversation?.ownership ?? 'queue';
@@ -388,6 +393,52 @@ function ConversationScreen() {
     }
   };
 
+  // Uma mensagem. As de outro número ou canal do contato (quando mostradas) levam o selo de onde vieram.
+  const renderBody = ({ item }: { item: Message }) => {
+          const out = item.direction === 'out';
+          if (item.type === 'image' || item.type === 'video' || item.type === 'document') {
+            const media: ChatMediaData =
+              item.type === 'document' ? { kind: 'document', name: item.fileName ?? item.body } : { kind: item.type };
+            return (
+              <View style={{ alignSelf: out ? 'flex-end' : 'flex-start', maxWidth: '82%' }}>
+                <MediaBubble media={media} caption={item.caption} at={item.at} mine={out} status={item.status} />
+              </View>
+            );
+          }
+          if (item.type === 'pix' && item.pix) {
+            return (
+              <View style={{ alignSelf: out ? 'flex-end' : 'flex-start' }}>
+                <PixCard pix={item.pix} at={item.at} mine={out} status={item.status} />
+              </View>
+            );
+          }
+          if (item.type === 'audio') {
+            return (
+              <View style={{ alignSelf: out ? 'flex-end' : 'flex-start' }}>
+                <RemoteAudioBubble id={item.id} localUri={item.audioUri} mediaId={item.mediaId} durationS={item.durationS} at={item.at} mine={out} status={item.status} />
+              </View>
+            );
+          }
+          return (
+            <View style={[styles.bubble, out ? styles.bubbleOut : styles.bubbleIn]}>
+              <TextWithMeta at={item.at} mine={out} status={item.status} tone={out ? 'onBubbleMine' : 'onBubbleTheirs'} style={[styles.bubbleText, out && { color: '#fff' }]}>
+                {item.body}
+              </TextWithMeta>
+            </View>
+          );
+  };
+  const renderMessage = ({ item }: { item: Message }) => {
+    const el = renderBody({ item });
+    if (!item.otherConversation) return el;
+    const conn = item.otherConversation.connectionId ? connections.byId.get(item.otherConversation.connectionId) ?? null : null;
+    return (
+      <View style={{ gap: 4, alignItems: item.direction === 'out' ? 'flex-end' : 'flex-start' }}>
+        <ChannelChip connection={conn} channel={item.otherConversation.channel} size="xs" />
+        {el}
+      </View>
+    );
+  };
+
   return (
     // O campo de mensagem sobe junto com o teclado do iPhone (sem esconder o texto e o enviar).
     <KeyboardAvoidingView style={styles.root} behavior={KEYBOARD_BEHAVIOR}>
@@ -473,40 +524,16 @@ function ConversationScreen() {
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         data={thread}
         keyExtractor={(m) => m.id}
+        ListHeaderComponent={
+          otherCount > 0 ? (
+            <Pressable onPress={() => setShowOthers((v) => !v)} accessibilityRole="button" accessibilityState={{ expanded: showOthers }} style={styles.othersToggle}>
+              <Ionicons name={showOthers ? 'eye-off-outline' : 'git-network-outline'} size={15} color={colors.textSoft} />
+              <Text style={styles.othersText}>{showOthers ? t('conversation.hideOthers') : t('conversation.showOthers', { count: otherCount })}</Text>
+            </Pressable>
+          ) : undefined
+        }
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, gap: 8, paddingBottom: 16 }}
-        renderItem={({ item }) => {
-          const out = item.direction === 'out';
-          if (item.type === 'image' || item.type === 'video' || item.type === 'document') {
-            const media: ChatMediaData =
-              item.type === 'document' ? { kind: 'document', name: item.fileName ?? item.body } : { kind: item.type };
-            return (
-              <View style={{ alignSelf: out ? 'flex-end' : 'flex-start', maxWidth: '82%' }}>
-                <MediaBubble media={media} caption={item.caption} at={item.at} mine={out} status={item.status} />
-              </View>
-            );
-          }
-          if (item.type === 'pix' && item.pix) {
-            return (
-              <View style={{ alignSelf: out ? 'flex-end' : 'flex-start' }}>
-                <PixCard pix={item.pix} at={item.at} mine={out} status={item.status} />
-              </View>
-            );
-          }
-          if (item.type === 'audio') {
-            return (
-              <View style={{ alignSelf: out ? 'flex-end' : 'flex-start' }}>
-                <RemoteAudioBubble id={item.id} localUri={item.audioUri} mediaId={item.mediaId} durationS={item.durationS} at={item.at} mine={out} status={item.status} />
-              </View>
-            );
-          }
-          return (
-            <View style={[styles.bubble, out ? styles.bubbleOut : styles.bubbleIn]}>
-              <TextWithMeta at={item.at} mine={out} status={item.status} tone={out ? 'onBubbleMine' : 'onBubbleTheirs'} style={[styles.bubbleText, out && { color: '#fff' }]}>
-                {item.body}
-              </TextWithMeta>
-            </View>
-          );
-        }}
+        renderItem={renderMessage}
       />
 
       {qrTerm !== null && canCompose && !voice.recording ? (
@@ -705,6 +732,8 @@ const styles = StyleSheet.create({
   contactBlock: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 0 },
   contactName: { ...text.section, color: colors.text },
   statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#9aa6bd' },
+  othersToggle: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: '#eef1f6', marginBottom: 6 },
+  othersText: { fontFamily: typography.fontFamilyMedium, fontSize: 12.5, color: colors.textSoft },
   windowBanner: {
     marginHorizontal: 16,
     marginTop: 12,
