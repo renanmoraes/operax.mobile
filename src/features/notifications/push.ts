@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import i18n from '@/src/i18n';
 import { reportError } from '@/src/shared/telemetry/errorReporter';
 import { foregroundNotificationHandler } from './presence';
 
@@ -11,17 +12,47 @@ export type PushRegistrationResult =
 const easProjectId = (): string | undefined =>
   Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId ?? undefined;
 
-/** Canal de notificação do Android que o servidor usa nos avisos (equipe e aluno). Criar de novo não muda nada. */
+/** Tipos de aviso da equipe com toque próprio: conversa nova na fila, mensagem em chat assumido e alerta (esfriando, posse perdida). */
+export const PUSH_TONES = ['fila', 'assumido', 'alerta'] as const;
+/** Vibração de cada toque: fila em dois pulsos longos, chat assumido num curto, alerta em três rápidos. */
+const VIBRATION: Record<(typeof PUSH_TONES)[number], number[]> = {
+  fila: [0, 500, 200, 500],
+  assumido: [0, 180],
+  alerta: [0, 120, 90, 120, 90, 120],
+};
+/** O app a partir desta versão traz os arquivos de som (fila.wav, assumido.wav, alerta.wav). Igual ao servidor. */
+const SOUND_APP_VERSION = [1, 2, 0];
+
+export function hasBundledSounds(version: string | null | undefined): boolean {
+  if (!version) return false;
+  const v = version.split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) if ((v[i] ?? 0) !== SOUND_APP_VERSION[i]) return (v[i] ?? 0) > SOUND_APP_VERSION[i];
+  return true;
+}
+
+/**
+ * Canais de notificação do Android que o servidor usa nos avisos (equipe e aluno). Criar de novo não muda nada: no Android o
+ * canal guarda o som e a vibração de quando nasceu. Por isso o app com os arquivos de som usa canais novos (`-som`) e o app
+ * sem eles fica nos canais que só vibram diferente.
+ */
 async function ensureAndroidChannel(Notifications: typeof import('expo-notifications')) {
   if (Platform.OS !== 'android') return;
-  await Notifications.setNotificationChannelAsync('operax-default', {
-    name: 'Operax',
+  const base = {
     importance: Notifications.AndroidImportance.MAX,
-    vibrationPattern: [0, 250, 250, 250],
     lightColor: '#1e4ed8',
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     bypassDnd: false,
-  });
+  };
+  await Notifications.setNotificationChannelAsync('operax-default', { ...base, name: 'Operax', vibrationPattern: [0, 250, 250, 250] });
+  const withSound = hasBundledSounds(Constants.expoConfig?.version);
+  for (const tone of PUSH_TONES) {
+    await Notifications.setNotificationChannelAsync(withSound ? `operax-${tone}-som` : `operax-${tone}`, {
+      ...base,
+      name: i18n.t(`common:pushChannels.${tone}`),
+      vibrationPattern: VIBRATION[tone],
+      ...(withSound ? { sound: `${tone}.wav` } : {}),
+    });
+  }
 }
 
 /**

@@ -80,7 +80,15 @@ describe('mergeDuplicateEntries', () => {
   it('mantém separados treinos de horários ou esportes diferentes', () => {
     expect(mergeDuplicateEntries([garmin, { ...strava, started_at: '2026-11-18T11:00:00Z' }])).toHaveLength(2);
     expect(mergeDuplicateEntries([garmin, { ...strava, modality: 'bike' }])).toHaveLength(2);
-    expect(mergeDuplicateEntries([garmin, { ...strava, duration_seconds: 600 }])).toHaveLength(2);
+    expect(mergeDuplicateEntries([garmin, { ...strava, duration_seconds: 600, distance_meters: 1500 }])).toHaveLength(2);
+  });
+
+  it('natação: tempo total do relógio e tempo nadando do Strava, mesma largada e distância, viram uma entrada', () => {
+    const swimG = { ...garmin, modality: 'swim', started_at: '2026-11-18T10:13:57Z', duration_seconds: 2503, distance_meters: 675 };
+    const swimS = { ...strava, modality: 'swim', started_at: '2026-11-18T10:13:58Z', duration_seconds: 687, distance_meters: 675 };
+    const out = mergeDuplicateEntries([swimS, swimG]);
+    expect(out).toHaveLength(1);
+    expect(out[0].duration_seconds).toBe(2503);
   });
 
   it('o treino prescrito fica e ganha o selo do Strava', () => {

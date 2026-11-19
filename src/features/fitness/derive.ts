@@ -122,6 +122,12 @@ function sameWorkout(a: FitnessHistoryEntry, b: FitnessHistoryEntry): boolean {
   if (Math.abs(new Date(a.started_at).getTime() - new Date(b.started_at).getTime()) > START_TOLERANCE_MS) return false;
   // Esporte só conta entre dois livres; "other" casa com qualquer um.
   if (a.kind === 'free' && b.kind === 'free' && a.modality && b.modality && a.modality !== 'other' && b.modality !== 'other' && a.modality !== b.modality) return false;
+  // Natação: o relógio conta o tempo total (com o descanso entre as piscinas) e o Strava só o tempo nadando. Largada quase
+  // junta e a mesma distância já dizem que é o mesmo treino.
+  const gap = Math.abs(new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
+  const da = a.distance_meters;
+  const db = b.distance_meters;
+  if (gap <= 3 * 60_000 && da && db && Math.abs(da - db) <= Math.max(15, Math.max(da, db) * 0.02)) return true;
   if (a.duration_seconds && b.duration_seconds) {
     const longer = Math.max(a.duration_seconds, b.duration_seconds);
     if (Math.abs(a.duration_seconds - b.duration_seconds) / longer > DURATION_TOLERANCE) return false;

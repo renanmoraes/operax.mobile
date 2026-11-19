@@ -65,6 +65,11 @@ const common = {
     ready: 'Nova versão do Operax pronta',
     apply: 'Atualizar',
   },
+  pushChannels: {
+    fila: 'Conversa nova na fila',
+    assumido: 'Mensagem em chat assumido',
+    alerta: 'Chat esfriando ou perdido',
+  },
 } as const;
 
 export default common;

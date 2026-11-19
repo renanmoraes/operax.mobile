@@ -67,6 +67,11 @@ const common: Shape<typeof pt> = {
     ready: 'Nueva versión de Operax lista',
     apply: 'Actualizar',
   },
+  pushChannels: {
+    fila: 'Conversación nueva en la cola',
+    assumido: 'Mensaje en chat asumido',
+    alerta: 'Chat enfriándose o perdido',
+  },
 };
 
 export default common;
