@@ -1,5 +1,5 @@
 import { addDays, isoDate, startOfDay } from '@/src/shared/format';
-import type { BodyCheckin, FitnessExerciseSnapshot, FitnessHistoryEntry, FitnessWorkoutView } from './types';
+import type { ActivityDetail, BodyCheckin, ChartPoint, FitnessExerciseSnapshot, FitnessHistoryEntry, FitnessWorkoutView } from './types';
 
 /** Dados de exemplo do treino (Move Studio) até existir o login mobile de cliente. */
 
@@ -158,7 +158,48 @@ export function buildHistory(): FitnessHistoryEntry[] {
       sources: back % 3 === 0 ? [{ origin: 'portal', label: 'App' }, { origin: 'garmin', label: 'Garmin', device: 'Forerunner 265' }] : [{ origin: 'portal', label: 'App' }],
     });
   }
+  // Corridas do relógio (que também foram para o Strava), com gráficos no detalhe.
+  for (const [back, seconds, meters, hr] of DEMO_RUNS) {
+    const d = addDays(today, -back);
+    out.push({
+      id: `s:demo-run-${back}`, kind: 'free', date: isoDate(d), started_at: new Date(d.getTime() + 6 * 3_600_000 + 4 * 60_000).toISOString(), title: 'Corrida', modality: 'run',
+      duration_seconds: seconds, distance_meters: meters, avg_hr: hr, effort: null, session_id: `demo-run-${back}`,
+      sources: [{ origin: 'garmin', label: 'Garmin Forerunner 265', device: 'Forerunner 265' }, { origin: 'strava', label: 'Strava' }],
+    });
+  }
   return out;
+}
+
+/** [dias atrás, segundos, metros, FC média] das corridas da demonstração. */
+const DEMO_RUNS: [number, number, number, number][] = [[1, 2235, 6300, 162], [5, 3010, 8120, 151]];
+
+/** Detalhe sintético de uma corrida da demonstração: ritmo, frequência, altitude e cadência que oscilam como num treino de rua. */
+export function demoRunDetail(entry: FitnessHistoryEntry): ActivityDetail | null {
+  if (entry.modality !== 'run' || !entry.duration_seconds || !entry.distance_meters) return null;
+  const total = entry.duration_seconds;
+  const meanPace = (total / entry.distance_meters) * 1000;
+  const n = 200;
+  const ts = Array.from({ length: n }, (_, i) => Math.round((i / (n - 1)) * total));
+  const wave = (i: number, a: number, f: number, ph = 0) => a * Math.sin((i / n) * Math.PI * 2 * f + ph);
+  const pace: ChartPoint[] = ts.map((t, i) => [t, Math.round(meanPace + wave(i, 14, 3) + wave(i, 6, 11, 1) + (i < 8 ? 40 - i * 5 : 0))]);
+  const hr: ChartPoint[] = ts.map((t, i) => [t, Math.round(Math.min(186, 118 + 48 * (1 - Math.exp(-i / 18)) + wave(i, 5, 3, 0.6) + i * 0.03))]);
+  const alt: ChartPoint[] = ts.map((t, i) => [t, Math.round(852 + wave(i, 9, 1.2) + wave(i, 3, 5, 2))]);
+  const cad: ChartPoint[] = ts.map((t, i) => [t, Math.round(172 + wave(i, 3, 4, 0.3))]);
+  const hrMax = 190;
+  const edges = [0.5, 0.6, 0.7, 0.8, 0.9, 1].map((f) => Math.round(hrMax * f));
+  const zoneSecs = [0, 0, 0, 0, 0];
+  hr.forEach(([, v]) => { const z = edges.findIndex((e, k) => k > 0 && v < e); zoneSecs[Math.max(0, (z === -1 ? 5 : z) - 1)] += total / n; });
+  const km = Math.floor(entry.distance_meters / 1000);
+  const splits = Array.from({ length: km }, (_, i) => {
+    const secs = Math.round(meanPace + wave(i * 20, 12, 3) + (i === 0 ? 10 : 0));
+    return { index: i + 1, seconds: secs, distance_m: 1000, rate: secs, avg_hr: Math.round(150 + i * 2.5) };
+  });
+  return {
+    sport: 'run', rate_unit: 'min_km', seconds: total, series: { rate: pace, hr, alt, cad },
+    summary: { avg_hr: entry.avg_hr, max_hr: Math.max(...hr.map((p) => p[1])), elevation_gain_m: 24, avg_cadence: 172, avg_power: null },
+    zones: zoneSecs.map((s, i) => ({ zone: (i + 1) as 1 | 2 | 3 | 4 | 5, from_bpm: edges[i], to_bpm: edges[i + 1], seconds: Math.round(s) })), hr_max_used: hrMax,
+    splits, split_basis: 'distance',
+  };
 }
 
 export function buildCheckins(): BodyCheckin[] {

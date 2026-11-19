@@ -5,7 +5,7 @@ import { api } from '@/src/shared/api/client';
 import { addDays, isoDate, startOfDay, startOfWeek } from '@/src/shared/format';
 import { clientDataMode } from '@/src/features/client/dataMode';
 import { adherenceStreak, bestAdherenceStreak, DayState, levelFromXp, mergeDuplicateEntries, mergeResultIntoHistory, xpFrom } from './derive';
-import { buildCheckins, buildHistory, LOAD_HISTORY, WORKOUTS, workoutForWeekday } from './mockData';
+import { buildCheckins, buildHistory, demoRunDetail, LOAD_HISTORY, WORKOUTS, workoutForWeekday } from './mockData';
 import type { HealthWorkout } from './health/mapWorkouts';
 import type { ActivityDetail, BodyCheckin, FitnessEvolution, FitnessHistoryEntry, FitnessResultView, FitnessWorkoutView, FreeActivityBody, RecordResultBody, WeekView } from './types';
 
@@ -186,7 +186,8 @@ export async function fetchActivityDetail(id: string): Promise<ActivityDetail | 
     return 'empty' in data ? null : data;
   }
   await tick();
-  return demoDetails.get(id) ?? null;
+  const entry = getHistory().find((e) => e.id === id);
+  return demoDetails.get(id) ?? (entry ? demoRunDetail(entry) : null);
 }
 
 /** POST /results — idempotente por `idempotency_key`. */

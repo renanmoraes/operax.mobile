@@ -199,12 +199,22 @@ export interface FreeActivityBody {
   recording?: { track?: RecordingTrack };
 }
 
-/** GET /history/entry/detail — o caminho, as parciais e o resumo da sessão gravada. */
+/** Séries do gráfico do treino: frequência, ritmo (ou velocidade), altitude, cadência e potência. */
+export type SeriesKey = 'hr' | 'rate' | 'alt' | 'cad' | 'pw';
+/** Ponto do gráfico: segundos desde a largada e o valor. */
+export type ChartPoint = [number, number];
+
+/** GET /history/entry/detail — o caminho, as parciais, os gráficos e o resumo da sessão gravada. */
 export interface ActivityDetail {
   sport: string | null;
   route?: [number, number][];
   rate_unit: 'min_km' | 'min_100m' | 'min_500m' | 'kmh';
   seconds: number;
+  /** Até 240 pontos por série; só vem a série que o aparelho mediu. Ausente em versões antigas da API. */
+  series?: Partial<Record<SeriesKey, ChartPoint[]>>;
+  /** Tempo em cada zona de frequência; null sem frequência ou sem saber a máxima do aluno. */
+  zones?: { zone: 1 | 2 | 3 | 4 | 5; from_bpm: number; to_bpm: number; seconds: number }[] | null;
+  hr_max_used?: number | null;
   summary: { avg_hr: number | null; max_hr: number | null; elevation_gain_m: number | null; avg_cadence: number | null; avg_power: number | null };
   splits: { index: number; seconds: number; distance_m: number | null; rate: number | null; avg_hr: number | null }[];
   split_basis: 'laps' | 'distance' | null;

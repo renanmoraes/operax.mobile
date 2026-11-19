@@ -10,6 +10,7 @@ import { useActiveCompanyName } from '@/src/features/client/useClientData';
 import { fromHistoryDetail } from '@/src/features/share/fromSources';
 import { setShareActivity } from '@/src/features/share/store';
 import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
+import { ActivityCharts, HrZonesCard } from '@/src/features/fitness/ActivityCharts';
 import { RouteMap } from '@/src/features/fitness/RouteMap';
 import { formatKm, formatPace } from '@/src/features/fitness/runTracker';
 import { FEELINGS, effortWord, historySportLabel, sportInfo, tagLabel } from '@/src/features/fitness/sports';
@@ -99,7 +100,10 @@ export default function ActivityScreen() {
                 {secs ? <Stat label={t('rec.time')} value={formatClock(secs)} /> : null}
                 {showSpeed && kmh ? <Stat label={t('rec.speed')} value={new Intl.NumberFormat(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(kmh)} unit="km/h" /> : pace ? <Stat label={t('rec.pace')} value={formatPace(pace)} unit="/km" /> : null}
                 {d?.summary.elevation_gain_m ? <Stat label={t('rec.climb')} value={String(d.summary.elevation_gain_m)} unit="m" /> : null}
-                {entry.avg_hr ? <Stat label={t('detail.avgHr')} value={String(entry.avg_hr)} unit="bpm" /> : null}
+                {entry.avg_hr ?? d?.summary.avg_hr ? <Stat label={t('detail.avgHr')} value={String(entry.avg_hr ?? d?.summary.avg_hr)} unit="bpm" /> : null}
+                {d?.summary.max_hr ? <Stat label={t('charts.maxHr')} value={String(d.summary.max_hr)} unit="bpm" /> : null}
+                {d?.summary.avg_cadence ? <Stat label={t('charts.avgCadence')} value={String(Math.round(d.summary.avg_cadence))} unit={entry.modality === 'bike' ? 'rpm' : 'spm'} /> : null}
+                {d?.summary.avg_power ? <Stat label={t('charts.avgPower')} value={String(Math.round(d.summary.avg_power))} unit="W" /> : null}
                 {entry.sets ? <Stat label={t('rec.sets')} value={String(entry.sets)} /> : null}
               </View>
             </View>
@@ -129,8 +133,20 @@ export default function ActivityScreen() {
           </Rise>
         ) : null}
 
-        {d?.splits.length ? (
+        {d ? (
           <Rise index={2}>
+            <ActivityCharts detail={d} />
+          </Rise>
+        ) : null}
+
+        {d?.zones?.length ? (
+          <Rise index={3}>
+            <HrZonesCard detail={d} />
+          </Rise>
+        ) : null}
+
+        {d?.splits.length ? (
+          <Rise index={4}>
             <SplitsCard detail={d} />
           </Rise>
         ) : null}
@@ -168,7 +184,7 @@ function SplitsCard({ detail }: { detail: ActivityDetail }) {
         const fill = s.rate && best ? (kmh ? s.rate / best : best / s.rate) : 0;
         return (
           <View key={s.index} style={styles.splitRow}>
-            <Text style={styles.splitKm}>{detail.split_basis === 'laps' ? `V${s.index + 1}` : s.distance_m && s.distance_m < 990 ? `${(s.distance_m / 1000).toFixed(1).replace('.', ',')}` : s.index + 1}</Text>
+            <Text style={styles.splitKm}>{detail.split_basis === 'laps' ? `V${s.index}` : s.distance_m && s.distance_m < 990 ? new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(s.distance_m / 1000) : s.index}</Text>
             <Text style={styles.splitPace}>{s.rate == null ? '–' : kmh ? s.rate.toFixed(1).replace('.', ',') : formatPace(s.rate)}</Text>
             <View style={styles.splitTrack}>
               <View style={[styles.splitBar, { width: `${Math.max(8, Math.min(100, fill * 100))}%` }, s.rate === best && rates.length > 1 && { backgroundColor: colors.success }]} />
