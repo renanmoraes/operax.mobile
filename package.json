@@ -91,7 +91,8 @@
     "eas:init": "bash scripts/eas-bootstrap.sh",
     "eas:build:prod": "eas-cli build --platform all --profile production",
     "eas:login": "eas-cli login",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "wiki:mapa": "node scripts/mapa-de-telas.mjs"
   },
   "private": true
 }
