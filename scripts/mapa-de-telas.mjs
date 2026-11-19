@@ -116,7 +116,7 @@ if (!existsSync(guia)) {
 }
 
 const texto = readFileSync(guia, 'utf8');
-const secao = /^## Mapa do app\s*$([\s\S]*?)(?=^## |\Z)/m.exec(texto)?.[1];
+const secao = /^## Mapa do app\s*$([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(texto)?.[1];
 if (!secao) {
   console.error(`O guia ${guia} não tem a seção "## Mapa do app". Gere com --imprimir e cole no guia.`);
   process.exit(1);
