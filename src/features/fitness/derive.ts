@@ -106,3 +106,55 @@ export function mergeResultIntoHistory(
   };
   return [entry, ...history];
 }
+
+/** Relógio mede melhor que o aplicativo que só repassa; o Strava fica por último (o dado dele não se combina com o de outra fonte). */
+const SOURCE_RANK = ['equipe', 'portal', 'garmin', 'polar', 'apple_health', 'health_connect', 'celular', 'strava'];
+const rankOf = (e: FitnessHistoryEntry) => Math.min(...e.sources.map((s) => (SOURCE_RANK.includes(s.origin) ? SOURCE_RANK.indexOf(s.origin) : SOURCE_RANK.length)), SOURCE_RANK.length);
+const onlyStrava = (e: FitnessHistoryEntry) => e.sources.length > 0 && e.sources.every((s) => s.origin === 'strava');
+/** Mesma folga do backend: largada com até 10 min de diferença e duração com até 30%. */
+const START_TOLERANCE_MS = 10 * 60_000;
+const DURATION_TOLERANCE = 0.3;
+
+function sameWorkout(a: FitnessHistoryEntry, b: FitnessHistoryEntry): boolean {
+  // Dois treinos prescritos são sempre treinos diferentes; só o livre (do relógio ou do aplicativo) pode ser cópia.
+  if (a.kind === 'prescribed' && b.kind === 'prescribed') return false;
+  if (!a.started_at || !b.started_at || a.date !== b.date) return false;
+  if (Math.abs(new Date(a.started_at).getTime() - new Date(b.started_at).getTime()) > START_TOLERANCE_MS) return false;
+  // Esporte só conta entre dois livres; "other" casa com qualquer um.
+  if (a.kind === 'free' && b.kind === 'free' && a.modality && b.modality && a.modality !== 'other' && b.modality !== 'other' && a.modality !== b.modality) return false;
+  if (a.duration_seconds && b.duration_seconds) {
+    const longer = Math.max(a.duration_seconds, b.duration_seconds);
+    if (Math.abs(a.duration_seconds - b.duration_seconds) / longer > DURATION_TOLERANCE) return false;
+  }
+  return true;
+}
+
+/**
+ * O mesmo treino chegando do relógio e do Strava como duas entradas vira uma só, com as duas fontes no selo.
+ * Fica a entrada de quem mede melhor (treino prescrito antes do livre); do Strava não se copia número nenhum.
+ */
+export function mergeDuplicateEntries(entries: FitnessHistoryEntry[]): FitnessHistoryEntry[] {
+  const out: FitnessHistoryEntry[] = [];
+  for (const e of entries) {
+    const i = out.findIndex((o) => sameWorkout(o, e));
+    if (i === -1) {
+      out.push(e);
+      continue;
+    }
+    const o = out[i];
+    const eFirst = (e.kind === 'prescribed' && o.kind === 'free') || (e.kind === o.kind && rankOf(e) < rankOf(o));
+    const [base, other] = eFirst ? [e, o] : [o, e];
+    const fill = !onlyStrava(other);
+    const sources = [...base.sources];
+    for (const s of other.sources) if (!sources.some((x) => x.origin === s.origin && x.label === s.label)) sources.push(s);
+    out[i] = {
+      ...base,
+      sources,
+      duration_seconds: base.duration_seconds ?? (fill ? other.duration_seconds : null),
+      distance_meters: base.distance_meters ?? (fill ? other.distance_meters : null),
+      avg_hr: base.avg_hr ?? (fill ? other.avg_hr : null),
+      session_id: base.session_id ?? other.session_id ?? null,
+    };
+  }
+  return out;
+}

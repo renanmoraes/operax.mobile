@@ -115,7 +115,7 @@ export default function FitnessHistoryScreen() {
         <View style={{ gap: 8 }}>
           {history?.slice(0, 12).map((e) => {
             const d = new Date(`${e.date}T12:00:00`);
-            const watch = e.sources.find((s) => s.origin !== 'portal');
+            const watch = e.sources.filter((s) => s.origin !== 'portal').map((s) => s.label).join(' + ');
             return (
               <Card key={e.id} style={styles.entry} onPress={() => router.push(`/cliente/atividade/${encodeURIComponent(e.id)}`)} accessibilityLabel={t('history.seeDetails', { title: e.title })}>
                 <View style={{ width: 46, alignItems: 'center' }}>
@@ -126,7 +126,7 @@ export default function FitnessHistoryScreen() {
                   <Text style={styles.entryTitle} numberOfLines={1}>{e.title}</Text>
                   {e.distance_meters ? <Text style={styles.entryDist}>{`${(e.distance_meters / 1000).toFixed(2).replace('.', ',')} km`}</Text> : null}
                   <Muted style={{ marginTop: 3 }} numberOfLines={1}>
-                    {[formatDuration(e.duration_seconds), e.sets_done ? t('history.sets', { count: e.sets_done }) : null, e.volume_kg ? `${e.volume_kg.toLocaleString(locale())} kg` : null, watch ? watch.label : null].filter(Boolean).join(' · ')}
+                    {[formatDuration(e.duration_seconds), e.sets_done ? t('history.sets', { count: e.sets_done }) : null, e.volume_kg ? `${e.volume_kg.toLocaleString(locale())} kg` : null, watch || null].filter(Boolean).join(' · ')}
                   </Muted>
                 </View>
                 {e.record ? <Badge label={t('history.record')} tone="solid" /> : e.effort ? <Badge label={t('history.effort', { n: e.effort })} tone="primary" /> : null}

@@ -4,7 +4,7 @@ import i18n from '@/src/i18n';
 import { api } from '@/src/shared/api/client';
 import { addDays, isoDate, startOfDay, startOfWeek } from '@/src/shared/format';
 import { clientDataMode } from '@/src/features/client/dataMode';
-import { adherenceStreak, bestAdherenceStreak, DayState, levelFromXp, mergeResultIntoHistory, xpFrom } from './derive';
+import { adherenceStreak, bestAdherenceStreak, DayState, levelFromXp, mergeDuplicateEntries, mergeResultIntoHistory, xpFrom } from './derive';
 import { buildCheckins, buildHistory, LOAD_HISTORY, WORKOUTS, workoutForWeekday } from './mockData';
 import type { HealthWorkout } from './health/mapWorkouts';
 import type { ActivityDetail, BodyCheckin, FitnessEvolution, FitnessHistoryEntry, FitnessResultView, FitnessWorkoutView, FreeActivityBody, RecordResultBody, WeekView } from './types';
@@ -107,10 +107,8 @@ async function liveHistory(months: number): Promise<FitnessHistoryEntry[]> {
   });
   const pages = await Promise.all(keys.map(async (month) => ((await api.get(`${F}/history`, { params: { month } })).data as { entries?: FitnessHistoryEntry[] }).entries ?? []));
   const seen = new Set<string>();
-  return pages
-    .flat()
-    .filter((e) => (seen.has(e.id) ? false : (seen.add(e.id), true)))
-    .sort((a, b) => b.date.localeCompare(a.date));
+  const unique = pages.flat().filter((e) => (seen.has(e.id) ? false : (seen.add(e.id), true)));
+  return mergeDuplicateEntries(unique).sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export async function fetchHistory(): Promise<FitnessHistoryEntry[]> {
