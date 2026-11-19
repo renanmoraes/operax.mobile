@@ -7,6 +7,7 @@ import { useAuth } from '@/src/features/auth/AuthContext';
 import { useBookingReminders, useClientCapabilities, useClientUnread } from '@/src/features/client/useClientData';
 import { hasSeenClientOnboarding } from '@/src/features/permissions/permissions';
 import { useFlushResultsQueue } from '@/src/features/fitness/useFitness';
+import { OfflineBar } from '@/src/features/fitness/OfflineBar';
 import { useTranslation } from 'react-i18next';
 
 export default function ClientLayout() {
@@ -31,6 +32,7 @@ export default function ClientLayout() {
   if (!onboarded) return <Redirect href="/cliente/permissoes" />;
 
   return (
+    <>
     <Tabs
       tabBar={(props) => <GlassTabBar {...props} />}
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: 'transparent' }, ...TAB_TRANSITION }}
@@ -83,5 +85,7 @@ export default function ClientLayout() {
         }}
       />
     </Tabs>
+    <OfflineBar />
+    </>
   );
 }

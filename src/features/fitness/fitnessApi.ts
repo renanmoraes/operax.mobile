@@ -6,6 +6,7 @@ import { addDays, isoDate, startOfDay, startOfWeek } from '@/src/shared/format';
 import { clientDataMode } from '@/src/features/client/dataMode';
 import { adherenceStreak, bestAdherenceStreak, DayState, levelFromXp, mergeResultIntoHistory, xpFrom } from './derive';
 import { buildCheckins, buildHistory, LOAD_HISTORY, WORKOUTS, workoutForWeekday } from './mockData';
+import { confirmDone, isNetworkFailure, keepIds, readStore, updateStore, weekFromStore, withCache } from './offlineStore';
 import type { HealthWorkout } from './health/mapWorkouts';
 import type { ActivityDetail, BodyCheckin, FitnessEvolution, FitnessHistoryEntry, FitnessResultView, FitnessWorkoutView, FreeActivityBody, RecordResultBody, WeekView } from './types';
 
@@ -38,9 +39,17 @@ function doneToday(workoutId: string) {
 export async function fetchWorkout(id: string): Promise<FitnessWorkoutView | null> {
   if (live()) {
     try {
-      return (await api.get(`${F}/workouts/${id}`)).data as FitnessWorkoutView;
+      const w = (await api.get(`${F}/workouts/${id}`)).data as FitnessWorkoutView;
+      // Ficha que já está baixada: renova a cópia do celular com a versão mais nova do professor.
+      void updateStore((st) => (st.workouts[id] ? { ...st, workouts: { ...st.workouts, [id]: w } } : st));
+      return w;
     } catch (e) {
       if (isAxiosError(e) && e.response?.status === 404) return null;
+      // Sem internet: usa a ficha baixada antes (se não houver, o erro aparece como antes).
+      if (isNetworkFailure(e)) {
+        const saved = (await readStore()).workouts[id];
+        if (saved) return saved;
+      }
       throw e;
     }
   }
@@ -49,10 +58,20 @@ export async function fetchWorkout(id: string): Promise<FitnessWorkoutView | nul
 }
 
 /** GET /workouts?date= */
+export async function fetchWorkoutsRaw(date: string): Promise<FitnessWorkoutView[]> {
+  const { data } = await api.get(`${F}/workouts`, { params: { date } });
+  return Array.isArray(data) ? (data as FitnessWorkoutView[]) : [];
+}
+
 export async function fetchWorkoutsFor(date: Date): Promise<FitnessWorkoutView[]> {
   if (live()) {
-    const { data } = await api.get(`${F}/workouts`, { params: { date: isoDate(date) } });
-    return Array.isArray(data) ? (data as FitnessWorkoutView[]) : [];
+    try {
+      return await fetchWorkoutsRaw(isoDate(date));
+    } catch (e) {
+      if (!isNetworkFailure(e)) throw e;
+      const st = await readStore();
+      return (st.days[isoDate(date)] ?? []).map((id) => st.workouts[id]).filter(Boolean);
+    }
   }
   await tick();
   const w = workoutForWeekday(date.getDay());
@@ -61,7 +80,20 @@ export async function fetchWorkoutsFor(date: Date): Promise<FitnessWorkoutView[]
 
 /** GET /week */
 export async function fetchWeek(): Promise<WeekView> {
-  if (live()) return (await api.get(`${F}/week`, { params: { date: todayIso() } })).data as WeekView;
+  if (live()) {
+    try {
+      const week = (await api.get(`${F}/week`, { params: { date: todayIso() } })).data as WeekView;
+      void updateStore((st) => ({ ...st, week }));
+      return week;
+    } catch (e) {
+      if (!isNetworkFailure(e)) throw e;
+      // Sem internet: a última semana vista (se for desta semana) ou uma montada com as fichas baixadas.
+      const st = await readStore();
+      const today = todayIso();
+      const covers = st.week && st.week.days.some((d) => d.date === today);
+      return covers ? { ...st.week!, today } : weekFromStore(st, today);
+    }
+  }
   await tick();
   const today = startOfDay(new Date());
   const start = startOfWeek(today);
@@ -105,7 +137,7 @@ async function liveHistory(months: number): Promise<FitnessHistoryEntry[]> {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
-  const pages = await Promise.all(keys.map(async (month) => ((await api.get(`${F}/history`, { params: { month } })).data as { entries?: FitnessHistoryEntry[] }).entries ?? []));
+  const pages = await withCache('history', () => Promise.all(keys.map(async (month) => ((await api.get(`${F}/history`, { params: { month } })).data as { entries?: FitnessHistoryEntry[] }).entries ?? [])));
   const seen = new Set<string>();
   return pages
     .flat()
@@ -121,7 +153,7 @@ export async function fetchHistory(): Promise<FitnessHistoryEntry[]> {
 
 /** GET /evolution */
 export async function fetchEvolution(): Promise<FitnessEvolution> {
-  if (live()) return (await api.get(`${F}/evolution`)).data as FitnessEvolution;
+  if (live()) return withCache('evolution', async () => (await api.get(`${F}/evolution`)).data as FitnessEvolution);
   await tick();
   const start = startOfWeek(new Date());
   const h = getHistory();
@@ -193,7 +225,12 @@ export async function fetchActivityDetail(id: string): Promise<ActivityDetail | 
 
 /** POST /results — idempotente por `idempotency_key`. */
 export async function recordResult(body: RecordResultBody): Promise<{ result: FitnessResultView; duplicate: boolean }> {
-  if (live()) return (await api.post(`${F}/results`, body)).data as { result: FitnessResultView; duplicate: boolean };
+  if (live()) {
+    const res = (await api.post(`${F}/results`, body)).data as { result: FitnessResultView; duplicate: boolean };
+    // Confirmado no servidor: o treino feito sai do celular e não é baixado de novo.
+    void confirmDone(body.workout_id, body.executed_on, keepIds).catch(() => undefined);
+    return res;
+  }
   await tick();
   const existing = results.get(body.idempotency_key);
   if (existing) return { result: existing, duplicate: true };
@@ -289,7 +326,7 @@ type PortalAssessment = { id: string; assessed_on: string; measures: Record<stri
 /** Login real: as avaliações físicas feitas pela academia viram os pontos da evolução corporal. */
 export async function fetchCheckins(): Promise<BodyCheckin[]> {
   if (live()) {
-    const { data } = await api.get(`${F}/assessments`);
+    const data = await withCache('assessments', async () => (await api.get(`${F}/assessments`)).data);
     return ((Array.isArray(data) ? data : []) as PortalAssessment[])
       .filter((a) => typeof a.measures?.weight_kg === 'number')
       .map((a) => ({

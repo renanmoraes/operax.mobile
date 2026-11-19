@@ -23,6 +23,7 @@ Documentação de kickoff do app nativo (iOS/Android). Fonte canônica de produt
 | [atendimento.md](atendimento.md) | Números/canais, presença, transferir, IA no atendimento |
 | [pdv-mobile.md](pdv-mobile.md) | PDV no celular (venda, comprovante, vendas do dia) |
 | [treino-gravacao.md](treino-gravacao.md) | Gravação de treino e treino livre com GPS |
+| [offline.md](offline.md) | Online/offline do aluno: limite, fila, limpeza, mapa de telas |
 | [notificacoes.md](notificacoes.md) | Lembretes locais e avisos |
 | [i18n.md](i18n.md) | Idiomas (pt, en, es) |
 | [aso/](aso/) | Publicação nas lojas: metadados, checklist, prints |

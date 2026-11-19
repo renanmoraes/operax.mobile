@@ -511,6 +511,9 @@ const fitness = {
     tabata: 'Tabata',
   },
   offline: {
+    bar: 'Sem internet · os treinos baixados funcionam normalmente',
+    pending_one: '{{count}} treino esperando internet para enviar',
+    pending_other: '{{count}} treinos esperando internet para enviar',
     storeFail: 'Sem internet e sem espaço para guardar no celular agora. O treino continua aqui: libere espaço ou tente de novo.',
   },
   part: {

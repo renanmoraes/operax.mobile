@@ -513,6 +513,9 @@ const fitness: Shape<typeof pt> = {
     tabata: 'Tabata',
   },
   offline: {
+    bar: 'Sin internet · los entrenamientos descargados funcionan',
+    pending_one: '{{count}} entrenamiento esperando internet para enviarse',
+    pending_other: '{{count}} entrenamientos esperando internet para enviarse',
     storeFail: 'Sin internet y sin espacio para guardarlo en el teléfono ahora. El entreno sigue aquí: libera espacio o inténtalo de nuevo.',
   },
   part: {

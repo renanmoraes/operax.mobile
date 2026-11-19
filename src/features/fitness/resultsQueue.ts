@@ -80,6 +80,30 @@ async function write<T>(base: string, queue: T[], who?: string) {
   const key = ownedKey(base, who);
   if (!key) throw new Error('Sem conta ativa para guardar o treino');
   await kvSetDurable(key, queue);
+  listeners.forEach((l) => l());
+}
+
+/** Avisa (ex.: o aviso "pendente de envio") quando a fila muda. */
+const listeners = new Set<() => void>();
+export function onQueueChange(fn: () => void) {
+  listeners.add(fn);
+  return () => void listeners.delete(fn);
+}
+
+/** Quantos treinos (resultados da ficha + treinos livres) esperam internet para subir. */
+export async function pendingCount(): Promise<number> {
+  if (!fitnessOwner()) return 0;
+  return (await read<Keyed>(KEY)).length + (await read<Keyed>(ACTIVITIES_KEY)).length;
+}
+
+/** Fichas com resultado esperando envio: a limpeza dos treinos baixados nunca as apaga. */
+export async function pendingWorkoutIds(): Promise<Set<string>> {
+  return new Set((await read<RecordResultBody>(KEY)).map((b) => b.workout_id));
+}
+
+/** Pares ficha+dia com resultado na fila: já foram feitos, então o download não os traz de novo. */
+export async function pendingDone(): Promise<string[]> {
+  return (await read<RecordResultBody>(KEY)).map((b) => `${b.workout_id}:${b.executed_on}`);
 }
 
 export const loadQueue = () => read<RecordResultBody>(KEY);

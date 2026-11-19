@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as api from './fitnessApi';
 import { isAxiosError } from 'axios';
 import { flushAll } from './resultsQueue';
+import { syncOfflineWorkouts } from './offlineSync';
 import type { BodyCheckin, FreeActivityBody, RecordResultBody } from './types';
 
 /** Status HTTP para a fila: recusa de verdade (4xx, menos 401/408/425/429) descarta; o resto tenta depois. */
@@ -35,6 +36,8 @@ export function useFlushResultsQueue() {
     const run = async () => {
       const changed = await flushAll({ result: sender(api.recordResult), activity: sender(api.recordFreeActivity) });
       if (changed) void qc.invalidateQueries({ queryKey: root });
+      // Com internet: mantém baixados os treinos dos próximos dias (e limpa o que já foi feito e enviado).
+      void syncOfflineWorkouts({ force: changed }).then((did) => { if (did) void qc.invalidateQueries({ queryKey: root }); });
     };
     void run();
     const sub = AppState.addEventListener('change', (s) => {

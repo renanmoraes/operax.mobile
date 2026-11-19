@@ -9,6 +9,7 @@ import {
   portalSendChat, PORTAL_CHAT_MAX,
   type PortalHome,
 } from '@/src/shared/api/portal.api';
+import { withCache } from '@/src/features/fitness/offlineStore';
 import i18n, { locale } from '@/src/i18n';
 import { clientDataMode } from './dataMode';
 import { UserFacingError } from './userFacingError';
@@ -36,7 +37,7 @@ let cacheGen = 0;
 async function home(fresh = false): Promise<PortalHome> {
   if (!fresh && lastHome) return lastHome;
   const gen = cacheGen;
-  const h = await portalHome();
+  const h = await withCache('home', portalHome);
   if (gen === cacheGen) lastHome = h;
   return h;
 }
@@ -57,7 +58,7 @@ const getChats = () => (chats ??= buildMockChats());
 
 export async function fetchCompanies(): Promise<ClientCompany[]> {
   if (live()) {
-    const [companies, h] = await Promise.all([portalMyCompanies(), home()]);
+    const [companies, h] = await Promise.all([withCache('companies', portalMyCompanies), home()]);
     return companies.map((c) => mapPortalCompany(c, h));
   }
   await tick();
