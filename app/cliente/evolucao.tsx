@@ -5,7 +5,8 @@ import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { Card, EmptyState, HeroCard, IconButton, PressableScale, Rise, Screen, TopBar } from '@/src/design-system/ui';
+import { Card, EmptyState, HeroCard, IconButton, Loading, PressableScale, Rise, Screen, TopBar } from '@/src/design-system/ui';
+import { OfflineState } from '@/src/design-system/OfflineState';
 import { clientDataMode } from '@/src/features/client/dataMode';
 import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { useAddCheckin, useBodyAssessments } from '@/src/features/fitness/useFitness';
@@ -16,9 +17,9 @@ import { valueOf } from '@/src/features/portal/assessments';
 import { isoDate, monthShort } from '@/src/shared/format';
 
 const num = (key: string) => (n: number) => n.toLocaleString(locale(), { maximumFractionDigits: key === 'waist_hip_ratio' ? 2 : 1 });
-const dayMonth = (iso: string) => {
+const dayMonth = (iso: string, withYear = false) => {
   const d = new Date(`${iso}T12:00:00`);
-  return `${d.getDate()} ${monthShort(d)}`;
+  return `${d.getDate()} ${monthShort(d)}${withYear ? ` ${String(d.getFullYear()).slice(2)}` : ''}`;
 };
 const label = (key: string): string =>
   key === 'body_fat_percent' ? i18n.t('portal:assess.fat') : key === FOLDS_SUM ? i18n.t('fitness:body.foldsSum') : String(i18n.t(`portal:meas.${key}` as never));
@@ -51,7 +52,7 @@ function DeltaPill({ m, diff, big }: { m: MetricDef; diff: number; big?: boolean
 export default function BodyEvolutionScreen() {
   const insets = useSafeAreaInsets();
   const wide = useWindowDimensions().width >= 640;
-  const { data } = useBodyAssessments();
+  const { data, isPending, isError, refetch } = useBodyAssessments();
   const add = useAddCheckin();
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const chartY = useRef(0);
@@ -67,7 +68,7 @@ export default function BodyEvolutionScreen() {
     return (
       <Screen>
         <TopBar safe title={i18n.t('fitness:tab.bodyProgress')} onBack={() => router.back()} />
-        <EmptyState icon="body-outline" title={i18n.t('fitness:body.emptyTitle')} subtitle={i18n.t('fitness:body.emptySub')} />
+        {isPending ? <Loading /> : isError ? <OfflineState onRetry={() => void refetch()} /> : <EmptyState icon="body-outline" title={i18n.t('fitness:body.emptyTitle')} subtitle={i18n.t('fitness:body.emptySub')} />}
       </Screen>
     );
   }
@@ -75,8 +76,12 @@ export default function BodyEvolutionScreen() {
   const first = items[0];
   const last = items[items.length - 1];
   const many = items.length > 1;
-  const days = daysBetween(first.assessed_on, last.assessed_on);
   const lead = rows.find((r) => r.key === 'weight_kg') ?? rows[0];
+  // Os dias contam entre as avaliações que deram o número do destaque.
+  const days = daysBetween(lead.from.date, lead.to.date);
+  // Avaliações em anos diferentes: as datas levam o ano, senão "10 mar → 5 fev" parece voltar no tempo.
+  const crossYear = first.assessed_on.slice(0, 4) !== last.assessed_on.slice(0, 4);
+  const dateOf = (iso: string) => dayMonth(iso, crossYear);
   const side = ['body_fat_percent', 'lean_mass_kg', 'waist_cm', 'abdomen_cm', 'hip_cm', 'chest_cm']
     .map((k) => rows.find((r) => r.key === k && r.count > 1))
     .filter((r): r is CompareRow => !!r)
@@ -114,7 +119,7 @@ export default function BodyEvolutionScreen() {
             <View style={styles.heroTop}>
               <View style={styles.range}>
                 <Ionicons name="calendar-outline" size={14} color={colors.primaryDeep} />
-                <Text style={styles.rangeText}>{many ? `${dayMonth(first.assessed_on)}  →  ${dayMonth(last.assessed_on)}` : dayMonth(last.assessed_on)}</Text>
+                <Text style={styles.rangeText}>{many ? `${dateOf(first.assessed_on)}  →  ${dateOf(last.assessed_on)}` : dateOf(last.assessed_on)}</Text>
               </View>
               <Text style={styles.count}>{i18n.t('fitness:body.assessments', { count: items.length })}</Text>
             </View>
@@ -170,7 +175,7 @@ export default function BodyEvolutionScreen() {
                   <Text style={styles.chartSub} numberOfLines={1}>
                     {current.count > 1
                       ? `${num(current.key)(current.from.value)} → ${num(current.key)(current.to.value)}${unitText(current.unit)}`
-                      : i18n.t('fitness:body.latest', { date: dayMonth(current.to.date) })}
+                      : i18n.t('fitness:body.latest', { date: dateOf(current.to.date) })}
                   </Text>
                 </View>
                 {current.count > 1 ? <DeltaPill m={current} diff={current.diff} big /> : null}
@@ -178,7 +183,7 @@ export default function BodyEvolutionScreen() {
               <EvolutionChart
                 points={pointsOf(items, current.key)}
                 fmt={num(current.key)}
-                dateOf={dayMonth}
+                dateOf={dateOf}
                 a11y={i18n.t('fitness:body.chartA11yOf', { label: label(current.key) })}
               />
             </Card>
@@ -230,10 +235,10 @@ export default function BodyEvolutionScreen() {
                       ) : null}
                     </View>
                     <View style={{ marginTop: 6 }}>
-                      <MiniChart points={pointsOf(items, r.key)} color={tone.fg === colors.textMuted ? colors.primary : tone.fg} />
+                      <MiniChart id={r.key} points={pointsOf(items, r.key)} color={tone.fg === colors.textMuted ? colors.primary : tone.fg} />
                     </View>
                     <Text style={styles.tileFrom} numberOfLines={1}>
-                      {r.count > 1 ? `${fmt(r.from.value)} → ${fmt(r.to.value)}${unitText(r.unit)}` : dayMonth(r.to.date)}
+                      {r.count > 1 ? `${fmt(r.from.value)} → ${fmt(r.to.value)}${unitText(r.unit)}` : dateOf(r.to.date)}
                     </Text>
                   </PressableScale>
                 );

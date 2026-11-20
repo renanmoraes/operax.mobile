@@ -73,7 +73,7 @@ export function EvolutionChart({ points, fmt, dateOf, a11y }: { points: Point[];
 const MH = 54;
 
 /** Gráfico pequeno do cartão de cada medida: a linha da primeira à última avaliação, sem números (o cartão já mostra). */
-export function MiniChart({ points, color = colors.primary }: { points: Point[]; color?: string }) {
+export function MiniChart({ id: key, points, color = colors.primary }: { id: string; points: Point[]; color?: string }) {
   const [w, setW] = useState(0);
   const n = points.length;
   const values = points.map((p) => p.value);
@@ -84,7 +84,8 @@ export function MiniChart({ points, color = colors.primary }: { points: Point[];
   const x = (i: number) => (n === 1 ? w / 2 : pad + (i * (w - pad * 2)) / (n - 1));
   const y = (v: number) => (max === min ? MH / 2 : pad + ((max - v) / span) * (MH - pad * 2));
   const line = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(' ');
-  const id = `mini${points[0]?.id ?? 'x'}${n}`;
+  // Id único por medida: com o mesmo id, um cartão pegaria o degradê de outro.
+  const id = `mini-${key}`;
   return (
     <View onLayout={(e) => setW(e.nativeEvent.layout.width)} style={{ height: MH }} accessible={false}>
       {w ? (
