@@ -32,6 +32,8 @@ export type ShareActivity = {
   company: string;
   date: string;
   seconds: number;
+  /** Calorias medidas pelo relógio ou pelo Saúde do celular. */
+  energyKcal?: number | null;
   strength?: ShareStrength;
   gps?: ShareGps;
 };

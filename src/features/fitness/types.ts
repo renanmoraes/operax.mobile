@@ -230,6 +230,8 @@ export interface FitnessHistoryEntry {
   duration_seconds: number | null;
   distance_meters: number | null;
   avg_hr: number | null;
+  /** Calorias que o relógio ou o Saúde do celular mediram. Ausente em versões antigas da API. */
+  energy_kcal?: number | null;
   effort: number | null;
   volume_kg?: number;
   sets_done?: number;

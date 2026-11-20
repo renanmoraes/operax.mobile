@@ -26,6 +26,8 @@ export function statsOf(a: ShareActivity): Stat[] {
     if (s?.volumeKg != null && s.volumeKg > 0) out.push({ label: i18n.t('fitness:share.stat.volume'), value: `${formatKg(s.volumeKg)} kg` });
     if (s?.setsDone != null) out.push({ label: i18n.t('fitness:share.stat.sets'), value: s.setsTotal != null ? `${s.setsDone}/${s.setsTotal}` : String(s.setsDone) });
   }
+  // Por último, para não tirar do lugar os números que os modelos já mostram.
+  if (a.energyKcal != null && a.energyKcal > 0) out.push({ label: i18n.t('fitness:share.stat.calories'), value: `${intLabel(a.energyKcal)} kcal` });
   return out;
 }
 

@@ -163,7 +163,7 @@ export function buildHistory(): FitnessHistoryEntry[] {
     const d = addDays(today, -back);
     out.push({
       id: `s:demo-run-${back}`, kind: 'free', date: isoDate(d), started_at: new Date(d.getTime() + 6 * 3_600_000 + 4 * 60_000).toISOString(), title: 'Corrida', modality: 'run',
-      duration_seconds: seconds, distance_meters: meters, avg_hr: hr, effort: null, session_id: `demo-run-${back}`,
+      duration_seconds: seconds, distance_meters: meters, avg_hr: hr, energy_kcal: Math.round(meters * 0.075), effort: null, session_id: `demo-run-${back}`,
       sources: [{ origin: 'garmin', label: 'Garmin Forerunner 265', device: 'Forerunner 265' }, { origin: 'strava', label: 'Strava' }],
     });
   }
@@ -171,7 +171,7 @@ export function buildHistory(): FitnessHistoryEntry[] {
   const swimDay = addDays(today, -3);
   out.push({
     id: 's:demo-swim', kind: 'free', date: isoDate(swimDay), started_at: new Date(swimDay.getTime() + 7 * 3_600_000 + 13 * 60_000).toISOString(), title: 'Natação', modality: 'swim',
-    duration_seconds: 658, distance_meters: 675, avg_hr: 133, effort: null, session_id: 'demo-swim',
+    duration_seconds: 658, distance_meters: 675, avg_hr: 133, energy_kcal: 417, effort: null, session_id: 'demo-swim',
     sources: [{ origin: 'garmin', label: 'Garmin Forerunner 265', device: 'Forerunner 265' }, { origin: 'strava', label: 'Strava' }],
   });
   return out;

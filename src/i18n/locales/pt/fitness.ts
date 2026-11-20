@@ -288,7 +288,7 @@ const fitness = {
     transparent: 'Fundo transparente',
     dest: { story: 'Story', whatsapp: 'WhatsApp', copy: 'Copiar', save: 'Salvar', more: 'Mais' },
     templates: { route: 'Rota', routeStats: 'Rota e números', stats: 'Números', row: 'Linha', splits: 'Parciais', volume: 'Volume', records: 'Recordes', map: 'Mapa', card: 'Cartão', photo: 'Foto' },
-    stat: { distance: 'Distância', pace: 'Ritmo', speed: 'Velocidade', time: 'Tempo', climb: 'Subida', avgHr: 'FC média', volume: 'Volume', sets: 'Séries' },
+    stat: { distance: 'Distância', calories: 'Calorias', pace: 'Ritmo', speed: 'Velocidade', time: 'Tempo', climb: 'Subida', avgHr: 'FC média', volume: 'Volume', sets: 'Séries' },
     splitsTitle: 'Parciais por km',
     splitsLaps: 'Voltas',
     splits100m: 'Parciais por 100 m',

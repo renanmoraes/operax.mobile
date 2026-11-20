@@ -3,7 +3,7 @@ import { rateUnitOfSport } from '@/src/features/fitness/rateUnit';
 import { paceLabel, speedLabel } from './format';
 import type { ShareActivity, ShareGps, ShareStrength } from './types';
 
-type Base = { title: string; company: string; date: string; seconds: number };
+type Base = { title: string; company: string; date: string; seconds: number; energyKcal?: number | null };
 
 function gpsBlock(p: {
   sport: string;
@@ -66,7 +66,7 @@ export function fromHistoryDetail(entry: FitnessHistoryEntry, detail: ActivityDe
   // O tempo do histórico é o em movimento (o mesmo da tela do treino). O das amostras conta as pausas: numa natação de 11 min
   // parado na borda vira 41 min e o ritmo sai vazio.
   const seconds = entry.duration_seconds ?? detail?.seconds ?? 0;
-  const base: Base = { title: entry.title, company, date: entry.started_at ?? entry.date, seconds };
+  const base: Base = { title: entry.title, company, date: entry.started_at ?? entry.date, seconds, energyKcal: entry.energy_kcal ?? null };
   const route = detail?.route ?? [];
   const distanceM = entry.distance_meters ?? 0;
   if (route.length > 1 || distanceM > 0) {

@@ -104,6 +104,7 @@ export default function ActivityScreen() {
                 {d?.summary.elevation_gain_m ? <Stat label={t('rec.climb')} value={String(d.summary.elevation_gain_m)} unit="m" /> : null}
                 {entry.avg_hr ?? d?.summary.avg_hr ? <Stat label={t('detail.avgHr')} value={String(entry.avg_hr ?? d?.summary.avg_hr)} unit="bpm" /> : null}
                 {d?.summary.max_hr ? <Stat label={t('charts.maxHr')} value={String(d.summary.max_hr)} unit="bpm" /> : null}
+                {entry.energy_kcal ? <Stat label={t('log.calories')} value={new Intl.NumberFormat(locale()).format(entry.energy_kcal)} unit="kcal" /> : null}
                 {d?.summary.avg_cadence ? <Stat label={t('charts.avgCadence')} value={String(Math.round(d.summary.avg_cadence))} unit={entry.modality === 'bike' ? 'rpm' : 'spm'} /> : null}
                 {d?.summary.avg_power ? <Stat label={t('charts.avgPower')} value={String(Math.round(d.summary.avg_power))} unit="W" /> : null}
                 {entry.sets ? <Stat label={t('rec.sets')} value={String(entry.sets)} /> : null}

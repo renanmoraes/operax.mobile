@@ -290,7 +290,7 @@ const fitness: Shape<typeof pt> = {
     transparent: 'Transparent background',
     dest: { story: 'Story', whatsapp: 'WhatsApp', copy: 'Copy', save: 'Save', more: 'More' },
     templates: { route: 'Route', routeStats: 'Route and stats', stats: 'Stats', row: 'Row', splits: 'Splits', volume: 'Volume', records: 'Records', map: 'Map', card: 'Card', photo: 'Photo' },
-    stat: { distance: 'Distance', pace: 'Pace', speed: 'Speed', time: 'Time', climb: 'Elevation', avgHr: 'Avg HR', volume: 'Volume', sets: 'Sets' },
+    stat: { distance: 'Distance', calories: 'Calories', pace: 'Pace', speed: 'Speed', time: 'Time', climb: 'Elevation', avgHr: 'Avg HR', volume: 'Volume', sets: 'Sets' },
     splitsTitle: 'Splits per km',
     splitsLaps: 'Laps',
     splits100m: 'Splits per 100 m',

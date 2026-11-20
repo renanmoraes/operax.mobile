@@ -73,6 +73,11 @@ describe('fromHistoryDetail', () => {
     expect(a.gps?.paceLabel).toBe('2\'00" /500 m');
   });
 
+  it('calorias do treino vão para a arte, depois dos outros números', () => {
+    const a = fromHistoryDetail(entry({ modality: 'strength', distance_meters: null, energy_kcal: 236 }), null, 'X');
+    expect(a.energyKcal).toBe(236);
+  });
+
   it('pedal usa velocidade como número principal', () => {
     const a = fromHistoryDetail(entry({ modality: 'bike' }), detail({ rate_unit: 'kmh' }), 'X');
     expect(a.gps?.rateLabel).toBe(a.gps?.speedLabel);
