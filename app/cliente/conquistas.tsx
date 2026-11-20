@@ -286,10 +286,10 @@ const styles = StyleSheet.create({
   // Sem elevation: no Android, sombra sob fundo semitransparente desenha um retângulo branco dentro do quadro.
   rule: { flex: 1, padding: 10, borderRadius: radii.md + 4, backgroundColor: '#ffffffd9', ...shadows.card, elevation: 0 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  action: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: radii.xl - 6, backgroundColor: '#fff', borderWidth: 1, borderColor: 'transparent', ...shadows.card },
+  action: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: radii.xl - 6, backgroundColor: '#fff', ...shadows.card },
   actionIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   actionTitle: { fontFamily: typography.fontFamilyBold, fontSize: 13, color: colors.text },
-  nowCard: { width: 248, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: radii.xl - 4, borderWidth: 1.5, backgroundColor: '#fff', borderWidth: 1, borderColor: 'transparent', ...shadows.card },
+  nowCard: { width: 248, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: radii.xl - 4, borderWidth: 1.5, backgroundColor: '#fff', ...shadows.card },
   nowName: { fontFamily: typography.fontFamilyBold, fontSize: 14, color: colors.text },
   nowWhen: { marginTop: 3, fontFamily: typography.fontFamilySemiBold, fontSize: 12 },
   groupTitle: { fontFamily: typography.fontFamilyBold, fontSize: 12, letterSpacing: 0.5, textTransform: 'uppercase', color: colors.textSoft },
