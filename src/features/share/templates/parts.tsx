@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { useId } from 'react';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import i18n from '@/src/i18n';
 import { colors, typography } from '@/src/design-system/tokens';
@@ -33,20 +34,12 @@ export function statsOf(a: ShareActivity): Stat[] {
 
 /** Números do modelo "percurso por trás", na ordem da referência: distância, subida, tempo, potência (ou FC), velocidade/ritmo e calorias. */
 export function routeBehindStats(a: ShareActivity): Stat[] {
-  const g = a.gps;
-  if (!g) return statsOf(a);
-  const isSpeed = g.rateLabel === g.speedLabel && g.speedLabel != null;
-  const out: (Stat | null)[] = [
-    { label: i18n.t('fitness:share.stat.distance'), value: distanceLabel(g.distanceM) },
-    g.elevationGainM != null && g.elevationGainM > 0 ? { label: i18n.t('fitness:share.stat.climb'), value: `${intLabel(g.elevationGainM)} m` } : null,
-    { label: i18n.t('fitness:share.stat.time'), value: formatClock(a.seconds) },
-    g.avgPowerW != null && g.avgPowerW > 0
-      ? { label: i18n.t('fitness:share.stat.avgPower'), value: `${intLabel(g.avgPowerW)} W` }
-      : g.avgHr != null ? { label: i18n.t('fitness:share.stat.avgHr'), value: `${intLabel(g.avgHr)} bpm` } : null,
-    g.rateLabel !== '–' ? { label: isSpeed ? i18n.t('fitness:share.stat.speed') : i18n.t('fitness:share.stat.pace'), value: g.rateLabel } : null,
-    a.energyKcal != null && a.energyKcal > 0 ? { label: i18n.t('fitness:share.stat.calories'), value: `${intLabel(a.energyKcal)} kcal` } : null,
-  ];
-  return out.filter((s): s is Stat => s !== null);
+  const all = statsOf(a);
+  const pick = (...keys: string[]) => all.find((s) => keys.some((k) => s.label === i18n.t(`fitness:share.stat.${k}` as never)));
+  const g = a.gps!;
+  const power = g.avgPowerW != null && g.avgPowerW > 0 ? { label: i18n.t('fitness:share.stat.avgPower'), value: `${intLabel(g.avgPowerW)} W` } : null;
+  const rate = pick('speed', 'pace');
+  return [pick('distance'), pick('climb'), pick('time'), power ?? pick('avgHr'), rate?.value === '–' ? undefined : rate, pick('calories')].filter((s): s is Stat => !!s);
 }
 
 export const shadow: TextStyle = { textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 };
@@ -100,10 +93,12 @@ export function RouteLine({ route, w, h, stroke = 18, grid = false, plain = fals
   const start = xy[0];
   const end = xy.length > 1 ? xy[xy.length - 1] : null;
   const cell = 72;
+  // Id próprio por desenho: na grade vários modelos têm rota, e no web o id do degradê vale para a página toda.
+  const gid = `shareRoute${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   return (
     <Svg width={w} height={h}>
       <Defs>
-        <LinearGradient id="shareRoute" x1="0" y1="0" x2="1" y2="1">
+        <LinearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
           <Stop offset="0" stopColor={colors.cyan} />
           <Stop offset="1" stopColor={colors.primary} />
         </LinearGradient>
@@ -115,7 +110,7 @@ export function RouteLine({ route, w, h, stroke = 18, grid = false, plain = fals
           ]
         : null}
       {d && !plain ? <Path d={d} stroke="#ffffff" strokeWidth={stroke * 1.7} strokeLinecap="round" strokeLinejoin="round" fill="none" /> : null}
-      {d ? <Path d={d} stroke="url(#shareRoute)" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" fill="none" /> : null}
+      {d ? <Path d={d} stroke={`url(#${gid})`} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" fill="none" /> : null}
       {start && !plain ? <Circle cx={start.x} cy={start.y} r={stroke * 0.9} fill="#ffffff" stroke={colors.success} strokeWidth={stroke * 0.5} /> : null}
       {end && !plain ? <Circle cx={end.x} cy={end.y} r={stroke * 0.9} fill={colors.chromeNavy} stroke="#ffffff" strokeWidth={stroke * 0.4} /> : null}
     </Svg>
