@@ -20,7 +20,7 @@ export type ShareGps = {
   maxHr: number | null;
   elevationGainM: number | null;
   route: [number, number][];
-  splits: { index: number; seconds: number }[];
+  splits: { index: number; seconds: number; distanceM?: number | null }[];
   /** De onde vêm as parciais: volta do relógio, quilômetro ou 100 m (natação). Muda o título do modelo. */
   splitsKind?: 'laps' | 'km' | '100m';
 };

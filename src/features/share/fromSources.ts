@@ -87,7 +87,7 @@ export function fromHistoryDetail(entry: FitnessHistoryEntry, detail: ActivityDe
         elevationGainM: detail?.summary.elevation_gain_m ?? null,
         route,
         // Uma volta só (o treino inteiro) não é parcial; musculação já chega do servidor sem nenhuma.
-        splits: (detail?.splits.length ?? 0) > 1 ? detail!.splits.map((s) => ({ index: s.index, seconds: s.seconds })) : [],
+        splits: (detail?.splits.length ?? 0) > 1 ? detail!.splits.map((s) => ({ index: s.index, seconds: s.seconds, distanceM: s.distance_m })) : [],
         splitsKind: detail?.split_basis === 'laps' ? 'laps' : undefined,
       }),
     };

@@ -56,6 +56,9 @@ function Line({ left, right, bold }: { left: string; right?: string; bold?: bool
   );
 }
 
+/** Ritmo do trecho pela distância que ele teve (o último km quase sempre é mais curto). */
+const paceOf = (s: { seconds: number; distanceM?: number | null }, per: number) => (s.distanceM && s.distanceM > 0 ? (s.seconds / s.distanceM) * per : s.seconds);
+
 const Dash = () => <Text style={rs.dash} numberOfLines={1}>{'- '.repeat(40)}</Text>;
 
 /** Recibo de padaria do treino: cabeçalho da empresa, parciais, totais e um código de barras. Fundo transparente. */
@@ -77,7 +80,7 @@ export function Receipt({ activity }: TemplateProps) {
           <Text style={[rs.mono, rs.monoBold]} numberOfLines={1}>{activity.title.toUpperCase()}</Text>
           {splits.length > 1
             ? splits.map((s) => (
-                <Line key={s.index} left={`${label} ${String(s.index).padStart(2, '0')}`} right={g?.splitsKind === 'laps' ? formatClock(s.seconds) : `${formatPace(s.seconds)} ${per}`} />
+                <Line key={s.index} left={`${label} ${String(s.index).padStart(2, '0')}`} right={g?.splitsKind === 'laps' ? formatClock(s.seconds) : `${formatPace(paceOf(s, g?.splitsKind === '100m' ? 100 : 1000))} ${per}`} />
               ))
             : null}
           <Dash />
@@ -109,7 +112,7 @@ function Bib({ activity, dark }: TemplateProps & { dark: boolean }) {
   const big = g ? kmNumber(g.distanceM) : formatClock(activity.seconds);
   const bigLabel = g ? tr('bib.km') : tr('bib.time');
   const small = g
-    ? [{ v: formatClock(activity.seconds), l: tr('bib.time') }, { v: g.rateLabel.replace(/\s*\/.*$/, '').replace(/ km\/h$/, ''), l: g.rateLabel.includes('km/h') ? 'KM/H' : tr('bib.pace') }]
+    ? [{ v: formatClock(activity.seconds), l: tr('bib.time') }, g.rateLabel.endsWith('km/h') ? { v: g.rateLabel.replace(/\s*km\/h$/, ''), l: 'KM/H' } : { v: g.rateLabel.replace(/\s*\/.*$/, ''), l: tr('bib.pace') }]
     : (activity.energyKcal ? [{ v: String(activity.energyKcal), l: 'KCAL' }] : []);
   return (
     <View style={[base.canvas, { alignItems: 'center', justifyContent: 'center' }]}>
@@ -136,7 +139,7 @@ function Bib({ activity, dark }: TemplateProps & { dark: boolean }) {
         </View>
         <Text style={[rs.bibTitle, { color: soft }]} numberOfLines={1}>{activity.title.toUpperCase()}</Text>
       </View>
-      <Text style={[rs.bibPowered, { color: dark ? '#ffffff' : '#ffffff' }]}>OPERAX</Text>
+      <Text style={[rs.bibPowered, { color: '#ffffff' }]}>OPERAX</Text>
     </View>
   );
 }

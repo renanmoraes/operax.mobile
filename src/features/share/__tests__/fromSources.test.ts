@@ -46,8 +46,8 @@ describe('fromHistoryDetail', () => {
     expect(a.gps?.maxHr).toBe(171);
     expect(a.gps?.elevationGainM).toBe(40);
     expect(a.gps?.splits).toEqual([
-      { index: 1, seconds: 360 },
-      { index: 2, seconds: 355 },
+      { index: 1, seconds: 360, distanceM: 1000 },
+      { index: 2, seconds: 355, distanceM: 1000 },
     ]);
   });
 
