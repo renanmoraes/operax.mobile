@@ -31,6 +31,24 @@ export function statsOf(a: ShareActivity): Stat[] {
   return out;
 }
 
+/** Números do modelo "percurso por trás", na ordem da referência: distância, subida, tempo, potência (ou FC), velocidade/ritmo e calorias. */
+export function routeBehindStats(a: ShareActivity): Stat[] {
+  const g = a.gps;
+  if (!g) return statsOf(a);
+  const isSpeed = g.rateLabel === g.speedLabel && g.speedLabel != null;
+  const out: (Stat | null)[] = [
+    { label: i18n.t('fitness:share.stat.distance'), value: distanceLabel(g.distanceM) },
+    g.elevationGainM != null && g.elevationGainM > 0 ? { label: i18n.t('fitness:share.stat.climb'), value: `${intLabel(g.elevationGainM)} m` } : null,
+    { label: i18n.t('fitness:share.stat.time'), value: formatClock(a.seconds) },
+    g.avgPowerW != null && g.avgPowerW > 0
+      ? { label: i18n.t('fitness:share.stat.avgPower'), value: `${intLabel(g.avgPowerW)} W` }
+      : g.avgHr != null ? { label: i18n.t('fitness:share.stat.avgHr'), value: `${intLabel(g.avgHr)} bpm` } : null,
+    g.rateLabel !== '–' ? { label: isSpeed ? i18n.t('fitness:share.stat.speed') : i18n.t('fitness:share.stat.pace'), value: g.rateLabel } : null,
+    a.energyKcal != null && a.energyKcal > 0 ? { label: i18n.t('fitness:share.stat.calories'), value: `${intLabel(a.energyKcal)} kcal` } : null,
+  ];
+  return out.filter((s): s is Stat => s !== null);
+}
+
 export const shadow: TextStyle = { textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 10 };
 
 export function Brand({ company, color = '#fff', style }: { company: string; color?: string; style?: StyleProp<ViewStyle> }) {
@@ -75,7 +93,7 @@ export function StatRow({ stats, color = '#fff' }: { stats: Stat[]; color?: stri
 }
 
 /** Traçado da rota com contorno branco, largada e chegada; fundo transparente, a menos que `grid`. */
-export function RouteLine({ route, w, h, stroke = 18, grid = false }: { route: [number, number][]; w: number; h: number; stroke?: number; grid?: boolean }) {
+export function RouteLine({ route, w, h, stroke = 18, grid = false, plain = false }: { route: [number, number][]; w: number; h: number; stroke?: number; grid?: boolean; plain?: boolean }) {
   const pad = stroke * 2 + 10;
   const xy = projectRoute(route, w, h, { side: pad, top: pad, bottom: pad });
   const d = pathOf(xy);
@@ -96,10 +114,10 @@ export function RouteLine({ route, w, h, stroke = 18, grid = false }: { route: [
             ...Array.from({ length: Math.ceil(h / cell) }, (_, i) => <Line key={`h${i}`} x1={0} y1={i * cell} x2={w} y2={i * cell} stroke="#dfe7f5" strokeWidth={2} />),
           ]
         : null}
-      {d ? <Path d={d} stroke="#ffffff" strokeWidth={stroke * 1.7} strokeLinecap="round" strokeLinejoin="round" fill="none" /> : null}
+      {d && !plain ? <Path d={d} stroke="#ffffff" strokeWidth={stroke * 1.7} strokeLinecap="round" strokeLinejoin="round" fill="none" /> : null}
       {d ? <Path d={d} stroke="url(#shareRoute)" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" fill="none" /> : null}
-      {start ? <Circle cx={start.x} cy={start.y} r={stroke * 0.9} fill="#ffffff" stroke={colors.success} strokeWidth={stroke * 0.5} /> : null}
-      {end ? <Circle cx={end.x} cy={end.y} r={stroke * 0.9} fill={colors.chromeNavy} stroke="#ffffff" strokeWidth={stroke * 0.4} /> : null}
+      {start && !plain ? <Circle cx={start.x} cy={start.y} r={stroke * 0.9} fill="#ffffff" stroke={colors.success} strokeWidth={stroke * 0.5} /> : null}
+      {end && !plain ? <Circle cx={end.x} cy={end.y} r={stroke * 0.9} fill={colors.chromeNavy} stroke="#ffffff" strokeWidth={stroke * 0.4} /> : null}
     </Svg>
   );
 }

@@ -4,7 +4,7 @@ import { gradients } from '@/src/design-system/tokens';
 import { longDate } from '@/src/shared/format';
 import type { ShareActivity, ShareTemplate, TemplateProps } from '../types';
 import { BibDark, BibLight, hasPlan, PlanDone, Receipt } from './extra';
-import { Brand, Records, RouteLine, shadow, SplitBars, StatRow, StatStack, statsOf, styles, VolumeBars } from './parts';
+import { Brand, Records, RouteLine, routeBehindStats, shadow, SplitBars, StatRow, StatStack, statsOf, styles, VolumeBars } from './parts';
 
 const hasRoute = (a: ShareActivity) => (a.gps?.route.length ?? 0) > 1;
 const always = () => true;
@@ -26,6 +26,29 @@ function RouteStats({ activity }: TemplateProps) {
       <RouteLine route={activity.gps!.route} w={760} h={820} stroke={16} />
       <StatStack stats={statsOf(activity).slice(0, 3)} size={0.78} />
       <Brand company={activity.company} />
+    </View>
+  );
+}
+
+/** O percurso inteiro ocupa a arte e os números ficam empilhados por cima, no centro. */
+function RouteBehind({ activity }: TemplateProps) {
+  const stats = routeBehindStats(activity);
+  return (
+    <View style={styles.canvas}>
+      <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
+        <RouteLine route={activity.gps!.route} w={1000} h={1840} stroke={22} plain />
+      </View>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'space-evenly', paddingVertical: 90 }}>
+        <Brand company={activity.company} />
+        {stats.map((st) => (
+          <View key={st.label} style={{ alignItems: 'center' }}>
+            <Text style={[styles.statLabel, { color: '#fff', fontSize: 46 }, shadow]}>{st.label}</Text>
+            <Text style={[styles.statValue, { color: '#fff', fontSize: 112 }, shadow]} numberOfLines={1} adjustsFontSizeToFit>
+              {st.value}
+            </Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -147,6 +170,7 @@ function Photo({ activity, photoUri, onReady }: TemplateProps) {
 /** Ordem da grade. Transparentes primeiro, como no Strava. */
 export const TEMPLATES: ShareTemplate[] = [
   { id: 'route', labelKey: 'route', transparent: true, supports: hasRoute, Render: RouteOnly },
+  { id: 'routeBehind', labelKey: 'routeBehind', transparent: true, supports: hasRoute, Render: RouteBehind },
   { id: 'routeStats', labelKey: 'routeStats', transparent: true, supports: hasRoute, Render: RouteStats },
   { id: 'stats', labelKey: 'stats', transparent: true, supports: always, Render: Stats },
   { id: 'row', labelKey: 'row', transparent: true, supports: always, Render: Row },

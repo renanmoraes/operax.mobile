@@ -13,6 +13,7 @@ function gpsBlock(p: {
   avgHr?: number | null;
   maxHr?: number | null;
   elevationGainM?: number | null;
+  avgPowerW?: number | null;
   route?: [number, number][];
   splits?: { index: number; seconds: number }[];
   splitsKind?: ShareGps['splitsKind'];
@@ -28,6 +29,7 @@ function gpsBlock(p: {
     avgHr: p.avgHr ?? null,
     maxHr: p.maxHr ?? null,
     elevationGainM: p.elevationGainM ?? null,
+    avgPowerW: p.avgPowerW ?? null,
     route: p.route ?? [],
     splits: p.splits ?? [],
     splitsKind: p.splitsKind ?? (p.sport === 'swim' ? '100m' : 'km'),
@@ -85,6 +87,7 @@ export function fromHistoryDetail(entry: FitnessHistoryEntry, detail: ActivityDe
         avgHr: detail?.summary.avg_hr ?? entry.avg_hr ?? null,
         maxHr: detail?.summary.max_hr ?? null,
         elevationGainM: detail?.summary.elevation_gain_m ?? null,
+        avgPowerW: detail?.summary.avg_power ?? null,
         route,
         // Uma volta só (o treino inteiro) não é parcial; musculação já chega do servidor sem nenhuma.
         splits: (detail?.splits.length ?? 0) > 1 ? detail!.splits.map((s) => ({ index: s.index, seconds: s.seconds, distanceM: s.distance_m })) : [],

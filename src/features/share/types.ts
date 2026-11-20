@@ -19,6 +19,8 @@ export type ShareGps = {
   avgHr: number | null;
   maxHr: number | null;
   elevationGainM: number | null;
+  /** Potência média do medidor (pedal), em watts. */
+  avgPowerW?: number | null;
   route: [number, number][];
   splits: { index: number; seconds: number; distanceM?: number | null }[];
   /** De onde vêm as parciais: volta do relógio, quilômetro ou 100 m (natação). Muda o título do modelo. */
