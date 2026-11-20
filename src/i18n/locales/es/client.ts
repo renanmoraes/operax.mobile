@@ -183,10 +183,10 @@ const client: Shape<typeof pt> = {
     history: 'Historial',
     achievements: 'Logros',
     quickTitle: 'Acceso rápido',
-    requestSlotSub: 'Entrenos y citas',
-    progressSub: 'Sigue tu progreso',
+    requestSlotSub: 'Reserva un horario',
+    progressSub: 'Tu progreso',
     historySub: 'Entrenos y resultados',
-    achievementsSub: 'Tus metas alcanzadas',
+    achievementsSub: 'Metas alcanzadas',
   },
   chats: {
     you: 'Tú: ',

@@ -41,10 +41,9 @@ const QUICK_HUES = {
 /** Cartão do Acesso rápido: ícone na cor do atalho, nome, uma frase do que tem lá e a seta. Dois por linha. */
 function QuickCard({ icon: iconName, title, subtitle, hue, onPress }: { icon: IconName; title: string; subtitle: string; hue: keyof typeof QUICK_HUES; onPress: () => void }) {
   const c = QUICK_HUES[hue];
-  // A seta só cabe em tela larga; no celular o ícone encolhe um pouco para o nome caber inteiro.
+  // Seta sempre, como no modelo; no celular o ícone encolhe para o nome caber inteiro ao lado dele.
   const width = useWindowDimensions().width;
-  const wide = width >= 440;
-  const icon = width < 380 ? 38 : wide ? 48 : 44;
+  const icon = width < 380 ? 30 : width < 440 ? 38 : 48;
   return (
     <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title}. ${subtitle}`} style={styles.quick}>
       <LinearGradient colors={c.wash} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: radii.lg + 2 }]} />
@@ -52,10 +51,10 @@ function QuickCard({ icon: iconName, title, subtitle, hue, onPress }: { icon: Ic
         <Ionicons name={iconName} size={Math.round(icon * 0.48)} color={c.ink} />
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={styles.quickTitle} numberOfLines={1}>{title}</Text>
+        <Text style={[styles.quickTitle, width < 380 && { fontSize: 13.5, letterSpacing: -0.4 }]} numberOfLines={1}>{title}</Text>
         <Text style={styles.quickSub} numberOfLines={2}>{subtitle}</Text>
       </View>
-      {wide ? <Ionicons name="chevron-forward" size={18} color={colors.textMuted} /> : null}
+      <Ionicons name="chevron-forward" size={16} color={colors.textSoft} />
     </PressableScale>
   );
 }
@@ -259,10 +258,10 @@ export default function ClientHomeScreen() {
 const styles = StyleSheet.create({
   quickHeading: { ...text.title, color: colors.text, marginTop: 22, marginBottom: 12 },
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  quick: { flexBasis: '47%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 16, paddingLeft: 12, paddingRight: 10, minHeight: 86, borderRadius: radii.lg + 2, backgroundColor: '#ffffff', ...shadows.card },
+  quick: { flexBasis: '47%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 18, paddingLeft: 10, paddingRight: 6, minHeight: 86, borderRadius: radii.lg + 2, backgroundColor: '#ffffff', ...shadows.card },
   quickIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   quickTitle: { fontFamily: typography.fontFamilyBold, fontSize: 15, lineHeight: 19, letterSpacing: -0.3, color: colors.text },
-  quickSub: { ...text.caption, color: colors.textMuted, marginTop: 2 },
+  quickSub: { fontFamily: typography.fontFamily, fontSize: 12.5, lineHeight: 16, color: colors.textMuted, marginTop: 3 },
   scroll: { paddingHorizontal: 20 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   me: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', ...shadows.card },

@@ -181,10 +181,10 @@ const client = {
     history: 'Histórico',
     achievements: 'Conquistas',
     quickTitle: 'Acesso rápido',
-    requestSlotSub: 'Treinos e compromissos',
-    progressSub: 'Acompanhe seu progresso',
+    requestSlotSub: 'Marque um horário',
+    progressSub: 'Seu progresso',
     historySub: 'Treinos e resultados',
-    achievementsSub: 'Suas metas alcançadas',
+    achievementsSub: 'Metas alcançadas',
   },
   chats: {
     you: 'Você: ',
