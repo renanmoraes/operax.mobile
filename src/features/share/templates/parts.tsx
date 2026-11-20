@@ -102,13 +102,13 @@ export function RouteLine({ route, w, h, stroke = 18, grid = false }: { route: [
   );
 }
 
-export function SplitBars({ splits, color = '#fff' }: { splits: { index: number; seconds: number }[]; color?: string }) {
+export function SplitBars({ splits, kind = 'km', color = '#fff' }: { splits: { index: number; seconds: number }[]; kind?: 'laps' | 'km' | '100m'; color?: string }) {
   const shown = splits.slice(0, 12);
   const fastest = Math.min(...shown.map((s) => s.seconds));
   const slowest = Math.max(...shown.map((s) => s.seconds));
   return (
     <View style={{ width: 860, gap: 18 }}>
-      <Text style={[styles.statLabel, { color, fontSize: 44, marginBottom: 10 }, color === '#fff' && shadow]}>{i18n.t('fitness:share.splitsTitle')}</Text>
+      <Text style={[styles.statLabel, { color, fontSize: 44, marginBottom: 10 }, color === '#fff' && shadow]}>{i18n.t(kind === 'laps' ? 'fitness:share.splitsLaps' : kind === '100m' ? 'fitness:share.splits100m' : 'fitness:share.splitsTitle')}</Text>
       {shown.map((s) => {
         const ratio = slowest === fastest ? 1 : 0.45 + 0.55 * ((slowest - s.seconds) / (slowest - fastest));
         return (

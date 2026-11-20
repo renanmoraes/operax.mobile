@@ -50,7 +50,7 @@ function Row({ activity }: TemplateProps) {
 function Splits({ activity }: TemplateProps) {
   return (
     <View style={[styles.canvas, { alignItems: 'center', justifyContent: 'center', gap: 80 }]}>
-      <SplitBars splits={activity.gps!.splits} />
+      <SplitBars splits={activity.gps!.splits} kind={activity.gps!.splitsKind} />
       <Brand company={activity.company} />
     </View>
   );

@@ -5,9 +5,10 @@ export function distanceLabel(m: number): string {
   return `${new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(m / 1000)} km`;
 }
 
-export function paceLabel(distanceM: number, seconds: number): string | null {
+/** Ritmo já com a unidade. Natação vai por 100 m (`per100`), o resto por quilômetro. */
+export function paceLabel(distanceM: number, seconds: number, per100 = false): string | null {
   if (distanceM < 20 || seconds <= 0) return null;
-  return `${formatPace((seconds / distanceM) * 1000)} /km`;
+  return `${formatPace((seconds / distanceM) * (per100 ? 100 : 1000))} ${per100 ? '/100 m' : '/km'}`;
 }
 
 export function speedLabel(distanceM: number, seconds: number): string | null {

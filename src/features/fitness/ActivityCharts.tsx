@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { LayoutChangeEvent, PanResponder, StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, Line, LinearGradient as SvgLinear, Path, Rect, Stop } from 'react-native-svg';
 import { Card, Muted } from '@/src/design-system/ui';
+import { Skeleton, SkeletonGroup } from '@/src/design-system/Skeleton';
 import { colors, numbers, text, typography } from '@/src/design-system/tokens';
 import { locale } from '@/src/i18n';
 import { formatClock } from '@/src/shared/format';
@@ -68,7 +69,6 @@ export function ActivityCharts({ detail }: { detail: ActivityDetail }) {
       {shown.map((m) => (
         <MetricChart key={m.key} metric={m} points={detail.series![m.key]!} total={detail.seconds} cursor={cursor} onCursor={setCursor} zones={m.key === 'hr' ? detail.zones : null} />
       ))}
-      <Muted style={{ textAlign: 'center', fontSize: 12 }}>{t('charts.dragHint')}</Muted>
     </View>
   );
 }
@@ -201,6 +201,24 @@ function Figure({ label, value, unit, strong }: { label: string; value: string; 
   );
 }
 
+/** Enquanto o treino por dentro chega: dois cartões no formato do gráfico, para a tela não pular quando ele aparece. */
+export function ActivityChartsSkeleton() {
+  return (
+    <SkeletonGroup style={{ gap: 12 }}>
+      {[0, 1].map((i) => (
+        <Card key={i} style={{ gap: 10 }}>
+          <Skeleton width="45%" height={16} />
+          <View style={styles.figures}>
+            <Skeleton width={72} height={22} />
+            <Skeleton width={72} height={22} />
+          </View>
+          <Skeleton height={HEIGHT - 20} radius={12} />
+        </Card>
+      ))}
+    </SkeletonGroup>
+  );
+}
+
 /** Tempo em cada zona de frequência: barra proporcional ao tempo, com a faixa de batimentos. */
 export function HrZonesCard({ detail }: { detail: ActivityDetail }) {
   const { t } = useTranslation('fitness');
@@ -212,7 +230,7 @@ export function HrZonesCard({ detail }: { detail: ActivityDetail }) {
     <Card style={{ gap: 10 }}>
       <View style={styles.head}>
         <Text style={styles.title}>{t('charts.zones')}</Text>
-        {detail.hr_max_used ? <Muted style={{ fontSize: 12 }}>{t('charts.hrMaxUsed', { bpm: detail.hr_max_used })}</Muted> : null}
+        {detail.hr_max_used ? <Muted style={{ fontSize: 12 }}>{t(detail.sport === 'swim' ? 'charts.hrMaxSwim' : 'charts.hrMaxUsed', { bpm: detail.hr_max_used })}</Muted> : null}
       </View>
       {[...zones].reverse().map((z) => {
         const pct = Math.round((z.seconds / totalZ) * 100);

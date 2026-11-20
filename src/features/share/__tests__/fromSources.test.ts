@@ -38,7 +38,7 @@ describe('fromHistoryDetail', () => {
     const a = fromHistoryDetail(entry(), detail(), 'Academia Demo');
     expect(a.kind).toBe('gps');
     expect(a.strength).toBeUndefined();
-    expect(a.seconds).toBe(1795);
+    expect(a.seconds).toBe(1800); // o tempo em movimento do histórico, igual ao da tela do treino
     expect(a.date).toBe('2026-11-15T07:00:00Z');
     expect(a.gps?.rateLabel).toBe(a.gps?.paceLabel);
     expect(a.gps?.paceLabel).toMatch(/\/km$/);
@@ -49,6 +49,23 @@ describe('fromHistoryDetail', () => {
       { index: 1, seconds: 360 },
       { index: 2, seconds: 355 },
     ]);
+  });
+
+  it('natação parada na borda: ritmo por 100 m com o tempo em movimento, e o título diz que são voltas', () => {
+    // 680 m em 11:27 em movimento; as amostras do relógio somam 41:44 com as pausas.
+    const a = fromHistoryDetail(
+      entry({ modality: 'swim', duration_seconds: 687, distance_meters: 680 }),
+      detail({ sport: 'swim', route: [], rate_unit: 'min_100m', seconds: 2504, split_basis: 'laps' }),
+      'X',
+    );
+    expect(a.seconds).toBe(687);
+    expect(a.gps?.paceLabel).toBe('1\'41" /100 m');
+    expect(a.gps?.splitsKind).toBe('laps');
+  });
+
+  it('musculação do relógio não leva parciais para a arte', () => {
+    const a = fromHistoryDetail(entry({ modality: 'strength', distance_meters: null }), detail({ sport: 'strength', route: [] }), 'X');
+    expect(a.kind).toBe('strength');
   });
 
   it('pedal usa velocidade como número principal', () => {

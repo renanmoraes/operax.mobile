@@ -21,6 +21,8 @@ export type ShareGps = {
   elevationGainM: number | null;
   route: [number, number][];
   splits: { index: number; seconds: number }[];
+  /** De onde vêm as parciais: volta do relógio, quilômetro ou 100 m (natação). Muda o título do modelo. */
+  splitsKind?: 'laps' | 'km' | '100m';
 };
 
 /** Tudo que a tela de compartilhar precisa; quem abre a tela monta este objeto. */

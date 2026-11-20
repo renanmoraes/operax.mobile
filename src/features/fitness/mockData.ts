@@ -167,7 +167,41 @@ export function buildHistory(): FitnessHistoryEntry[] {
       sources: [{ origin: 'garmin', label: 'Garmin Forerunner 265', device: 'Forerunner 265' }, { origin: 'strava', label: 'Strava' }],
     });
   }
+  // Natação na piscina: 11 min nadando em 40 min de relógio (pausa na borda entre as séries).
+  const swimDay = addDays(today, -3);
+  out.push({
+    id: 's:demo-swim', kind: 'free', date: isoDate(swimDay), started_at: new Date(swimDay.getTime() + 7 * 3_600_000 + 13 * 60_000).toISOString(), title: 'Natação', modality: 'swim',
+    duration_seconds: 687, distance_meters: 675, avg_hr: 133, effort: null, session_id: 'demo-swim',
+    sources: [{ origin: 'garmin', label: 'Garmin Forerunner 265', device: 'Forerunner 265' }, { origin: 'strava', label: 'Strava' }],
+  });
   return out;
+}
+
+/** Natação da demonstração: voltas de 25 a 100 m com descanso entre elas, ritmo por 100 m e zonas pela máxima na água. */
+export function demoSwimDetail(entry: FitnessHistoryEntry): ActivityDetail | null {
+  if (entry.modality !== 'swim') return null;
+  const laps: [number, number][] = [[100, 104], [100, 98], [50, 47], [50, 46], [100, 101], [25, 22], [25, 21], [75, 72], [100, 99], [50, 48]];
+  const rest = 150;
+  const hrMax = 167;
+  const pace: ChartPoint[] = [];
+  const hr: ChartPoint[] = [];
+  let t = 0;
+  laps.forEach(([m, s], i) => {
+    for (let k = 0; k <= 4; k++) {
+      pace.push([t + Math.round((k / 4) * s), Math.round((s / m) * 100 + (k === 2 ? -2 : 1))]);
+      hr.push([t + Math.round((k / 4) * s), Math.round(118 + 3 * i + k * 6)]);
+    }
+    t += s;
+    hr.push([t + Math.round(rest / 2), 112]);
+    t += rest;
+  });
+  const edges = [0.5, 0.6, 0.7, 0.8, 0.9, 1].map((f) => Math.round(hrMax * f));
+  return {
+    sport: 'swim', rate_unit: 'min_100m', seconds: t, series: { rate: pace, hr },
+    summary: { avg_hr: entry.avg_hr, max_hr: 152, elevation_gain_m: null, avg_cadence: null, avg_power: null },
+    zones: [180, 420, 1500, 300, 0].map((s, i) => ({ zone: (i + 1) as 1 | 2 | 3 | 4 | 5, from_bpm: edges[i], to_bpm: edges[i + 1], seconds: s })), hr_max_used: hrMax,
+    splits: laps.map(([m, s], i) => ({ index: i + 1, seconds: s, distance_m: m, rate: Math.round((s / m) * 100), avg_hr: 120 + 3 * i })), split_basis: 'laps',
+  };
 }
 
 /** [dias atrás, segundos, metros, FC média] das corridas da demonstração. */

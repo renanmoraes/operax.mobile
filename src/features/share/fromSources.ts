@@ -14,8 +14,9 @@ function gpsBlock(p: {
   elevationGainM?: number | null;
   route?: [number, number][];
   splits?: { index: number; seconds: number }[];
+  splitsKind?: ShareGps['splitsKind'];
 }): ShareGps {
-  const pace = paceLabel(p.distanceM, p.seconds);
+  const pace = paceLabel(p.distanceM, p.seconds, p.sport === 'swim');
   const speed = speedLabel(p.distanceM, p.seconds);
   return {
     sport: p.sport,
@@ -28,6 +29,7 @@ function gpsBlock(p: {
     elevationGainM: p.elevationGainM ?? null,
     route: p.route ?? [],
     splits: p.splits ?? [],
+    splitsKind: p.splitsKind ?? (p.sport === 'swim' ? '100m' : 'km'),
   };
 }
 
@@ -60,7 +62,9 @@ export function fromRecording(
 
 /** Item do histórico, com o detalhe da gravação quando existir. */
 export function fromHistoryDetail(entry: FitnessHistoryEntry, detail: ActivityDetail | null, company: string): ShareActivity {
-  const seconds = detail?.seconds ?? entry.duration_seconds ?? 0;
+  // O tempo do histórico é o em movimento (o mesmo da tela do treino). O das amostras conta as pausas: numa natação de 11 min
+  // parado na borda vira 41 min e o ritmo sai vazio.
+  const seconds = entry.duration_seconds ?? detail?.seconds ?? 0;
   const base: Base = { title: entry.title, company, date: entry.started_at ?? entry.date, seconds };
   const route = detail?.route ?? [];
   const distanceM = entry.distance_meters ?? 0;
@@ -77,7 +81,8 @@ export function fromHistoryDetail(entry: FitnessHistoryEntry, detail: ActivityDe
         maxHr: detail?.summary.max_hr ?? null,
         elevationGainM: detail?.summary.elevation_gain_m ?? null,
         route,
-        splits: (detail?.splits ?? []).map((s) => ({ index: s.index, seconds: s.seconds })),
+        splits: entry.modality === 'strength' ? [] : (detail?.splits ?? []).map((s) => ({ index: s.index, seconds: s.seconds })),
+        splitsKind: detail?.split_basis === 'laps' ? 'laps' : undefined,
       }),
     };
   }
