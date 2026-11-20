@@ -1,4 +1,4 @@
-import { compareRows, daysBetween, deltaTone, previousValue } from '../bodyEvolution';
+import { FOLDS_SUM, compareRows, daysBetween, deltaTone, pointsOf, previousValue } from '../bodyEvolution';
 import type { AssessmentView } from '@/src/features/portal/assessments';
 
 const a = (id: string, date: string, measures: Record<string, number>, derived: AssessmentView['derived'] = {}): AssessmentView => ({
@@ -42,6 +42,17 @@ describe('evolução corporal', () => {
     expect(previousValue(items, 2, 'body_fat_percent')).toBe(20.5);
     expect(previousValue(items, 2, 'weight_kg')).toBe(88);
     expect(previousValue(items, 0, 'weight_kg')).toBeUndefined();
+  });
+
+  it('soma só as dobras tiradas em todas as avaliações com dobra', () => {
+    const folds = [
+      a('1', '2026-01-01', { triceps_mm: 10, subscapular_mm: 20, calf_fold_mm: 5 }),
+      a('2', '2026-02-01', { weight_kg: 80 }),
+      a('3', '2026-03-01', { triceps_mm: 8, subscapular_mm: 18 }),
+    ];
+    expect(pointsOf(folds, FOLDS_SUM).map((p) => p.value)).toEqual([30, 26]);
+    expect(deltaTone(FOLDS_SUM, -4)).toBe('good');
+    expect(pointsOf([a('x', '2026-01-01', { triceps_mm: 10 })], FOLDS_SUM)).toEqual([]);
   });
 
   it('conta os dias entre as avaliações', () => {

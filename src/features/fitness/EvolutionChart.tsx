@@ -69,3 +69,39 @@ export function EvolutionChart({ points, fmt, dateOf, a11y }: { points: Point[];
     </View>
   );
 }
+
+const MH = 54;
+
+/** Gráfico pequeno do cartão de cada medida: a linha da primeira à última avaliação, sem números (o cartão já mostra). */
+export function MiniChart({ points, color = colors.primary }: { points: Point[]; color?: string }) {
+  const [w, setW] = useState(0);
+  const n = points.length;
+  const values = points.map((p) => p.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const pad = 7;
+  const x = (i: number) => (n === 1 ? w / 2 : pad + (i * (w - pad * 2)) / (n - 1));
+  const y = (v: number) => (max === min ? MH / 2 : pad + ((max - v) / span) * (MH - pad * 2));
+  const line = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(' ');
+  const id = `mini${points[0]?.id ?? 'x'}${n}`;
+  return (
+    <View onLayout={(e) => setW(e.nativeEvent.layout.width)} style={{ height: MH }} accessible={false}>
+      {w ? (
+        <Svg width={w} height={MH}>
+          <Defs>
+            <SvgLinear id={id} x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={color} stopOpacity={0.18} />
+              <Stop offset="1" stopColor={color} stopOpacity={0} />
+            </SvgLinear>
+          </Defs>
+          {n > 1 ? <Path d={`${line} L${x(n - 1).toFixed(1)} ${MH} L${x(0).toFixed(1)} ${MH} Z`} fill={`url(#${id})`} /> : null}
+          {n > 1 ? <Path d={line} stroke={color} strokeWidth={2.5} fill="none" strokeLinecap="round" strokeLinejoin="round" /> : null}
+          {points.map((p, i) => (
+            <Circle key={p.id} cx={x(i)} cy={y(p.value)} r={i === n - 1 ? 4.5 : 3} fill={i === n - 1 ? color : '#fff'} stroke={color} strokeWidth={2} />
+          ))}
+        </Svg>
+      ) : null}
+    </View>
+  );
+}

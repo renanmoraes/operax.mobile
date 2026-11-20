@@ -1,17 +1,17 @@
 import { router } from 'expo-router';
 import i18n, { locale } from '@/src/i18n';
 import { type ComponentRef, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Card, EmptyState, HeroCard, IconButton, PressableScale, Rise, Screen, TopBar } from '@/src/design-system/ui';
 import { clientDataMode } from '@/src/features/client/dataMode';
-import { colors, numbers, radii, text, typography } from '@/src/design-system/tokens';
+import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { useAddCheckin, useBodyAssessments } from '@/src/features/fitness/useFitness';
 import { BodyPhotoCompare } from '@/src/features/fitness/BodyPhotoCompare';
-import { EvolutionChart } from '@/src/features/fitness/EvolutionChart';
-import { compareRows, daysBetween, deltaTone, pointsOf, previousValue, type CompareRow, type DeltaTone, type MetricDef } from '@/src/features/fitness/bodyEvolution';
+import { EvolutionChart, MiniChart } from '@/src/features/fitness/EvolutionChart';
+import { FOLDS_SUM, compareRows, daysBetween, deltaTone, pointsOf, previousValue, type CompareRow, type DeltaTone, type MetricDef } from '@/src/features/fitness/bodyEvolution';
 import { valueOf } from '@/src/features/portal/assessments';
 import { isoDate, monthShort } from '@/src/shared/format';
 
@@ -20,9 +20,11 @@ const dayMonth = (iso: string) => {
   const d = new Date(`${iso}T12:00:00`);
   return `${d.getDate()} ${monthShort(d)}`;
 };
-const label = (key: string): string => (key === 'body_fat_percent' ? i18n.t('portal:assess.fat') : String(i18n.t(`portal:meas.${key}` as never)));
+const label = (key: string): string =>
+  key === 'body_fat_percent' ? i18n.t('portal:assess.fat') : key === FOLDS_SUM ? i18n.t('fitness:body.foldsSum') : String(i18n.t(`portal:meas.${key}` as never));
 /** Nome curto para caber no destaque e no histórico. */
-const shortLabel = (key: string): string => (key === 'body_fat_percent' ? i18n.t('fitness:body.fat') : label(key));
+const shortLabel = (key: string): string =>
+  key === 'body_fat_percent' ? i18n.t('fitness:body.fat') : key.endsWith('_mm') ? label(key).replace(/^(Dobra|Pliegue)\s+/i, '').replace(/^./, (c) => c.toUpperCase()) : label(key);
 /** Gordura em % muda em pontos, não em %. */
 const deltaUnit = (m: { key: string; unit: string }) => (m.key === 'body_fat_percent' ? i18n.t('fitness:body.pointsUnit') : m.unit);
 const signed = (key: string, diff: number) => `${diff > 0.049 ? '+' : diff < -0.049 ? '−' : ''}${num(key)(Math.abs(diff))}`;
@@ -48,12 +50,11 @@ function DeltaPill({ m, diff, big }: { m: MetricDef; diff: number; big?: boolean
 
 export default function BodyEvolutionScreen() {
   const insets = useSafeAreaInsets();
+  const wide = useWindowDimensions().width >= 640;
   const { data } = useBodyAssessments();
   const add = useAddCheckin();
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const chartY = useRef(0);
-  const rail = useRef<ComponentRef<typeof ScrollView>>(null);
-  const chipX = useRef<Record<string, number>>({});
   const [dragging, setDragging] = useState(false);
   const [metric, setMetric] = useState('weight_kg');
   const [group, setGroup] = useState<string | null>(null);
@@ -80,8 +81,7 @@ export default function BodyEvolutionScreen() {
     .map((k) => rows.find((r) => r.key === k && r.count > 1))
     .filter((r): r is CompareRow => !!r)
     .slice(0, 3);
-  const charted = rows.filter((r) => r.count > 1).length ? rows.filter((r) => r.count > 1) : rows;
-  const current = charted.find((r) => r.key === metric) ?? charted[0];
+  const current = rows.find((r) => r.key === metric) ?? rows[0];
   const groups = [...new Set(rows.map((r) => r.group))];
   const activeGroup = group && groups.includes(group as CompareRow['group']) ? group : groups[0];
   const hasPhotos = items.some((a) => !!a.photo_uri);
@@ -90,7 +90,6 @@ export default function BodyEvolutionScreen() {
   const pickMetric = (key: string) => {
     setMetric(key);
     scroll.current?.scrollTo({ y: Math.max(0, chartY.current - 12), animated: true });
-    rail.current?.scrollTo({ x: Math.max(0, (chipX.current[key] ?? 0) - 18), animated: true });
   };
 
   async function addPhoto() {
@@ -157,29 +156,22 @@ export default function BodyEvolutionScreen() {
 
         {hasPhotos && many ? <BodyPhotoCompare before={first} after={last} onDragging={setDragging} /> : null}
 
-        {/* O gráfico da medida escolhida, com o valor de cada avaliação. */}
+        {/* A medida escolhida em detalhe, com o valor de cada avaliação. */}
         <View onLayout={(e) => (chartY.current = e.nativeEvent.layout.y)}>
           <Rise index={1}>
             <Card style={styles.card}>
-              <Text style={styles.cardTitle}>{i18n.t('fitness:body.chartTitle')}</Text>
-              <ScrollView ref={rail} horizontal showsHorizontalScrollIndicator={false} style={styles.chipRail} contentContainerStyle={styles.chipRailContent}>
-                {charted.map((r) => {
-                  const on = r.key === current.key;
-                  return (
-                    <PressableScale key={r.key} onLayout={(e) => (chipX.current[r.key] = e.nativeEvent.layout.x)} onPress={() => setMetric(r.key)} accessibilityRole="button" accessibilityState={{ selected: on }} style={[styles.chip, on && styles.chipOn]}>
-                      <Text style={[styles.chipText, on && styles.chipTextOn]}>{label(r.key)}</Text>
-                    </PressableScale>
-                  );
-                })}
-              </ScrollView>
               <View style={styles.chartHead}>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.chartLabel} numberOfLines={1}>{label(current.key)}</Text>
                   <Text style={styles.chartValue}>
                     {num(current.key)(current.to.value)}
                     <Text style={styles.chartUnit}>{unitText(current.unit)}</Text>
                   </Text>
-                  <Text style={styles.chartSub}>{i18n.t('fitness:body.latest', { date: dayMonth(current.to.date) })}</Text>
+                  <Text style={styles.chartSub} numberOfLines={1}>
+                    {current.count > 1
+                      ? `${num(current.key)(current.from.value)} → ${num(current.key)(current.to.value)}${unitText(current.unit)}`
+                      : i18n.t('fitness:body.latest', { date: dayMonth(current.to.date) })}
+                  </Text>
                 </View>
                 {current.count > 1 ? <DeltaPill m={current} diff={current.diff} big /> : null}
               </View>
@@ -193,50 +185,60 @@ export default function BodyEvolutionScreen() {
           </Rise>
         </View>
 
-        {/* Cada medida, da primeira à última avaliação. Tocar abre o gráfico dela. */}
+        {/* Um gráfico por medida, separado por grupo. Tocar abre a medida em detalhe lá em cima. */}
         <Rise index={2}>
-          <Card style={styles.card}>
-            <Text style={styles.cardTitle}>{many ? i18n.t('fitness:body.compareTitle') : i18n.t('fitness:body.measuresTitle')}</Text>
-            {groups.length > 1 ? (
-              <View style={styles.groupRow}>
-                {groups.map((g) => {
-                  const on = g === activeGroup;
-                  return (
-                    <PressableScale key={g} onPress={() => setGroup(g)} accessibilityRole="button" accessibilityState={{ selected: on }} style={[styles.group, on && styles.groupOn]}>
-                      <Text style={[styles.groupText, on && styles.groupTextOn]} numberOfLines={1}>{i18n.t(`fitness:body.group.${g}`)}</Text>
-                    </PressableScale>
-                  );
-                })}
-              </View>
-            ) : null}
-            <View style={{ marginTop: 6 }}>
-              {rows
-                .filter((r) => r.group === activeGroup)
-                .map((r, i) => {
-                  const on = r.key === current.key;
-                  const fmt = num(r.key);
-                  const chartable = r.count > 1;
-                  return (
-                    <PressableScale
-                      key={r.key}
-                      disabled={!chartable}
-                      onPress={() => pickMetric(r.key)}
-                      accessibilityRole={chartable ? 'button' : undefined}
-                      accessibilityLabel={i18n.t('fitness:body.rowA11y', { label: label(r.key), from: fmt(r.from.value), to: fmt(r.to.value), unit: r.unit })}
-                      style={[styles.row, i > 0 && styles.rowDivider, on && chartable && styles.rowOn]}
-                    >
-                      <Text style={styles.rowLabel} numberOfLines={2}>{label(r.key)}</Text>
-                      <Text style={styles.rowValues} numberOfLines={1}>
-                        {r.count > 1 ? <Text style={styles.rowFrom}>{`${fmt(r.from.value)} → `}</Text> : null}
-                        <Text style={styles.rowTo}>{fmt(r.to.value)}</Text>
-                        <Text style={styles.rowUnit}>{unitText(r.unit)}</Text>
-                      </Text>
-                      <View style={styles.rowPill}>{r.count > 1 ? <DeltaPill m={r} diff={r.diff} /> : null}</View>
-                    </PressableScale>
-                  );
-                })}
+          <Text style={styles.sectionTitle}>{i18n.t('fitness:body.chartTitle')}</Text>
+          {groups.length > 1 ? (
+            <View style={styles.groupRow}>
+              {groups.map((g) => {
+                const on = g === activeGroup;
+                return (
+                  <PressableScale key={g} onPress={() => setGroup(g)} accessibilityRole="button" accessibilityState={{ selected: on }} style={[styles.group, on && styles.groupOn]}>
+                    <Text style={[styles.groupText, on && styles.groupTextOn]} numberOfLines={1}>{i18n.t(`fitness:body.group.${g}`)}</Text>
+                  </PressableScale>
+                );
+              })}
             </View>
-          </Card>
+          ) : null}
+          <View style={styles.tiles}>
+            {rows
+              .filter((r) => r.group === activeGroup)
+              .map((r) => {
+                const on = r.key === current.key;
+                const fmt = num(r.key);
+                const tone = TONE[deltaTone(r.key, r.diff)];
+                const deltaUnitShort = r.key === 'body_fat_percent' ? i18n.t('fitness:body.pointsShort') : r.unit;
+                return (
+                  <PressableScale
+                    key={r.key}
+                    onPress={() => pickMetric(r.key)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={i18n.t('fitness:body.rowA11y', { label: label(r.key), from: fmt(r.from.value), to: fmt(r.to.value), unit: r.unit })}
+                    style={[styles.tile, wide && { flexBasis: '30%' }, on && styles.tileOn]}
+                  >
+                    <Text style={styles.tileLabel} numberOfLines={1}>{shortLabel(r.key)}</Text>
+                    <View style={styles.tileTop}>
+                      <Text style={styles.tileValue} numberOfLines={1}>
+                        {fmt(r.to.value)}
+                        <Text style={styles.tileUnit}>{unitText(r.unit)}</Text>
+                      </Text>
+                      {r.count > 1 ? (
+                        <Text style={[styles.tileDelta, { color: tone.fg }]} numberOfLines={1}>
+                          {Math.abs(r.diff) < 0.05 ? i18n.t('fitness:body.noChange') : `${signed(r.key, r.diff)}${r.key === 'body_fat_percent' ? unitText(deltaUnitShort) : ''}`}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <View style={{ marginTop: 6 }}>
+                      <MiniChart points={pointsOf(items, r.key)} color={tone.fg === colors.textMuted ? colors.primary : tone.fg} />
+                    </View>
+                    <Text style={styles.tileFrom} numberOfLines={1}>
+                      {r.count > 1 ? `${fmt(r.from.value)} → ${fmt(r.to.value)}${unitText(r.unit)}` : dayMonth(r.to.date)}
+                    </Text>
+                  </PressableScale>
+                );
+              })}
+          </View>
         </Rise>
 
         {/* Todas as avaliações, da mais nova para a mais antiga. */}
@@ -348,32 +350,27 @@ const styles = StyleSheet.create({
 
   card: { padding: 18 },
   cardTitle: { ...text.section, color: colors.text },
-  chipRail: { flexGrow: 0, marginHorizontal: -18, marginTop: 12 },
-  chipRailContent: { gap: 8, paddingHorizontal: 18 },
-  chip: { height: 34, paddingHorizontal: 14, borderRadius: radii.pill, justifyContent: 'center', backgroundColor: colors.pageBg, borderWidth: 1, borderColor: colors.border },
-  chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { ...text.captionStrong, color: colors.textSoft },
-  chipTextOn: { color: '#fff' },
   chartHead: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 },
   chartLabel: { ...text.captionStrong, color: colors.textSoft, marginBottom: 2 },
   chartValue: { ...numbers.lg, color: colors.text },
   chartUnit: { fontFamily: typography.fontFamilySemiBold, fontSize: 14, color: colors.textMuted },
   chartSub: { ...text.caption, color: colors.textMuted, marginTop: 2 },
 
-  groupRow: { flexDirection: 'row', gap: 4, marginTop: 12, padding: 4, borderRadius: radii.control, backgroundColor: colors.pageBg },
+  groupRow: { flexDirection: 'row', gap: 4, marginTop: 10, padding: 4, borderRadius: radii.control, backgroundColor: colors.pageBg },
   group: { flex: 1, height: 34, paddingHorizontal: 2, borderRadius: radii.control - 4, alignItems: 'center', justifyContent: 'center' },
   groupOn: { backgroundColor: '#fff', borderWidth: 1, borderColor: colors.border },
   groupText: { ...text.captionStrong, fontSize: 12.5, color: colors.textMuted },
   groupTextOn: { color: colors.primaryDeep },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 52, paddingVertical: 8, paddingHorizontal: 10, marginHorizontal: -10, borderRadius: 14 },
-  rowDivider: { borderTopWidth: 1, borderTopColor: colors.borderSoft },
-  rowOn: { backgroundColor: colors.primaryWash, borderTopColor: 'transparent' },
-  rowLabel: { ...text.bodyStrong, fontSize: 14, color: colors.text, flex: 1 },
-  rowValues: { fontVariant: ['tabular-nums'] },
-  rowFrom: { ...text.callout, color: colors.textMuted },
-  rowTo: { ...numbers.sm, color: colors.text },
-  rowUnit: { ...text.caption, color: colors.textMuted },
-  rowPill: { minWidth: 74, alignItems: 'flex-end' },
+  sectionTitle: { ...text.section, color: colors.text, marginTop: 4 },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 },
+  tile: { flexGrow: 1, flexBasis: '46%', minWidth: 140, padding: 14, borderRadius: radii.lg, backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#fff', ...shadows.card },
+  tileOn: { borderColor: colors.primary },
+  tileTop: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 6, marginTop: 4 },
+  tileLabel: { ...text.captionStrong, color: colors.textSoft },
+  tileDelta: { ...text.captionStrong, fontVariant: ['tabular-nums'] },
+  tileValue: { ...numbers.md, color: colors.text, flexShrink: 1 },
+  tileUnit: { fontFamily: typography.fontFamilySemiBold, fontSize: 12, color: colors.textMuted },
+  tileFrom: { ...text.caption, fontSize: 12, color: colors.textMuted, marginTop: 6, fontVariant: ['tabular-nums'] },
 
   pill: { height: 26, paddingHorizontal: 10, borderRadius: radii.pill, justifyContent: 'center' },
   pillBig: { height: 32, paddingHorizontal: 14 },
