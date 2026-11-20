@@ -143,16 +143,23 @@ export function isAuthRoute(url: string): boolean {
   return AUTH_ROUTE_PATTERNS.some((pattern) => url.includes(pattern));
 }
 
+/** A página de login de um Wi-Fi também responde, em HTML; o nosso servidor responde em JSON. */
+function fromOurServer(headers: unknown): boolean {
+  const h = headers as { get?: (k: string) => unknown; [k: string]: unknown } | undefined;
+  const type = String((typeof h?.get === 'function' ? h.get('content-type') : h?.['content-type']) ?? '');
+  return type.includes('json');
+}
+
 api.interceptors.response.use(
   (res) => {
     trackApi(res.config, res.status);
-    markServerReached();
+    if (fromOurServer(res.headers)) markServerReached();
     return res;
   },
   async (error: AxiosError) => {
     trackApi(error.config, error.response?.status ?? error.code ?? 'sem resposta');
     // Resposta de erro (401, 500...) também prova que o servidor foi alcançado.
-    if (error.response) markServerReached();
+    if (error.response && fromOurServer(error.response.headers)) markServerReached();
     const original = error.config as RetriableConfig | undefined;
     const url = String(original?.url ?? '');
 

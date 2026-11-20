@@ -26,39 +26,41 @@ function set(next: boolean) {
   else startRetry();
 }
 
-const PROBE_TIMEOUT_MS = 6000;
+const PROBE_TIMEOUT_MS = 10_000;
+/** Última vez que o servidor respondeu: conferência que começou antes disso e falhou não vale mais. */
+let lastReach = 0;
 const RETRY_MS = 15_000;
 let probing: Promise<boolean> | null = null;
 
-/** Pergunta ao servidor se ele responde. Qualquer resposta HTTP conta: o que importa é chegar lá. */
+/**
+ * Pergunta ao servidor se ele responde. Só vale a resposta do nosso servidor: a página de login de um Wi-Fi de
+ * academia ou hotel também responde, mas não é internet.
+ */
 function probe(): Promise<boolean> {
   if (probing) return probing;
+  const started = Date.now();
   probing = (async () => {
     const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = setTimeout(() => ctrl?.abort(), PROBE_TIMEOUT_MS);
     try {
-      await fetch(`${API_URL}/api/health`, { method: 'GET', cache: 'no-store', signal: ctrl?.signal });
-      return true;
+      const res = await fetch(`${API_URL}/api/health`, { method: 'GET', cache: 'no-store', signal: ctrl?.signal });
+      const body = (await res.json().catch(() => null)) as { status?: string } | null;
+      return body?.status === 'ok';
     } catch {
       return false;
     } finally {
       clearTimeout(timer);
       probing = null;
     }
-  })();
+  })().then((ok) => ok || lastReach > started);
   return probing;
 }
 
 type State = { isConnected?: boolean; isInternetReachable?: boolean | null };
 
-/** Sem conexão nenhuma: offline na hora. Conectado mas "sem internet" segundo o sistema: confere com o servidor. */
+/** Sistema diz que não há conexão ou que ela não chega à internet: confere com o servidor antes de mostrar a faixa. */
 async function apply(s: State) {
-  if (s.isConnected === false) {
-    // Sem conexão o servidor não responde; a conferência só evita a faixa num aviso trocado do sistema.
-    set(await probe());
-    return;
-  }
-  if (s.isInternetReachable === false) {
+  if (s.isConnected === false || s.isInternetReachable === false) {
     set(await probe());
     return;
   }
@@ -77,6 +79,7 @@ function stopRetry() {
 
 /** Chamado pelo cliente da API a cada resposta: se o servidor respondeu, há internet. */
 export function markServerReached() {
+  lastReach = Date.now();
   set(true);
 }
 
@@ -141,6 +144,7 @@ export function __resetNetworkForTests(value = true) {
   online = value;
   stopRetry();
   probing = null;
+  lastReach = 0;
   listeners.clear();
   reconnect.clear();
 }

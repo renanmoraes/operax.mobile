@@ -34,7 +34,7 @@ describe('quando o app diz que está sem internet', () => {
   });
 
   it('aviso de "sem internet" do Android com o servidor respondendo não vira faixa', async () => {
-    fetchMock.mockResolvedValue({ status: 200 });
+    fetchMock.mockResolvedValue({ status: 200, json: async () => ({ status: 'ok' }) });
     await net.__applyForTests({ isConnected: true, isInternetReachable: false });
     expect(net.isOnline()).toBe(true);
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/health'), expect.anything());
@@ -57,12 +57,29 @@ describe('quando o app diz que está sem internet', () => {
     expect(back).toHaveBeenCalledTimes(1);
   });
 
+  it('página de login do Wi-Fi não conta como internet', async () => {
+    fetchMock.mockResolvedValue({ status: 200, json: async () => { throw new SyntaxError('html'); } });
+    await net.__applyForTests({ isConnected: true, isInternetReachable: false });
+    expect(net.isOnline()).toBe(false);
+  });
+
+  it('conferência lenta que falha depois de o servidor responder não derruba', async () => {
+    let fail: (e: unknown) => void = () => undefined;
+    fetchMock.mockReturnValue(new Promise((_, reject) => (fail = reject)));
+    const pending = net.__applyForTests({ isConnected: true, isInternetReachable: false });
+    await new Promise((r) => setTimeout(r, 5));
+    net.markServerReached();
+    fail(new TypeError('timeout'));
+    await pending;
+    expect(net.isOnline()).toBe(true);
+  });
+
   it('reconfere sozinho enquanto está fora, para a faixa não ficar presa', async () => {
     jest.useFakeTimers();
     fetchMock.mockRejectedValueOnce(new TypeError('falhou'));
     await net.__applyForTests({ isConnected: true, isInternetReachable: false });
     expect(net.isOnline()).toBe(false);
-    fetchMock.mockResolvedValue({ status: 200 });
+    fetchMock.mockResolvedValue({ status: 200, json: async () => ({ status: 'ok' }) });
     await jest.advanceTimersByTimeAsync(15_000);
     expect(net.isOnline()).toBe(true);
     jest.useRealTimers();
