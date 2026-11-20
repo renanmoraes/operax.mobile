@@ -4,6 +4,7 @@ import { clearTokens, getAccessToken, getRefreshToken, getSavedRole, SavedRole, 
 import { refreshSocketAuth } from '@/src/shared/realtime/socket';
 import { reportError, trackAction } from '@/src/shared/telemetry/errorReporter';
 import { appVersionHeader } from '@/src/shared/updates/versionInfo';
+import { markServerReached } from '@/src/shared/network/network';
 
 // `axios.create` é o uso documentado da biblioteca; o aviso de import nomeado não se aplica.
 // eslint-disable-next-line import/no-named-as-default-member
@@ -145,10 +146,13 @@ export function isAuthRoute(url: string): boolean {
 api.interceptors.response.use(
   (res) => {
     trackApi(res.config, res.status);
+    markServerReached();
     return res;
   },
   async (error: AxiosError) => {
     trackApi(error.config, error.response?.status ?? error.code ?? 'sem resposta');
+    // Resposta de erro (401, 500...) também prova que o servidor foi alcançado.
+    if (error.response) markServerReached();
     const original = error.config as RetriableConfig | undefined;
     const url = String(original?.url ?? '');
 

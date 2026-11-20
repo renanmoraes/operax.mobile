@@ -20,3 +20,51 @@ describe('falha de rede', () => {
     expect(isNetworkError(new Error('qualquer'))).toBe(false);
   });
 });
+
+describe('quando o app diz que está sem internet', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const net = require('../network') as typeof import('../network');
+  const fetchMock = jest.fn();
+  beforeAll(() => {
+    (global as { fetch: unknown }).fetch = fetchMock;
+  });
+  beforeEach(() => {
+    net.__resetNetworkForTests(true);
+    fetchMock.mockReset();
+  });
+
+  it('aviso de "sem internet" do Android com o servidor respondendo não vira faixa', async () => {
+    fetchMock.mockResolvedValue({ status: 200 });
+    await net.__applyForTests({ isConnected: true, isInternetReachable: false });
+    expect(net.isOnline()).toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/health'), expect.anything());
+  });
+
+  it('servidor sem responder: fica sem internet', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Network request failed'));
+    await net.__applyForTests({ isConnected: true, isInternetReachable: false });
+    expect(net.isOnline()).toBe(false);
+  });
+
+  it('qualquer resposta do servidor tira a faixa e avisa quem espera a volta', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Network request failed'));
+    await net.__applyForTests({ isConnected: false });
+    expect(net.isOnline()).toBe(false);
+    const back = jest.fn();
+    net.onReconnect(back);
+    net.markServerReached();
+    expect(net.isOnline()).toBe(true);
+    expect(back).toHaveBeenCalledTimes(1);
+  });
+
+  it('reconfere sozinho enquanto está fora, para a faixa não ficar presa', async () => {
+    jest.useFakeTimers();
+    fetchMock.mockRejectedValueOnce(new TypeError('falhou'));
+    await net.__applyForTests({ isConnected: true, isInternetReachable: false });
+    expect(net.isOnline()).toBe(false);
+    fetchMock.mockResolvedValue({ status: 200 });
+    await jest.advanceTimersByTimeAsync(15_000);
+    expect(net.isOnline()).toBe(true);
+    jest.useRealTimers();
+  });
+});
