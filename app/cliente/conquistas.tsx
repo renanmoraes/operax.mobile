@@ -166,8 +166,10 @@ export default function AchievementsScreen() {
                   <PressableScale onPress={() => setOpen(b)} accessibilityRole="button"
                     accessibilityLabel={`${b.name}, ${b.earned_at ? t('ach.won') : t('ach.progress', { current: num(b.progress.current), target: num(b.progress.target) })}`} style={styles.cell}>
                     <AchievementPin item={b} size={62} />
-                    <Text style={styles.cellName} numberOfLines={2}>{b.name}</Text>
-                    <Muted style={{ fontSize: 11.5, fontVariant: ['tabular-nums'] }} numberOfLines={1}>
+                    <View style={styles.cellNameBox}>
+                      <Text style={styles.cellName} numberOfLines={2}>{b.name}</Text>
+                    </View>
+                    <Muted style={{ fontSize: 11.5, fontVariant: ['tabular-nums'], alignSelf: 'stretch', textAlign: 'center' }} numberOfLines={1}>
                       {b.earned_at ? (b.edition ? `${t('ach.won')} · ${b.edition}` : t('ach.won')) : periodLine(b) ?? t('ach.progress', { current: num(b.progress.current), target: num(b.progress.target) })}
                     </Muted>
                   </PressableScale>
@@ -285,6 +287,8 @@ const styles = StyleSheet.create({
   groupTitle: { fontFamily: typography.fontFamilyBold, fontSize: 12, letterSpacing: 0.5, textTransform: 'uppercase', color: colors.textSoft },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, marginHorizontal: -5 },
   cellWrap: { width: '33.33%', padding: 5 },
+  // Todos os cartões do mesmo tamanho: o nome sempre reserva duas linhas, com nome curto ou longo.
+  cellNameBox: { height: 32, alignSelf: 'stretch', justifyContent: 'center' },
   cell: { alignItems: 'center', gap: 8, paddingTop: 14, paddingBottom: 12, paddingHorizontal: 6, borderRadius: radii.xl - 4, backgroundColor: '#fff', ...shadows.card },
   cellName: { fontFamily: typography.fontFamilyBold, fontSize: 12.5, lineHeight: 16, textAlign: 'center', color: colors.text },
   sheetActions: { flexDirection: 'row', gap: 12, alignSelf: 'stretch', marginTop: 12, paddingTop: 8, paddingBottom: 14, paddingHorizontal: 4 },
