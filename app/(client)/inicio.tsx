@@ -261,5 +261,5 @@ const styles = StyleSheet.create({
   thumbTime: { position: 'absolute', right: 6, bottom: 4, color: '#fff', fontSize: 10, fontFamily: typography.fontFamilySemiBold },
   shortcuts: { flexDirection: 'row', gap: 8, marginTop: 12 },
   shortcut: { flex: 1, alignItems: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 4, borderRadius: radii.lg + 2, backgroundColor: 'rgba(255,255,255,0.85)' },
-  shortcutLabel: { fontFamily: typography.fontFamilySemiBold, fontSize: 12, color: colors.text, textAlign: 'center' },
+  shortcutLabel: { ...text.tile, color: colors.text, textAlign: 'center' },
 });

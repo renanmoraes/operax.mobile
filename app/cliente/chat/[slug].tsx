@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   plus: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f0f2f5', alignItems: 'center', justifyContent: 'center' },
   attachRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 18 },
   attachOpt: { alignItems: 'center', gap: 8, width: 96 },
-  attachLabel: { fontFamily: typography.fontFamilySemiBold, fontSize: 12.5, color: colors.text, textAlign: 'center' },
+  attachLabel: { ...text.tile, color: colors.text, textAlign: 'center' },
   previewTop: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingBottom: 12 },
   previewBody: { flex: 1, paddingHorizontal: 16, justifyContent: 'center' },
   previewMedia: { width: '100%', height: '100%', maxHeight: 520, borderRadius: radii.hero, overflow: 'hidden', backgroundColor: colors.primaryTint },

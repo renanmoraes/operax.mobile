@@ -97,6 +97,8 @@ export const text = {
   caption: { fontFamily: typography.fontFamily, fontSize: typography.caption, lineHeight: 17 },
   captionStrong: { fontFamily: typography.fontFamilySemiBold, fontSize: typography.caption, lineHeight: 17 },
   label: { fontFamily: typography.fontFamilySemiBold, fontSize: typography.label, lineHeight: 15, letterSpacing: 0.1 },
+  /** Nome curto embaixo de ícone (atalho do início, anexo do chat, cartão de conquista): o mesmo negrito apertado dos títulos. */
+  tile: { fontFamily: typography.fontFamilyBold, fontSize: typography.caption, lineHeight: 16, letterSpacing: -0.1 },
 } as const;
 
 const TABULAR: TextStyle['fontVariant'] = ['tabular-nums'];
