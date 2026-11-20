@@ -1,319 +1,405 @@
-import { router, useNavigation } from 'expo-router';
-import i18n from '@/src/i18n';
-import { useCallback, useMemo, useState } from 'react';
-import { LayoutChangeEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { Easing, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { router } from 'expo-router';
+import i18n, { locale } from '@/src/i18n';
+import { type ComponentRef, useMemo, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import Svg, { Circle, Defs, LinearGradient as SvgLinear, Path, Polyline, Stop } from 'react-native-svg';
-import { Badge, Card, EmptyState, IconButton, Muted, Num, PressableScale, Rise, Screen, Segmented, TopBar } from '@/src/design-system/ui';
+import { Card, EmptyState, HeroCard, IconButton, PressableScale, Rise, Screen, TopBar } from '@/src/design-system/ui';
 import { clientDataMode } from '@/src/features/client/dataMode';
-import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
-import { useAddCheckin, useCheckins } from '@/src/features/fitness/useFitness';
-import type { BodyCheckin } from '@/src/features/fitness/types';
-import { formatKg, isoDate, monthShort } from '@/src/shared/format';
+import { colors, numbers, radii, text, typography } from '@/src/design-system/tokens';
+import { useAddCheckin, useBodyAssessments } from '@/src/features/fitness/useFitness';
+import { BodyPhotoCompare } from '@/src/features/fitness/BodyPhotoCompare';
+import { EvolutionChart } from '@/src/features/fitness/EvolutionChart';
+import { compareRows, daysBetween, deltaTone, pointsOf, previousValue, type CompareRow, type DeltaTone, type MetricDef } from '@/src/features/fitness/bodyEvolution';
+import { valueOf } from '@/src/features/portal/assessments';
+import { isoDate, monthShort } from '@/src/shared/format';
 
-const SILHOUETTE = 'M76 90Q100 80 124 90L146 102Q154 106 152 118L144 190Q142 200 135 198L136 228Q138 242 132 254L127 340H107L102 260H98L93 340H73L68 254Q62 242 64 228L65 198Q58 200 56 190L48 118Q46 106 54 102Z';
-
-function Photo({ c, tone, width }: { c: BodyCheckin; tone: 'before' | 'after'; width: number }) {
-  if (c.photo_uri) return <Image source={{ uri: c.photo_uri }} style={{ width, height: '100%' }} contentFit="cover" />;
-  return (
-    <LinearGradient colors={tone === 'before' ? ['#d3dae6', '#8e9bb2'] : ['#afc6ff', '#4c74e8']} start={{ x: 0, y: 0 }} end={{ x: 0.3, y: 1 }} style={{ width, height: '100%', alignItems: 'center', justifyContent: 'flex-end' }}>
-      <Svg width={210} height={340} viewBox="0 0 200 340">
-        <Circle cx={100} cy={48} r={25} fill="rgba(255,255,255,0.22)" />
-        <Path d={SILHOUETTE} fill="rgba(255,255,255,0.22)" />
-      </Svg>
-    </LinearGradient>
-  );
-}
-
-type CompareView = 'before' | 'split' | 'after';
-const HANDLE = 52;
-
-const shortDate = (iso: string) => {
+const num = (key: string) => (n: number) => n.toLocaleString(locale(), { maximumFractionDigits: key === 'waist_hip_ratio' ? 2 : 1 });
+const dayMonth = (iso: string) => {
   const d = new Date(`${iso}T12:00:00`);
   return `${d.getDate()} ${monthShort(d)}`;
 };
+const label = (key: string): string => (key === 'body_fat_percent' ? i18n.t('portal:assess.fat') : String(i18n.t(`portal:meas.${key}` as never)));
+/** Nome curto para caber no destaque e no histórico. */
+const shortLabel = (key: string): string => (key === 'body_fat_percent' ? i18n.t('fitness:body.fat') : label(key));
+/** Gordura em % muda em pontos, não em %. */
+const deltaUnit = (m: { key: string; unit: string }) => (m.key === 'body_fat_percent' ? i18n.t('fitness:body.pointsUnit') : m.unit);
+const signed = (key: string, diff: number) => `${diff > 0.049 ? '+' : diff < -0.049 ? '−' : ''}${num(key)(Math.abs(diff))}`;
+const unitText = (u: string) => (u ? (u === '%' ? '%' : ` ${u}`) : '');
+
+const TONE: Record<DeltaTone, { bg: string; fg: string }> = {
+  good: { bg: colors.successSoft, fg: colors.success },
+  neutral: { bg: colors.primarySoft, fg: colors.primaryDeep },
+  flat: { bg: colors.borderSoft, fg: colors.textMuted },
+};
+
+function DeltaPill({ m, diff, big }: { m: MetricDef; diff: number; big?: boolean }) {
+  const tone = TONE[deltaTone(m.key, diff)];
+  const txt = Math.abs(diff) < 0.05 ? i18n.t('fitness:body.noChange') : `${signed(m.key, diff)}${unitText(deltaUnit(m))}`;
+  return (
+    <View style={[styles.pill, big && styles.pillBig, { backgroundColor: tone.bg }]}>
+      <Text style={[styles.pillText, big && styles.pillTextBig, { color: tone.fg }]} numberOfLines={1}>
+        {txt}
+      </Text>
+    </View>
+  );
+}
 
 export default function BodyEvolutionScreen() {
   const insets = useSafeAreaInsets();
-  const { data: checkins } = useCheckins();
+  const { data } = useBodyAssessments();
   const add = useAddCheckin();
-  const navigation = useNavigation();
-  const [width, setWidth] = useState(0);
-  const [beforeIdx, setBeforeIdx] = useState(0);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const chartY = useRef(0);
+  const rail = useRef<ComponentRef<typeof ScrollView>>(null);
+  const chipX = useRef<Record<string, number>>({});
   const [dragging, setDragging] = useState(false);
-  const [view, setView] = useState<CompareView>('split');
+  const [metric, setMetric] = useState('weight_kg');
+  const [group, setGroup] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
 
-  // Posição da divisória (0 = só o depois, 1 = só o antes), animada fora da thread do JS.
-  const pos = useSharedValue(0.5);
-  const startPos = useSharedValue(0.5);
-  const widthSV = useSharedValue(0);
-  const active = useSharedValue(0);
+  const items = useMemo(() => (data ?? []).filter((a) => Object.keys(a.measures).length > 0), [data]);
+  const rows = useMemo(() => compareRows(items), [items]);
 
-  // Dedo na foto: o "voltar" com o dedo do iPhone fica desligado até soltar.
-  const lockBack = useCallback((locked: boolean) => navigation.setOptions({ gestureEnabled: !locked }), [navigation]);
-  const onDragStart = useCallback(() => {
-    setDragging(true);
-    setView('split');
-  }, []);
-  const onDragEnd = useCallback(() => {
-    setDragging(false);
-    lockBack(false);
-  }, [lockBack]);
-
-  const gesture = useMemo(() => {
-    const pan = Gesture.Pan()
-      .activeOffsetX([-6, 6])
-      .failOffsetY([-14, 14])
-      .onTouchesDown(() => {
-        runOnJS(lockBack)(true);
-        active.set(withTiming(1, { duration: 140 }));
-      })
-      .onStart(() => {
-        startPos.set(pos.value);
-        runOnJS(onDragStart)();
-      })
-      .onUpdate((e) => {
-        const w = widthSV.value || 1;
-        pos.set(Math.max(0, Math.min(1, startPos.value + e.translationX / w)));
-      })
-      .onFinalize(() => {
-        active.set(withTiming(0, { duration: 180 }));
-        runOnJS(onDragEnd)();
-      });
-    // Toque simples leva a divisória até o ponto tocado.
-    const tap = Gesture.Tap()
-      .maxDuration(250)
-      .onEnd((e) => {
-        const w = widthSV.value || 1;
-        pos.set(withTiming(Math.max(0, Math.min(1, e.x / w)), { duration: 320, easing: Easing.bezier(0.23, 1, 0.32, 1) }));
-        runOnJS(setView)('split');
-      });
-    return Gesture.Race(pan, tap);
-  }, [active, lockBack, onDragEnd, onDragStart, pos, startPos, widthSV]);
-
-  const showView = (v: CompareView) => {
-    setView(v);
-    pos.set(withTiming(v === 'before' ? 1 : v === 'after' ? 0 : 0.5, { duration: 520, easing: Easing.bezier(0.45, 0, 0.15, 1) }));
-  };
-
-  const beforeClip = useAnimatedStyle(() => ({ width: pos.value * widthSV.value }));
-  const lineStyle = useAnimatedStyle(() => ({ transform: [{ translateX: pos.value * widthSV.value - 1.5 }] }));
-  const handleStyle = useAnimatedStyle(() => ({
-    // nas pontas o puxador para na borda da foto, sempre inteiro para arrastar de volta
-    transform: [{ translateX: Math.max(8, Math.min(widthSV.value - HANDLE - 8, pos.value * widthSV.value - HANDLE / 2)) }, { scale: 1 + 0.12 * active.value }],
-  }));
-  const beforeTag = useAnimatedStyle(() => ({ opacity: interpolate(pos.value, [0, 0.18], [0, 1], 'clamp') }));
-  const afterTag = useAnimatedStyle(() => ({ opacity: interpolate(pos.value, [0.82, 1], [1, 0], 'clamp') }));
-
-  if (!checkins?.length) {
+  if (!items.length || !rows.length) {
     return (
       <Screen>
         <TopBar safe title={i18n.t('fitness:tab.bodyProgress')} onBack={() => router.back()} />
-        <EmptyState
-          icon="body-outline"
-          title={i18n.t('fitness:body.emptyTitle')}
-          subtitle={i18n.t('fitness:body.emptySub')}
-        />
+        <EmptyState icon="body-outline" title={i18n.t('fitness:body.emptyTitle')} subtitle={i18n.t('fitness:body.emptySub')} />
       </Screen>
     );
   }
-  // Avaliações da academia não têm foto: sem foto, a comparação lado a lado não aparece.
-  const hasPhotos = checkins.some((c) => !!c.photo_uri);
+
+  const first = items[0];
+  const last = items[items.length - 1];
+  const many = items.length > 1;
+  const days = daysBetween(first.assessed_on, last.assessed_on);
+  const lead = rows.find((r) => r.key === 'weight_kg') ?? rows[0];
+  const side = ['body_fat_percent', 'lean_mass_kg', 'waist_cm', 'abdomen_cm', 'hip_cm', 'chest_cm']
+    .map((k) => rows.find((r) => r.key === k && r.count > 1))
+    .filter((r): r is CompareRow => !!r)
+    .slice(0, 3);
+  const charted = rows.filter((r) => r.count > 1).length ? rows.filter((r) => r.count > 1) : rows;
+  const current = charted.find((r) => r.key === metric) ?? charted[0];
+  const groups = [...new Set(rows.map((r) => r.group))];
+  const activeGroup = group && groups.includes(group as CompareRow['group']) ? group : groups[0];
+  const hasPhotos = items.some((a) => !!a.photo_uri);
   const canAdd = clientDataMode() !== 'live';
-  const after = checkins[checkins.length - 1];
-  const before = checkins[Math.min(beforeIdx, checkins.length - 2)] ?? checkins[0];
-  const days = Math.round((new Date(after.date).getTime() - new Date(before.date).getTime()) / 86_400_000);
 
-  const delta = (a?: number, b?: number, unit = '') => (a != null && b != null ? `${b - a <= 0 ? '−' : '+'}${formatKg(Math.abs(b - a))}${unit}` : '—');
-
-  const weights = checkins.map((c) => c.weight_kg);
-  const wMin = Math.min(...weights);
-  const wMax = Math.max(...weights);
-  const pts = weights.map((v, i) => [6 + (i * 298) / Math.max(1, weights.length - 1), 18 + ((wMax - v) / Math.max(0.1, wMax - wMin)) * 78]);
+  const pickMetric = (key: string) => {
+    setMetric(key);
+    scroll.current?.scrollTo({ y: Math.max(0, chartY.current - 12), animated: true });
+    rail.current?.scrollTo({ x: Math.max(0, (chipX.current[key] ?? 0) - 18), animated: true });
+  };
 
   async function addPhoto() {
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
     if (r.canceled) return;
-    add.mutate({ date: isoDate(new Date()), weight_kg: after.weight_kg, body_fat_pct: after.body_fat_pct, waist_cm: after.waist_cm, hip_cm: after.hip_cm, photo_uri: r.assets[0].uri });
+    const m = last.measures;
+    add.mutate({ date: isoDate(new Date()), weight_kg: m.weight_kg, body_fat_pct: m.body_fat_percent, waist_cm: m.waist_cm, hip_cm: m.hip_cm, photo_uri: r.assets[0].uri });
   }
 
   return (
     <Screen>
-      <TopBar safe title={i18n.t('fitness:tab.bodyProgress')} onBack={() => router.back()} right={canAdd ? <IconButton icon="add" tone="primary" accessibilityLabel={i18n.t('fitness:body.addPhoto')} onPress={() => void addPhoto()} /> : undefined} />
-      <ScrollView scrollEnabled={!dragging} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32 }}>
-        {hasPhotos ? (<>
+      <TopBar
+        safe
+        title={i18n.t('fitness:tab.bodyProgress')}
+        onBack={() => router.back()}
+        right={canAdd ? <IconButton icon="add" tone="primary" accessibilityLabel={i18n.t('fitness:body.addPhoto')} onPress={() => void addPhoto()} /> : undefined}
+      />
+      <ScrollView ref={scroll} scrollEnabled={!dragging} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: insets.bottom + 32, gap: 16 }}>
+        {/* A jornada: de quanto para quanto, do primeiro ao último dia. */}
         <Rise>
-          <GestureDetector gesture={gesture}>
-            <View
-              style={styles.compare}
-              onLayout={(e: LayoutChangeEvent) => {
-                setWidth(e.nativeEvent.layout.width);
-                widthSV.set(e.nativeEvent.layout.width);
-              }}
-              accessible
-              accessibilityRole="adjustable"
-              accessibilityLabel={i18n.t('fitness:body.compareA11y')}
-              accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-              onAccessibilityAction={(e) => {
-                pos.set(withTiming(Math.max(0, Math.min(1, pos.value + (e.nativeEvent.actionName === 'increment' ? 0.1 : -0.1))), { duration: 200 }));
-              }}
-            >
-              {width ? (
-                <>
-                  <View style={StyleSheet.absoluteFill}>
-                    <Photo c={after} tone="after" width={width} />
-                  </View>
-                  <Animated.View style={[StyleSheet.absoluteFill, { overflow: 'hidden' }, beforeClip]}>
-                    <Photo c={before} tone="before" width={width} />
-                  </Animated.View>
-                  <Animated.View pointerEvents="none" style={[styles.handleLine, lineStyle]} />
-                  <Animated.View pointerEvents="none" style={[styles.handle, handleStyle]}>
-                    <Ionicons name="chevron-back" size={18} color={colors.primary} />
-                    <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-                  </Animated.View>
-                </>
-              ) : null}
-              <Animated.View pointerEvents="none" style={[styles.tag, { left: 16 }, beforeTag]}>
-                <Text style={styles.tagText}>{i18n.t('fitness:body.beforeDate', { date: shortDate(before.date) })}</Text>
-              </Animated.View>
-              <Animated.View pointerEvents="none" style={[styles.tag, { right: 16 }, afterTag]}>
-                <Text style={styles.tagText}>{i18n.t('fitness:body.afterDate', { date: shortDate(after.date) })}</Text>
-              </Animated.View>
-              <View pointerEvents="none" style={styles.journey}>
-                <Text style={styles.journeyText}>{i18n.t('fitness:body.journey', { count: days })}</Text>
+          <HeroCard>
+            <View style={styles.heroTop}>
+              <View style={styles.range}>
+                <Ionicons name="calendar-outline" size={14} color={colors.primaryDeep} />
+                <Text style={styles.rangeText}>{many ? `${dayMonth(first.assessed_on)}  →  ${dayMonth(last.assessed_on)}` : dayMonth(last.assessed_on)}</Text>
               </View>
+              <Text style={styles.count}>{i18n.t('fitness:body.assessments', { count: items.length })}</Text>
             </View>
-          </GestureDetector>
-        </Rise>
 
-        <Segmented
-          style={{ marginTop: 14 }}
-          value={view}
-          onChange={(k) => showView(k as CompareView)}
-          options={[
-            { key: 'before', label: i18n.t('fitness:body.before') },
-            { key: 'split', label: i18n.t('fitness:body.split') },
-            { key: 'after', label: i18n.t('fitness:body.after') },
-          ]}
-        />
-        </>) : null}
-
-        <Text style={styles.compareLabel}>{i18n.t('fitness:body.compareWith')}</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.rail} contentContainerStyle={styles.railContent}>
-          {checkins.slice(0, -1).map((c, i) => {
-            const on = c.id === before.id;
-            return (
-              <PressableScale
-                key={c.id}
-                onPress={() => setBeforeIdx(i)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={i18n.t('fitness:body.compareWithA11y', { date: shortDate(c.date), kg: formatKg(c.weight_kg) })}
-                style={[styles.pick, on ? styles.pickOn : styles.pickOff]}
-              >
-                <Text style={[styles.pickDate, on && styles.pickDateOn]}>{shortDate(c.date)}</Text>
-                <Text style={[styles.pickKg, on && styles.pickKgOn]}>
-                  {formatKg(c.weight_kg)}
-                  <Text style={[styles.pickUnit, on && styles.pickDateOn]}> kg</Text>
+            <Text style={styles.heroLabel}>{label(lead.key)}</Text>
+            {many ? (
+              <>
+                <Text style={styles.heroBig} numberOfLines={1} adjustsFontSizeToFit>
+                  {signed(lead.key, lead.diff)}
+                  <Text style={styles.heroUnit}>{unitText(deltaUnit(lead))}</Text>
                 </Text>
-                {on ? (
-                  <View style={styles.pickCheck} accessible={false}>
-                    <Ionicons name="checkmark" size={10} color="#fff" />
-                  </View>
-                ) : null}
-              </PressableScale>
-            );
-          })}
-        </ScrollView>
+                <Text style={styles.heroSub}>
+                  {i18n.t('fitness:body.fromTo', { from: num(lead.key)(lead.from.value), to: num(lead.key)(lead.to.value), unit: lead.unit, count: days })}
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.heroBig} numberOfLines={1} adjustsFontSizeToFit>
+                {num(lead.key)(lead.to.value)}
+                <Text style={styles.heroUnit}>{unitText(lead.unit)}</Text>
+              </Text>
+            )}
 
-        <Rise index={1} style={styles.measures}>
-          {[
-            [i18n.t('fitness:body.weight'), formatKg(after.weight_kg), 'kg', delta(before.weight_kg, after.weight_kg, ' kg')],
-            [i18n.t('fitness:body.fat'), after.body_fat_pct != null ? formatKg(after.body_fat_pct) : '—', '%', delta(before.body_fat_pct, after.body_fat_pct, i18n.t('fitness:body.points'))],
-            [i18n.t('fitness:body.waist'), after.waist_cm != null ? formatKg(after.waist_cm) : '—', 'cm', delta(before.waist_cm, after.waist_cm, ' cm')],
-            [i18n.t('fitness:body.hip'), after.hip_cm != null ? formatKg(after.hip_cm) : '—', 'cm', delta(before.hip_cm, after.hip_cm, ' cm')],
-          ]
-            // Medida que a avaliação não teve não vira cartão vazio.
-            .filter(([, value]) => value !== '—')
-            .map(([label, value, unit, d]) => (
-            <Card key={label} style={styles.measure}>
-              <Muted style={{ fontSize: 12.5 }}>{label}</Muted>
-              <Num size="md" style={{ marginTop: 6 }}>
-                {value}
-                <Text style={{ fontSize: 13, color: colors.textMuted }}>{` ${unit}`}</Text>
-              </Num>
-              <View style={{ marginTop: 8 }}>
-                <Badge label={d} tone="primary" />
+            {side.length ? (
+              <View style={styles.heroStats}>
+                {side.map((r, i) => (
+                  <View key={r.key} style={[styles.heroStat, i > 0 && styles.heroStatDivider]}>
+                    <Text style={styles.statLabel} numberOfLines={1}>{shortLabel(r.key)}</Text>
+                    <Text style={[styles.statValue, { color: TONE[deltaTone(r.key, r.diff)].fg === colors.textMuted ? colors.text : TONE[deltaTone(r.key, r.diff)].fg }]} numberOfLines={1} adjustsFontSizeToFit>
+                      {signed(r.key, r.diff)}
+                      <Text style={styles.statUnit}>{unitText(r.key === 'body_fat_percent' ? i18n.t('fitness:body.pointsShort') : r.unit)}</Text>
+                    </Text>
+                    <Text style={styles.statFrom} numberOfLines={1} adjustsFontSizeToFit>{`${num(r.key)(r.from.value)} → ${num(r.key)(r.to.value)}`}</Text>
+                  </View>
+                ))}
               </View>
-            </Card>
-          ))}
+            ) : null}
+          </HeroCard>
         </Rise>
 
-        <Rise index={2} style={{ marginTop: 12 }}>
-          <Card>
-            <View style={styles.rowBetween}>
-              <Text style={styles.cardTitle}>{i18n.t('fitness:body.weight')}</Text>
-              <Muted>{`${formatKg(weights[0])} → ${formatKg(weights[weights.length - 1])} kg`}</Muted>
-            </View>
-            <Svg width="100%" height={120} viewBox="0 0 310 120" style={{ marginTop: 12 }} accessibilityLabel={i18n.t('fitness:body.chartA11y')}>
-              <Defs>
-                <SvgLinear id="wArea" x1="0" y1="0" x2="0" y2="1">
-                  <Stop offset="0" stopColor={colors.primary} stopOpacity={0.22} />
-                  <Stop offset="1" stopColor={colors.primary} stopOpacity={0} />
-                </SvgLinear>
-              </Defs>
-              <Path d={`M${pts.map((p) => p.join(' ')).join(' L')} L304 116 L6 116 Z`} fill="url(#wArea)" />
-              <Polyline points={pts.map((p) => p.join(',')).join(' ')} stroke={colors.primary} strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              <Circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r={5.5} fill={colors.primary} stroke="#fff" strokeWidth={2.5} />
-            </Svg>
-            <View style={styles.months}>
-              {checkins.map((c) => (
-                <Muted key={c.id} style={{ fontSize: 11.5 }}>{monthShort(new Date(`${c.date}T12:00:00`))}</Muted>
-              ))}
+        {hasPhotos && many ? <BodyPhotoCompare before={first} after={last} onDragging={setDragging} /> : null}
+
+        {/* O gráfico da medida escolhida, com o valor de cada avaliação. */}
+        <View onLayout={(e) => (chartY.current = e.nativeEvent.layout.y)}>
+          <Rise index={1}>
+            <Card style={styles.card}>
+              <Text style={styles.cardTitle}>{i18n.t('fitness:body.chartTitle')}</Text>
+              <ScrollView ref={rail} horizontal showsHorizontalScrollIndicator={false} style={styles.chipRail} contentContainerStyle={styles.chipRailContent}>
+                {charted.map((r) => {
+                  const on = r.key === current.key;
+                  return (
+                    <PressableScale key={r.key} onLayout={(e) => (chipX.current[r.key] = e.nativeEvent.layout.x)} onPress={() => setMetric(r.key)} accessibilityRole="button" accessibilityState={{ selected: on }} style={[styles.chip, on && styles.chipOn]}>
+                      <Text style={[styles.chipText, on && styles.chipTextOn]}>{label(r.key)}</Text>
+                    </PressableScale>
+                  );
+                })}
+              </ScrollView>
+              <View style={styles.chartHead}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.chartLabel} numberOfLines={1}>{label(current.key)}</Text>
+                  <Text style={styles.chartValue}>
+                    {num(current.key)(current.to.value)}
+                    <Text style={styles.chartUnit}>{unitText(current.unit)}</Text>
+                  </Text>
+                  <Text style={styles.chartSub}>{i18n.t('fitness:body.latest', { date: dayMonth(current.to.date) })}</Text>
+                </View>
+                {current.count > 1 ? <DeltaPill m={current} diff={current.diff} big /> : null}
+              </View>
+              <EvolutionChart
+                points={pointsOf(items, current.key)}
+                fmt={num(current.key)}
+                dateOf={dayMonth}
+                a11y={i18n.t('fitness:body.chartA11yOf', { label: label(current.key) })}
+              />
+            </Card>
+          </Rise>
+        </View>
+
+        {/* Cada medida, da primeira à última avaliação. Tocar abre o gráfico dela. */}
+        <Rise index={2}>
+          <Card style={styles.card}>
+            <Text style={styles.cardTitle}>{many ? i18n.t('fitness:body.compareTitle') : i18n.t('fitness:body.measuresTitle')}</Text>
+            {groups.length > 1 ? (
+              <View style={styles.groupRow}>
+                {groups.map((g) => {
+                  const on = g === activeGroup;
+                  return (
+                    <PressableScale key={g} onPress={() => setGroup(g)} accessibilityRole="button" accessibilityState={{ selected: on }} style={[styles.group, on && styles.groupOn]}>
+                      <Text style={[styles.groupText, on && styles.groupTextOn]} numberOfLines={1}>{i18n.t(`fitness:body.group.${g}`)}</Text>
+                    </PressableScale>
+                  );
+                })}
+              </View>
+            ) : null}
+            <View style={{ marginTop: 6 }}>
+              {rows
+                .filter((r) => r.group === activeGroup)
+                .map((r, i) => {
+                  const on = r.key === current.key;
+                  const fmt = num(r.key);
+                  const chartable = r.count > 1;
+                  return (
+                    <PressableScale
+                      key={r.key}
+                      disabled={!chartable}
+                      onPress={() => pickMetric(r.key)}
+                      accessibilityRole={chartable ? 'button' : undefined}
+                      accessibilityLabel={i18n.t('fitness:body.rowA11y', { label: label(r.key), from: fmt(r.from.value), to: fmt(r.to.value), unit: r.unit })}
+                      style={[styles.row, i > 0 && styles.rowDivider, on && chartable && styles.rowOn]}
+                    >
+                      <Text style={styles.rowLabel} numberOfLines={2}>{label(r.key)}</Text>
+                      <Text style={styles.rowValues} numberOfLines={1}>
+                        {r.count > 1 ? <Text style={styles.rowFrom}>{`${fmt(r.from.value)} → `}</Text> : null}
+                        <Text style={styles.rowTo}>{fmt(r.to.value)}</Text>
+                        <Text style={styles.rowUnit}>{unitText(r.unit)}</Text>
+                      </Text>
+                      <View style={styles.rowPill}>{r.count > 1 ? <DeltaPill m={r} diff={r.diff} /> : null}</View>
+                    </PressableScale>
+                  );
+                })}
             </View>
           </Card>
         </Rise>
 
-        <View style={styles.privacy}>
-          <Ionicons name="lock-closed-outline" size={18} color={colors.primaryDeep} />
-          <Text style={styles.privacyText}>{i18n.t('fitness:body.privacy')}</Text>
-        </View>
+        {/* Todas as avaliações, da mais nova para a mais antiga. */}
+        <Rise index={3}>
+          <Card style={styles.card}>
+            <Text style={styles.cardTitle}>{i18n.t('fitness:body.historyTitle')}</Text>
+            <View style={{ marginTop: 10 }}>
+              {[...items].reverse().map((a, ri) => {
+                const idx = items.length - 1 - ri;
+                const d = new Date(`${a.assessed_on}T12:00:00`);
+                const w = valueOf(a, 'weight_kg');
+                const prevW = previousValue(items, idx, 'weight_kg');
+                const isOpen = open === a.id;
+                const subtitle = ['body_fat_percent', 'waist_cm', 'lean_mass_kg']
+                  .flatMap((k) => {
+                    const v = valueOf(a, k);
+                    return typeof v === 'number' ? [`${shortLabel(k)} ${num(k)(v)}${unitText(rows.find((r) => r.key === k)?.unit ?? '')}`] : [];
+                  })
+                  .slice(0, 2)
+                  .join('\n');
+                const lastRow = ri === items.length - 1;
+                const all = rows.flatMap((r) => {
+                  const v = valueOf(a, r.key);
+                  return typeof v === 'number' ? [{ r, v, prev: previousValue(items, idx, r.key) }] : [];
+                });
+                return (
+                  <View key={a.id} style={styles.tlItem}>
+                    <View style={styles.tlRail}>
+                      <View style={[styles.tlDot, ri === 0 && styles.tlDotNow]} />
+                      {!lastRow ? <View style={styles.tlLine} /> : null}
+                    </View>
+                    <View style={{ flex: 1, paddingBottom: lastRow ? 0 : 18 }}>
+                      <PressableScale onPress={() => setOpen(isOpen ? null : a.id)} accessibilityRole="button" accessibilityState={{ expanded: isOpen }} style={styles.tlHead}>
+                        <View style={styles.dateBox}>
+                          <Text style={styles.dateDay}>{String(d.getDate()).padStart(2, '0')}</Text>
+                          <Text style={styles.dateMonth}>{`${monthShort(d)} ${String(d.getFullYear()).slice(2)}`}</Text>
+                        </View>
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <View style={styles.tlTop}>
+                            <Text style={styles.tlWeight}>
+                              {typeof w === 'number' ? num('weight_kg')(w) : '—'}
+                              <Text style={styles.tlUnit}> kg</Text>
+                            </Text>
+                            {typeof w === 'number' && typeof prevW === 'number' ? (
+                              <DeltaPill m={{ key: 'weight_kg', unit: 'kg', group: 'composition' }} diff={w - prevW} />
+                            ) : (
+                              <View style={[styles.pill, { backgroundColor: '#fff' }]}>
+                                <Text style={[styles.pillText, { color: colors.textMuted }]}>{i18n.t('fitness:body.first')}</Text>
+                              </View>
+                            )}
+                          </View>
+                          {subtitle ? <Text style={styles.tlSub} numberOfLines={2}>{subtitle}</Text> : null}
+                        </View>
+                        <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
+                      </PressableScale>
+                      {isOpen ? (
+                        <View style={styles.grid}>
+                          {all.map(({ r, v, prev }) => (
+                            <View key={r.key} style={styles.gridCell}>
+                              <Text style={styles.gridLabel} numberOfLines={1}>{label(r.key)}</Text>
+                              <Text style={styles.gridValue} numberOfLines={1}>
+                                {num(r.key)(v)}
+                                <Text style={styles.gridUnit}>{unitText(r.unit)}</Text>
+                              </Text>
+                              {typeof prev === 'number' && Math.abs(v - prev) >= 0.05 ? (
+                                <Text style={[styles.gridDelta, { color: TONE[deltaTone(r.key, v - prev)].fg }]} numberOfLines={1}>
+                                  {`${signed(r.key, v - prev)}${unitText(deltaUnit(r))}`}
+                                </Text>
+                              ) : null}
+                            </View>
+                          ))}
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </Card>
+        </Rise>
+
+        {hasPhotos ? (
+          <View style={styles.privacy}>
+            <Ionicons name="lock-closed-outline" size={18} color={colors.primaryDeep} />
+            <Text style={styles.privacyText}>{i18n.t('fitness:body.privacy')}</Text>
+          </View>
+        ) : null}
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  compare: { height: 380, borderRadius: radii.hero, overflow: 'hidden', backgroundColor: '#dce6fa', ...shadows.hero },
-  handleLine: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: '#fff', shadowColor: '#0c1836', shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 0 } },
-  handle: { position: 'absolute', left: 0, top: '50%', marginTop: -HANDLE / 2, width: HANDLE, height: HANDLE, borderRadius: HANDLE / 2, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', ...shadows.hero },
-  tag: { position: 'absolute', top: 16, height: 32, paddingHorizontal: 12, borderRadius: 999, justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.92)' },
-  tagText: { fontFamily: typography.fontFamilySemiBold, fontSize: 12.5, color: colors.text },
-  journey: { position: 'absolute', bottom: 16, alignSelf: 'center', height: 34, paddingHorizontal: 14, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.92)', justifyContent: 'center' },
-  journeyText: { fontFamily: typography.fontFamilyBold, fontSize: 13, color: colors.primary },
-  compareLabel: { marginTop: 18, marginBottom: 10, fontFamily: typography.fontFamilySemiBold, fontSize: 13, color: colors.textMuted },
-  rail: { flexGrow: 0, marginHorizontal: -20 },
-  railContent: { gap: 10, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 6 },
-  pick: { width: 84, height: 62, borderRadius: 18, alignItems: 'center', justifyContent: 'center', gap: 3 },
-  pickOn: { backgroundColor: colors.primaryWash, borderWidth: 1.5, borderColor: colors.primary },
-  pickOff: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e6ebf3' },
-  pickDate: { ...text.label, color: colors.textMuted },
-  pickDateOn: { color: colors.primary },
-  pickKg: { ...numbers.sm, color: colors.text },
-  pickKgOn: { color: colors.primaryDeep },
-  pickUnit: { ...text.label, color: colors.textMuted },
-  pickCheck: { position: 'absolute', top: -5, right: -5, width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: '#fff', backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  measures: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
-  measure: { width: '48%', flexGrow: 1, padding: 16 },
-  rowBetween: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  cardTitle: { fontFamily: typography.fontFamilyBold, fontSize: 15, color: colors.text },
-  months: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  privacy: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, padding: 14, borderRadius: radii.lg - 2, backgroundColor: colors.primarySoft },
+  heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  range: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 30, paddingHorizontal: 12, borderRadius: radii.pill, backgroundColor: '#ffffff' },
+  rangeText: { ...text.label, color: colors.primaryDeep },
+  count: { ...text.label, color: colors.textMuted },
+  heroLabel: { ...text.calloutStrong, color: colors.textSoft, marginTop: 20 },
+  heroBig: { fontFamily: typography.fontFamilyBold, fontSize: 52, lineHeight: 58, letterSpacing: -2, color: colors.primaryDeep, fontVariant: ['tabular-nums'] },
+  heroUnit: { fontFamily: typography.fontFamilySemiBold, fontSize: 22, letterSpacing: -0.4, color: colors.primary },
+  heroSub: { ...text.callout, color: colors.textSoft },
+  heroStats: { flexDirection: 'row', marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#d6e1fb' },
+  heroStat: { flex: 1, minWidth: 0, gap: 3 },
+  heroStatDivider: { paddingLeft: 12, marginLeft: 12, borderLeftWidth: 1, borderLeftColor: '#d6e1fb' },
+  statLabel: { ...text.label, color: colors.textMuted },
+  statValue: { ...numbers.md, color: colors.text },
+  statUnit: { fontFamily: typography.fontFamilySemiBold, fontSize: 12 },
+  statFrom: { ...text.caption, color: colors.textMuted, fontVariant: ['tabular-nums'] },
+
+  card: { padding: 18 },
+  cardTitle: { ...text.section, color: colors.text },
+  chipRail: { flexGrow: 0, marginHorizontal: -18, marginTop: 12 },
+  chipRailContent: { gap: 8, paddingHorizontal: 18 },
+  chip: { height: 34, paddingHorizontal: 14, borderRadius: radii.pill, justifyContent: 'center', backgroundColor: colors.pageBg, borderWidth: 1, borderColor: colors.border },
+  chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { ...text.captionStrong, color: colors.textSoft },
+  chipTextOn: { color: '#fff' },
+  chartHead: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 },
+  chartLabel: { ...text.captionStrong, color: colors.textSoft, marginBottom: 2 },
+  chartValue: { ...numbers.lg, color: colors.text },
+  chartUnit: { fontFamily: typography.fontFamilySemiBold, fontSize: 14, color: colors.textMuted },
+  chartSub: { ...text.caption, color: colors.textMuted, marginTop: 2 },
+
+  groupRow: { flexDirection: 'row', gap: 4, marginTop: 12, padding: 4, borderRadius: radii.control, backgroundColor: colors.pageBg },
+  group: { flex: 1, height: 34, paddingHorizontal: 2, borderRadius: radii.control - 4, alignItems: 'center', justifyContent: 'center' },
+  groupOn: { backgroundColor: '#fff', borderWidth: 1, borderColor: colors.border },
+  groupText: { ...text.captionStrong, fontSize: 12.5, color: colors.textMuted },
+  groupTextOn: { color: colors.primaryDeep },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 52, paddingVertical: 8, paddingHorizontal: 10, marginHorizontal: -10, borderRadius: 14 },
+  rowDivider: { borderTopWidth: 1, borderTopColor: colors.borderSoft },
+  rowOn: { backgroundColor: colors.primaryWash, borderTopColor: 'transparent' },
+  rowLabel: { ...text.bodyStrong, fontSize: 14, color: colors.text, flex: 1 },
+  rowValues: { fontVariant: ['tabular-nums'] },
+  rowFrom: { ...text.callout, color: colors.textMuted },
+  rowTo: { ...numbers.sm, color: colors.text },
+  rowUnit: { ...text.caption, color: colors.textMuted },
+  rowPill: { minWidth: 74, alignItems: 'flex-end' },
+
+  pill: { height: 26, paddingHorizontal: 10, borderRadius: radii.pill, justifyContent: 'center' },
+  pillBig: { height: 32, paddingHorizontal: 14 },
+  pillText: { ...text.label, fontVariant: ['tabular-nums'] },
+  pillTextBig: { fontSize: 13.5 },
+
+  tlItem: { flexDirection: 'row', gap: 12 },
+  tlRail: { width: 14, alignItems: 'center', paddingTop: 20 },
+  tlDot: { width: 12, height: 12, borderRadius: 6, borderWidth: 2.5, borderColor: colors.primary, backgroundColor: '#fff' },
+  tlDotNow: { backgroundColor: colors.primary },
+  tlLine: { flex: 1, width: 2, marginTop: 4, marginBottom: -20, backgroundColor: colors.track },
+  tlHead: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 18, backgroundColor: colors.pageBg },
+  dateBox: { width: 48, height: 52, borderRadius: 14, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  dateDay: { ...numbers.md, color: colors.primaryDeep, lineHeight: 22 },
+  dateMonth: { ...text.label, fontSize: 10.5, color: colors.textMuted },
+  tlTop: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  tlWeight: { ...numbers.md, color: colors.text },
+  tlUnit: { fontFamily: typography.fontFamilySemiBold, fontSize: 13, color: colors.textMuted },
+  tlSub: { ...text.caption, color: colors.textMuted, marginTop: 2 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 10, rowGap: 14, paddingHorizontal: 4 },
+  gridCell: { width: '50%', paddingRight: 10, gap: 1 },
+  gridLabel: { ...text.caption, color: colors.textMuted },
+  gridValue: { ...numbers.sm, color: colors.text },
+  gridUnit: { fontFamily: typography.fontFamily, fontSize: 12, color: colors.textMuted },
+  gridDelta: { ...text.label, fontSize: 11 },
+
+  privacy: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: radii.lg - 2, backgroundColor: colors.primarySoft },
   privacyText: { flex: 1, fontFamily: typography.fontFamily, fontSize: 13, color: colors.primaryDeep },
 });

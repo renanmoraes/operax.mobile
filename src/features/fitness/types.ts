@@ -335,6 +335,9 @@ export interface ImportedSessionView {
 }
 
 /** Registros corporais (peso, medidas, fotos de evolução) — visão do app; ainda sem rota no portal. */
+/** Avaliação física com a foto do registro corporal (só o demonstrativo tem foto). */
+export type BodyAssessment = import('@/src/features/portal/assessments').AssessmentView & { photo_uri?: string | null };
+
 export interface BodyCheckin {
   id: string;
   date: string;

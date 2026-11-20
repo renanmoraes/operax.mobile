@@ -7,7 +7,8 @@ import { clientDataMode } from '@/src/features/client/dataMode';
 import { adherenceStreak, bestAdherenceStreak, DayState, levelFromXp, mergeDuplicateEntries, mergeResultIntoHistory, xpFrom } from './derive';
 import { buildCheckins, buildHistory, demoRunDetail, demoSwimDetail, LOAD_HISTORY, WORKOUTS, workoutForWeekday } from './mockData';
 import type { HealthWorkout } from './health/mapWorkouts';
-import type { ActivityDetail, BodyCheckin, FitnessEvolution, FitnessHistoryEntry, FitnessResultView, FitnessWorkoutView, FreeActivityBody, RecordResultBody, WeekView } from './types';
+import type { AssessmentView } from '@/src/features/portal/assessments';
+import type { ActivityDetail, BodyAssessment, BodyCheckin, FitnessEvolution, FitnessHistoryEntry, FitnessResultView, FitnessWorkoutView, FreeActivityBody, RecordResultBody, WeekView } from './types';
 
 /**
  * Treino do cliente: `/api/public/portal/fitness/*` com o login real; no modo demonstração,
@@ -304,6 +305,30 @@ export async function fetchCheckins(): Promise<BodyCheckin[]> {
   }
   await tick();
   return getCheckins();
+}
+
+/** Avaliação inteira (todas as medidas), para a tela de evolução corporal. Demonstrativo: os registros corporais viram avaliações. */
+export async function fetchBodyAssessments(): Promise<BodyAssessment[]> {
+  if (live()) {
+    const { data } = await api.get(`${F}/assessments`);
+    return ((Array.isArray(data) ? data : []) as AssessmentView[])
+      .map((a) => ({ ...a, measures: a.measures ?? {}, derived: a.derived ?? {}, photo_uri: null }))
+      .sort((x, y) => x.assessed_on.localeCompare(y.assessed_on));
+  }
+  await tick();
+  return getCheckins().map((c) => ({
+    id: c.id,
+    contact_id: 'demo',
+    assessed_on: c.date,
+    assessor_name: null,
+    method: null,
+    notes: null,
+    measures: Object.fromEntries(
+      Object.entries({ weight_kg: c.weight_kg, body_fat_percent: c.body_fat_pct, waist_cm: c.waist_cm, hip_cm: c.hip_cm }).filter(([, v]) => typeof v === 'number'),
+    ) as Record<string, number>,
+    derived: {},
+    photo_uri: c.photo_uri ?? null,
+  }));
 }
 
 export async function addCheckin(input: Omit<BodyCheckin, 'id'>) {

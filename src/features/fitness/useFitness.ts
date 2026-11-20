@@ -81,6 +81,8 @@ export function useRecordFreeActivity() {
 }
 
 export const useCheckins = () => useQuery({ queryKey: [...root, 'checkins'], queryFn: api.fetchCheckins });
+/** Mesma chave-raiz dos registros: adicionar um registro atualiza as duas. */
+export const useBodyAssessments = () => useQuery({ queryKey: [...root, 'checkins', 'full'], queryFn: api.fetchBodyAssessments });
 
 /** Cargas por exercício (mais antiga → mais recente), da Evolução: alimenta "última vez" e recordes. */
 export function useLoadHistory(): Record<string, number[]> {
