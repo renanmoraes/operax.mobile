@@ -10,7 +10,7 @@ import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { locale } from '@/src/i18n';
 import { useActiveCompanyName } from '@/src/features/client/useClientData';
-import { AchievementPin, achievementState, tint as tintOf } from '@/src/features/fitness/AchievementPin';
+import { AchievementPin, achievementState } from '@/src/features/fitness/AchievementPin';
 import { AchievementShareCard, CARD_SIZE, type CardFormat } from '@/src/features/fitness/AchievementShareCard';
 import { isCancel, shareImageWithMessage, type CanvasRef } from '@/src/features/share/destinations';
 import { levelView, useAchievements, useMarkAchievementsSeen, type AchievementView } from '@/src/features/fitness/achievements';
@@ -22,6 +22,13 @@ const day = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00`);
 const fmtDate = (iso: string) => day(iso).toLocaleDateString(locale(), { day: '2-digit', month: 'short' });
 const daysLeft = (iso: string) => Math.max(0, Math.round((day(iso).getTime() - day(new Date().toISOString()).getTime()) / 86_400_000));
 const num = (n: number) => n.toLocaleString(locale(), { maximumFractionDigits: 1 });
+
+/** Cor do nível misturada com branco, sólida (sem transparência): no Android a sombra do cartão vazaria por um fundo translúcido. */
+const solidTint = (hex: string, amount: number) => {
+  const n = parseInt(hex.slice(1, 7), 16);
+  const mix = (c: number) => Math.round(255 - (255 - c) * amount);
+  return `rgb(${mix((n >> 16) & 255)}, ${mix((n >> 8) & 255)}, ${mix(n & 255)})`;
+};
 
 export default function AchievementsScreen() {
   const insets = useSafeAreaInsets();
@@ -165,7 +172,7 @@ export default function AchievementsScreen() {
                   entering={FadeInDown.duration(320).delay(Math.min(i, 8) * 30)} exiting={FadeOut.duration(160)}>
                   <PressableScale onPress={() => setOpen(b)} accessibilityRole="button"
                     accessibilityLabel={`${b.name}, ${b.earned_at ? t('ach.won') : t('ach.progress', { current: num(b.progress.current), target: num(b.progress.target) })}`}
-                    style={[styles.cell, achievementState(b) === 'won' && { backgroundColor: tintOf(b.color, 0.1), borderColor: tintOf(b.color, 0.45), borderWidth: 1.5 }, achievementState(b) === 'idle' && styles.cellIdle]}>
+                    style={[styles.cell, achievementState(b) === 'won' && { backgroundColor: solidTint(b.color, 0.1) }, achievementState(b) === 'idle' && styles.cellIdle]}>
                     <AchievementPin item={b} size={62} />
                     <View style={styles.cellNameBox}>
                       <Text style={styles.cellName} numberOfLines={2}>{b.name}</Text>
@@ -289,10 +296,11 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, marginHorizontal: -5 },
   cellWrap: { width: '33.33%', padding: 5 },
   // Não começada: mais apagada, para a ganha e a começada saltarem aos olhos.
-  cellIdle: { opacity: 0.62, backgroundColor: '#ffffffb3' },
+  // Não começada: fundo sólido mais apagado e sem sombra. Cor com transparência deixaria a sombra vazar por dentro no Android.
+  cellIdle: { backgroundColor: '#f3f5f9', shadowOpacity: 0, elevation: 0 },
   // Todos os cartões do mesmo tamanho: o nome sempre reserva duas linhas, com nome curto ou longo.
   cellNameBox: { height: 32, alignSelf: 'stretch', justifyContent: 'center' },
-  cell: { alignItems: 'center', gap: 8, paddingTop: 14, paddingBottom: 12, paddingHorizontal: 6, borderRadius: radii.xl - 4, backgroundColor: '#fff', borderWidth: 1.5, borderColor: 'transparent', ...shadows.card },
+  cell: { alignItems: 'center', gap: 8, paddingTop: 14, paddingBottom: 12, paddingHorizontal: 6, borderRadius: radii.xl - 4, backgroundColor: '#fff', ...shadows.card },
   cellName: { ...text.tile, textAlign: 'center', color: colors.text },
   sheetActions: { flexDirection: 'row', gap: 12, alignSelf: 'stretch', marginTop: 12, paddingTop: 8, paddingBottom: 14, paddingHorizontal: 4 },
   // Fora da tela (à esquerda): o cartão é desenhado em tamanho real só para virar imagem.
