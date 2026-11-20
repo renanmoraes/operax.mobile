@@ -807,7 +807,7 @@ const fitness: Shape<typeof pt> = {
     dayRest: ', descanso',
     days_one: '{{count}} día',
     days_other: '{{count}} días',
-    firstPhoto: 'Registra tu primera foto',
+    firstPhoto: 'Tu gimnasio la registra en tu evaluación',
     goalA11y: 'Meta semanal: {{done}} de {{goal}} entrenos',
     goalHit: '¡Meta cumplida! ¡Qué semana!',
     keepGoing: 'A mantener el ritmo.',

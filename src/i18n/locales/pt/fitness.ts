@@ -805,7 +805,7 @@ const fitness = {
     dayRest: ', descanso',
     days_one: '{{count}} dia',
     days_other: '{{count}} dias',
-    firstPhoto: 'Registre sua primeira foto',
+    firstPhoto: 'A academia registra na sua avaliação',
     goalA11y: 'Meta semanal: {{done}} de {{goal}} treinos',
     goalHit: 'Meta batida. Que semana!',
     keepGoing: 'Bora manter o ritmo.',
