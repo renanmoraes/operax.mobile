@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   cellWrap: { width: '33.33%', padding: 5 },
   // Não começada: mais apagada, para a ganha e a começada saltarem aos olhos.
   // Não começada: fundo sólido mais apagado e sem sombra. Cor com transparência deixaria a sombra vazar por dentro no Android.
-  cellIdle: { backgroundColor: '#f3f5f9', shadowOpacity: 0, elevation: 0 },
+  cellIdle: { backgroundColor: '#f6f8fb', borderWidth: 1, borderColor: '#dde3ec', shadowOpacity: 0, elevation: 0 },
   // Todos os cartões do mesmo tamanho: o nome sempre reserva duas linhas, com nome curto ou longo.
   cellNameBox: { height: 32, alignSelf: 'stretch', justifyContent: 'center' },
   cell: { alignItems: 'center', gap: 8, paddingTop: 14, paddingBottom: 12, paddingHorizontal: 6, borderRadius: radii.xl - 4, backgroundColor: '#fff', ...shadows.card },
