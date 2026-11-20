@@ -239,6 +239,16 @@ export function demoRunDetail(entry: FitnessHistoryEntry): ActivityDetail | null
     summary: { avg_hr: entry.avg_hr, max_hr: Math.max(...hr.map((p) => p[1])), elevation_gain_m: 24, avg_cadence: 172, avg_power: null },
     zones: zoneSecs.map((s, i) => ({ zone: (i + 1) as 1 | 2 | 3 | 4 | 5, from_bpm: edges[i], to_bpm: edges[i + 1], seconds: Math.round(s) })), hr_max_used: hrMax,
     splits, split_basis: 'distance',
+    // A corrida de ontem foi o treino do professor: 6 km entre 5'51" e 6'42" por km, e o aluno fez 300 m a mais.
+    ...(entry.id === 's:demo-run-1'
+      ? {
+          plan: { basis: 'distance' as const, planned_meters: 6000, planned_seconds: { min: 2106, max: 2412 }, done_meters: entry.distance_meters, done_seconds: total, percent: Math.round((entry.distance_meters / 6000) * 100) },
+          planned: [
+            { index: 1, kind: 'interval' as const, planned_seconds: null, planned_meters: 6000, planned_rate: { min: 351, max: 402 }, done_seconds: 2151, done_meters: 6000, done_rate: 358, done_avg_hr: 164, seconds_diff: null, meters_diff: 0, rate_status: 'within' as const },
+            { index: 2, kind: 'extra' as const, planned_seconds: null, planned_meters: null, planned_rate: null, done_seconds: total - 2151, done_meters: entry.distance_meters - 6000, done_rate: 280, done_avg_hr: 171, seconds_diff: null, meters_diff: null, rate_status: null },
+          ],
+        }
+      : {}),
   };
 }
 

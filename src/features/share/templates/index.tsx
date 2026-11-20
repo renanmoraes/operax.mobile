@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { gradients } from '@/src/design-system/tokens';
 import { longDate } from '@/src/shared/format';
 import type { ShareActivity, ShareTemplate, TemplateProps } from '../types';
+import { BibDark, BibLight, hasPlan, PlanDone, Receipt } from './extra';
 import { Brand, Records, RouteLine, shadow, SplitBars, StatRow, StatStack, statsOf, styles, VolumeBars } from './parts';
 
 const hasRoute = (a: ShareActivity) => (a.gps?.route.length ?? 0) > 1;
@@ -149,10 +150,14 @@ export const TEMPLATES: ShareTemplate[] = [
   { id: 'routeStats', labelKey: 'routeStats', transparent: true, supports: hasRoute, Render: RouteStats },
   { id: 'stats', labelKey: 'stats', transparent: true, supports: always, Render: Stats },
   { id: 'row', labelKey: 'row', transparent: true, supports: always, Render: Row },
+  { id: 'receipt', labelKey: 'receipt', transparent: true, supports: always, Render: Receipt },
+  { id: 'bib', labelKey: 'bib', transparent: true, supports: always, Render: BibLight },
+  { id: 'bibDark', labelKey: 'bibDark', transparent: true, supports: always, Render: BibDark },
   { id: 'splits', labelKey: 'splits', transparent: true, supports: (a) => (a.gps?.splits.length ?? 0) >= 2, Render: Splits },
   { id: 'volume', labelKey: 'volume', transparent: true, supports: (a) => (a.strength?.volumeHistory.length ?? 0) >= 2, Render: Volume },
   { id: 'records', labelKey: 'records', transparent: true, supports: (a) => (a.strength?.records.length ?? 0) > 0, Render: RecordsT },
   { id: 'map', labelKey: 'map', transparent: false, usesMap: true, supports: hasRoute, Render: MapT },
+  { id: 'plan', labelKey: 'plan', transparent: false, supports: hasPlan, Render: PlanDone },
   { id: 'card', labelKey: 'card', transparent: false, supports: always, Render: Card },
   { id: 'photo', labelKey: 'photo', transparent: false, needsPhoto: true, supports: always, Render: Photo },
 ];

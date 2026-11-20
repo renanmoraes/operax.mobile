@@ -11,6 +11,7 @@ import { fromHistoryDetail } from '@/src/features/share/fromSources';
 import { setShareActivity } from '@/src/features/share/store';
 import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { ActivityCharts, ActivityChartsSkeleton, HrZonesCard } from '@/src/features/fitness/ActivityCharts';
+import { PlanCard } from '@/src/features/fitness/PlanCard';
 import { RouteMap } from '@/src/features/fitness/RouteMap';
 import { RATE_UNIT, rateUnitOfSport } from '@/src/features/fitness/rateUnit';
 import { formatKm, formatPace } from '@/src/features/fitness/runTracker';
@@ -133,6 +134,12 @@ export default function ActivityScreen() {
               </View>
               {entry.notes ? <Text style={styles.notes}>{entry.notes}</Text> : null}
             </Card>
+          </Rise>
+        ) : null}
+
+        {d?.plan || d?.planned?.length ? (
+          <Rise index={2}>
+            <PlanCard detail={d} />
           </Rise>
         ) : null}
 

@@ -17,12 +17,12 @@ describe('templatesFor', () => {
       ],
       kmMarks: [300_000, 610_000],
     });
-    expect(ids(a)).toEqual(['route', 'routeStats', 'stats', 'row', 'splits', 'map', 'card', 'photo']);
+    expect(ids(a)).toEqual(['route', 'routeStats', 'stats', 'row', 'receipt', 'bib', 'bibDark', 'splits', 'map', 'card', 'photo']);
   });
 
   it('gravação sem rota não mostra modelos de rota nem mapa', () => {
     const a = fromRecording(base, { sport: 'run', preferSpeed: false, distanceM: 900, elevationGainM: 0, route: [], kmMarks: [] });
-    expect(ids(a)).toEqual(['stats', 'row', 'card', 'photo']);
+    expect(ids(a)).toEqual(['stats', 'row', 'receipt', 'bib', 'bibDark', 'card', 'photo']);
   });
 
   it('academia com histórico e recordes mostra volume e recordes', () => {
@@ -36,10 +36,12 @@ describe('templatesFor', () => {
         { label: 'Hoje', kg: 4000 },
       ],
     });
-    expect(ids(a)).toEqual(['stats', 'row', 'volume', 'records', 'card', 'photo']);
+    expect(ids(a)).toEqual(['stats', 'row', 'receipt', 'bib', 'bibDark', 'volume', 'records', 'card', 'photo']);
   });
 
   it('academia sem dados extras fica só com os modelos gerais', () => {
-    expect(ids(fromStrength(base, {}))).toEqual(['stats', 'row', 'card', 'photo']);
+    expect(ids(fromStrength(base, {}))).toEqual(['stats', 'row', 'receipt', 'bib', 'bibDark', 'card', 'photo']);
+    // Treino prescrito com o planejado: entra o "treino cumprido".
+    expect(ids({ ...fromStrength(base, {}), plan: { percent: 105, plannedMeters: 6000, plannedSeconds: null, doneMeters: 6300, doneSeconds: 2235 } })).toContain('plan');
   });
 });

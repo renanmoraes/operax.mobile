@@ -218,6 +218,34 @@ export interface ActivityDetail {
   summary: { avg_hr: number | null; max_hr: number | null; elevation_gain_m: number | null; avg_cadence: number | null; avg_power: number | null };
   splits: { index: number; seconds: number; distance_m: number | null; rate: number | null; avg_hr: number | null }[];
   split_basis: 'laps' | 'distance' | null;
+  /** Treino prescrito: cada etapa pedida ao lado da volta feita (`extra`: volta depois da última etapa). */
+  planned?: PlannedRow[];
+  /** Treino prescrito: total pedido x feito e o percentual (passa de 100 quando fez a mais). */
+  plan?: PlanSummary;
+}
+
+export interface PlannedRow {
+  index: number;
+  kind: 'warmup' | 'interval' | 'recovery' | 'cooldown' | 'rest' | 'extra';
+  planned_seconds: number | null;
+  planned_meters: number | null;
+  planned_rate: { min: number; max: number | null } | null;
+  done_seconds: number;
+  done_meters: number | null;
+  done_rate: number | null;
+  done_avg_hr: number | null;
+  seconds_diff: number | null;
+  meters_diff: number | null;
+  rate_status: 'within' | 'faster' | 'slower' | null;
+}
+
+export interface PlanSummary {
+  basis: 'distance' | 'time';
+  planned_meters: number | null;
+  planned_seconds: { min: number; max: number } | null;
+  done_meters: number | null;
+  done_seconds: number | null;
+  percent: number | null;
 }
 
 export interface FitnessHistoryEntry {

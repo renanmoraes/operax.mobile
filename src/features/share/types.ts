@@ -34,6 +34,8 @@ export type ShareActivity = {
   seconds: number;
   /** Calorias medidas pelo relógio ou pelo Saúde do celular. */
   energyKcal?: number | null;
+  /** Treino prescrito: percentual e total planejado x feito (modelo "treino cumprido"). */
+  plan?: { percent: number | null; plannedMeters: number | null; plannedSeconds: { min: number; max: number } | null; doneMeters: number | null; doneSeconds: number | null };
   strength?: ShareStrength;
   gps?: ShareGps;
 };
