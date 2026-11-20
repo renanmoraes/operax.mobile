@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,13 +30,32 @@ import { useFitnessSummary, useWeek } from '@/src/features/fitness/useFitness';
 import { formatDuration, formatHour, greeting, longDate, minutesUntilLabel } from '@/src/shared/format';
 import { useNow } from '@/src/shared/useNow';
 
-function Shortcut({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+/** Cor de cada atalho do Acesso rápido: o fundo do ícone, o traço e um véu bem leve no cartão. */
+const QUICK_HUES = {
+  blue: { tile: '#e6edff', ink: '#1e4ed8', wash: ['#ffffff', '#eef3ff'] },
+  violet: { tile: '#efe8ff', ink: '#6d28d9', wash: ['#ffffff', '#f4efff'] },
+  teal: { tile: '#ddf4f0', ink: '#0f8a7c', wash: ['#ffffff', '#ecf8f6'] },
+  orange: { tile: '#ffefdf', ink: '#c2410c', wash: ['#ffffff', '#fff5eb'] },
+} as const;
+
+/** Cartão do Acesso rápido: ícone na cor do atalho, nome, uma frase do que tem lá e a seta. Dois por linha. */
+function QuickCard({ icon: iconName, title, subtitle, hue, onPress }: { icon: IconName; title: string; subtitle: string; hue: keyof typeof QUICK_HUES; onPress: () => void }) {
+  const c = QUICK_HUES[hue];
+  // A seta só cabe em tela larga; no celular o ícone encolhe um pouco para o nome caber inteiro.
+  const width = useWindowDimensions().width;
+  const wide = width >= 440;
+  const icon = width < 380 ? 38 : wide ? 48 : 44;
   return (
-    <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={styles.shortcut}>
-      <IconTile icon={icon} size={40} />
-      <Text style={styles.shortcutLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
-        {label}
-      </Text>
+    <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title}. ${subtitle}`} style={styles.quick}>
+      <LinearGradient colors={c.wash} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: radii.lg + 2 }]} />
+      <View style={[styles.quickIcon, { backgroundColor: c.tile, width: icon, height: icon, borderRadius: Math.round(icon / 3) }]}>
+        <Ionicons name={iconName} size={Math.round(icon * 0.48)} color={c.ink} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={styles.quickTitle} numberOfLines={1}>{title}</Text>
+        <Text style={styles.quickSub} numberOfLines={2}>{subtitle}</Text>
+      </View>
+      {wide ? <Ionicons name="chevron-forward" size={18} color={colors.textMuted} /> : null}
     </PressableScale>
   );
 }
@@ -216,16 +235,21 @@ export default function ClientHomeScreen() {
           </Rise>
         ) : null}
 
-        <Rise index={6} style={styles.shortcuts}>
-          {caps.chat ? <Shortcut icon="calendar-outline" label={t('home.requestSlot')} onPress={() => router.push(`/cliente/chat/${tenant?.tenant_slug ?? companies?.find((c) => c.name === tenant?.tenant_name)?.slug ?? 'empresa'}?pedido=1`)} /> : null}
-          {caps.training ? (
-            <>
-              <Shortcut icon="images-outline" label={t('home.progress')} onPress={() => router.push('/cliente/evolucao')} />
-              <Shortcut icon="stats-chart-outline" label={t('home.history')} onPress={() => router.push('/cliente/historico')} />
-              <Shortcut icon="ribbon-outline" label={t('home.achievements')} onPress={() => router.push('/cliente/conquistas')} />
-            </>
-          ) : null}
-        </Rise>
+        {caps.chat || caps.training ? (
+          <Rise index={6}>
+            <Text style={styles.quickHeading}>{t('home.quickTitle')}</Text>
+            <View style={styles.quickGrid}>
+              {caps.chat ? <QuickCard hue="blue" icon="calendar-outline" title={t('home.requestSlot')} subtitle={t('home.requestSlotSub')} onPress={() => router.push(`/cliente/chat/${tenant?.tenant_slug ?? companies?.find((c) => c.name === tenant?.tenant_name)?.slug ?? 'empresa'}?pedido=1`)} /> : null}
+              {caps.training ? (
+                <>
+                  <QuickCard hue="violet" icon="images-outline" title={t('home.progress')} subtitle={t('home.progressSub')} onPress={() => router.push('/cliente/evolucao')} />
+                  <QuickCard hue="teal" icon="stats-chart-outline" title={t('home.history')} subtitle={t('home.historySub')} onPress={() => router.push('/cliente/historico')} />
+                  <QuickCard hue="orange" icon="ribbon-outline" title={t('home.achievements')} subtitle={t('home.achievementsSub')} onPress={() => router.push('/cliente/conquistas')} />
+                </>
+              ) : null}
+            </View>
+          </Rise>
+        ) : null}
         <PortalShortcutList />
       </ScrollView>
     </Screen>
@@ -233,6 +257,12 @@ export default function ClientHomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  quickHeading: { ...text.title, color: colors.text, marginTop: 22, marginBottom: 12 },
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  quick: { flexBasis: '47%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 16, paddingLeft: 12, paddingRight: 10, minHeight: 86, borderRadius: radii.lg + 2, backgroundColor: '#ffffff', ...shadows.card },
+  quickIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  quickTitle: { fontFamily: typography.fontFamilyBold, fontSize: 15, lineHeight: 19, letterSpacing: -0.3, color: colors.text },
+  quickSub: { ...text.caption, color: colors.textMuted, marginTop: 2 },
   scroll: { paddingHorizontal: 20 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   me: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', ...shadows.card },
@@ -259,7 +289,4 @@ const styles = StyleSheet.create({
   msgText: { marginTop: 3, fontFamily: typography.fontFamily, fontSize: 13.5, lineHeight: 19, color: colors.textSoft },
   thumb: { width: 58, height: 58, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   thumbTime: { position: 'absolute', right: 6, bottom: 4, color: '#fff', fontSize: 10, fontFamily: typography.fontFamilySemiBold },
-  shortcuts: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  shortcut: { flex: 1, alignItems: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 4, borderRadius: radii.lg + 2, backgroundColor: 'rgba(255,255,255,0.85)' },
-  shortcutLabel: { ...text.tile, color: colors.text, textAlign: 'center' },
 });

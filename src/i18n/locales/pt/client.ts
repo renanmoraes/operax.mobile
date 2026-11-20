@@ -180,6 +180,11 @@ const client = {
     progress: 'Evolução',
     history: 'Histórico',
     achievements: 'Conquistas',
+    quickTitle: 'Acesso rápido',
+    requestSlotSub: 'Treinos e compromissos',
+    progressSub: 'Acompanhe seu progresso',
+    historySub: 'Treinos e resultados',
+    achievementsSub: 'Suas metas alcançadas',
   },
   chats: {
     you: 'Você: ',

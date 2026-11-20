@@ -182,6 +182,11 @@ const client: Shape<typeof pt> = {
     progress: 'Progress',
     history: 'History',
     achievements: 'Achievements',
+    quickTitle: 'Quick access',
+    requestSlotSub: 'Workouts and appointments',
+    progressSub: 'Track your progress',
+    historySub: 'Workouts and results',
+    achievementsSub: 'Goals you have reached',
   },
   chats: {
     you: 'You: ',
