@@ -1,4 +1,5 @@
 import { templatesFor } from '../templates';
+import { routeBehindStats } from '../templates/parts';
 import { fromHistoryDetail, fromRecording, fromStrength } from '../fromSources';
 
 const base = { title: 'X', company: 'Academia', date: '2026-11-15T07:00:00Z', seconds: 1800 };
@@ -47,7 +48,6 @@ describe('templatesFor', () => {
 });
 
 describe('percurso e números', () => {
-  const { routeBehindStats } = require('../templates/parts') as typeof import('../templates/parts');
   it('segue a ordem da referência e usa a potência quando existe', () => {
     const a = fromHistoryDetail(
       { id: 'h', date: '2026-11-19', title: 'Pedal', modality: 'bike', distance_meters: 58350, duration_seconds: 9720, energy_kcal: 1063 } as never,
