@@ -286,10 +286,10 @@ const styles = StyleSheet.create({
   // Sem elevation: no Android, sombra sob fundo semitransparente desenha um retângulo branco dentro do quadro.
   rule: { flex: 1, padding: 10, borderRadius: radii.md + 4, backgroundColor: '#ffffffd9', ...shadows.card, elevation: 0 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  action: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: radii.xl - 6, backgroundColor: '#fff', ...shadows.card },
+  action: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: radii.xl - 6, backgroundColor: '#fff', borderWidth: 1, borderColor: 'transparent', ...shadows.card },
   actionIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   actionTitle: { fontFamily: typography.fontFamilyBold, fontSize: 13, color: colors.text },
-  nowCard: { width: 248, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: radii.xl - 4, borderWidth: 1.5, backgroundColor: '#fff', ...shadows.card },
+  nowCard: { width: 248, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: radii.xl - 4, borderWidth: 1.5, backgroundColor: '#fff', borderWidth: 1, borderColor: 'transparent', ...shadows.card },
   nowName: { fontFamily: typography.fontFamilyBold, fontSize: 14, color: colors.text },
   nowWhen: { marginTop: 3, fontFamily: typography.fontFamilySemiBold, fontSize: 12 },
   groupTitle: { fontFamily: typography.fontFamilyBold, fontSize: 12, letterSpacing: 0.5, textTransform: 'uppercase', color: colors.textSoft },
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
   cellIdle: { backgroundColor: '#f6f8fb', borderWidth: 1, borderColor: '#dde3ec', shadowOpacity: 0, elevation: 0 },
   // Todos os cartões do mesmo tamanho: o nome sempre reserva duas linhas, com nome curto ou longo.
   cellNameBox: { height: 32, alignSelf: 'stretch', justifyContent: 'center' },
-  cell: { alignItems: 'center', gap: 8, paddingTop: 14, paddingBottom: 12, paddingHorizontal: 6, borderRadius: radii.xl - 4, backgroundColor: '#fff', ...shadows.card },
+  cell: { alignItems: 'center', gap: 8, paddingTop: 14, paddingBottom: 12, paddingHorizontal: 6, borderRadius: radii.xl - 4, backgroundColor: '#fff', borderWidth: 1, borderColor: 'transparent', ...shadows.card },
   cellName: { ...text.tile, textAlign: 'center', color: colors.text },
   sheetActions: { flexDirection: 'row', gap: 12, alignSelf: 'stretch', marginTop: 12, paddingTop: 8, paddingBottom: 14, paddingHorizontal: 4 },
   // Fora da tela (à esquerda): o cartão é desenhado em tamanho real só para virar imagem.
