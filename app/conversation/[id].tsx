@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { locale } from '@/src/i18n';
 import { useMemo, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInputInstance, View, AppState, useWindowDimensions } from 'react-native';
+import { FlatList, type FlatListProps, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInputInstance, View, AppState, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar, Backdrop, Button, IconButton, IconTile, Muted } from '@/src/design-system/ui';
@@ -18,6 +18,7 @@ import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { Toast, useToast } from '@/src/design-system/Toast';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { initialsOf } from '@/src/features/inbox/ConversationCard';
+import { firstUnreadId } from '@/src/features/chat/unreadJump';
 import { getConversation as getMockConv, getMessages as getMockMessages, quickReplies as mockQuickReplies, type Message } from '@/src/mocks/data';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import {
@@ -62,6 +63,8 @@ export default function ConversationScreenGuarded() {
     </RequirePermission>
   );
 }
+
+type ViewableInfo = Parameters<NonNullable<FlatListProps<Message>['onViewableItemsChanged']>>[0];
 
 function ConversationScreen() {
   const { t } = useTranslation(['inbox', 'common']);
@@ -151,6 +154,37 @@ function ConversationScreen() {
   const [showOthers, setShowOthers] = useState(false);
   const otherCount = allMessages.filter((m) => m.otherConversation).length;
   const thread = showOthers ? allMessages : allMessages.filter((m) => !m.otherConversation);
+  // Não lidas ao abrir: a conversa aberta sozinha não traz a contagem, então vale a da lista (que o app já tem ao tocar na
+  // conversa), guardada uma vez por conversa (a releitura de 15 s já viria zerada). As não lidas são as últimas mensagens:
+  // chegar ao fim conta como vistas. O botão leva à primeira; depois disso vira a seta para a última mensagem.
+  const [opened, setOpened] = useState<{ id: string; unread: number; seen: boolean } | null>(null);
+  if (conversation && opened?.id !== id) {
+    const fromList = qc
+      .getQueriesData<{ live?: { id: string; unread?: number }[] }>({ queryKey: ['inbox'] })
+      .flatMap(([, data]) => data?.live ?? [])
+      .find((c) => c.id === id)?.unread;
+    setOpened({ id, unread: fromList ?? conversation.unread ?? 0, seen: false });
+  }
+  const unreadAtOpen = opened?.id === id ? opened.unread : 0;
+  const firstUnread = useMemo(() => firstUnreadId(thread, unreadAtOpen), [thread, unreadAtOpen]);
+  // A lista diz qual é a última mensagem visível (também depois da rolagem automática, que não gera evento de rolagem).
+  const [lastVisible, setLastVisible] = useState<number | null>(null);
+  const [viewability] = useState(() => ({ itemVisiblePercentThreshold: 30 }));
+  const [onViewable] = useState(() => ({ viewableItems }: ViewableInfo) => {
+    const idx = viewableItems.reduce((max, v) => Math.max(max, v.index ?? -1), -1);
+    if (idx >= 0) setLastVisible(idx);
+  });
+  const atEnd = lastVisible !== null && lastVisible >= thread.length - 1;
+  const markSeen = () => setOpened((o) => (o && !o.seen ? { ...o, seen: true } : o));
+  if (atEnd && opened && !opened.seen) setOpened({ ...opened, seen: true });
+  const pendingUnread = firstUnread && opened && !opened.seen ? unreadAtOpen : 0;
+  const jumpTo = () => {
+    const idx = pendingUnread ? thread.findIndex((m) => m.id === firstUnread) : -1;
+    if (idx >= 0) listRef.current?.scrollToIndex({ index: idx, viewPosition: 0.15, animated: true });
+    else listRef.current?.scrollToEnd({ animated: true });
+    markSeen();
+  };
+
   // No modo demo as ações mudam a posse só aqui; no real, a posse vem sempre do servidor.
   const [ownershipOverride, setOwnership] = useState<NonNullable<typeof conversation>['ownership'] | null>(null);
   const ownership = ownershipOverride ?? conversation?.ownership ?? 'queue';
@@ -428,7 +462,18 @@ function ConversationScreen() {
           );
   };
   const renderMessage = ({ item }: { item: Message }) => {
-    const el = renderBody({ item });
+    const body = renderBody({ item });
+    // Linha que marca onde começam as não lidas, para quem chega por aqui saber de onde ler.
+    const el = item.id === firstUnread ? (
+      <View style={{ gap: 8 }}>
+        <View style={styles.unreadDivider} accessibilityRole="header">
+          <View style={styles.unreadLine} />
+          <Text style={styles.unreadDividerText}>{t('conversation.unreadDivider', { count: unreadAtOpen })}</Text>
+          <View style={styles.unreadLine} />
+        </View>
+        {body}
+      </View>
+    ) : body;
     if (!item.otherConversation) return el;
     const conn = item.otherConversation.connectionId ? connections.byId.get(item.otherConversation.connectionId) ?? null : null;
     return (
@@ -519,9 +564,17 @@ function ConversationScreen() {
         </View>
       ) : null}
 
+      <View style={styles.listWrap}>
       <FlatList
         ref={listRef}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+        viewabilityConfig={viewability}
+        onViewableItemsChanged={onViewable}
+        onScrollToIndexFailed={(info) => {
+          // Item ainda não medido: chega perto pela altura média e tenta de novo.
+          listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false });
+          setTimeout(() => listRef.current?.scrollToIndex({ index: info.index, viewPosition: 0.15, animated: true }), 120);
+        }}
         data={thread}
         keyExtractor={(m) => m.id}
         ListHeaderComponent={
@@ -535,6 +588,19 @@ function ConversationScreen() {
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, gap: 8, paddingBottom: 16 }}
         renderItem={renderMessage}
       />
+      {lastVisible !== null && !atEnd ? (
+        <Pressable
+          onPress={jumpTo}
+          style={[styles.jump, pendingUnread > 0 && styles.jumpUnread]}
+          accessibilityRole="button"
+          accessibilityLabel={pendingUnread > 0 ? t('conversation.unreadJump', { count: pendingUnread }) : t('conversation.jumpLatest')}
+          hitSlop={8}
+        >
+          {pendingUnread > 0 ? <Text style={styles.jumpText}>{t('conversation.unreadJump', { count: pendingUnread })}</Text> : null}
+          <Ionicons name="chevron-down" size={18} color={pendingUnread > 0 ? '#fff' : colors.primary} />
+        </Pressable>
+      ) : null}
+      </View>
 
       {qrTerm !== null && canCompose && !voice.recording ? (
         <QuickReplySuggestions
@@ -746,6 +812,27 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   windowText: { flex: 1, fontFamily: typography.fontFamilyMedium, fontSize: 13, lineHeight: 18, color: colors.warnText },
+  listWrap: { flex: 1 },
+  jump: {
+    position: 'absolute',
+    right: 16,
+    bottom: 12,
+    minWidth: 40,
+    height: 40,
+    borderRadius: 20,
+    paddingHorizontal: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.cardBg,
+    ...shadows.card,
+  },
+  jumpUnread: { backgroundColor: colors.primary, paddingHorizontal: 14 },
+  jumpText: { fontFamily: typography.fontFamilySemiBold, fontSize: 13, color: '#fff' },
+  unreadDivider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 4 },
+  unreadLine: { flex: 1, height: StyleSheet.hairlineWidth * 2, backgroundColor: colors.primary, opacity: 0.35 },
+  unreadDividerText: { fontFamily: typography.fontFamilySemiBold, fontSize: 12, color: colors.primary },
   claimBanner: {
     marginHorizontal: 16,
     marginTop: 12,
