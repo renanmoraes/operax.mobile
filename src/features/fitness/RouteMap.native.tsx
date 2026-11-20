@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import Constants from 'expo-constants';
 import { colors } from '@/src/design-system/tokens';
@@ -38,17 +38,25 @@ function NativeRouteMap({ route, here, follow, style, inset, maps }: RouteMapPro
   const coords = useMemo(() => route.map(([latitude, longitude]) => ({ latitude, longitude })), [route]);
   const start = coords[0];
   const end = coords.length > 1 ? coords[coords.length - 1] : null;
+  // No resumo o mapa fica parado no percurso inteiro, para a tela rolar sem o mapa roubar o dedo. Só solta se, mesmo
+  // enquadrado, o caminho não couber (a conferência roda depois do enquadramento). Gravando, a pessoa mexe à vontade.
+  const [overflow, setOverflow] = useState(false);
+  const checked = useRef(false);
+  const interactive = !!follow || overflow;
 
   // Gravando, a câmera acompanha a pessoa; no resumo, enquadra o percurso inteiro.
   useEffect(() => {
     if (follow && here) ref.current?.animateCamera({ center: { latitude: here.lat, longitude: here.lng }, zoom: 16 }, { duration: 600 });
   }, [follow, here]);
 
+  // No resumo já abre no percurso inteiro (com folga), assim a conferência de "cabe na tela" nunca olha só a largada.
   const initial = here
     ? { latitude: here.lat, longitude: here.lng, latitudeDelta: 0.006, longitudeDelta: 0.006 }
-    : start
-      ? { latitude: start.latitude, longitude: start.longitude, latitudeDelta: 0.02, longitudeDelta: 0.02 }
-      : { latitude: -15.79, longitude: -47.88, latitudeDelta: 30, longitudeDelta: 30 };
+    : coords.length > 1
+      ? boundsRegion(coords)
+      : start
+        ? { latitude: start.latitude, longitude: start.longitude, latitudeDelta: 0.02, longitudeDelta: 0.02 }
+        : { latitude: -15.79, longitude: -47.88, latitudeDelta: 30, longitudeDelta: 30 };
 
   return (
     <View style={[styles.wrap, style]}>
@@ -63,8 +71,20 @@ function NativeRouteMap({ route, here, follow, style, inset, maps }: RouteMapPro
         toolbarEnabled={false}
         pitchEnabled={false}
         rotateEnabled={!!follow}
+        scrollEnabled={interactive}
+        zoomEnabled={interactive}
+        zoomTapEnabled={interactive}
+        zoomControlEnabled={false}
         onMapReady={() => {
           if (!follow && coords.length > 1) ref.current?.fitToCoordinates(coords, { edgePadding: { top: 40, right: 40, bottom: 40, left: 40 }, animated: false });
+        }}
+        onRegionChangeComplete={async () => {
+          if (follow || checked.current || coords.length < 2) return;
+          checked.current = true;
+          const b = await ref.current?.getMapBoundaries().catch(() => null);
+          if (!b) return;
+          const inside = coords.every((c) => c.latitude <= b.northEast.latitude && c.latitude >= b.southWest.latitude && c.longitude <= b.northEast.longitude && c.longitude >= b.southWest.longitude);
+          setOverflow(!inside);
         }}
       >
         {coords.length > 1 ? <Polyline coordinates={coords} strokeColor="#ffffff" strokeWidth={9} lineCap="round" lineJoin="round" /> : null}
@@ -82,6 +102,19 @@ function NativeRouteMap({ route, here, follow, style, inset, maps }: RouteMapPro
       </MapView>
     </View>
   );
+}
+
+/** Região que cobre todos os pontos, com 30% de folga e um mínimo para treino parado no lugar. */
+function boundsRegion(coords: { latitude: number; longitude: number }[]) {
+  const lats = coords.map((c) => c.latitude);
+  const lngs = coords.map((c) => c.longitude);
+  const [minLat, maxLat, minLng, maxLng] = [Math.min(...lats), Math.max(...lats), Math.min(...lngs), Math.max(...lngs)];
+  return {
+    latitude: (minLat + maxLat) / 2,
+    longitude: (minLng + maxLng) / 2,
+    latitudeDelta: Math.max(0.004, (maxLat - minLat) * 1.3),
+    longitudeDelta: Math.max(0.004, (maxLng - minLng) * 1.3),
+  };
 }
 
 const styles = StyleSheet.create({
