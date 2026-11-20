@@ -10,7 +10,7 @@ import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { locale } from '@/src/i18n';
 import { useActiveCompanyName } from '@/src/features/client/useClientData';
-import { AchievementPin } from '@/src/features/fitness/AchievementPin';
+import { AchievementPin, achievementState, tint as tintOf } from '@/src/features/fitness/AchievementPin';
 import { AchievementShareCard, CARD_SIZE, type CardFormat } from '@/src/features/fitness/AchievementShareCard';
 import { isCancel, shareImageWithMessage, type CanvasRef } from '@/src/features/share/destinations';
 import { levelView, useAchievements, useMarkAchievementsSeen, type AchievementView } from '@/src/features/fitness/achievements';
@@ -164,12 +164,13 @@ export default function AchievementsScreen() {
                 <Animated.View key={b.ref} style={styles.cellWrap} layout={LinearTransition.springify().damping(24).stiffness(140)}
                   entering={FadeInDown.duration(320).delay(Math.min(i, 8) * 30)} exiting={FadeOut.duration(160)}>
                   <PressableScale onPress={() => setOpen(b)} accessibilityRole="button"
-                    accessibilityLabel={`${b.name}, ${b.earned_at ? t('ach.won') : t('ach.progress', { current: num(b.progress.current), target: num(b.progress.target) })}`} style={styles.cell}>
+                    accessibilityLabel={`${b.name}, ${b.earned_at ? t('ach.won') : t('ach.progress', { current: num(b.progress.current), target: num(b.progress.target) })}`}
+                    style={[styles.cell, achievementState(b) === 'won' && { backgroundColor: tintOf(b.color, 0.1), borderColor: tintOf(b.color, 0.45), borderWidth: 1.5 }, achievementState(b) === 'idle' && styles.cellIdle]}>
                     <AchievementPin item={b} size={62} />
                     <View style={styles.cellNameBox}>
                       <Text style={styles.cellName} numberOfLines={2}>{b.name}</Text>
                     </View>
-                    <Muted style={{ fontSize: 11.5, fontVariant: ['tabular-nums'], alignSelf: 'stretch', textAlign: 'center' }} numberOfLines={1}>
+                    <Muted style={[{ fontSize: 11.5, fontVariant: ['tabular-nums'], alignSelf: 'stretch', textAlign: 'center' }, b.earned_at ? { color: b.color, fontFamily: typography.fontFamilyBold } : null]} numberOfLines={1}>
                       {b.earned_at ? (b.edition ? `${t('ach.won')} · ${b.edition}` : t('ach.won')) : periodLine(b) ?? t('ach.progress', { current: num(b.progress.current), target: num(b.progress.target) })}
                     </Muted>
                   </PressableScale>
@@ -287,9 +288,11 @@ const styles = StyleSheet.create({
   groupTitle: { fontFamily: typography.fontFamilyBold, fontSize: 12, letterSpacing: 0.5, textTransform: 'uppercase', color: colors.textSoft },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, marginHorizontal: -5 },
   cellWrap: { width: '33.33%', padding: 5 },
+  // Não começada: mais apagada, para a ganha e a começada saltarem aos olhos.
+  cellIdle: { opacity: 0.62, backgroundColor: '#ffffffb3' },
   // Todos os cartões do mesmo tamanho: o nome sempre reserva duas linhas, com nome curto ou longo.
   cellNameBox: { height: 32, alignSelf: 'stretch', justifyContent: 'center' },
-  cell: { alignItems: 'center', gap: 8, paddingTop: 14, paddingBottom: 12, paddingHorizontal: 6, borderRadius: radii.xl - 4, backgroundColor: '#fff', ...shadows.card },
+  cell: { alignItems: 'center', gap: 8, paddingTop: 14, paddingBottom: 12, paddingHorizontal: 6, borderRadius: radii.xl - 4, backgroundColor: '#fff', borderWidth: 1.5, borderColor: 'transparent', ...shadows.card },
   cellName: { ...text.tile, textAlign: 'center', color: colors.text },
   sheetActions: { flexDirection: 'row', gap: 12, alignSelf: 'stretch', marginTop: 12, paddingTop: 8, paddingBottom: 14, paddingHorizontal: 4 },
   // Fora da tela (à esquerda): o cartão é desenhado em tamanho real só para virar imagem.
