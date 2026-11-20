@@ -171,7 +171,7 @@ export function buildHistory(): FitnessHistoryEntry[] {
   const swimDay = addDays(today, -3);
   out.push({
     id: 's:demo-swim', kind: 'free', date: isoDate(swimDay), started_at: new Date(swimDay.getTime() + 7 * 3_600_000 + 13 * 60_000).toISOString(), title: 'Natação', modality: 'swim',
-    duration_seconds: 687, distance_meters: 675, avg_hr: 133, effort: null, session_id: 'demo-swim',
+    duration_seconds: 658, distance_meters: 675, avg_hr: 133, effort: null, session_id: 'demo-swim',
     sources: [{ origin: 'garmin', label: 'Garmin Forerunner 265', device: 'Forerunner 265' }, { origin: 'strava', label: 'Strava' }],
   });
   return out;
@@ -196,10 +196,16 @@ export function demoSwimDetail(entry: FitnessHistoryEntry): ActivityDetail | nul
     t += rest;
   });
   const edges = [0.5, 0.6, 0.7, 0.8, 0.9, 1].map((f) => Math.round(hrMax * f));
+  // Cada ponto vale o tempo até o próximo, como no servidor; a pausa longa na borda não conta como esforço.
+  const zoneSecs = [0, 0, 0, 0, 0];
+  hr.forEach(([at, v], i) => {
+    const z = v >= edges[4] ? 4 : v >= edges[3] ? 3 : v >= edges[2] ? 2 : v >= edges[1] ? 1 : v >= edges[0] ? 0 : -1;
+    if (z >= 0) zoneSecs[z] += Math.min(Math.max((hr[i + 1]?.[0] ?? at + 1) - at, 0), 30);
+  });
   return {
     sport: 'swim', rate_unit: 'min_100m', seconds: t, series: { rate: pace, hr },
-    summary: { avg_hr: entry.avg_hr, max_hr: 152, elevation_gain_m: null, avg_cadence: null, avg_power: null },
-    zones: [180, 420, 1500, 300, 0].map((s, i) => ({ zone: (i + 1) as 1 | 2 | 3 | 4 | 5, from_bpm: edges[i], to_bpm: edges[i + 1], seconds: s })), hr_max_used: hrMax,
+    summary: { avg_hr: entry.avg_hr, max_hr: Math.max(...hr.map((p) => p[1])), elevation_gain_m: null, avg_cadence: null, avg_power: null },
+    zones: zoneSecs.map((s, i) => ({ zone: (i + 1) as 1 | 2 | 3 | 4 | 5, from_bpm: edges[i], to_bpm: edges[i + 1], seconds: Math.round(s) })), hr_max_used: hrMax,
     splits: laps.map(([m, s], i) => ({ index: i + 1, seconds: s, distance_m: m, rate: Math.round((s / m) * 100), avg_hr: 120 + 3 * i })), split_basis: 'laps',
   };
 }

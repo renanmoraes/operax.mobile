@@ -63,7 +63,8 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
   // Por exercício: num superset cada série é do exercício do seu estágio.
   const records = personalRecords(rows, logs, LOAD_HISTORY);
 
-  const past = (history ?? []).filter((e) => e.title === workout.title).slice(0, 5).reverse();
+  // Só o próprio treino da ficha: sessão do relógio chamada "Musculação" não tem volume e não é este treino.
+  const past = (history ?? []).filter((e) => e.kind === 'prescribed' && e.title === workout.title).slice(0, 5).reverse();
   const bars = [...past.map((e) => ({ label: e.date.slice(8, 10) + '/' + e.date.slice(5, 7), v: e.volume_kg ?? 0 })), { label: t('sheet.today'), v: volume }];
   const maxV = Math.max(1, ...bars.map((b) => b.v));
   const elapsed = session?.elapsed ?? 0;

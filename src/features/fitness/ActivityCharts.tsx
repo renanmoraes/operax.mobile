@@ -7,6 +7,7 @@ import { Skeleton, SkeletonGroup } from '@/src/design-system/Skeleton';
 import { colors, numbers, text, typography } from '@/src/design-system/tokens';
 import { locale } from '@/src/i18n';
 import { formatClock } from '@/src/shared/format';
+import { RATE_UNIT } from './rateUnit';
 import { formatPace } from './runTracker';
 import type { ActivityDetail, ChartPoint, SeriesKey } from './types';
 
@@ -54,7 +55,7 @@ export function ActivityCharts({ detail }: { detail: ActivityDetail }) {
   const rateMetric: Metric =
     detail.rate_unit === 'kmh'
       ? { key: 'rate', title: t('charts.speed'), unit: 'km/h', color: colors.primary, format: (v) => nf(1).format(v) }
-      : { key: 'rate', title: t('charts.pace'), unit: detail.rate_unit === 'min_km' ? '/km' : detail.rate_unit === 'min_100m' ? '/100 m' : '/500 m', color: colors.primary, invert: true, format: (v) => formatPace(v) };
+      : { key: 'rate', title: t('charts.pace'), unit: RATE_UNIT[detail.rate_unit].label, color: colors.primary, invert: true, format: (v) => formatPace(v) };
   const metrics: Metric[] = [
     rateMetric,
     { key: 'hr', title: t('charts.hr'), unit: 'bpm', color: colors.danger, format: (v) => String(Math.round(v)) },
@@ -212,7 +213,7 @@ export function ActivityChartsSkeleton() {
             <Skeleton width={72} height={22} />
             <Skeleton width={72} height={22} />
           </View>
-          <Skeleton height={HEIGHT - 20} radius={12} />
+          <Skeleton height={HEIGHT} radius={12} />
         </Card>
       ))}
     </SkeletonGroup>

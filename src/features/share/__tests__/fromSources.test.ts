@@ -63,9 +63,14 @@ describe('fromHistoryDetail', () => {
     expect(a.gps?.splitsKind).toBe('laps');
   });
 
-  it('musculação do relógio não leva parciais para a arte', () => {
-    const a = fromHistoryDetail(entry({ modality: 'strength', distance_meters: null }), detail({ sport: 'strength', route: [] }), 'X');
-    expect(a.kind).toBe('strength');
+  it('uma volta só (o treino inteiro) não vira parcial na arte', () => {
+    const a = fromHistoryDetail(entry(), detail({ splits: [{ index: 1, seconds: 1800, distance_m: 5000, rate: 360, avg_hr: null }], split_basis: 'laps' }), 'X');
+    expect(a.gps?.splits).toEqual([]);
+  });
+
+  it('remo sai em ritmo por 500 m', () => {
+    const a = fromHistoryDetail(entry({ modality: 'row', duration_seconds: 1200, distance_meters: 5000 }), detail({ sport: 'row', rate_unit: 'min_500m' }), 'X');
+    expect(a.gps?.paceLabel).toBe('2\'00" /500 m');
   });
 
   it('pedal usa velocidade como número principal', () => {

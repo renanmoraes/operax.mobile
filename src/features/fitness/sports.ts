@@ -34,7 +34,7 @@ export const SPORTS: SportInfo[] = [
 
 export const sportInfo = (id: string | null | undefined): SportInfo => SPORTS.find((s) => s.id === id) ?? SPORTS[SPORTS.length - 1];
 
-/** Esporte do histórico (o backend guarda run/bike/swim/row/other) para o rótulo do app. */
+/** Esporte do histórico (o backend guarda run/bike/swim/row/strength/other) para o rótulo do app. */
 export function historySportLabel(modality: string | null | undefined): string | null {
   if (!modality) return null;
   const known = SPORTS.find((s) => s.id === modality);
@@ -44,7 +44,7 @@ export function historySportLabel(modality: string | null | undefined): string |
 
 /**
  * Esporte de qualquer origem (servidor, relógio, Strava): a chave em português do app e o ícone certo. O servidor manda
- * `run`, `bike`, `swim`, `row` ou `other`, e o celular grava também `walk` e `strength`. Chave que não conhecemos vira
+ * `run`, `bike`, `swim`, `row`, `strength` (musculação do relógio) ou `other`, e o celular grava também `walk`. Chave que não conhecemos vira
  * "Atividade" com o ícone genérico, nunca o nome em inglês cru.
  */
 const SPORT_ICON: Record<string, McIcon> = {

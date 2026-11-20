@@ -12,6 +12,7 @@ import { setShareActivity } from '@/src/features/share/store';
 import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { ActivityCharts, ActivityChartsSkeleton, HrZonesCard } from '@/src/features/fitness/ActivityCharts';
 import { RouteMap } from '@/src/features/fitness/RouteMap';
+import { RATE_UNIT, rateUnitOfSport } from '@/src/features/fitness/rateUnit';
 import { formatKm, formatPace } from '@/src/features/fitness/runTracker';
 import { FEELINGS, effortWord, historySportLabel, sportInfo, tagLabel } from '@/src/features/fitness/sports';
 import { useActivityDetail, useHistory } from '@/src/features/fitness/useFitness';
@@ -55,9 +56,9 @@ export default function ActivityScreen() {
   const when = `${day.charAt(0).toUpperCase()}${day.slice(1)}${entry.started_at ? ` · ${date.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}` : ''}`;
   const feeling = FEELINGS.find((f) => f.id === entry.feeling);
   const secs = entry.duration_seconds ?? d?.seconds ?? null;
-  // Natação se lê por 100 m (1'42"/100 m), não por quilômetro.
-  const swim = entry.modality === 'swim' || d?.rate_unit === 'min_100m';
-  const pace = entry.distance_meters && secs ? (secs / entry.distance_meters) * (swim ? 100 : 1000) : null;
+  // Ritmo na unidade do esporte: natação por 100 m (1'42"/100 m), remo por 500 m, corrida e caminhada por km.
+  const paceUnit = RATE_UNIT[d && d.rate_unit !== 'kmh' ? d.rate_unit : rateUnitOfSport(entry.modality === 'bike' ? null : entry.modality)];
+  const pace = entry.distance_meters && secs && paceUnit.meters ? (secs / entry.distance_meters) * paceUnit.meters : null;
   const kmh = entry.distance_meters && secs ? (entry.distance_meters / secs) * 3.6 : null;
   const showSpeed = d?.rate_unit === 'kmh' || entry.modality === 'bike';
 
@@ -99,7 +100,7 @@ export default function ActivityScreen() {
               <View style={styles.stats}>
                 {entry.distance_meters ? <Stat label={t('rec.distance')} value={formatKm(entry.distance_meters)} unit="km" /> : null}
                 {secs ? <Stat label={t('rec.time')} value={formatClock(secs)} /> : null}
-                {showSpeed && kmh ? <Stat label={t('rec.speed')} value={new Intl.NumberFormat(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(kmh)} unit="km/h" /> : pace ? <Stat label={t('rec.pace')} value={formatPace(pace)} unit={swim ? '/100 m' : '/km'} /> : null}
+                {showSpeed && kmh ? <Stat label={t('rec.speed')} value={new Intl.NumberFormat(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(kmh)} unit="km/h" /> : pace ? <Stat label={t('rec.pace')} value={formatPace(pace)} unit={paceUnit.label} /> : null}
                 {d?.summary.elevation_gain_m ? <Stat label={t('rec.climb')} value={String(d.summary.elevation_gain_m)} unit="m" /> : null}
                 {entry.avg_hr ?? d?.summary.avg_hr ? <Stat label={t('detail.avgHr')} value={String(entry.avg_hr ?? d?.summary.avg_hr)} unit="bpm" /> : null}
                 {d?.summary.max_hr ? <Stat label={t('charts.maxHr')} value={String(d.summary.max_hr)} unit="bpm" /> : null}
@@ -148,7 +149,7 @@ export default function ActivityScreen() {
           </Rise>
         ) : null}
 
-        {d?.splits.length && entry.modality !== 'strength' ? (
+        {d && hasSplits(d) ? (
           <Rise index={4}>
             <SplitsCard detail={d} />
           </Rise>
@@ -171,10 +172,21 @@ function Stat({ label, value, unit }: { label: string; value: string; unit?: str
   );
 }
 
+/** Lista que diz algo: dois trechos ou mais (uma volta só repete o resumo) e pelo menos um com ritmo. */
+function hasSplits(d: ActivityDetail): boolean {
+  return d.splits.length > 1 && d.splits.some((s) => s.rate != null);
+}
+
+/** Último trecho de km que não fechou o km (corrida, bike, remo): mostra a distância dele (0,4) no lugar do número. A natação vai de 100 em 100 m. */
+function isShortLast(d: ActivityDetail, s: ActivityDetail['splits'][number]): boolean {
+  return d.split_basis === 'distance' && d.rate_unit !== 'min_100m' && s.index === d.splits.length && s.distance_m != null && s.distance_m < 990;
+}
+
 function SplitsCard({ detail }: { detail: ActivityDetail }) {
   const { t } = useTranslation('fitness');
   const kmh = detail.rate_unit === 'kmh';
-  const unit = kmh ? 'km/h' : detail.rate_unit === 'min_100m' ? '/100 m' : detail.rate_unit === 'min_500m' ? '/500 m' : '/km';
+  const unit = RATE_UNIT[detail.rate_unit].label;
+  const laps = detail.split_basis === 'laps';
   const rates = detail.splits.map((s) => s.rate).filter((r): r is number => r != null);
   // Ritmo: menor é melhor. Velocidade: maior é melhor. A barra mais cheia é o trecho mais rápido.
   const best = rates.length ? (kmh ? Math.max(...rates) : Math.min(...rates)) : null;
@@ -188,7 +200,7 @@ function SplitsCard({ detail }: { detail: ActivityDetail }) {
         const fill = s.rate && best ? (kmh ? s.rate / best : best / s.rate) : 0;
         return (
           <View key={s.index} style={styles.splitRow}>
-            <Text style={styles.splitKm}>{detail.split_basis === 'laps' ? `V${s.index}` : s.distance_m && s.distance_m < 990 ? new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(s.distance_m / 1000) : s.index}</Text>
+            <Text style={styles.splitKm}>{laps ? `V${s.index}` : isShortLast(detail, s) ? new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(s.distance_m! / 1000) : s.index}</Text>
             <Text style={styles.splitPace}>{s.rate == null ? '–' : kmh ? s.rate.toFixed(1).replace('.', ',') : formatPace(s.rate)}</Text>
             <View style={styles.splitTrack}>
               <View style={[styles.splitBar, { width: `${Math.max(8, Math.min(100, fill * 100))}%` }, s.rate === best && rates.length > 1 && { backgroundColor: colors.success }]} />

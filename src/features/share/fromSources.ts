@@ -1,4 +1,5 @@
 import type { ActivityDetail, FitnessHistoryEntry } from '@/src/features/fitness/types';
+import { rateUnitOfSport } from '@/src/features/fitness/rateUnit';
 import { paceLabel, speedLabel } from './format';
 import type { ShareActivity, ShareGps, ShareStrength } from './types';
 
@@ -16,7 +17,7 @@ function gpsBlock(p: {
   splits?: { index: number; seconds: number }[];
   splitsKind?: ShareGps['splitsKind'];
 }): ShareGps {
-  const pace = paceLabel(p.distanceM, p.seconds, p.sport === 'swim');
+  const pace = paceLabel(p.distanceM, p.seconds, rateUnitOfSport(p.sport));
   const speed = speedLabel(p.distanceM, p.seconds);
   return {
     sport: p.sport,
@@ -81,7 +82,8 @@ export function fromHistoryDetail(entry: FitnessHistoryEntry, detail: ActivityDe
         maxHr: detail?.summary.max_hr ?? null,
         elevationGainM: detail?.summary.elevation_gain_m ?? null,
         route,
-        splits: entry.modality === 'strength' ? [] : (detail?.splits ?? []).map((s) => ({ index: s.index, seconds: s.seconds })),
+        // Uma volta só (o treino inteiro) não é parcial; musculação já chega do servidor sem nenhuma.
+        splits: (detail?.splits.length ?? 0) > 1 ? detail!.splits.map((s) => ({ index: s.index, seconds: s.seconds })) : [],
         splitsKind: detail?.split_basis === 'laps' ? 'laps' : undefined,
       }),
     };
