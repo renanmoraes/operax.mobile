@@ -2,6 +2,11 @@
 const fitness = {
   ach: {
     cards: {
+      next: 'Próxima carta',
+      hint: 'Toque ou deslize para revelar a próxima',
+      finish: 'Ver todas as conquistas',
+      unlocked_one: 'Você desbloqueou uma nova conquista',
+      unlocked_other: 'Você desbloqueou novas conquistas',
       congrats: 'Parabéns',
       earnedOf_one: 'Você já conquistou {{count}} conquista',
       earnedOf_other: 'Você já conquistou {{count}} conquistas',
@@ -11,7 +16,6 @@ const fitness = {
       emptyTitle: 'Suas conquistas',
       emptyBody: 'Suas primeiras conquistas aparecem aqui. Treine e volte!',
       title: 'Suas cartas',
-      hint: 'Deslize para ver o que você ganhou, da mais recente para a mais antiga',
       empty: 'Suas primeiras conquistas vão virar cartas aqui.',
       position: '{{n}} de {{total}}',
       a11y: 'Conquista {{name}}, ganha em {{date}}',

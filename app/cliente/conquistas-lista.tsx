@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,7 +11,7 @@ import { colors, radii, shadows, text, typography } from '@/src/design-system/to
 import { locale } from '@/src/i18n';
 import { useActiveCompanyName } from '@/src/features/client/useClientData';
 import { AchievementPin } from '@/src/features/fitness/AchievementPin';
-import { levelView, useAchievements, useMarkAchievementsSeen, type AchievementView } from '@/src/features/fitness/achievements';
+import { levelView, useAchievements, type AchievementView } from '@/src/features/fitness/achievements';
 
 type Filter = 'all' | 'won' | 'toEarn';
 const SECTIONS = ['tenant', 'dates', 'bible', 'general'] as const;
@@ -26,14 +26,8 @@ export default function AchievementsScreen() {
   const { t } = useTranslation(['fitness', 'common']);
   const company = useActiveCompanyName();
   const { data, isLoading, isError, refetch } = useAchievements();
-  const seen = useMarkAchievementsSeen();
   const [filter, setFilter] = useState<Filter>('all');
   const [open, setOpen] = useState<AchievementView | null>(null);
-  const fresh = useMemo(() => (data?.items ?? []).filter((i) => i.new), [data]);
-  // Comemora as ganhas e ainda não vistas uma vez; ao fechar, o backend marca como vistas.
-  const [dismissed, setDismissed] = useState(false);
-  const celebrate = fresh.length > 0 && !dismissed;
-
   const items = data?.items ?? [];
   const now = items.filter((i) => i.period.kind !== 'always' && i.period.active && !i.earned_at);
   const list = items.filter((i) => filter === 'all' || (filter === 'won' ? !!i.earned_at : !i.earned_at));
@@ -47,7 +41,6 @@ export default function AchievementsScreen() {
     if (!i.period.next_starts_on) return null;
     return i.period.kind === 'annual' ? t('ach.backEveryYear', { date: fmtDate(i.period.next_starts_on) }) : t('ach.backOn', { date: fmtDate(i.period.next_starts_on) });
   };
-  const closeCelebration = () => { setDismissed(true); seen.mutate(fresh.map((f) => f.ref)); };
 
   if (isLoading || !data || !level) {
     return (
@@ -204,19 +197,6 @@ export default function AchievementsScreen() {
         ) : null}
       </BottomSheet>
 
-      <BottomSheet visible={celebrate} onClose={closeCelebration} closeLabel={t('ach.newCta')} contentStyle={{ alignItems: 'center', gap: 0 }}>
-        <Text style={[styles.sheetTitle, { marginTop: 8 }]}>{t('ach.newTitle', { count: fresh.length })}</Text>
-        <View style={styles.freshRow}>
-          {fresh.slice(0, 6).map((f) => (
-            <View key={f.ref} style={{ alignItems: 'center', width: 96, gap: 6 }}>
-              <AchievementPin item={f} size={72} />
-              <Text style={styles.cellName} numberOfLines={2}>{f.name}</Text>
-              <Text style={[styles.freshXp, { color: f.color }]}>{t('ach.xp', { xp: num(f.xp) })}</Text>
-            </View>
-          ))}
-        </View>
-        <Button label={t('ach.newCta')} onPress={closeCelebration} style={{ alignSelf: 'stretch', marginTop: 20 }} />
-      </BottomSheet>
     </Screen>
   );
 }
@@ -252,6 +232,4 @@ const styles = StyleSheet.create({
   reqRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
   reqName: { flex: 1, fontFamily: typography.fontFamilySemiBold, fontSize: 14, color: colors.text },
   reqCount: { fontFamily: typography.fontFamilyBold, fontSize: 13, color: colors.textSoft, fontVariant: ['tabular-nums'] },
-  freshRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginTop: 18 },
-  freshXp: { fontFamily: typography.fontFamilyBold, fontSize: 12 },
 });

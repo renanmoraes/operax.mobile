@@ -4,6 +4,11 @@ import type pt from '../pt/fitness';
 const fitness: Shape<typeof pt> = {
   ach: {
     cards: {
+      next: 'Siguiente carta',
+      hint: 'Toca o desliza para ver la siguiente',
+      finish: 'Ver todos los logros',
+      unlocked_one: 'Desbloqueaste un nuevo logro',
+      unlocked_other: 'Desbloqueaste nuevos logros',
       congrats: 'Felicitaciones',
       earnedOf_one: 'Ya ganaste {{count}} logro',
       earnedOf_other: 'Ya ganaste {{count}} logros',
@@ -13,7 +18,6 @@ const fitness: Shape<typeof pt> = {
       emptyTitle: 'Tus logros',
       emptyBody: 'Tus primeros logros aparecerán aquí. ¡Entrena y vuelve!',
       title: 'Tus cartas',
-      hint: 'Desliza para ver lo que ganaste, de la más reciente a la más antigua',
       empty: 'Tus primeros logros aparecerán aquí como cartas.',
       position: '{{n}} de {{total}}',
       a11y: 'Logro {{name}}, ganado el {{date}}',
