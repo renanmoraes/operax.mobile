@@ -18,7 +18,7 @@ function Piece({ i, h, w }: { i: number; h: number; w: number }) {
   const t = useSharedValue(0);
   const spin = useSharedValue(0);
   const cfg = useMemo(() => ({
-    x: rnd(i, 1) * w, size: 6 + rnd(i, 2) * 6, dur: 4200 + rnd(i, 3) * 4200, delay: rnd(i, 4) * 4200,
+    x: rnd(i, 1) * w, size: 8 + rnd(i, 2) * 8, dur: 4200 + rnd(i, 3) * 4200, delay: rnd(i, 4) * 4200,
     sway: 1 + Math.floor(rnd(i, 5) * 3), amp: 10 + rnd(i, 6) * 22, color: COLORS[i % COLORS.length], round: rnd(i, 7) > 0.8,
   }), [i, w]);
   useEffect(() => {
@@ -41,7 +41,7 @@ function Piece({ i, h, w }: { i: number; h: number; w: number }) {
   );
 }
 
-export function Confetti({ count = 30 }: { count?: number }) {
+export function Confetti({ count = 38 }: { count?: number }) {
   const { width, height } = useWindowDimensions();
   const reduce = useReducedMotion();
   if (reduce) return null;

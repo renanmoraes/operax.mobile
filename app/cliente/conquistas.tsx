@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { typography } from '@/src/design-system/tokens';
 import { AchievementCards, useCardList } from '@/src/features/fitness/AchievementCards';
+import { GoldTitle } from '@/src/features/fitness/GoldTitle';
 import { Confetti, GOLD, Sparkles } from '@/src/features/fitness/CelebrationFx';
 import { expandEarnedCards, useAchievements, useMarkAchievementsSeen, type AchievementCard } from '@/src/features/fitness/achievements';
 import { ownedKey } from '@/src/features/fitness/owner';
@@ -92,17 +93,19 @@ export default function AchievementsGallery() {
         <View style={styles.center}><ActivityIndicator color={GOLD.main} /></View>
       ) : (
         <View style={[styles.main, { paddingTop: insets.top + (height < 700 ? 20 : 44) }]}>
-          <Animated.View entering={ZoomIn.springify().damping(12).delay(100)} style={styles.crest}>
-            <Ionicons name="leaf" size={26} color={GOLD.main} style={{ transform: [{ rotate: '-35deg' }, { scaleX: -1 }] }} />
-            <Ionicons name="trophy" size={46} color={GOLD.light} />
-            <Ionicons name="leaf" size={26} color={GOLD.main} style={{ transform: [{ rotate: '35deg' }] }} />
+          <Animated.View entering={ZoomIn.springify().damping(12).delay(100)} style={{ alignItems: 'center', paddingHorizontal: 8 }}>
+            <Ionicons name="sparkles" size={26} color={GOLD.light} style={{ marginBottom: -4 }} />
+            <GoldTitle text={`${t('ach.cards.congrats')}!`} size={height < 700 ? 40 : 50} />
           </Animated.View>
-          <Animated.View entering={FadeInDown.duration(700).delay(150)} style={{ alignItems: 'center', paddingHorizontal: 24 }}>
-            <Text style={styles.title} accessibilityRole="header">{t('ach.cards.congrats')}!</Text>
+          <Animated.View entering={FadeInDown.duration(700).delay(250)} style={{ alignItems: 'center', paddingHorizontal: 24 }}>
             <Text style={styles.sub}>
               {deck && deck !== 'none' && !deck.firstTime ? t('ach.cards.unlocked', { count: cards.length }) : t('ach.cards.earnedOf', { count: cards.length })}
             </Text>
-            <View style={styles.rule} />
+            <View style={styles.ornament}>
+              <View style={styles.ornLine} />
+              <Ionicons name="diamond" size={9} color={GOLD.main} />
+              <View style={styles.ornLine} />
+            </View>
           </Animated.View>
 
           <Animated.View entering={FadeIn.delay(350).duration(800)} style={{ flex: 1, justifyContent: 'center' }}>
@@ -120,8 +123,12 @@ export default function AchievementsGallery() {
           <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
             {cards.length > 1 && !last ? (
               <View style={styles.hint}>
-                <Ionicons name="swap-horizontal" size={18} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.hintText}>{t('ach.cards.hint')}</Text>
+                <View style={styles.hintLine} />
+                <View style={{ alignItems: 'center', gap: 2 }}>
+                  <Ionicons name="swap-horizontal" size={20} color={GOLD.light} />
+                  <Text style={styles.hintText}>{t('ach.cards.hint')}</Text>
+                </View>
+                <View style={styles.hintLine} />
               </View>
             ) : null}
             <Pressable onPress={next} accessibilityRole="button" style={({ pressed }) => [{ alignSelf: 'stretch', opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }]}>
@@ -142,10 +149,9 @@ const styles = StyleSheet.create({
   main: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 32 },
   close: { position: 'absolute', right: 16, zIndex: 5, width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.14)' },
-  crest: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 6 },
-  title: { marginTop: 4, fontFamily: 'PlayfairDisplay_800ExtraBold_Italic', fontSize: 48, lineHeight: 58, color: '#fff', textAlign: 'center', letterSpacing: 0.3, textShadowColor: GOLD.main, textShadowRadius: 18, textShadowOffset: { width: 0, height: 0 } },
-  sub: { marginTop: 2, fontFamily: typography.fontFamilySemiBold, fontSize: 12.5, letterSpacing: 1.4, textTransform: 'uppercase', color: 'rgba(255,255,255,0.62)', textAlign: 'center' },
-  rule: { marginTop: 10, width: 64, height: 2, borderRadius: 2, backgroundColor: GOLD.main },
+  sub: { marginTop: 2, fontFamily: typography.fontFamilySemiBold, fontSize: 15, color: '#FFE9B0', textAlign: 'center', textShadowColor: GOLD.main, textShadowRadius: 10, textShadowOffset: { width: 0, height: 0 } },
+  ornament: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  ornLine: { width: 70, height: 1.5, borderRadius: 1, backgroundColor: `${GOLD.main}99` },
   body: { fontFamily: typography.fontFamily, fontSize: 15, lineHeight: 22, textAlign: 'center', color: 'rgba(255,255,255,0.7)' },
   pill: { alignSelf: 'center', paddingHorizontal: 16, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
   pillText: { fontFamily: typography.fontFamilySemiBold, fontSize: 13, color: '#fff', fontVariant: ['tabular-nums'] },
@@ -155,8 +161,9 @@ const styles = StyleSheet.create({
   bar: { width: 140, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', overflow: 'hidden' },
   barFill: { height: 4, borderRadius: 2, backgroundColor: GOLD.main },
   footer: { paddingHorizontal: 24, gap: 12, alignItems: 'center' },
-  hint: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  hintText: { fontFamily: typography.fontFamily, fontSize: 13.5, color: 'rgba(255,255,255,0.7)' },
+  hint: { flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'stretch' },
+  hintLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
+  hintText: { fontFamily: typography.fontFamily, fontSize: 13, color: 'rgba(255,255,255,0.78)', textAlign: 'center' },
   cta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, height: 56, borderRadius: 28, shadowColor: GOLD.main, shadowOpacity: 0.55, shadowRadius: 18, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
   ctaText: { fontFamily: typography.fontFamilyBold, fontSize: 17, color: '#1a1204' },
   ghost: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 12, paddingHorizontal: 22, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', backgroundColor: 'rgba(255,255,255,0.08)' },

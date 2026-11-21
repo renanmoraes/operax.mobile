@@ -10,7 +10,7 @@ import { AchievementPin } from './AchievementPin';
 import { GOLD } from './CelebrationFx';
 import type { AchievementCard } from './achievements';
 
-const GAP = 16;
+const GAP = 4;
 
 const asDate = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00`);
 const longDate = (iso: string) => asDate(iso).toLocaleDateString(locale(), { day: '2-digit', month: 'long', year: 'numeric' });
@@ -27,7 +27,7 @@ export const useCardList = (): CardList => useRef<FlatList<AchievementCard>>(nul
  */
 export function AchievementCards({ won, list, onIndex, onTap }: { won: AchievementCard[]; list: CardList; onIndex?: (i: number) => void; onTap?: (i: number) => void }) {
   const { width, height } = useWindowDimensions();
-  const cardW = Math.min(310, width - 76);
+  const cardW = Math.min(280, Math.round(width * 0.62));
   const cardH = Math.min(450, Math.max(350, height * 0.5));
   const step = cardW + GAP;
   const side = (width - cardW) / 2;
@@ -42,6 +42,9 @@ export function AchievementCards({ won, list, onIndex, onTap }: { won: Achieveme
     },
   );
   return (
+    <View>
+      <View pointerEvents="none" style={[styles.ring, { width: cardW + 70, left: (width - cardW - 70) / 2 }]} />
+      <View pointerEvents="none" style={[styles.ring, styles.ring2, { width: cardW + 130, left: (width - cardW - 130) / 2 }]} />
     <Animated.FlatList
       ref={list}
       data={won}
@@ -58,6 +61,7 @@ export function AchievementCards({ won, list, onIndex, onTap }: { won: Achieveme
       getItemLayout={(_d, i) => ({ length: step, offset: step * i, index: i })}
       renderItem={({ item, index }) => <Card item={item} index={index} x={x} step={step} width={cardW} height={cardH} onTap={onTap} />}
     />
+    </View>
   );
 }
 
@@ -72,14 +76,15 @@ function Card({ item, index, x, step, width, height, onTap }: { item: Achievemen
   const anim = useAnimatedStyle(() => {
     const d = (x.value - index * step) / step; // 0 = no centro; -1 / 1 = vizinhas
     return {
-      opacity: interpolate(Math.abs(d), [0, 1, 2], [1, 0.55, 0.3], Extrapolation.CLAMP),
+      opacity: interpolate(Math.abs(d), [0, 1, 2], [1, 0.9, 0.5], Extrapolation.CLAMP),
       transform: [
         { scale: interpolate(Math.abs(d), [0, 1], [1, 0.86], Extrapolation.CLAMP) },
-        { rotateZ: `${interpolate(d, [-1, 0, 1], [5, 0, -5], Extrapolation.CLAMP)}deg` },
-        { translateY: interpolate(Math.abs(d), [0, 1], [0, 18], Extrapolation.CLAMP) },
+        { rotateZ: `${interpolate(d, [-1, 0, 1], [7, 0, -7], Extrapolation.CLAMP)}deg` },
+        { translateY: interpolate(Math.abs(d), [0, 1], [0, 26], Extrapolation.CLAMP) },
       ],
     };
   });
+  const dim = useAnimatedStyle(() => ({ opacity: interpolate(Math.abs((x.value - index * step) / step), [0, 1], [0, 0.3], Extrapolation.CLAMP) }));
   const shine = useAnimatedStyle(() => ({ transform: [{ translateX: interpolate(sweep.value, [0, 0.45, 1], [-width * 1.2, width * 1.2, width * 1.2]) }, { rotateZ: '18deg' }] }));
   const c = item.color;
   const date = item.exact ? longDate(item.earned_at!) : t('ach.cards.edition', { year: item.editionYear ?? 0 });
@@ -111,6 +116,7 @@ function Card({ item, index, x, step, width, height, onTap }: { item: Achievemen
           <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.55)" />
           <Text style={styles.date}>{date}</Text>
         </View>
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }, dim]} />
         <Animated.View pointerEvents="none" style={[styles.shine, shine]}>
           <LinearGradient colors={['#ffffff00', '#ffffff30', '#ffffff00']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
         </Animated.View>
@@ -120,6 +126,8 @@ function Card({ item, index, x, step, width, height, onTap }: { item: Achievemen
 }
 
 const styles = StyleSheet.create({
+  ring: { position: 'absolute', bottom: 8, height: 34, borderRadius: 999, borderWidth: 2, borderColor: `${GOLD.main}55` },
+  ring2: { bottom: 0, height: 46, borderWidth: 1, borderColor: `${GOLD.main}33` },
   card: { flex: 1, alignItems: 'center', paddingHorizontal: 18, paddingTop: 16, paddingBottom: 18, borderRadius: 32, borderWidth: 2, borderColor: GOLD.main, backgroundColor: '#0e0e10', overflow: 'hidden', shadowColor: GOLD.main, shadowOpacity: 0.6, shadowRadius: 28, shadowOffset: { width: 0, height: 8 }, elevation: 12 },
   top: { alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   when: { fontFamily: typography.fontFamilyBold, fontSize: 12, letterSpacing: 1.8, color: 'rgba(255,255,255,0.55)' },
