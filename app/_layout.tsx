@@ -6,6 +6,7 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
+import { PlayfairDisplay_700Bold_Italic, PlayfairDisplay_800ExtraBold_Italic } from '@expo-google-fonts/playfair-display';
 import { focusManager, QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { router, Stack, usePathname, type ErrorBoundaryProps } from 'expo-router';
@@ -69,6 +70,8 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    PlayfairDisplay_700Bold_Italic,
+    PlayfairDisplay_800ExtraBold_Italic,
   });
   const [queryClient] = useState(() => new QueryClient());
 

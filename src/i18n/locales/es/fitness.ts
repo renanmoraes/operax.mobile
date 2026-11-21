@@ -4,6 +4,12 @@ import type pt from '../pt/fitness';
 const fitness: Shape<typeof pt> = {
   ach: {
     cards: {
+      congrats: 'Felicitaciones',
+      earnedOf: 'Ya ganaste {{n}} de {{total}}',
+      seeAll: 'Ver todos y mi nivel',
+      fresh: 'Nuevo',
+      emptyTitle: 'Tus logros',
+      emptyBody: 'Tus primeros logros aparecerán aquí. ¡Entrena y vuelve!',
       title: 'Tus cartas',
       hint: 'Desliza para ver lo que ganaste, de la más reciente a la más antigua',
       empty: 'Tus primeros logros aparecerán aquí como cartas.',

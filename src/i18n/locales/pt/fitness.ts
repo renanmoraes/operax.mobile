@@ -2,6 +2,12 @@
 const fitness = {
   ach: {
     cards: {
+      congrats: 'Parabéns',
+      earnedOf: 'Você já conquistou {{n}} de {{total}}',
+      seeAll: 'Ver todas e meu nível',
+      fresh: 'Nova',
+      emptyTitle: 'Suas conquistas',
+      emptyBody: 'Suas primeiras conquistas aparecem aqui. Treine e volte!',
       title: 'Suas cartas',
       hint: 'Deslize para ver o que você ganhou, da mais recente para a mais antiga',
       empty: 'Suas primeiras conquistas vão virar cartas aqui.',

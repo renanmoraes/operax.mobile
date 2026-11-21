@@ -4,6 +4,7 @@
   "version": "1.1.0",
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/playfair-display": "^0.4.2",
     "@expo/vector-icons": "^15.0.2",
     "@kingstinct/react-native-healthkit": "^16.2.0",
     "@likashefqet/react-native-image-zoom": "^4.3.0",

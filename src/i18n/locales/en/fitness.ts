@@ -4,6 +4,12 @@ import type pt from '../pt/fitness';
 const fitness: Shape<typeof pt> = {
   ach: {
     cards: {
+      congrats: 'Congratulations',
+      earnedOf: 'You have earned {{n}} of {{total}}',
+      seeAll: 'See all and my level',
+      fresh: 'New',
+      emptyTitle: 'Your achievements',
+      emptyBody: 'Your first achievements will show up here. Train and come back!',
       title: 'Your cards',
       hint: 'Swipe to see what you earned, newest first',
       empty: 'Your first achievements will show up here as cards.',
