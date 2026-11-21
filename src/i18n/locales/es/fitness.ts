@@ -5,7 +5,9 @@ const fitness: Shape<typeof pt> = {
   ach: {
     cards: {
       congrats: 'Felicitaciones',
-      earnedOf: 'Ya ganaste {{n}} de {{total}}',
+      earnedOf_one: 'Ya ganaste {{count}} logro',
+      earnedOf_other: 'Ya ganaste {{count}} logros',
+      edition: 'Edición {{year}}',
       seeAll: 'Ver todos y mi nivel',
       fresh: 'Nuevo',
       emptyTitle: 'Tus logros',

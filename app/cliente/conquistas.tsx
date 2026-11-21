@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { typography } from '@/src/design-system/tokens';
 import { AchievementCards } from '@/src/features/fitness/AchievementCards';
-import { useAchievements, useMarkAchievementsSeen } from '@/src/features/fitness/achievements';
+import { expandEarnedCards, useAchievements, useMarkAchievementsSeen } from '@/src/features/fitness/achievements';
 
 /**
  * Conquistas: tela inteira preta, "Parabéns" no alto e as cartas das conquistas ganhas passando no meio
@@ -23,13 +23,13 @@ export default function AchievementsGallery() {
   const [idx, setIdx] = useState(0);
 
   const items = useMemo(() => data?.items ?? [], [data]);
-  const won = useMemo(() => items.filter((i) => i.earned_at).sort((a, b) => b.earned_at!.localeCompare(a.earned_at!)), [items]);
+  const won = useMemo(() => expandEarnedCards(items), [items]);
   const current = won[Math.min(idx, won.length - 1)];
 
   // As novas aparecem marcadas nesta tela; ao sair o backend passa a tratá-las como vistas.
   const fresh = useRef<string[]>([]);
   useEffect(() => {
-    fresh.current = won.filter((w) => w.new).map((w) => w.ref);
+    fresh.current = [...new Set(won.filter((w) => w.new).map((w) => w.ref))];
   }, [won]);
   const { mutate } = seen;
   useEffect(() => () => { if (fresh.current.length) mutate(fresh.current); }, [mutate]);
@@ -60,7 +60,7 @@ export default function AchievementsGallery() {
         <View style={[styles.main, { paddingTop: insets.top + 56 }]}>
           <Animated.View entering={FadeInDown.duration(700)} style={{ alignItems: 'center', paddingHorizontal: 24 }}>
             <Text style={styles.title} accessibilityRole="header">{t('ach.cards.congrats')}</Text>
-            <Text style={styles.sub}>{t('ach.cards.earnedOf', { n: won.length, total: items.length })}</Text>
+            <Text style={styles.sub}>{t('ach.cards.earnedOf', { count: won.length })}</Text>
           </Animated.View>
           <Animated.View entering={FadeIn.delay(300).duration(800)} style={{ flex: 1, justifyContent: 'center' }}>
             <AchievementCards won={won} onIndex={setIdx} />

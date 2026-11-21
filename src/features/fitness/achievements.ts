@@ -195,3 +195,35 @@ export function useEventCheckin() {
 
 /** Ingressos: o QR vale 10 minutos, então a lista se renova sozinha a cada 5. */
 export function useTickets() { return useQuery({ queryKey: [...KEY, 'tickets'], queryFn: fetchTickets, refetchInterval: 5 * 60_000 }); }
+
+/** Uma carta da galeria: cada edição ganha de uma conquista que se repete é uma carta própria. */
+export type AchievementCard = AchievementView & {
+  key: string;
+  /** Ano da edição (conquistas que se repetem); `null` nas de edição única. */
+  editionYear: number | null;
+  /** A data é a real do ganho (só a edição mais recente a tem); nas anteriores só se sabe o ano. */
+  exact: boolean;
+};
+
+/**
+ * Todas as conquistas ganhas, uma carta por edição, da mais recente para a mais antiga. A edição que tem data real
+ * (`earned_at`) usa ela e carrega o "nova"; as outras só têm o ano (ordenam pelo fim do ano). Conquista que se repete
+ * pode ter edições antigas ganhas mesmo sem a edição atual (`earned_at` vazio).
+ */
+export function expandEarnedCards(items: AchievementView[]): AchievementCard[] {
+  const cards: AchievementCard[] = [];
+  for (const it of items) {
+    const repeats = it.period.kind !== 'always';
+    if (!repeats || !it.earned_editions.length) {
+      if (it.earned_at) cards.push({ ...it, key: it.ref, editionYear: null, exact: true });
+      continue;
+    }
+    const exactYear = it.earned_at ? Number(it.earned_at.slice(0, 4)) : null;
+    const years = [...new Set([...it.earned_editions, ...(exactYear ? [exactYear] : [])])].sort((a, b) => b - a);
+    for (const y of years) {
+      const exact = y === exactYear;
+      cards.push({ ...it, key: `${it.ref}:${y}`, editionYear: y, exact, earned_at: exact ? it.earned_at : `${y}-12-31T12:00:00Z`, new: exact && it.new });
+    }
+  }
+  return cards.sort((a, b) => b.earned_at!.localeCompare(a.earned_at!));
+}

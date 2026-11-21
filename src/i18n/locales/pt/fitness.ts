@@ -3,7 +3,9 @@ const fitness = {
   ach: {
     cards: {
       congrats: 'Parabéns',
-      earnedOf: 'Você já conquistou {{n}} de {{total}}',
+      earnedOf_one: 'Você já conquistou {{count}} conquista',
+      earnedOf_other: 'Você já conquistou {{count}} conquistas',
+      edition: 'Edição {{year}}',
       seeAll: 'Ver todas e meu nível',
       fresh: 'Nova',
       emptyTitle: 'Suas conquistas',

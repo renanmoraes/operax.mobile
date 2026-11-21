@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { typography } from '@/src/design-system/tokens';
 import { locale } from '@/src/i18n';
 import { AchievementPin } from './AchievementPin';
-import type { AchievementView } from './achievements';
+import type { AchievementCard } from './achievements';
 
 const GAP = 16;
 
@@ -18,7 +18,7 @@ const monthYear = (iso: string) => asDate(iso).toLocaleDateString(locale(), { mo
  * da vez fica grande no centro, as vizinhas encolhem, inclinam e esmaecem. `onIndex` avisa qual está no centro.
  * `won` já vem ordenado.
  */
-export function AchievementCards({ won, onIndex }: { won: AchievementView[]; onIndex?: (i: number) => void }) {
+export function AchievementCards({ won, onIndex }: { won: AchievementCard[]; onIndex?: (i: number) => void }) {
   const { width, height } = useWindowDimensions();
   const cardW = Math.min(300, width - 84);
   const cardH = Math.min(430, Math.max(340, height * 0.5));
@@ -38,7 +38,7 @@ export function AchievementCards({ won, onIndex }: { won: AchievementView[]; onI
     <Animated.FlatList
       data={won}
       horizontal
-      keyExtractor={(i) => i.ref}
+      keyExtractor={(i) => i.key}
       showsHorizontalScrollIndicator={false}
       snapToInterval={step}
       decelerationRate="fast"
@@ -53,7 +53,7 @@ export function AchievementCards({ won, onIndex }: { won: AchievementView[]; onI
   );
 }
 
-function Card({ item, index, x, step, width, height }: { item: AchievementView; index: number; x: SharedValue<number>; step: number; width: number; height: number }) {
+function Card({ item, index, x, step, width, height }: { item: AchievementCard; index: number; x: SharedValue<number>; step: number; width: number; height: number }) {
   const { t } = useTranslation('fitness');
   const anim = useAnimatedStyle(() => {
     const d = (x.value - index * step) / step; // 0 = no centro; -1 / 1 = vizinhas
@@ -68,11 +68,11 @@ function Card({ item, index, x, step, width, height }: { item: AchievementView; 
   });
   const c = item.color;
   return (
-    <Animated.View style={[{ width, height }, anim]} accessible accessibilityLabel={t('ach.cards.a11y', { name: item.name, date: longDate(item.earned_at!) })}>
+    <Animated.View style={[{ width, height }, anim]} accessible accessibilityLabel={t('ach.cards.a11y', { name: item.name, date: item.exact ? longDate(item.earned_at!) : t('ach.cards.edition', { year: item.editionYear ?? 0 }) })}>
       <View style={[styles.card, { borderColor: `${c}88`, shadowColor: c }]}>
         <LinearGradient colors={[`${c}55`, `${c}12`, '#0b0c0f00']} start={{ x: 0.3, y: 0 }} end={{ x: 0.7, y: 0.75 }} style={StyleSheet.absoluteFill} />
         <View style={styles.top}>
-          <Text style={[styles.when, { color: c }]}>{monthYear(item.earned_at!)}</Text>
+          <Text style={[styles.when, { color: c }]}>{item.exact ? monthYear(item.earned_at!) : String(item.editionYear)}</Text>
           {item.new ? (
             <View style={[styles.fresh, { backgroundColor: c }]}>
               <Text style={styles.freshText}>{t('ach.cards.fresh').toUpperCase()}</Text>
@@ -85,7 +85,7 @@ function Card({ item, index, x, step, width, height }: { item: AchievementView; 
         </View>
         <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
         {item.description ? <Text style={styles.desc} numberOfLines={2}>{item.description}</Text> : null}
-        <Text style={styles.date}>{longDate(item.earned_at!)}</Text>
+        <Text style={styles.date}>{item.exact ? longDate(item.earned_at!) : t('ach.cards.edition', { year: item.editionYear ?? 0 })}</Text>
         <View style={[styles.xp, { backgroundColor: `${c}2b`, borderColor: `${c}66` }]}>
           <Text style={[styles.xpText, { color: c }]}>{t('ach.xp', { xp: item.xp.toLocaleString(locale()) })}</Text>
         </View>
