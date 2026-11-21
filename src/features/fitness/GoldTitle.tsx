@@ -3,7 +3,7 @@ import Svg, { Defs, Ellipse, LinearGradient as SvgGradient, Path, Stop } from 'r
 import { GOLD } from './CelebrationFx';
 
 /** Ramo de louro dourado: caule em arco com folhas dos dois lados, apontando para cima. `flip` espelha (lado direito). */
-function Laurel({ size = 62, flip = false }: { size?: number; flip?: boolean }) {
+export function Laurel({ size = 62, flip = false }: { size?: number; flip?: boolean }) {
   const P0 = [16, 76], P1 = [2, 38], P2 = [34, 4];
   const at = (t: number) => ({
     x: (1 - t) ** 2 * P0[0] + 2 * (1 - t) * t * P1[0] + t * t * P2[0],
@@ -30,7 +30,8 @@ function Laurel({ size = 62, flip = false }: { size?: number; flip?: boolean }) 
       {leaves.map((l, i) => (
         <Ellipse key={`b${i}`} cx={l.x + 8 * l.s} cy={l.y} rx={8 * l.s} ry={3.6 * l.s} fill="url(#lg)" opacity={0.92} transform={`rotate(${l.ang + 42} ${l.x} ${l.y})`} />
       ))}
-      <Ellipse cx={P2[0] + 1} cy={P2[1] - 2} rx={3} ry={6} fill="url(#lg)" transform={`rotate(${at(1).ang + 90 - 90} ${P2[0]} ${P2[1]})`} />
+      {/* folha da ponta, na direção do caule */}
+      <Ellipse cx={P2[0] + 4} cy={P2[1]} rx={5.5} ry={2.6} fill="url(#lg)" transform={`rotate(${at(1).ang} ${P2[0]} ${P2[1]})`} />
     </Svg>
   );
 }
@@ -43,23 +44,26 @@ const OUTLINE = [[-2.5, 0], [2.5, 0], [0, -2.5], [0, 2.5], [-2, -2], [2, 2], [-2
  */
 export function GoldTitle({ text, size = 50 }: { text: string; size?: number }) {
   const base = { fontFamily: 'LilitaOne_400Regular', fontSize: size, lineHeight: size * 1.18, textAlign: 'center' as const };
+  const laurel = Math.round(size * 1.08);
   return (
     <View style={styles.row} accessible accessibilityRole="header" accessibilityLabel={text}>
-      <Laurel />
+      <Laurel size={laurel} />
       <View style={{ marginHorizontal: 2 }} importantForAccessibility="no-hide-descendants">
-        <Text style={[base, styles.glow]}>{text}</Text>
+        {/* Todas as camadas têm a mesma largura e uma linha só; o deslocamento é por `transform`
+            (com `left`, a camada ficava mais estreita e o "!" caía para a linha de baixo). */}
+        <Text numberOfLines={1} style={[base, styles.glow]}>{text}</Text>
         {/* degrau 3D */}
-        <Text style={[base, styles.layer, { top: 5, color: '#7a3f06' }]}>{text}</Text>
+        <Text numberOfLines={1} style={[base, styles.layer, { color: '#7a3f06', transform: [{ translateY: 5 }] }]}>{text}</Text>
         {OUTLINE.map(([dx, dy], i) => (
-          <Text key={i} style={[base, styles.layer, { left: dx, top: dy, color: '#a85d0b' }]}>{text}</Text>
+          <Text key={i} numberOfLines={1} style={[base, styles.layer, { color: '#a85d0b', transform: [{ translateX: dx }, { translateY: dy }] }]}>{text}</Text>
         ))}
-        <Text style={[base, styles.layer, { color: '#FFD45A' }]}>{text}</Text>
+        <Text numberOfLines={1} style={[base, styles.layer, { color: '#FFD45A' }]}>{text}</Text>
         {/* reflexo claro na metade de cima */}
         <View style={[styles.layer, { height: size * 0.5, overflow: 'hidden' }]}>
-          <Text style={[base, { color: '#FFF3C4' }]}>{text}</Text>
+          <Text numberOfLines={1} style={[base, { color: '#FFF3C4' }]}>{text}</Text>
         </View>
       </View>
-      <Laurel flip />
+      <Laurel size={laurel} flip />
     </View>
   );
 }
