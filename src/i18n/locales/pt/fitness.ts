@@ -1,6 +1,13 @@
 /** Textos em português (base). As chaves valem para todos os idiomas. */
 const fitness = {
   ach: {
+    cards: {
+      title: 'Suas cartas',
+      hint: 'Deslize para ver o que você ganhou, da mais recente para a mais antiga',
+      empty: 'Suas primeiras conquistas vão virar cartas aqui.',
+      position: '{{n}} de {{total}}',
+      a11y: 'Conquista {{name}}, ganha em {{date}}',
+    },
     secretRequirement: 'Medalha secreta',
     backEveryYear: 'Volta todo ano em {{date}}',
     prize: 'Prêmio: {{prize}}',

@@ -10,6 +10,7 @@ import { BottomSheet } from '@/src/design-system/BottomSheet';
 import { colors, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { locale } from '@/src/i18n';
 import { useActiveCompanyName } from '@/src/features/client/useClientData';
+import { AchievementCards } from '@/src/features/fitness/AchievementCards';
 import { AchievementPin } from '@/src/features/fitness/AchievementPin';
 import { levelView, useAchievements, useMarkAchievementsSeen, type AchievementView } from '@/src/features/fitness/achievements';
 
@@ -90,6 +91,11 @@ export default function AchievementsScreen() {
         </Rise>
 
         <Rise index={1}>
+          <SectionHeader title={t('ach.cards.title')} action={t('ach.count', { n: earned, total: items.length })} />
+          <AchievementCards items={items} onOpen={setOpen} />
+        </Rise>
+
+        <Rise index={2}>
           <View style={styles.actions}>
             <PressableScale onPress={() => router.push('/cliente/checkin')} accessibilityRole="button" accessibilityLabel={t('ach.checkin')} style={styles.action}>
               <View style={[styles.actionIcon, { backgroundColor: colors.primaryWash }]}><Ionicons name="qr-code-outline" size={20} color={colors.primary} /></View>

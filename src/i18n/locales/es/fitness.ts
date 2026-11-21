@@ -3,6 +3,13 @@ import type pt from '../pt/fitness';
 
 const fitness: Shape<typeof pt> = {
   ach: {
+    cards: {
+      title: 'Tus cartas',
+      hint: 'Desliza para ver lo que ganaste, de la más reciente a la más antigua',
+      empty: 'Tus primeros logros aparecerán aquí como cartas.',
+      position: '{{n}} de {{total}}',
+      a11y: 'Logro {{name}}, ganado el {{date}}',
+    },
     secretRequirement: 'Logro secreto',
     backEveryYear: 'Vuelve cada año el {{date}}',
     prize: 'Premio: {{prize}}',
