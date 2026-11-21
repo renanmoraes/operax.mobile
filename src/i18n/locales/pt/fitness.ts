@@ -8,8 +8,6 @@ const fitness = {
       unlocked_one: 'Você desbloqueou uma nova conquista',
       unlocked_other: 'Você desbloqueou novas conquistas',
       congrats: 'Parabéns',
-      earnedOf_one: 'Você já conquistou {{count}} conquista',
-      earnedOf_other: 'Você já conquistou {{count}} conquistas',
       edition: 'Edição {{year}}',
       seeAll: 'Ver todas e meu nível',
       fresh: 'Nova',

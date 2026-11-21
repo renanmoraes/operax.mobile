@@ -33,7 +33,7 @@ export default function AchievementsGallery() {
   const list = useCardList();
   const [idx, setIdx] = useState(0);
   /** Cartas desta comemoração, fixadas na primeira vez (marcar como vistas não pode mexer nelas no meio). */
-  const [deck, setDeck] = useState<{ cards: AchievementCard[]; firstTime: boolean; total: number } | 'none' | null>(null);
+  const [deck, setDeck] = useState<{ cards: AchievementCard[] } | 'none' | null>(null);
 
   useEffect(() => {
     if (!data || deck) return;
@@ -49,7 +49,7 @@ export default function AchievementsGallery() {
         setDeck('none');
         return;
       }
-      setDeck({ cards, firstTime: first, total: data.items.length });
+      setDeck({ cards });
       // Vista agora: sair e voltar não mostra de novo (só conquista nova).
       if (key) void kvSet(key, true);
       const refs = [...new Set(fresh.map((f) => f.ref))];
@@ -99,7 +99,7 @@ export default function AchievementsGallery() {
           </Animated.View>
           <Animated.View entering={FadeInDown.duration(700).delay(250)} style={{ alignItems: 'center', paddingHorizontal: 24 }}>
             <Text style={styles.sub}>
-              {deck && deck !== 'none' && !deck.firstTime ? t('ach.cards.unlocked', { count: cards.length }) : t('ach.cards.earnedOf', { count: cards.length })}
+              {t('ach.cards.unlocked', { count: cards.length })}
             </Text>
             <View style={styles.ornament}>
               <View style={styles.ornLine} />

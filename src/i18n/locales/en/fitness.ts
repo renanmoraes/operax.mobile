@@ -10,8 +10,6 @@ const fitness: Shape<typeof pt> = {
       unlocked_one: 'You unlocked a new achievement',
       unlocked_other: 'You unlocked new achievements',
       congrats: 'Congratulations',
-      earnedOf_one: 'You have earned {{count}} achievement',
-      earnedOf_other: 'You have earned {{count}} achievements',
       edition: 'Edition {{year}}',
       seeAll: 'See all and my level',
       fresh: 'New',
