@@ -17,7 +17,7 @@ export async function playAchievementChime(): Promise<void> {
     await setAudioModeAsync({ playsInSilentMode: false, interruptionMode: 'mixWithOthers' });
     stopAchievementChime();
     const player = createAudioPlayer(CHIME);
-    player.volume = 0.85;
+    player.volume = 0.55;
     player.play();
     current = player;
   } catch {

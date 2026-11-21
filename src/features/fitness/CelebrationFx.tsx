@@ -2,14 +2,27 @@ import { useEffect, useMemo } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Path, RadialGradient, Stop } from 'react-native-svg';
+import { colors } from '@/src/design-system/tokens';
 
 /**
- * Efeitos de comemoração nas cores douradas: confete caindo, explosão de confete, brilhos piscando e o clarão com
+ * Efeitos da comemoração de conquistas: confete caindo, explosão de confete, brilhos piscando e o clarão com
  * raios atrás da carta. Todos param com "reduzir movimento" ligado no aparelho.
+ *
+ * Cores: as da marca (azul-marinho, azul e ciano do app), com o dourado só como destaque do prêmio.
  */
 
-export const GOLD = { light: '#FFE08A', main: '#F5B63A', deep: '#C98A12' };
-const COLORS = [GOLD.light, GOLD.main, '#FFF6D6', '#FFFFFF', GOLD.deep, '#FFCF5C'];
+/** Dourado do prêmio, puxado para o champanhe (menos laranja): moldura da carta, louros, moeda e destaques. */
+export const GOLD = { light: '#FFEBB0', main: '#F0C050', deep: '#B8872A' };
+/** Azuis da marca usados na comemoração. */
+export const FX = {
+  navy: colors.chromeNavy,
+  navySoft: colors.chromeNavySoft,
+  blue: colors.primary,
+  /** O azul da marca clareado, para brilhar sobre o fundo escuro. */
+  sky: '#6FA0FF',
+  cyan: colors.cyan,
+} as const;
+const COLORS = ['#FFFFFF', FX.cyan, FX.sky, GOLD.main, '#DCE8FF', GOLD.light];
 
 /** Número "aleatório" fixo por posição (0–1): os mesmos pedaços a cada abertura, sem `Math.random` na renderização. */
 const rnd = (i: number, salt: number) => {
@@ -21,7 +34,7 @@ function Piece({ i, h, w }: { i: number; h: number; w: number }) {
   const t = useSharedValue(0);
   const spin = useSharedValue(0);
   const cfg = useMemo(() => ({
-    x: rnd(i, 1) * w, size: 8 + rnd(i, 2) * 8, dur: 4200 + rnd(i, 3) * 4200, delay: rnd(i, 4) * 4200,
+    x: rnd(i, 1) * w, size: 6 + rnd(i, 2) * 7, dur: 4200 + rnd(i, 3) * 4200, delay: rnd(i, 4) * 4200,
     sway: 1 + Math.floor(rnd(i, 5) * 3), amp: 10 + rnd(i, 6) * 22, color: COLORS[i % COLORS.length], round: rnd(i, 7) > 0.8,
   }), [i, w]);
   useEffect(() => {
@@ -44,7 +57,7 @@ function Piece({ i, h, w }: { i: number; h: number; w: number }) {
   );
 }
 
-export function Confetti({ count = 38 }: { count?: number }) {
+export function Confetti({ count = 28 }: { count?: number }) {
   const { width, height } = useWindowDimensions();
   const reduce = useReducedMotion();
   if (reduce) return null;
@@ -88,7 +101,7 @@ function BurstPiece({ i, delay }: { i: number; delay: number }) {
     // para cima e para os lados (o que sobe cai depois, pela gravidade)
     const angle = -Math.PI * (0.08 + rnd(i, 21) * 0.84);
     const dist = 110 + rnd(i, 22) * 190;
-    return { dx: Math.cos(angle) * dist, dy: Math.sin(angle) * dist, size: 7 + rnd(i, 23) * 8, spin: 2 + rnd(i, 24) * 4, color: COLORS[i % COLORS.length], round: rnd(i, 25) > 0.75 };
+    return { dx: Math.cos(angle) * dist, dy: Math.sin(angle) * dist, size: 6 + rnd(i, 23) * 7, spin: 2 + rnd(i, 24) * 4, color: COLORS[i % COLORS.length], round: rnd(i, 25) > 0.75 };
   }, [i]);
   useEffect(() => {
     t.value = withDelay(delay, withTiming(1, { duration: 1500 + rnd(i, 26) * 500, easing: Easing.out(Easing.quad) }));
@@ -106,7 +119,7 @@ function BurstPiece({ i, delay }: { i: number; delay: number }) {
 }
 
 /** Explosão de confete que sai de um ponto (uma vez só), na hora em que a carta aparece. */
-export function Burst({ x, y, count = 30, delay = 300 }: { x: number; y: number; count?: number; delay?: number }) {
+export function Burst({ x, y, count = 24, delay = 300 }: { x: number; y: number; count?: number; delay?: number }) {
   const reduce = useReducedMotion();
   if (reduce) return null;
   return (
@@ -117,7 +130,7 @@ export function Burst({ x, y, count = 30, delay = 300 }: { x: number; y: number;
 }
 
 /**
- * Brilho atrás da carta da frente: raios dourados girando devagar e um clarão que pulsa. `size` é o lado do
+ * Brilho atrás da carta da frente: raios azuis da marca girando devagar e um clarão que pulsa. `size` é o lado do
  * quadro (os raios somem na borda), centrado em (`cx`, `cy`).
  */
 export function DeckAura({ cx, cy, size }: { cx: number; cy: number; size: number }) {
@@ -147,9 +160,9 @@ export function DeckAura({ cx, cy, size }: { cx: number; cy: number; size: numbe
         <Svg width={size} height={size}>
           <Defs>
             <RadialGradient id="auraRays" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor={GOLD.light} stopOpacity={0.42} />
-              <Stop offset="0.55" stopColor={GOLD.main} stopOpacity={0.13} />
-              <Stop offset="1" stopColor={GOLD.main} stopOpacity={0} />
+              <Stop offset="0" stopColor={FX.cyan} stopOpacity={0.3} />
+              <Stop offset="0.55" stopColor={FX.sky} stopOpacity={0.1} />
+              <Stop offset="1" stopColor={FX.blue} stopOpacity={0} />
             </RadialGradient>
           </Defs>
           <Path d={rays} fill="url(#auraRays)" />
@@ -159,10 +172,10 @@ export function DeckAura({ cx, cy, size }: { cx: number; cy: number; size: numbe
         <Svg width={size} height={size}>
           <Defs>
             <RadialGradient id="auraGlow" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor="#FFF3C4" stopOpacity={0.6} />
-              <Stop offset="0.4" stopColor={GOLD.main} stopOpacity={0.3} />
-              <Stop offset="0.75" stopColor={GOLD.deep} stopOpacity={0.08} />
-              <Stop offset="1" stopColor={GOLD.deep} stopOpacity={0} />
+              <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.5} />
+              <Stop offset="0.35" stopColor={FX.cyan} stopOpacity={0.28} />
+              <Stop offset="0.7" stopColor={FX.blue} stopOpacity={0.14} />
+              <Stop offset="1" stopColor={FX.blue} stopOpacity={0} />
             </RadialGradient>
           </Defs>
           <Circle cx={c} cy={c} r={c} fill="url(#auraGlow)" />

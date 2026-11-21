@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Polygon } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 import { AchievementCardFace, CARD_RADIUS, longDate } from './AchievementCardFace';
-import { Burst, DeckAura, GOLD } from './CelebrationFx';
+import { Burst, DeckAura, FX } from './CelebrationFx';
 import { cardPose, dragProgress, settleTarget, sideOf, type DeckDims } from './deckMath';
 import type { AchievementCard } from './achievements';
 
@@ -61,10 +61,10 @@ const DeckCard = memo(function DeckCard({ card, k, w, h, left, top, dims, sv }: 
         </Animated.View>
       </Animated.View>
       {/* Escurece quem espera a vez: a carta e a ponta do selo que passa da moldura. */}
-      <Animated.View style={[styles.clip, { backgroundColor: '#000' }, dim]} />
+      <Animated.View style={[styles.clip, { backgroundColor: FX.navy }, dim]} />
       <Animated.View style={[{ position: 'absolute', top: -13, left: w / 2 - gemW / 2, width: gemW, height: 13, overflow: 'hidden' }, dim]}>
         <Svg width={gemW} height={gemW * 0.85} viewBox="0 0 40 34">
-          <Polygon points="10,1 30,1 39,17 30,33 10,33 1,17" fill="#000" />
+          <Polygon points="10,1 30,1 39,17 30,33 10,33 1,17" fill={FX.navy} />
         </Svg>
       </Animated.View>
     </Animated.View>
@@ -223,6 +223,6 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   clip: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderRadius: CARD_RADIUS, overflow: 'hidden' },
   shine: { position: 'absolute', top: -40, bottom: -40, width: 80 },
-  ring: { position: 'absolute', height: 36, borderRadius: 999, borderWidth: 2, borderColor: `${GOLD.main}66` },
-  ring2: { height: 48, borderWidth: 1, borderColor: `${GOLD.main}38` },
+  ring: { position: 'absolute', height: 36, borderRadius: 999, borderWidth: 1.5, borderColor: `${FX.cyan}55` },
+  ring2: { height: 48, borderWidth: 1, borderColor: `${FX.cyan}2b` },
 });

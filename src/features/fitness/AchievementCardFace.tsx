@@ -4,16 +4,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Defs, LinearGradient as SvgLinear, Path, Polygon, RadialGradient, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
-import { typography } from '@/src/design-system/tokens';
+import { colors, typography } from '@/src/design-system/tokens';
 import { locale } from '@/src/i18n';
 import { AchievementPin } from './AchievementPin';
-import { GOLD } from './CelebrationFx';
-import { Laurel } from './GoldTitle';
+import { FX, GOLD } from './CelebrationFx';
+import { Laurel } from './CelebrationTitle';
 import type { AchievementCard } from './achievements';
 
-/** Canto da carta e espessura da moldura dourada. */
+/** Canto da carta e espessura da moldura dourada (fina, como um filete de metal). */
 export const CARD_RADIUS = 26;
-const FRAME = 5;
+const FRAME = 3;
+/** Marrom-dourado dos contornos sobre o dourado (moeda e selo). */
+const GOLD_INK = '#7A5A14';
 
 const asDate = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00`);
 /** "08 NOV 2026" (sem os "de" e o ponto do português). */
@@ -27,14 +29,14 @@ function Gem({ width }: { width: number }) {
     <Svg width={width} height={width * 0.85} viewBox="0 0 40 34">
       <Defs>
         <SvgLinear id="gemGold" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor="#FFF1B8" />
+          <Stop offset="0" stopColor="#FFF6D6" />
           <Stop offset="0.5" stopColor={GOLD.main} />
-          <Stop offset="1" stopColor="#9a6408" />
+          <Stop offset="1" stopColor={GOLD.deep} />
         </SvgLinear>
       </Defs>
-      <Polygon points="10,1 30,1 39,17 30,33 10,33 1,17" fill="url(#gemGold)" stroke="#6b3f05" strokeWidth={1.4} strokeLinejoin="round" />
-      <Polygon points="12.5,5.5 27.5,5.5 34,17 27.5,28.5 12.5,28.5 6,17" fill="#2a1905" />
-      <Path d="M12 0C12 7 17 12 24 12C17 12 12 17 12 24C12 17 7 12 0 12C7 12 12 7 12 0Z" fill="#FFE9B0" transform="translate(12 9) scale(0.667)" />
+      <Polygon points="10,1 30,1 39,17 30,33 10,33 1,17" fill="url(#gemGold)" stroke={GOLD_INK} strokeWidth={1.2} strokeLinejoin="round" />
+      <Polygon points="12.5,5.5 27.5,5.5 34,17 27.5,28.5 12.5,28.5 6,17" fill={FX.navy} />
+      <Path d="M12 0C12 7 17 12 24 12C17 12 12 17 12 24C12 17 7 12 0 12C7 12 12 7 12 0Z" fill="#FFFFFF" transform="translate(12 9) scale(0.667)" />
     </Svg>
   );
 }
@@ -51,19 +53,19 @@ function Coin({ size }: { size: number }) {
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Defs>
         <SvgLinear id="coinGold" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor="#FFF1B8" />
+          <Stop offset="0" stopColor="#FFF6D6" />
           <Stop offset="0.55" stopColor={GOLD.main} />
           <Stop offset="1" stopColor={GOLD.deep} />
         </SvgLinear>
       </Defs>
-      <Circle cx={12} cy={12} r={11} fill="url(#coinGold)" stroke="#8a5a0a" strokeWidth={1} />
-      <Circle cx={12} cy={12} r={8.2} fill="none" stroke="#FFF6D6" strokeWidth={0.8} opacity={0.7} />
-      <Polygon points={STAR} fill="#8a5a0a" />
+      <Circle cx={12} cy={12} r={11} fill="url(#coinGold)" stroke={GOLD_INK} strokeWidth={1} />
+      <Circle cx={12} cy={12} r={8.2} fill="none" stroke="#FFFFFF" strokeWidth={0.8} opacity={0.7} />
+      <Polygon points={STAR} fill={GOLD_INK} />
     </Svg>
   );
 }
 
-/** Raios parados atrás do selo da conquista e um clarão na cor dela. */
+/** Raios claros e parados atrás do selo da conquista, com um clarão na cor dela. */
 function ArtGlow({ size, color }: { size: number; color: string }) {
   const c = size / 2;
   const rays = useMemo(() => {
@@ -80,13 +82,13 @@ function ArtGlow({ size, color }: { size: number; color: string }) {
     <Svg width={size} height={size}>
       <Defs>
         <RadialGradient id="cardRays" cx="50%" cy="50%" r="50%">
-          <Stop offset="0" stopColor={GOLD.light} stopOpacity={0.42} />
-          <Stop offset="0.6" stopColor={GOLD.main} stopOpacity={0.12} />
-          <Stop offset="1" stopColor={GOLD.main} stopOpacity={0} />
+          <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.26} />
+          <Stop offset="0.6" stopColor={FX.cyan} stopOpacity={0.08} />
+          <Stop offset="1" stopColor={FX.cyan} stopOpacity={0} />
         </RadialGradient>
         <RadialGradient id={glowId} cx="50%" cy="50%" r="50%">
-          <Stop offset="0" stopColor={color} stopOpacity={0.6} />
-          <Stop offset="0.5" stopColor={color} stopOpacity={0.22} />
+          <Stop offset="0" stopColor={color} stopOpacity={0.5} />
+          <Stop offset="0.5" stopColor={color} stopOpacity={0.18} />
           <Stop offset="1" stopColor={color} stopOpacity={0} />
         </RadialGradient>
       </Defs>
@@ -97,8 +99,9 @@ function ArtGlow({ size, color }: { size: number; color: string }) {
 }
 
 /**
- * A carta de uma conquista: moldura dourada com selo no alto, a arte (raios, louros e o selo da conquista) em cima
- * e, embaixo, um painel claro com o nome, a descrição e o XP. Só desenha; quem move é o baralho.
+ * A carta de uma conquista, nas cores do app: filete dourado em volta e selo no alto, a arte em azul da marca
+ * (raios, louros e o selo da conquista num medalhão branco) e, embaixo, um painel branco com o nome, a descrição
+ * e o XP. Só desenha; quem move é o baralho.
  */
 export const AchievementCardFace = memo(function AchievementCardFace({ card, width, height }: { card: AchievementCard; width: number; height: number }) {
   const { t } = useTranslation('fitness');
@@ -110,10 +113,10 @@ export const AchievementCardFace = memo(function AchievementCardFace({ card, wid
   return (
     <View style={{ width, height }}>
       <View style={styles.frame}>
-        <LinearGradient colors={['#FFF1B8', GOLD.main, '#A86C0A', GOLD.main, GOLD.light]} locations={[0, 0.28, 0.55, 0.8, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: CARD_RADIUS }]} />
+        <LinearGradient colors={['#FFF6D6', GOLD.main, '#9C7422', GOLD.main, GOLD.light]} locations={[0, 0.28, 0.55, 0.8, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: CARD_RADIUS }]} />
         <View style={styles.inner}>
           <View style={styles.art}>
-            <LinearGradient colors={['#5c3b0a', '#2b1b06', '#150e04']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={[FX.blue, '#12296b', '#0a1533']} locations={[0, 0.55, 1]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFill} />
             <View style={[StyleSheet.absoluteFill, styles.center, { top: 14 * u }]}>
               <ArtGlow size={Math.round(width * 1.2)} color={card.color} />
             </View>
@@ -121,14 +124,14 @@ export const AchievementCardFace = memo(function AchievementCardFace({ card, wid
               <Text maxFontSizeMultiplier={1.1} style={styles.when}>{when}</Text>
               {card.new ? (
                 <View style={styles.fresh}>
-                  <Ionicons name="sparkles" size={10} color="#2a1905" />
+                  <Ionicons name="sparkles" size={10} color={FX.navy} />
                   <Text maxFontSizeMultiplier={1.1} style={styles.freshText}>{t('ach.cards.fresh').toUpperCase()}</Text>
                 </View>
               ) : null}
             </View>
             <View style={[styles.pinRow, { paddingTop: 10 * u }]}>
               <View style={{ marginRight: -pin * 0.14, marginTop: pin * 0.22 }}><Laurel size={laurel} /></View>
-              {/* Medalhão claro atrás do selo: a cor da conquista aparece bem sobre o fundo escuro. */}
+              {/* Medalhão branco atrás do selo: a cor da conquista aparece bem sobre o azul. */}
               <View style={[styles.medal, { width: pin + 10, height: pin + 10, borderRadius: pin }]}>
                 <AchievementPin item={card} size={pin} />
               </View>
@@ -137,16 +140,16 @@ export const AchievementCardFace = memo(function AchievementCardFace({ card, wid
           </View>
 
           <View style={styles.panel}>
-            <LinearGradient colors={['#FFF9E8', '#F7E4B8']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={['#FFFFFF', '#EEF3FF']} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFill} />
             <Svg width={inner} height={18} viewBox={`0 0 ${inner} 18`} style={styles.arc}>
-              <Path d={`M0 18 Q ${inner / 2} -10 ${inner} 18 Z`} fill="#FFF9E8" />
+              <Path d={`M0 18 Q ${inner / 2} -10 ${inner} 18 Z`} fill="#FFFFFF" />
             </Svg>
-            <Text maxFontSizeMultiplier={1.15} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.name, { fontSize: Math.max(19, 23 * u), lineHeight: Math.max(22, 26 * u) }]}>
+            <Text maxFontSizeMultiplier={1.15} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.name, { fontSize: Math.max(18, 21 * u), lineHeight: Math.max(22, 25 * u) }]}>
               {card.name}
             </Text>
             <View style={styles.ornament}>
               <View style={styles.ornLine} />
-              <Ionicons name="diamond" size={7} color={GOLD.deep} />
+              <Ionicons name="diamond" size={7} color={GOLD.main} />
               <View style={styles.ornLine} />
             </View>
             {card.description ? (
@@ -170,24 +173,24 @@ export const AchievementCardFace = memo(function AchievementCardFace({ card, wid
 });
 
 const styles = StyleSheet.create({
-  frame: { flex: 1, borderRadius: CARD_RADIUS, backgroundColor: GOLD.deep, shadowColor: GOLD.main, shadowOpacity: 0.6, shadowRadius: 24, shadowOffset: { width: 0, height: 6 }, elevation: 10 },
-  inner: { position: 'absolute', left: FRAME, right: FRAME, top: FRAME, bottom: FRAME, borderRadius: CARD_RADIUS - FRAME, overflow: 'hidden', backgroundColor: '#150e04' },
+  frame: { flex: 1, borderRadius: CARD_RADIUS, backgroundColor: GOLD.deep, shadowColor: FX.cyan, shadowOpacity: 0.45, shadowRadius: 26, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
+  inner: { position: 'absolute', left: FRAME, right: FRAME, top: FRAME, bottom: FRAME, borderRadius: CARD_RADIUS - FRAME, overflow: 'hidden', backgroundColor: '#0a1533' },
   center: { alignItems: 'center', justifyContent: 'center' },
   art: { flex: 54, overflow: 'hidden' },
-  artTop: { position: 'absolute', left: 12, right: 12, top: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 2 },
-  when: { fontFamily: typography.fontFamilyBold, fontSize: 10.5, letterSpacing: 1.3, color: 'rgba(255,233,176,0.8)' },
+  artTop: { position: 'absolute', left: 14, right: 14, top: 13, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 2 },
+  when: { fontFamily: typography.fontFamilySemiBold, fontSize: 10.5, letterSpacing: 1.4, color: 'rgba(255,255,255,0.78)' },
   fresh: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: GOLD.main },
-  freshText: { fontFamily: typography.fontFamilyBold, fontSize: 9.5, letterSpacing: 0.9, color: '#2a1905' },
-  medal: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF6DC', borderWidth: 2, borderColor: GOLD.main, shadowColor: GOLD.light, shadowOpacity: 0.9, shadowRadius: 14, shadowOffset: { width: 0, height: 0 } },
+  freshText: { fontFamily: typography.fontFamilyBold, fontSize: 9.5, letterSpacing: 0.9, color: FX.navy },
+  medal: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: GOLD.main, shadowColor: FX.cyan, shadowOpacity: 0.8, shadowRadius: 16, shadowOffset: { width: 0, height: 0 } },
   pinRow: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  panel: { flex: 46, alignItems: 'center', paddingHorizontal: 14, paddingBottom: 12 },
+  panel: { flex: 46, alignItems: 'center', paddingHorizontal: 16, paddingBottom: 13 },
   arc: { position: 'absolute', top: -17, left: 0 },
-  name: { marginTop: 2, fontFamily: 'LilitaOne_400Regular', color: '#3a1f04', textAlign: 'center' },
-  ornament: { marginTop: 5, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  ornLine: { width: 34, height: 1.5, borderRadius: 1, backgroundColor: `${GOLD.deep}88` },
-  desc: { marginTop: 5, fontFamily: typography.fontFamily, color: '#6b4a1c', textAlign: 'center' },
-  xp: { marginTop: 'auto', flexDirection: 'row', alignItems: 'center', gap: 7, height: 34, paddingLeft: 7, paddingRight: 15, borderRadius: 17, backgroundColor: '#2a1905', borderWidth: 1.5, borderColor: GOLD.main },
-  xpText: { fontFamily: typography.fontFamilyBold, fontSize: 14, color: '#FFD866' },
-  hairline: { position: 'absolute', left: 3, right: 3, top: 3, bottom: 3, borderRadius: CARD_RADIUS - FRAME - 3, borderWidth: 1, borderColor: 'rgba(255,241,184,0.4)' },
+  name: { marginTop: 2, fontFamily: typography.fontFamilyDisplay, letterSpacing: -0.5, color: colors.text, textAlign: 'center' },
+  ornament: { marginTop: 6, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  ornLine: { width: 30, height: 1.5, borderRadius: 1, backgroundColor: colors.track },
+  desc: { marginTop: 6, fontFamily: typography.fontFamily, color: colors.textSoft, textAlign: 'center' },
+  xp: { marginTop: 'auto', flexDirection: 'row', alignItems: 'center', gap: 7, height: 34, paddingLeft: 6, paddingRight: 15, borderRadius: 17, backgroundColor: colors.text },
+  xpText: { fontFamily: typography.fontFamilyBold, fontSize: 14, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
+  hairline: { position: 'absolute', left: 3, right: 3, top: 3, bottom: 3, borderRadius: CARD_RADIUS - FRAME - 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
   gem: { position: 'absolute', top: -13 },
 });

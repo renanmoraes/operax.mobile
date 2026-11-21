@@ -5,8 +5,8 @@ import {
   Inter_500Medium,
   Inter_600SemiBold,
   Inter_700Bold,
+  Inter_800ExtraBold_Italic,
 } from '@expo-google-fonts/inter';
-import { LilitaOne_400Regular } from '@expo-google-fonts/lilita-one';
 import { focusManager, QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { router, Stack, usePathname, type ErrorBoundaryProps } from 'expo-router';
@@ -70,7 +70,7 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
-    LilitaOne_400Regular,
+    Inter_800ExtraBold_Italic,
   });
   const [queryClient] = useState(() => new QueryClient());
 
