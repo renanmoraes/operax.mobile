@@ -9,7 +9,24 @@ export type SessionDraft = {
   idx: number;
   logs: SetLog[][];
   elapsed: number;
+  /** true depois que tocou "Iniciar exercício" para aquele índice; reseta pra false ao trocar de exercício. */
+  started: boolean[];
+  /** Por exercício; só conta depois do toque em "Iniciar exercício" (ver sessionStatus.ts / spec). */
+  activeSeconds: number[];
+  /** Por exercício: descanso entre séries + transição até o "Iniciar exercício". */
+  restSeconds: number[];
 };
+
+/** Drafts salvos antes dos campos de tempo ativo/descanso não os têm — preenche com um padrão razoável. */
+export function migrateDraft<T extends SessionDraft>(d: T): T {
+  if (d.started && d.activeSeconds && d.restSeconds) return d;
+  return {
+    ...d,
+    started: d.started ?? d.logs.map((l) => l.length > 0),
+    activeSeconds: d.activeSeconds ?? d.logs.map(() => 0),
+    restSeconds: d.restSeconds ?? d.logs.map(() => 0),
+  };
+}
 
 /** `resultKey`: chave de envio deste treino terminado (a mesma em toda tentativa de salvar). */
 export type FinishedSession = SessionDraft & { finishedAt: string; resultKey?: string };
@@ -27,7 +44,7 @@ export async function loadDraft(workoutId: string): Promise<SessionDraft | null>
   if (!key) return null;
   const draft = await kvGet<SessionDraft>(key);
   // Trocou de conta durante a leitura: o rascunho é de quem pediu, não da conta que entrou.
-  return fitnessOwner() === who ? draft : null;
+  return fitnessOwner() === who ? (draft ? migrateDraft(draft) : null) : null;
 }
 
 export async function saveDraft(d: SessionDraft) {
@@ -72,8 +89,9 @@ export async function loadFinishedSession(): Promise<FinishedSession | null> {
   if (!key) return null;
   const session = await kvGet<FinishedSession>(key);
   if (fitnessOwner() !== who) return null;
-  finished = session ? { who, session } : null;
-  return session;
+  const migrated = session ? migrateDraft(session) : null;
+  finished = migrated ? { who, session: migrated } : null;
+  return migrated;
 }
 
 /**

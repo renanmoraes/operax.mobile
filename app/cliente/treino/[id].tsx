@@ -1,7 +1,8 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import i18n from '@/src/i18n';
 import { useTranslation } from 'react-i18next';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, Button, Card, HeroCard, IconButton, IconTile, Muted, Num, PressableScale, Rise, Screen, SectionHeader, StatStrip, TopBar } from '@/src/design-system/ui';
@@ -16,7 +17,9 @@ import { clientDataMode } from '@/src/features/client/dataMode';
 import { getAccessToken } from '@/src/shared/api/token-store';
 import { API_URL } from '@/src/shared/config';
 import type { FitnessWorkoutView } from '@/src/features/fitness/types';
-import { formatKg, weekdayFull } from '@/src/shared/format';
+import { loadDraft, type SessionDraft } from '@/src/features/fitness/sessionStore';
+import { exerciseStatus } from '@/src/features/fitness/sessionStatus';
+import { formatClock, formatKg, weekdayFull } from '@/src/shared/format';
 import { useNow } from '@/src/shared/useNow';
 
 export default function WorkoutSheetScreen() {
@@ -36,6 +39,19 @@ function WorkoutSheet({ workout }: { workout: FitnessWorkoutView }) {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const rows = flattenWorkout(workout);
+  // A ficha continua montada por baixo da sessão; recarrega o draft a cada vez que volta ao foco.
+  const [draft, setDraft] = useState<SessionDraft | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      void loadDraft(workout.id).then((d) => {
+        if (active) setDraft(d);
+      });
+      return () => {
+        active = false;
+      };
+    }, [workout.id]),
+  );
   const hasStrength = rows.length > 0;
   const today = new Date().getDay();
   const isToday = workout.schedule.weekdays?.includes(today);
@@ -86,6 +102,13 @@ function WorkoutSheet({ workout }: { workout: FitnessWorkoutView }) {
 
         <Rise style={{ marginTop: 4 }}>
           <HeroCard>
+            {draft ? (
+              <View style={styles.liveRow}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveText}>{t('sheet.live')}</Text>
+                <Text style={styles.liveTime}>{formatClock(draft.elapsed)}</Text>
+              </View>
+            ) : null}
             {when ? <Text style={styles.when}>{when}</Text> : null}
             <Text style={styles.title}>{workout.title}</Text>
             {hasStrength && workout.parts.length === 1 ? (
@@ -146,6 +169,17 @@ function WorkoutSheet({ workout }: { workout: FitnessWorkoutView }) {
                               <Text style={styles.last}>{`${formatKg(last)} kg`}</Text>
                             </View>
                           ) : null}
+                          {draft ? (
+                            (() => {
+                              const ri = rows.indexOf(r);
+                              const done = draft.logs[ri] ?? [];
+                              const status = exerciseStatus(r, done, ri === draft.idx);
+                              if (status === 'done') return <Ionicons name="checkmark-circle" size={20} color={colors.success} />;
+                              if (status === 'active') return <Text style={styles.exNow}>{t('sheet.exNow')}</Text>;
+                              if (status === 'incomplete') return <Text style={styles.exIncomplete}>{t('sheet.exIncomplete', { done: done.length, total: r.sets.length })}</Text>;
+                              return null;
+                            })()
+                          ) : null}
                         </PressableScale>
                       </Rise>
                     );
@@ -176,7 +210,7 @@ function WorkoutSheet({ workout }: { workout: FitnessWorkoutView }) {
       </ScrollView>
       <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
         {hasStrength ? (
-          <Button label={t('sheet.start')} icon="play" onPress={() => router.push(`/cliente/treino/sessao/${workout.id}`)} />
+          <Button label={draft ? t('sheet.continueWorkout') : t('sheet.start')} icon="play" onPress={() => router.push(`/cliente/treino/sessao/${workout.id}`)} />
         ) : firstOther >= 0 ? (
           <Button label={actionLabel(firstOther)} icon={partMode(workout.parts[firstOther]) === 'gps' ? 'navigate' : 'play'} onPress={() => start(firstOther)} />
         ) : null}
@@ -189,6 +223,12 @@ const styles = StyleSheet.create({
   note: { marginBottom: 10, padding: 12, borderRadius: radii.md, backgroundColor: colors.primarySoft, color: colors.primaryDeep, lineHeight: 19 },
   when: { fontFamily: typography.fontFamilySemiBold, fontSize: 13, color: colors.primary },
   title: { marginTop: 8, ...text.display, color: colors.text },
+  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.danger },
+  liveText: { fontFamily: typography.fontFamilyBold, fontSize: 11.5, letterSpacing: 0.3, color: colors.primaryDeep },
+  liveTime: { fontFamily: typography.fontFamilyBold, fontSize: 11.5, color: colors.textMuted, marginLeft: 'auto', fontVariant: ['tabular-nums'] },
+  exNow: { fontFamily: typography.fontFamilyBold, fontSize: 11.5, color: colors.primary },
+  exIncomplete: { fontFamily: typography.fontFamilySemiBold, fontSize: 11, color: colors.warnText },
   stats: { marginTop: 20 },
   noteCard: { flexDirection: 'row', gap: 12, padding: 16 },
   noteText: { marginTop: 4, fontFamily: typography.fontFamily, fontSize: 14, lineHeight: 20, color: colors.text },
