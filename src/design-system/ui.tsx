@@ -812,16 +812,19 @@ export function EmptyState({
   actionLabel,
   onAction,
   icon,
+  illustration,
 }: {
   title: string;
   subtitle?: string;
   actionLabel?: string;
   onAction?: () => void;
   icon?: IconName;
+  /** Desenho no lugar do ícone (ver `Illustration`). */
+  illustration?: ReactNode;
 }) {
   return (
     <View style={styles.empty}>
-      {icon ? <IconTile icon={icon} size={56} /> : null}
+      {illustration ?? (icon ? <IconTile icon={icon} size={56} /> : null)}
       <Text style={[styles.title, { textAlign: 'center' }]}>{title}</Text>
       {subtitle ? <T role="callout" tone="muted" style={{ textAlign: 'center' }}>{subtitle}</T> : null}
       {actionLabel && onAction ? (
