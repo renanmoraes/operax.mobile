@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Card, EmptyState, HeroCard, IconButton, Loading, PressableScale, Rise, Screen, TopBar } from '@/src/design-system/ui';
-import { OfflineState } from '@/src/design-system/OfflineState';
+import { LoadError } from '@/src/design-system/OfflineState';
 import { clientDataMode } from '@/src/features/client/dataMode';
 import { colors, numbers, radii, shadows, text, typography } from '@/src/design-system/tokens';
 import { useAddCheckin, useBodyAssessments } from '@/src/features/fitness/useFitness';
@@ -52,7 +52,7 @@ function DeltaPill({ m, diff, big }: { m: MetricDef; diff: number; big?: boolean
 export default function BodyEvolutionScreen() {
   const insets = useSafeAreaInsets();
   const wide = useWindowDimensions().width >= 640;
-  const { data, isPending, isError, refetch } = useBodyAssessments();
+  const { data, isPending, isError, error, refetch } = useBodyAssessments();
   const add = useAddCheckin();
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const chartY = useRef(0);
@@ -68,7 +68,7 @@ export default function BodyEvolutionScreen() {
     return (
       <Screen>
         <TopBar safe title={i18n.t('fitness:tab.bodyProgress')} onBack={() => router.back()} />
-        {isPending ? <Loading /> : isError ? <OfflineState onRetry={() => void refetch()} /> : <EmptyState icon="body-outline" title={i18n.t('fitness:body.emptyTitle')} subtitle={i18n.t('fitness:body.emptySub')} />}
+        {isPending ? <Loading /> : isError ? <LoadError error={error} onRetry={() => void refetch()} /> : <EmptyState icon="body-outline" title={i18n.t('fitness:body.emptyTitle')} subtitle={i18n.t('fitness:body.emptySub')} />}
       </Screen>
     );
   }
