@@ -375,7 +375,7 @@ export function SectionHeader({
   );
 }
 
-type BtnVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'soft';
+type BtnVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'soft' | 'impact';
 
 export function Button({
   label,
@@ -401,7 +401,9 @@ export function Button({
   const fg =
     variant === 'primary'
       ? '#fff'
-      : variant === 'danger'
+      : variant === 'impact'
+        ? colors.impactFitnessText
+        : variant === 'danger'
         ? colors.dangerText
         : variant === 'soft'
           ? colors.primary
@@ -418,6 +420,7 @@ export function Button({
         styles.btn,
         compact && styles.btnCompact,
         variant === 'primary' && styles.btnPrimary,
+        variant === 'impact' && styles.btnImpact,
         variant === 'secondary' && styles.btnSecondary,
         variant === 'danger' && styles.btnDanger,
         variant === 'soft' && styles.btnSoft,
@@ -1167,6 +1170,8 @@ const styles = StyleSheet.create({
   },
   btnCompact: { minHeight: 40, paddingHorizontal: spacing.lg },
   btnPrimary: { backgroundColor: colors.primary, ...shadows.button },
+  /** Impacto do fitness (docs/cor-60-30-10.md): ciano com texto navy, uma vez por tela. Sombra navy para não sumir no cinza gelo. */
+  btnImpact: { backgroundColor: colors.impactFitness, ...shadows.button, shadowColor: colors.chromeNavy, shadowOpacity: 0.22 },
   btnSecondary: { backgroundColor: colors.cardBg, ...shadows.card },
   btnDanger: { backgroundColor: colors.dangerSoft },
   btnSoft: { backgroundColor: colors.primaryWash },

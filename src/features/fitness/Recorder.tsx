@@ -719,7 +719,7 @@ export function Recorder({
             {gps && sport.rate === 'pace' ? <DoneStat value={formatPace(averagePace(run, elapsed))} unit="/km" /> : null}
           </View>
           <View style={{ alignSelf: 'stretch', gap: 10, marginTop: 'auto' }}>
-            <Button label={t('done.share')} icon="share-outline" onPress={share} />
+            <Button label={t('done.share')} icon="share-outline" variant="impact" onPress={share} />
             {phase === 'saved' ? <Button label={t('rec.seeHistory')} icon="time-outline" variant="secondary" onPress={onHistory} /> : null}
             <Button label={t('rec.finishDone')} variant="ghost" onPress={onClose} />
           </View>
@@ -814,7 +814,7 @@ export function Recorder({
           <Field label={t('rec.notes')} value={notes} onChangeText={(v) => setNotes(v.slice(0, 500))} placeholder={t('rec.notesHint')} multiline />
 
           <View style={{ gap: 10 }}>
-            <Button label={t('rec.saveWorkout')} icon="checkmark" loading={phase === 'saving'} onPress={() => void save()} />
+            <Button label={t('rec.saveWorkout')} icon="checkmark" variant="impact" loading={phase === 'saving'} onPress={() => void save()} />
             <Button label={t('rec.keepRecording')} variant="ghost" disabled={phase === 'saving'} onPress={() => go('paused')} />
             <Pressable onPress={discard} disabled={phase === 'saving'} accessibilityRole="button" style={styles.discard}>
               <Text style={styles.discardText}>{t('rec.discard')}</Text>
@@ -1145,7 +1145,7 @@ function BigButton({ label, icon, tone = 'primary', onPress, accessibilityLabel,
   return (
     <View style={{ alignItems: 'center', gap: 8 }}>
       <PressableScale onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityState={{ disabled: !!disabled }} accessibilityLabel={accessibilityLabel ?? label} trackLabel={accessibilityLabel ?? label} scaleTo={0.94} style={[styles.big, disabled ? styles.bigOff : tone === 'dark' ? styles.bigDark : styles.bigPrimary]}>
-        <Ionicons name={icon} size={34} color="#fff" style={icon === 'play' ? { marginLeft: 4 } : undefined} />
+        <Ionicons name={icon} size={34} color={!disabled && tone === 'primary' ? colors.impactFitnessText : '#fff'} style={icon === 'play' ? { marginLeft: 4 } : undefined} />
       </PressableScale>
       {label ? <Text style={[styles.bigLabel, disabled && { color: colors.textMuted }]}>{label}</Text> : null}
     </View>
@@ -1300,7 +1300,8 @@ const styles = StyleSheet.create({
   round: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...shadows.card },
   controls: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-evenly', paddingTop: 12 },
   big: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center' },
-  bigPrimary: { backgroundColor: colors.primary, ...shadows.button },
+  /** Iniciar, continuar e retomar: o impacto da tela (docs/cor-60-30-10.md), ciano com ícone navy. */
+  bigPrimary: { backgroundColor: colors.impactFitness, ...shadows.button, shadowColor: colors.chromeNavy, shadowOpacity: 0.22 },
   bigDark: { backgroundColor: colors.chromeNavy },
   bigOff: { backgroundColor: colors.textMuted, opacity: 0.45 },
   startNote: { gap: 8, marginTop: 4, paddingVertical: 11, paddingHorizontal: 14, borderRadius: radii.md, backgroundColor: colors.primaryWash },

@@ -59,11 +59,14 @@ export default function TrainHubScreen() {
             {items.map((it, i) => (
               <Rise key={it.id} index={i}>
                 <PressableScale onPress={() => router.push(`/cliente/treino/${it.id}`)} accessibilityRole="button" accessibilityLabel={t('hub.openWorkout', { title: it.title })} style={styles.plan}>
-                  <LinearGradient colors={['#1e4ed8', '#163db0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-                  <Glow size={260} opacity={0.5} style={{ right: -90, top: -110 }} />
+                  {/* 60-30-10: o cartão do treino de hoje é estrutura (navy) e a seta ciano é o impacto da tela. */}
+                  <LinearGradient colors={[colors.chromeNavy, colors.chromeNavySoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+                  <Glow size={220} opacity={0.24} style={{ right: -80, top: -100 }} />
                   <View style={styles.rowBetween}>
                     <Badge label={doneToday ? t('hub.doneToday') : t('hub.todayBadge')} tone={doneToday ? 'success' : 'primary'} />
-                    <Ionicons name="arrow-forward" size={20} color="#fff" />
+                    <View style={styles.planGo}>
+                      <Ionicons name="arrow-forward" size={20} color={colors.impactFitnessText} />
+                    </View>
                   </View>
                   <Text style={styles.planTitle} numberOfLines={2}>{it.title}</Text>
                   <Text style={styles.planChips} numberOfLines={1}>{workoutChips(it).join('  ·  ')}</Text>
@@ -105,6 +108,7 @@ export default function TrainHubScreen() {
 const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   plan: { borderRadius: radii.xl, padding: 20, overflow: 'hidden', minHeight: 132, ...shadows.hero },
+  planGo: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.impactFitness, alignItems: 'center', justifyContent: 'center' },
   planTitle: { marginTop: 14, ...text.title, color: '#fff' },
   planChips: { marginTop: 6, fontFamily: typography.fontFamilyMedium, fontSize: 13, color: 'rgba(255,255,255,0.82)' },
   noPlan: { flexDirection: 'row', gap: 10, padding: 16, borderRadius: radii.lg, backgroundColor: '#fff', ...shadows.card },

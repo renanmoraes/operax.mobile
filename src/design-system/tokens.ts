@@ -14,8 +14,8 @@ export const colors = {
   cyan: '#4fd8ff',
   /**
    * Impacto das telas de fitness do aluno (regra 60-30-10, docs/cor-60-30-10.md).
-   * Só no botão da ação principal (Começar treino, Gravar, Concluir) sobre cartão escuro ou azul,
-   * com `impactFitnessText` por cima (11,9:1). Nunca como texto ou ícone em fundo claro: 1,55:1.
+   * Só no botão da ação principal (Começar treino, Gravar, Concluir) em qualquer fundo,
+   * sempre com `impactFitnessText` por cima (11,9:1). Nunca como texto ou ícone em fundo claro: 1,55:1.
    */
   impactFitness: '#4fd8ff',
   impactFitnessText: '#050a14',

@@ -176,9 +176,9 @@ function WorkoutSheet({ workout }: { workout: FitnessWorkoutView }) {
       </ScrollView>
       <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
         {hasStrength ? (
-          <Button label={t('sheet.start')} icon="play" onPress={() => router.push(`/cliente/treino/sessao/${workout.id}`)} />
+          <Button label={t('sheet.start')} icon="play" variant="impact" onPress={() => router.push(`/cliente/treino/sessao/${workout.id}`)} />
         ) : firstOther >= 0 ? (
-          <Button label={actionLabel(firstOther)} icon={partMode(workout.parts[firstOther]) === 'gps' ? 'navigate' : 'play'} onPress={() => start(firstOther)} />
+          <Button label={actionLabel(firstOther)} icon={partMode(workout.parts[firstOther]) === 'gps' ? 'navigate' : 'play'} variant="impact" onPress={() => start(firstOther)} />
         ) : null}
       </View>
     </Screen>

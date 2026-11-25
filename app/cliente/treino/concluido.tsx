@@ -255,9 +255,9 @@ function WorkoutDone({ workout, session }: { workout: FitnessWorkoutView; sessio
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
         <Button label={t('done.share')} icon="share-outline" variant="secondary" onPress={share} style={{ flex: 1 }} />
         {queued ? (
-          <Button label={t('log.backToWorkout')} onPress={() => router.replace('/(client)/fitness')} style={{ flex: 1 }} />
+          <Button label={t('log.backToWorkout')} variant="impact" onPress={() => router.replace('/(client)/fitness')} style={{ flex: 1 }} />
         ) : (
-          <Button label={t('done.save')} loading={record.isPending} onPress={() => void save()} style={{ flex: 1 }} />
+          <Button label={t('done.save')} variant="impact" loading={record.isPending} onPress={() => void save()} style={{ flex: 1 }} />
         )}
       </View>
     </Screen>
