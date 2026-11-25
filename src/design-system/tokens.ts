@@ -12,6 +12,13 @@ export const colors = {
   primaryTint: '#e3ebff',
   primaryWash: '#eaf0ff',
   cyan: '#4fd8ff',
+  /**
+   * Impacto das telas de fitness do aluno (regra 60-30-10, docs/cor-60-30-10.md).
+   * Só no botão da ação principal (Começar treino, Gravar, Concluir) sobre cartão escuro ou azul,
+   * com `impactFitnessText` por cima (11,9:1). Nunca como texto ou ícone em fundo claro: 1,55:1.
+   */
+  impactFitness: '#4fd8ff',
+  impactFitnessText: '#050a14',
   cyanWash: '#ddf5ff',
   blueWash: '#d9e6ff',
   track: '#dce5f7',
@@ -34,6 +41,27 @@ export const colors = {
   rowPress: '#f0f4fb',
   glass: 'rgba(255, 255, 255, 0.82)',
   glassBorder: 'rgba(255, 255, 255, 0.95)',
+} as const;
+
+/**
+ * Proporção de cor de toda tela nova ou refatorada (docs/cor-60-30-10.md):
+ * 60% base, 30% estrutura, 10% impacto. O impacto vai só na ação que a pessoa deve fazer, uma por tela.
+ */
+export const colorRoles = {
+  /** Gestão, equipe, PDV, atendimento. */
+  geral: {
+    base: [colors.pageBg, colors.cardBg],
+    estrutura: [colors.text, colors.textMuted, colors.border, colors.chromeNavy, colors.chromeNavySoft, colors.primarySoft],
+    impacto: colors.primary,
+    textoSobreImpacto: '#ffffff',
+  },
+  /** O que o aluno vê: aba Fitness, treino, gravar, concluir, check-in. */
+  fitness: {
+    base: [colors.pageBg, colors.cardBg],
+    estrutura: [colors.primary, colors.chromeNavy, colors.chromeNavySoft],
+    impacto: colors.impactFitness,
+    textoSobreImpacto: colors.impactFitnessText,
+  },
 } as const;
 
 export const gradients = {

@@ -13,6 +13,12 @@ Rodar: `npx expo start`
 
 - Todo texto de tela passa pelo i18n (pt, en, es): nada de texto fixo nem `'pt-BR'` fixo. Ver `docs/i18n.md`.
 
+## Cor na tela: 60-30-10
+
+- Toda tela nova ou refatorada fica perto de 60% base, 30% estrutura e 10% impacto. O impacto vai só na ação que a pessoa deve fazer: uma por tela, nunca de enfeite.
+- Paleta geral: impacto `colors.primary`. Telas de fitness do aluno: azul e navy viram estrutura e o impacto é `colors.impactFitness` (ciano) com `colors.impactFitnessText`; nunca ciano em fundo claro.
+- Papéis em `colorRoles` (`src/design-system/tokens.ts`). Regra completa: `docs/cor-60-30-10.md`. No relatório, diga a paleta e a ação de impacto.
+
 ## Antes de cada push
 
 - `npm run lint` (expo lint), `npx tsc --noEmit --noUnusedLocals` e `npx jest` passando.

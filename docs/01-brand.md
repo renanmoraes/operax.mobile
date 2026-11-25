@@ -14,6 +14,8 @@ Espelha `operax-frontend/DESIGN.md` e `DOCUMENTS/system/conventions/frontend-des
 | border | `#e3e8ef` | Hairline |
 | chromeNavy | `#050a14` / `#1a314f` | Headers / login |
 
+Proporção de cor em toda tela (60% base, 30% estrutura, 10% impacto) e a paleta de fitness com ciano: `docs/cor-60-30-10.md`.
+
 ## Tipografia
 
 Inter (`Inter_400/500/600/700`) via `@expo-google-fonts/inter`.
