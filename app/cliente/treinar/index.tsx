@@ -61,11 +61,12 @@ export default function TrainHubScreen() {
                 <PressableScale onPress={() => router.push(`/cliente/treino/${it.id}`)} accessibilityRole="button" accessibilityLabel={t('hub.openWorkout', { title: it.title })} style={styles.plan}>
                   {/* 60-30-10: o cartão do treino de hoje é estrutura (navy) e a seta ciano é o impacto da tela. */}
                   <LinearGradient colors={[colors.chromeNavy, colors.chromeNavySoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-                  <Glow size={220} opacity={0.24} style={{ right: -80, top: -100 }} />
+                  <Glow size={220} color={colors.primary} opacity={0.3} style={{ right: -80, top: -100 }} />
                   <View style={styles.rowBetween}>
                     <Badge label={doneToday ? t('hub.doneToday') : t('hub.todayBadge')} tone={doneToday ? 'success' : 'primary'} />
-                    <View style={styles.planGo}>
-                      <Ionicons name="arrow-forward" size={20} color={colors.impactFitnessText} />
+                    {/* Só o primeiro treino do dia leva o ciano: uma ação de impacto por tela. */}
+                    <View style={[styles.planGo, i > 0 && styles.planGoQuiet]}>
+                      <Ionicons name="arrow-forward" size={20} color={i > 0 ? '#fff' : colors.impactFitnessText} />
                     </View>
                   </View>
                   <Text style={styles.planTitle} numberOfLines={2}>{it.title}</Text>
@@ -109,6 +110,7 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   plan: { borderRadius: radii.xl, padding: 20, overflow: 'hidden', minHeight: 132, ...shadows.hero },
   planGo: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.impactFitness, alignItems: 'center', justifyContent: 'center' },
+  planGoQuiet: { backgroundColor: 'rgba(255,255,255,0.16)' },
   planTitle: { marginTop: 14, ...text.title, color: '#fff' },
   planChips: { marginTop: 6, fontFamily: typography.fontFamilyMedium, fontSize: 13, color: 'rgba(255,255,255,0.82)' },
   noPlan: { flexDirection: 'row', gap: 10, padding: 16, borderRadius: radii.lg, backgroundColor: '#fff', ...shadows.card },

@@ -122,7 +122,7 @@ export default function ClientFitnessScreen() {
             <PressableScale onPress={() => router.push('/cliente/treinar')} accessibilityRole="button" accessibilityLabel={t('tab.trainNowA11y')} style={styles.cta}>
               {/* 60-30-10 (docs/cor-60-30-10.md): o cartão é estrutura (navy) e o play é o impacto (ciano), o único da tela. */}
               <LinearGradient colors={[colors.chromeNavy, colors.chromeNavySoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-              <Glow size={200} opacity={0.28} style={{ left: -60, top: -76 }} />
+              <Glow size={200} color={colors.primary} opacity={0.35} style={{ left: -60, top: -76 }} />
               <View style={styles.ctaPlay}>
                 <Ionicons name="play" size={24} color={colors.impactFitnessText} style={{ marginLeft: 3 }} />
               </View>
