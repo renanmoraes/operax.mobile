@@ -120,10 +120,11 @@ export default function ClientFitnessScreen() {
         {caps.training ? (
           <Rise index={1} style={{ marginTop: 12 }}>
             <PressableScale onPress={() => router.push('/cliente/treinar')} accessibilityRole="button" accessibilityLabel={t('tab.trainNowA11y')} style={styles.cta}>
-              <LinearGradient colors={['#1e4ed8', '#163db0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-              <Glow size={240} opacity={0.5} style={{ right: -70, top: -110 }} />
+              {/* 60-30-10 (docs/cor-60-30-10.md): o cartão é estrutura (navy) e o play é o impacto (ciano), o único da tela. */}
+              <LinearGradient colors={[colors.chromeNavy, colors.chromeNavySoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+              <Glow size={200} opacity={0.28} style={{ left: -60, top: -76 }} />
               <View style={styles.ctaPlay}>
-                <Ionicons name="play" size={22} color={colors.primary} style={{ marginLeft: 3 }} />
+                <Ionicons name="play" size={24} color={colors.impactFitnessText} style={{ marginLeft: 3 }} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.ctaTitle}>{t('tab.trainNow')}</Text>
@@ -193,7 +194,7 @@ export default function ClientFitnessScreen() {
                 </View>
                 {status === 'today' ? (
                   <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
-                    <Button label={t('tab.startWorkout')} icon="play" onPress={() => router.push(`/cliente/treino/${it.id}`)} style={{ flex: 1 }} />
+                    <Button label={t('tab.startWorkout')} icon="play" variant="soft" onPress={() => router.push(`/cliente/treino/${it.id}`)} style={{ flex: 1 }} />
                   </View>
                 ) : status === 'done' ? (
                   <Button label={t('tab.seeWhatYouDid')} variant="soft" onPress={() => router.push('/cliente/historico')} style={{ marginTop: 16 }} />
@@ -258,7 +259,7 @@ const styles = StyleSheet.create({
   heroLine: { marginTop: 3, ...text.section, color: colors.text },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cta: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: radii.xl, overflow: 'hidden', ...shadows.hero },
-  ctaPlay: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  ctaPlay: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.impactFitness, alignItems: 'center', justifyContent: 'center' },
   ctaTitle: { ...text.section, color: '#fff' },
   ctaSub: { marginTop: 2, fontFamily: typography.fontFamilyMedium, fontSize: 12.5, color: 'rgba(255,255,255,0.8)' },
   memory: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16, borderRadius: radii.lg },
