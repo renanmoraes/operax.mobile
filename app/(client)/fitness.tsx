@@ -181,7 +181,12 @@ export default function ClientFitnessScreen() {
         ) : (
           items.map((it, i) => (
             <Rise key={it.id} index={2 + i} style={{ marginTop: 12 }}>
-              <Card style={{ padding: 20 }} onPress={() => router.push(`/cliente/treino/${it.id}`)} accessibilityLabel={t('tab.seeSheet', { title: it.title })}>
+              {/* Com botão dentro (hoje e feito), o cartão não é botão: botão dentro de botão quebra no navegador e confunde o leitor de tela. */}
+              <Card
+                style={{ padding: 20 }}
+                onPress={status === 'today' || status === 'done' ? undefined : () => router.push(`/cliente/treino/${it.id}`)}
+                accessibilityLabel={status === 'today' || status === 'done' ? undefined : t('tab.seeSheet', { title: it.title })}
+              >
                 <View style={styles.rowBetween}>
                   <Badge label={badge[status][0]} tone={badge[status][1]} />
                   {items.length > 1 ? <Muted>{t('tab.nOf', { n: i + 1, total: items.length })}</Muted> : null}
